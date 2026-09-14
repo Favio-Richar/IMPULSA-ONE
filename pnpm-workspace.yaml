@@ -1,0 +1,20 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  # esbuild: binario nativo requerido por tsx (dev runner de apps/api y apps/worker). Paquete
+  # ampliamente usado y auditado; se aprueba explícitamente en vez de bloquear el script.
+  esbuild: true
+  # unrs-resolver: resolutor nativo usado transitivamente por el tooling de ESLint/Next.js.
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@nestjs/common@12.0.2'
+  - '@nestjs/core@12.0.2'
+  - '@nestjs/platform-express@12.0.2'
+  - '@turbo/darwin-64@2.10.13'
+  - '@turbo/darwin-arm64@2.10.13'
+  - '@turbo/linux-64@2.10.13'
+  - '@turbo/linux-arm64@2.10.13'
+  - '@turbo/windows-64@2.10.13'
+  - '@turbo/windows-arm64@2.10.13'
+  - turbo@2.10.13

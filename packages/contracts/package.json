@@ -1,0 +1,18 @@
+{
+  "name": "@impulza/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@impulza/eslint-config": "workspace:*",
+    "@impulza/tsconfig": "workspace:*",
+    "typescript": "6.0.3"
+  }
+}

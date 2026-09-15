@@ -90,12 +90,47 @@ pnpm --filter @impulza/database run db:seed              # 7 roles + plan Gratis
 pnpm --filter @impulza/database run db:studio            # explorar datos (opcional)
 ```
 
-> **Prisma 7, cambio real de API (no cosmético)**: `datasource { url = env(...) }` en
-> `schema.prisma` ya no existe — la URL para Migrate/CLI vive en `prisma.config.ts`, y
-> `PrismaClient` en runtime requiere un **driver adapter** explícito (`@prisma/adapter-pg`) en vez
-> de leer `DATABASE_URL` implícitamente. Ver `packages/database/src/index.ts` y
-> `prisma.config.ts`. Verificado migrando y sembrando contra el Postgres real de
-> `docker-compose.yml`, no solo compilado.
+> **Por qué Prisma `6.19.3` y no `7.x`**: se probó primero con `7.10.0` (la versión estable más
+> reciente en ese momento — `prisma@latest` en npm apunta hoy a `8.0.0-rc.15`, un release
+> candidate, así que `7.10.0` era la elección correcta según esa misma lógica). Prisma 7 cambió
+> el datasource a `prisma.config.ts` + driver adapters (`@prisma/adapter-pg`), y se implementó
+> así — pero el cliente generado (`prisma generate`) producía archivos `.d.ts` vacíos en esta
+> máquina (bug verificado empíricamente, no una suposición: `default.d.ts`/`client.d.ts` con 0
+> líneas pese a que el `schema.prisma` embebido sí tenía los modelos). Se bajó a `6.19.3` —última
+> de la serie 6.x, arquitectura clásica madura sin este problema— y todo funcionó de inmediato.
+> Revisar si se retoma mucho después: Prisma 7/8 puede haber madurado para entonces.
+
+Todo lo anterior fue verificado migrando y sembrando de verdad contra el Postgres de
+`docker-compose.yml`, no solo compilado.
+
+## Autenticación (F1.4)
+
+`apps/api/src/modules/auth` — sesión por cookie `HttpOnly`/`SameSite=Lax` (respaldada por la
+tabla `Session`, no JWT: permite revocación real), no `packages/auth` puro:
+
+- Registro, verificación de correo, login, logout, recuperar/restablecer contraseña.
+- Hash de contraseñas con Argon2id (`packages/auth`); nunca texto plano ni siquiera en tránsito
+  interno.
+- Bloqueo de cuenta tras 5 intentos fallidos (15 min) + rate limiting por IP respaldado en Redis
+  en cada endpoint sensible (`RateLimitGuard`, no `@nestjs/throttler` — ver más abajo).
+- CSRF: cabecera `X-Requested-With: impulza-one` obligatoria en toda solicitud mutante
+  (`CsrfGuard`), combinada con `SameSite=Lax` y CORS restrictivo. Todo cliente propio (dashboard,
+  admin) debe enviar esa cabecera.
+- Sesiones/dispositivos activos listables y revocables (`GET/DELETE /auth/sessions`) — revocar
+  siempre verifica que la sesión pertenezca al usuario autenticado, nunca confía en el `id` de la
+  URL a solas (mismo principio que `organization_id` en ADR-002, aplicado a nivel de usuario).
+- 2FA: diseño de datos completo (`User.twoFactorEnabled`/`twoFactorSecretEncrypted`, cifrado
+  AES-256-GCM en reposo) + endpoints `setup`/`enable`/`disable` funcionales con TOTP real
+  (`otplib`). **No se exige todavía en el login** — permitido explícitamente hasta antes de
+  producción comercial (backlog F1.4).
+- Login con Google: sin implementar a propósito — no hay credenciales reales de OAuth todavía;
+  el modelo `Account` (provider/providerAccountId) ya está listo para cuando corresponda.
+- Email: `ConsoleEmailAdapter` (loguea en vez de enviar) hasta que exista un proveedor real
+  (Resend/SES) — implementa el mismo contrato `EmailAdapter`, cambiarlo no toca lógica de negocio.
+
+Verificado con 11 pruebas de integración reales (`apps/api/src/modules/auth/auth.e2e.test.ts`) —
+NestJS completo + Postgres/Redis reales de `docker-compose.yml`, sin mocks de base de datos.
+Corren en CI contra servicios Postgres/Redis dedicados (ver `.github/workflows/ci.yml`).
 
 ## CI
 
@@ -103,7 +138,9 @@ pnpm --filter @impulza/database run db:studio            # explorar datos (opcio
 (`--frozen-lockfile`), lint, typecheck, test, build y auditoría de dependencias, cada uno en un job
 separado. El job `ci-ok` es la única verificación requerida a proteger en la rama (evita listar cada
 job individualmente en la configuración de branch protection). Cualquier job que falle hace fallar
-el pipeline completo — no hay pasos informativos silenciosos.
+el pipeline completo — no hay pasos informativos silenciosos. El job `test` levanta servicios
+Postgres/Redis reales (no mocks) y aplica las migraciones antes de correr — las pruebas de
+integración de `apps/api` necesitan una base de datos real, igual que en desarrollo local.
 
 ## Design system (`packages/ui`)
 
@@ -135,13 +172,13 @@ apps/
 ├── web/          Next.js — sitio comercial + páginas públicas de usuarios
 ├── dashboard/    Next.js — panel del propietario/colaborador y modo agencia
 ├── admin/        Next.js — superadministración
-├── api/          NestJS — API REST /api/v1, toda la lógica de negocio
+├── api/          NestJS — API REST /api/v1. Módulo auth completo (F1.4); el resto llega por fase
 └── worker/       Procesamiento asíncrono (BullMQ se agrega cuando exista el primer job real)
 
 packages/
 ├── ui/               Design system: tokens, Button/Input/Card/Table/estados, Storybook
 ├── database/         Prisma — schema, migración inicial y seeds (roles + plan Gratis)
-├── auth/             Contratos y utilidades de autenticación
+├── auth/             Hash de contraseñas (Argon2id), tokens, cifrado 2FA, adaptador de email
 ├── validation/       Esquemas Zod compartidos
 ├── contracts/        DTOs y contratos de la API
 ├── analytics/        Taxonomía y utilidades de eventos
@@ -175,12 +212,18 @@ incompatibilidad real verificada, no por precaución genérica:
   para necesitar sus schematics o HMR.
 - **`apps/worker` sin `bullmq`/`ioredis` todavía**: se agregan cuando exista el primer job real
   (Fase 1 tardía o Fase 3), para no cargar una dependencia sin uso.
-- **Prisma `7.10.0`** (fijado en F1.3): el dist-tag `latest` de `prisma` en npm apunta hoy a
-  `8.0.0-rc.15` (un release candidate), mientras que `@prisma/client` sigue en `7.10.0` estable —
-  se usó `7.10.0` para ambos, la última versión realmente estable y coherente entre CLI y client.
+- **Prisma `6.19.3`, no `7.x`** (fijado en F1.3, ver sección "Base de datos" arriba para el
+  detalle): Prisma 7 generaba tipos vacíos en esta máquina — bug verificado, no evitado por
+  precaución.
+- **Sin `@nestjs/throttler`** (F1.4): su última versión estable (`6.5.0`) declara
+  `peerDependencies` solo hasta `@nestjs/core ^11`, y este proyecto usa Nest `12.0.2`. En vez de
+  arriesgar una integración no probada por el propio paquete, se implementó rate limiting propio
+  respaldado en Redis (`apps/api/src/common/rate-limit.guard.ts`) — además alineado con
+  `ARCHITECTURE.md` §3.3, que ya designa Redis para "caché/rate limits".
 
 Revisar estas decisiones si se retoma el trabajo mucho después: el ecosistema puede haber
-alcanzado a ESLint 10 / TypeScript 7 para entonces, y Prisma 8 puede ya haber salido de RC.
+alcanzado a ESLint 10 / TypeScript 7 para entonces, Prisma 7/8 puede haber madurado, y
+`@nestjs/throttler` puede ya soportar Nest 12.
 
 ## Documentación de referencia
 

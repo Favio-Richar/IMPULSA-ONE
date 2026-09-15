@@ -6,9 +6,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// La URL de conexión vive en ../prisma.config.ts (Prisma 7) — no aquí.
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum MembershipStatus {
@@ -25,18 +25,35 @@ enum SubscriptionStatus {
   CANCELED
 }
 
+enum VerificationTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
 model User {
   id              String    @id @default(uuid()) @db.Uuid
   email           String    @unique
   passwordHash    String    @map("password_hash")
   emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  sessions      Session[]
-  accounts      Account[]
-  memberships   Membership[]
-  auditLogsAsActor AuditLog[] @relation("AuditLogActor")
+  // Bloqueo temporal tras intentos abusivos (ST §7/§15) — defensa por cuenta, además del rate
+  // limiting por IP a nivel de endpoint.
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(6)
+
+  // Diseño de datos de 2FA (F1.4): el secreto se guarda cifrado (ver packages/auth), nunca en
+  // claro. No se exige en el login todavía — eso llega antes de producción comercial (ST §7).
+  twoFactorEnabled       Boolean @default(false) @map("two_factor_enabled")
+  twoFactorSecretEncrypted String? @map("two_factor_secret_encrypted")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sessions            Session[]
+  accounts            Account[]
+  memberships         Membership[]
+  verificationTokens  VerificationToken[]
+  auditLogsAsActor    AuditLog[]          @relation("AuditLogActor")
 
   @@map("users")
 }
@@ -205,4 +222,21 @@ model AuditLog {
   @@index([organizationId])
   @@index([actorId])
   @@map("audit_logs")
+}
+
+model VerificationToken {
+  id     String                @id @default(uuid()) @db.Uuid
+  userId String                @map("user_id") @db.Uuid
+  // Nunca el token en claro — solo su hash SHA-256 (ver packages/auth). El token crudo se envía
+  // una vez al usuario (email) y no se puede recuperar desde la base de datos.
+  tokenHash String              @unique @map("token_hash")
+  type      VerificationTokenType
+  expiresAt DateTime            @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime?           @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("verification_tokens")
 }

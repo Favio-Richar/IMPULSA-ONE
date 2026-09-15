@@ -1,3 +1,6 @@
-// Contratos y utilidades de autenticación compartidas — implementación real en F1.4.
-// Placeholder de la fundación del monorepo (F0.2) — ver docs/BACKLOG_FASE_0_1.md.
-export {};
+export { hashPassword, verifyPassword } from "./password.js";
+export { generateVerificationToken, hashToken, type GeneratedToken } from "./tokens.js";
+export { encryptSecret, decryptSecret } from "./crypto.js";
+export { generateTwoFactorSecret, verifyTwoFactorCode, type TwoFactorSetup } from "./twoFactor.js";
+export type { EmailAdapter, EmailMessage } from "./email/EmailAdapter.js";
+export { ConsoleEmailAdapter } from "./email/ConsoleEmailAdapter.js";

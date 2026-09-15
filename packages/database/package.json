@@ -17,16 +17,13 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "7.10.0",
-    "@prisma/client": "7.10.0",
-    "pg": "8.23.0"
+    "@prisma/client": "6.19.3"
   },
   "devDependencies": {
     "@impulza/eslint-config": "workspace:*",
     "@impulza/tsconfig": "workspace:*",
     "@types/node": "26.5.1",
-    "@types/pg": "8.23.1",
-    "prisma": "7.10.0",
+    "prisma": "6.19.3",
     "tsx": "4.23.13",
     "typescript": "6.0.3",
     "vite": "8.3.0",

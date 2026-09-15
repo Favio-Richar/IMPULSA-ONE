@@ -1,5 +1,4 @@
 import path from "node:path";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
 try {
@@ -8,12 +7,7 @@ try {
   // sin .env local — se asume que las variables ya están en el entorno (p. ej. CI).
 }
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("DATABASE_URL no está definida — no se puede sembrar la base de datos.");
-}
-
-const prisma = new PrismaClient({ adapter: new PrismaPg(connectionString) });
+const prisma = new PrismaClient();
 
 // Roles técnicos iniciales (ST §7) — el catálogo de permisos por rol se implementa en F1.6.
 const ROLES = [

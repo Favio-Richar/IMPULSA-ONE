@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { databaseUrlSchema, loadEnv, nodeEnvSchema, portSchema, redisUrlSchema } from "./index.js";
+import {
+  corsOriginsSchema,
+  databaseUrlSchema,
+  encryptionKeySchema,
+  loadEnv,
+  nodeEnvSchema,
+  portSchema,
+  redisUrlSchema,
+} from "./index.js";
 
 const shape = {
   NODE_ENV: nodeEnvSchema,
@@ -59,5 +67,34 @@ describe("loadEnv", () => {
         REDIS_URL: "http://localhost:6379",
       }),
     ).toThrowError(/Redis/);
+  });
+});
+
+describe("corsOriginsSchema", () => {
+  it("parsea una lista separada por comas en un arreglo de orígenes", () => {
+    expect(corsOriginsSchema.parse("http://localhost:3000, http://localhost:3100")).toEqual([
+      "http://localhost:3000",
+      "http://localhost:3100",
+    ]);
+  });
+
+  it("rechaza un valor vacío (nunca CORS abierto por accidente)", () => {
+    expect(() => corsOriginsSchema.parse("")).toThrow();
+  });
+
+  it("rechaza un origen que no sea una URL válida", () => {
+    expect(() => corsOriginsSchema.parse("no-es-una-url")).toThrow();
+  });
+});
+
+describe("encryptionKeySchema", () => {
+  it("acepta una clave de 32 bytes en base64", () => {
+    const key = Buffer.alloc(32, 7).toString("base64");
+    expect(encryptionKeySchema.parse(key)).toBe(key);
+  });
+
+  it("rechaza una clave que no tenga 32 bytes", () => {
+    const shortKey = Buffer.alloc(16, 7).toString("base64");
+    expect(() => encryptionKeySchema.parse(shortKey)).toThrow(/32 bytes/);
   });
 });

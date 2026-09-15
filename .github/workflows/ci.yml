@@ -73,9 +73,41 @@ jobs:
       - run: pnpm typecheck
 
   test:
-    name: Unit tests
+    name: Tests
     needs: install
     runs-on: ubuntu-latest
+    # apps/api tiene pruebas de integración reales contra Postgres/Redis (no mocks) — F1.4/F1.9
+    # exigen exactamente esto para validar aislamiento y flujos de auth de verdad.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: impulza
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d impulza"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/impulza
+      REDIS_URL: redis://localhost:6379
+      CORS_ORIGINS: http://localhost:3000
+      AUTH_ENCRYPTION_KEY: MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
+      APP_BASE_URL: http://localhost:3100
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -83,6 +115,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: corepack enable && corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
       - run: pnpm install --frozen-lockfile
+      - name: Apply database migrations
+        run: pnpm --filter @impulza/database run db:migrate:deploy
       - run: pnpm test
 
   build:

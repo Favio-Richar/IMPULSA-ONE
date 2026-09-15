@@ -5,5 +5,5 @@
     "moduleResolution": "NodeNext",
     "types": ["node"]
   },
-  "include": ["src", "prisma.config.ts", "prisma/seed.ts"]
+  "include": ["src", "prisma/seed.ts"]
 }

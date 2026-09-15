@@ -8,11 +8,14 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
     "@impulza/eslint-config": "workspace:*",
     "@impulza/tsconfig": "workspace:*",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.0"
   }
 }

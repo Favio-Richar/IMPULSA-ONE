@@ -43,7 +43,15 @@ Scripts disponibles en la raíz (delegan en Turborepo):
 | `pnpm dev` | Levanta las apps en modo desarrollo. |
 | `pnpm lint` | Lint en todo el monorepo. |
 | `pnpm typecheck` | Chequeo de tipos en todo el monorepo. |
-| `pnpm test` | Pruebas en todo el monorepo. |
+| `pnpm test` | Pruebas en todo el monorepo (Vitest; hoy `--passWithNoTests`, se llenan desde Fase 1). |
+
+## CI
+
+`.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible
+(`--frozen-lockfile`), lint, typecheck, test, build y auditoría de dependencias, cada uno en un job
+separado. El job `ci-ok` es la única verificación requerida a proteger en la rama (evita listar cada
+job individualmente en la configuración de branch protection). Cualquier job que falle hace fallar
+el pipeline completo — no hay pasos informativos silenciosos.
 
 ## Estructura
 

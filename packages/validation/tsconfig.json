@@ -3,6 +3,10 @@
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    // Este paquete es isomorfo (lo usan la API y el constructor). Se agrega la lib DOM solo por
+    // los tipos de `URL`, que es estándar WHATWG y existe igual en Node y en el navegador; no se
+    // usan `types: ["node"]` justamente para que nada de acá dependa de Node.
+    "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
     "rootDir": "./src"
   },

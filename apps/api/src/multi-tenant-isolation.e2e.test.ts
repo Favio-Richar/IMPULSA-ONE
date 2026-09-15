@@ -412,6 +412,69 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Bloques (F2.4): ningún acceso cruzado entre organizaciones", () => {
+    it("A no puede listar ni crear bloques en una página de B, por ninguna combinación de ids", async () => {
+      const pagesOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .expect(200);
+      const homeOfB = pagesOfB.body[0].id;
+
+      // Con la organización de B en la URL: frenado por el guard de membresía.
+      await orgA.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/blocks`)
+        .expect(403);
+
+      // Con la organización propia de A pero sitio y página de B: frenado por la verificación de
+      // dueño real, que es la que recorre la cadena completa hasta el bloque.
+      const crossPath = `/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/${homeOfB}/blocks`;
+      await orgA.ownerAgent.get(crossPath).expect(404);
+      await orgA.ownerAgent
+        .post(crossPath)
+        .set(CSRF_HEADERS)
+        .send({ type: "text", config: { html: "<p>intruso</p>" } })
+        .expect(404);
+      await orgA.ownerAgent
+        .put(`${crossPath}/reorder`)
+        .set(CSRF_HEADERS)
+        .send({ blockIds: [homeOfB] })
+        .expect(404);
+    });
+
+    it("A no puede editar, duplicar ni borrar un bloque de B usando su propia página", async () => {
+      // Se crea un bloque real en la home de B y se intenta alcanzarlo desde la página de A.
+      const pagesOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .expect(200);
+      const homeOfB = pagesOfB.body[0].id;
+      const blockOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/blocks`)
+        .set(CSRF_HEADERS)
+        .send({ type: "text", config: { html: "<p>privado de B</p>" } })
+        .expect(201);
+
+      const pagesOfA = await orgA.ownerAgent
+        .get(`/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/pages`)
+        .expect(200);
+      const homeOfA = pagesOfA.body[0].id;
+      const attackPath = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/pages/${homeOfA}/blocks/${blockOfB.body.id}`;
+
+      await orgA.ownerAgent
+        .patch(attackPath)
+        .set(CSRF_HEADERS)
+        .send({ config: { html: "<p>secuestrado</p>" } })
+        .expect(404);
+      await orgA.ownerAgent.post(`${attackPath}/duplicate`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.delete(attackPath).set(CSRF_HEADERS).expect(404);
+
+      // El bloque de B quedó exactamente como estaba.
+      const blocksOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/blocks`)
+        .expect(200);
+      expect(blocksOfB.body).toHaveLength(1);
+      expect(blocksOfB.body[0].config.html).toBe("<p>privado de B</p>");
+    });
+  });
+
   describe("Ningún dato de una organización aparece en las respuestas de la otra", () => {
     it("GET /organizations no cruza organizaciones entre usuarios sin relación", async () => {
       const orgsOfA = await orgA.ownerAgent.get("/api/v1/organizations");

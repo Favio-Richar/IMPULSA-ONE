@@ -432,6 +432,54 @@ combinado (organizationId propio + sitio **y** página ajenos, coherentes entre 
 que obliga a validar la cadena completa organización → sitio → página; verificado que pasa con el
 código correcto y falla con 200 al quitar la protección.
 
+## Bloques tipados (F2.4)
+
+Los 15 bloques del MVP (ST §9) viven en `packages/validation/src/blocks/`. **Un bloque no es
+HTML**: es un `type` del catálogo con una configuración validada por su propio esquema Zod. No
+existe ninguna vía por la que el usuario meta marcado o scripts propios (ST §22) — el único camino
+para persistir una configuración pasa por validarla contra el esquema del tipo y sanitizarla.
+
+El catálogo quedó en `packages/validation` y **no** en `packages/database` como decía la nota
+original de F2.1 (ya corregida en el esquema): el constructor de F2.9 necesita los mismos esquemas
+en el cliente, y `validation` es isomorfo mientras que `database` no.
+
+**Defensas concretas:**
+
+- **URLs**: solo `http`/`https`. Se rechazan `javascript:`, `data:`, `vbscript:`, `file:` y las
+  rutas relativas — un `href` es un enlace, no una vía de ejecución.
+- **Video**: no se guarda una URL de iframe. Se guarda `{provider, videoId}` con proveedor de una
+  lista blanca (YouTube, Vimeo) y el render arma el `src` desde una plantilla fija. Aunque alguien
+  escribiera directo en la base, no puede apuntar un iframe a un dominio arbitrario.
+- **Texto enriquecido**: se sanitiza **en el servidor, antes de persistir** (no al renderizar), con
+  una lista blanca corta de etiquetas y atributos. Se fuerza `rel="noopener noreferrer nofollow"`
+  en todos los enlaces, sin confiar en lo que mande el editor.
+- **Degradación controlada**: `parseStoredBlock` distingue `unknown_type`, `future_version` e
+  `invalid_config`. Un bloque escrito por una versión futura, o con configuración corrupta, se
+  marca como degradado y se omite — nunca rompe la página entera.
+
+**Dos guardias que hacen imposible un olvido peligroso:**
+
+1. *Campo de HTML sin sanitizar*: el sanitizador está dirigido por datos — cada entrada del
+   catálogo declara sus `richTextPaths` y no hay código por tipo que alguien pueda olvidar
+   escribir. Y la declaración no se cree por su palabra: una prueba **recorre el esquema Zod real**
+   (los campos de texto enriquecido van marcados con `.describe()`) y compara lo encontrado con lo
+   declarado, en ambos sentidos. Agregar un campo de HTML sin declararlo rompe el build; verificado
+   introduciendo uno a propósito.
+2. *Esquema que no acepta su propia salida*: el mismo esquema valida la entrada del usuario y
+   relee lo guardado, así que un tipo que transforme la forma del dato y no acepte el resultado
+   dejaría **todos** sus bloques marcados como inválidos al renderizar. Hay una prueba de ida y
+   vuelta para los 15 tipos. Encontró exactamente ese bug en el bloque de video (entraba una URL,
+   se guardaba un objeto, y al releerlo fallaba); el esquema pasó a ser una unión idempotente.
+
+**Versionado**: la configuración vive en `BlockVersion` (ERD §3), no en una columna del bloque.
+Cada guardado crea una versión nueva en vez de pisar la anterior; cambiar solo la visibilidad no
+genera versión. Duplicar copia la configuración vigente y se inserta justo debajo del original.
+
+**Por qué eliminar un bloque sí borra de verdad** (a diferencia de una página, F2.3): un bloque
+suelto no es trabajo que el usuario espere rescatar de una papelera, y el historial de la página
+(F2.6) conserva igual el estado anterior completo — la vía de recuperación existe y es restaurar
+una versión de la página.
+
 ## CI
 
 `.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible

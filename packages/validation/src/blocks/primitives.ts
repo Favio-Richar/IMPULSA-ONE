@@ -1,0 +1,165 @@
+import { z } from "zod";
+
+// Piezas reutilizables de la configuración de los bloques (F2.4). Todo lo de acá es isomorfo
+// (sin dependencias de Node): el constructor las usa para validar mientras se edita y la API las
+// vuelve a aplicar al guardar — el cliente nunca es la autoridad (ST §15).
+
+/**
+ * Protocolos permitidos en cualquier enlace que termine en un `href` de la página pública.
+ * `javascript:` y `data:` son ejecución de código disfrazada de enlace (XSS almacenado, que es
+ * exactamente lo que evita la restricción de "nada de HTML/JS arbitrario" de ST §22).
+ */
+const ALLOWED_LINK_PROTOCOLS = new Set(["http:", "https:"]);
+
+function parseUrl(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+/** Enlace externo: solo http/https, nunca `javascript:`, `data:`, `vbscript:` ni relativos. */
+export const safeUrlSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(2048)
+  .superRefine((value, ctx) => {
+    const url = parseUrl(value);
+
+    if (!url) {
+      ctx.addIssue({ code: "custom", message: "Debe ser una URL absoluta válida (https://...)." });
+      return;
+    }
+
+    if (!ALLOWED_LINK_PROTOCOLS.has(url.protocol)) {
+      ctx.addIssue({ code: "custom", message: "Solo se permiten enlaces http:// o https://." });
+    }
+  });
+
+/** Texto plano: se guarda tal cual, sin interpretar como HTML en ningún render. */
+export const plainTextSchema = (max: number) => z.string().trim().min(1).max(max);
+
+/**
+ * Texto enriquecido. Acá solo se valida el tamaño: la **sanitización con lista blanca de
+ * etiquetas y atributos ocurre en el servidor** antes de persistir (ver `sanitizeBlockConfig` en
+ * apps/api). Se deja fuera de este paquete a propósito para que siga siendo isomorfo y liviano —
+ * el sanitizador es una dependencia de Node y no tiene por qué viajar al navegador.
+ */
+export const RICH_TEXT_MARKER = "richtext";
+
+export const richTextSchema = z.string().max(20000).describe(RICH_TEXT_MARKER);
+
+export const emailSchema = z.email().max(320);
+
+/** Teléfono en formato E.164 (`+56912345678`): es lo que necesitan los enlaces `tel:` y WhatsApp. */
+export const phoneSchema = z
+  .string()
+  .trim()
+  .regex(/^\+[1-9]\d{6,14}$/, "Usa formato internacional, por ejemplo +56912345678.");
+
+export const imageSchema = z.object({
+  url: safeUrlSchema,
+  // Obligatorio y no vacío: sin texto alternativo la página no cumple WCAG 2.2 AA, que es el
+  // objetivo declarado del proyecto. Una imagen decorativa se marca con `decorative: true`.
+  alt: z.string().trim().max(300),
+  decorative: z.boolean().optional(),
+});
+
+// --- Video embebido -------------------------------------------------------------------------
+
+/**
+ * Lista blanca de proveedores de video. No se guarda una URL de iframe libre: se guarda
+ * `{provider, videoId}` y el render arma el `src` desde una plantilla fija. Así, aunque alguien
+ * consiga escribir en la base de datos, no puede inyectar un iframe a un dominio arbitrario.
+ */
+export const VIDEO_PROVIDERS = ["youtube", "vimeo"] as const;
+export type VideoProvider = (typeof VIDEO_PROVIDERS)[number];
+
+const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"]);
+const VIMEO_HOSTS = new Set(["vimeo.com", "www.vimeo.com", "player.vimeo.com"]);
+
+const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+const VIMEO_ID = /^\d{6,12}$/;
+
+/** Extrae `{provider, videoId}` de una URL de proveedor permitido, o `null` si no lo es. */
+export function parseVideoUrl(value: string): { provider: VideoProvider; videoId: string } | null {
+  const url = parseUrl(value);
+  if (!url || !ALLOWED_LINK_PROTOCOLS.has(url.protocol)) {
+    return null;
+  }
+
+  const host = url.hostname.toLowerCase();
+
+  if (YOUTUBE_HOSTS.has(host)) {
+    // youtu.be/<id>, youtube.com/watch?v=<id>, youtube.com/embed/<id>, /shorts/<id>
+    const fromPath = url.pathname.split("/").filter(Boolean).at(-1) ?? "";
+    const candidate = host === "youtu.be" ? fromPath : (url.searchParams.get("v") ?? fromPath);
+    return YOUTUBE_ID.test(candidate) ? { provider: "youtube", videoId: candidate } : null;
+  }
+
+  if (VIMEO_HOSTS.has(host)) {
+    const candidate = url.pathname.split("/").filter(Boolean).at(-1) ?? "";
+    return VIMEO_ID.test(candidate) ? { provider: "vimeo", videoId: candidate } : null;
+  }
+
+  return null;
+}
+
+/** Forma en que el video queda **guardado**: proveedor de la lista blanca + id, nunca una URL. */
+export const storedVideoSchema = z.object({
+  provider: z.enum(VIDEO_PROVIDERS),
+  videoId: z.string().regex(/^[A-Za-z0-9_-]{6,20}$/),
+});
+
+/**
+ * Acepta la URL que pega el usuario y la normaliza a `{provider, videoId}`, **y también acepta esa
+ * forma ya normalizada**.
+ *
+ * Lo segundo no es un adorno: el mismo esquema se usa para validar lo que entra y para releer lo
+ * que está guardado (`parseStoredBlock`). Si solo aceptara la URL, todo bloque de video guardado
+ * fallaría al releerse y el render público lo descartaría por "configuración inválida" — que es
+ * exactamente el bug que encontró la prueba de ida y vuelta. La unión lo vuelve idempotente.
+ */
+export const videoEmbedSchema = z.union([
+  storedVideoSchema,
+  z
+    .string()
+    .trim()
+    .min(1)
+    .max(2048)
+    .transform((value, ctx) => {
+      const parsed = parseVideoUrl(value);
+
+      if (!parsed) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Solo se permiten videos de YouTube o Vimeo. Pega el enlace del video.",
+        });
+        return z.NEVER;
+      }
+
+      return parsed;
+    }),
+]);
+
+// --- Redes sociales -------------------------------------------------------------------------
+
+/** También lista blanca: el render elige el icono por este valor, no por una URL cualquiera. */
+export const SOCIAL_NETWORKS = [
+  "instagram",
+  "facebook",
+  "tiktok",
+  "youtube",
+  "linkedin",
+  "x",
+  "whatsapp",
+  "threads",
+  "pinterest",
+  "spotify",
+  "github",
+  "website",
+] as const;
+
+export const socialNetworkSchema = z.enum(SOCIAL_NETWORKS);

@@ -396,8 +396,9 @@ model Block {
   pageId String @map("page_id") @db.Uuid
   // Catálogo cerrado de tipos con esquema Zod versionado por tipo (F2.4). String y no enum de
   // Postgres a propósito: la biblioteca de bloques crece (PM §9.3) y no queremos una migración
-  // por cada tipo nuevo. La fuente de verdad del catálogo vive en packages/database/src/blocks.ts,
-  // mismo patrón que permissions.ts (compartido entre validación de API y seed).
+  // por cada tipo nuevo. La fuente de verdad del catálogo vive en
+  // packages/validation/src/blocks/catalog.ts — se puso ahí y no en este paquete porque el
+  // constructor (F2.9) necesita los mismos esquemas en el cliente, y `validation` es isomorfo.
   type     String
   position Int
   // Permite renderizar de forma degradada un bloque guardado con un esquema más nuevo (F2.4).

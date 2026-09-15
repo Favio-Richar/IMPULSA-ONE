@@ -11,9 +11,16 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@hookform/resolvers": "5.9.1",
+    "@impulza/ui": "workspace:*",
+    "@tanstack/react-query": "5.102.8",
+    "lucide-react": "1.46.0",
     "next": "16.3.5",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-hook-form": "7.88.0",
+    "zod": "4.6.5",
+    "zustand": "5.0.15"
   },
   "devDependencies": {
     "@impulza/eslint-config": "workspace:*",
@@ -21,8 +28,10 @@
     "@types/node": "26.5.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@tailwindcss/postcss": "4.3.3",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.5",
+    "tailwindcss": "4.3.3",
     "typescript": "6.0.3",
     "vite": "8.3.0",
     "vitest": "5.0.0"

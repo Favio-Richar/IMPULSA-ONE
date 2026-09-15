@@ -98,6 +98,23 @@ describe("Auth (e2e)", () => {
     return { email };
   }
 
+  it("GET /auth/me devuelve el usuario autenticado y rechaza sin cookie", async () => {
+    const { email } = await registerAndVerify();
+    const agent = request.agent(app.getHttpServer());
+
+    await agent
+      .post("/api/v1/auth/login")
+      .set(CSRF_HEADERS)
+      .send({ email, password: "password1234" })
+      .expect(201);
+
+    const me = await agent.get("/api/v1/auth/me").expect(200);
+    expect(me.body.email).toBe(email);
+    expect(me.body.emailVerifiedAt).not.toBeNull();
+
+    await request(app.getHttpServer()).get("/api/v1/auth/me").expect(401);
+  });
+
   it("registra, verifica el correo y permite iniciar sesión", async () => {
     const { email } = await registerAndVerify();
 

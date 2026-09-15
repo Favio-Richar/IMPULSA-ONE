@@ -30,9 +30,12 @@ todavía (eso llega en Fase 1).
 
 ```bash
 corepack enable
-cp .env.example .env    # ajustar si hace falta
+cp .env.example .env                      # raíz — lo lee apps/api, packages/database
+cp .env.example apps/dashboard/.env.local  # Next.js no lee el .env de la raíz (solo NEXT_PUBLIC_API_URL importa aquí)
 pnpm install
 pnpm docker:up           # Postgres + Redis locales (ver "Entorno local" abajo)
+pnpm --filter @impulza/database run db:migrate:dev   # crea las tablas
+pnpm --filter @impulza/database run db:seed           # roles + plan gratuito
 pnpm build                # turbo run build en todas las apps/paquetes
 pnpm dev                  # turbo run dev (apps Next.js + API en watch mode)
 ```
@@ -208,6 +211,43 @@ Verificado con 3 pruebas de integración reales adicionales
 (`apps/api/src/modules/audit/audit.e2e.test.ts`) que consultan `audit_logs` directamente después
 de cada acción, no solo el código de estado HTTP.
 
+## Panel — apps/dashboard (F1.8)
+
+Primera app frontend real del monorepo, consumiendo `apps/api` de verdad (TanStack Query +
+`fetch` con `credentials: "include"` y la cabecera CSRF en mutaciones — ver
+`lib/api-client.ts`). Login/registro/verificación de correo + layout protegido con los 5 estados
+obligatorios:
+
+| Estado | Dónde |
+|---|---|
+| Carga | mientras se resuelve `GET /auth/me` |
+| Desconectado | sesión inválida/expirada → redirige a `/login`, no muestra un panel roto |
+| Error recuperable | falla de red/servidor → `ErrorState` con reintento |
+| Vacío | usuario sin organizaciones → CTA para crear la primera |
+| Sin permisos | la membresía activa deja de ser válida (403) mientras se navega |
+
+Sidebar con navegación honesta: solo "Inicio" y "Configuración" — el resto de PM §13 (Mi sitio,
+Negocio, Analítica...) no existe todavía, así que no aparece ("el menú muestra solo módulos
+habilitados"). Selector de organización activa en Zustand (persistido), separado del estado del
+servidor (TanStack Query) — un usuario puede pertenecer a varias organizaciones (F1.5).
+
+Verificado interactuando de verdad en un navegador (Claude in Chrome), no solo con
+build/typecheck: registro → verificación de correo → login → panel vacío → crear organización →
+tabla de miembros con datos reales → invitar → logout → redirección al intentar entrar sin
+sesión. Encontró y permitió corregir dos bugs reales en el camino (ver más abajo).
+
+> **`pnpm dev` de `apps/api` cambió de `tsx` a `vite-node`**: al probar el flujo en el navegador,
+> `tsx` (esbuild) resultó no resolver correctamente `emitDecoratorMetadata` para parámetros de
+> constructor inyectados implícitamente (`Reflector`, y hasta el propio `AuthService` en
+> `AuthController`) — el build con `tsc` y los tests con Vitest nunca mostraron el problema porque
+> usan un transform distinto. Se cambió el runner de desarrollo a `vite-node` (mismo transform que
+> ya probó funcionar en los tests) y se hicieron explícitas las inyecciones de `Reflector` con
+> `@Inject()` en los guards — más robusto en cualquier transform, no solo un parche puntual.
+>
+> **Bug real de ruteo**: `app/(panel)/page.tsx` y un `app/page.tsx` con redirect competían por la
+> misma ruta `/` porque los grupos de rutas `(panel)`/`(auth)` de Next.js no agregan segmento a la
+> URL — se eliminó el redirect redundante; el panel vive directamente en `/`.
+
 ## CI
 
 `.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible
@@ -246,7 +286,7 @@ pnpm --filter @impulza/ui run build-storybook   # build estático, valida toda l
 ```text
 apps/
 ├── web/          Next.js — sitio comercial + páginas públicas de usuarios
-├── dashboard/    Next.js — panel del propietario/colaborador y modo agencia
+├── dashboard/    Next.js — panel autenticado (F1.8): auth, layout, organizaciones
 ├── admin/        Next.js — superadministración
 ├── api/          NestJS — API REST /api/v1. Módulos auth (F1.4) y organizations (F1.5) completos
 └── worker/       Procesamiento asíncrono (BullMQ se agrega cuando exista el primer job real)

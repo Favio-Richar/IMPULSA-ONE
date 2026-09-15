@@ -11,7 +11,8 @@ import { PERMISSION_KEY } from "./require-permission.decorator.js";
 @Injectable()
 export class PermissionGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
+    // @Inject explícito: ver el mismo comentario en apps/api/src/common/rate-limit.guard.ts.
+    @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(PRISMA) private readonly prisma: PrismaClient,
   ) {}
 

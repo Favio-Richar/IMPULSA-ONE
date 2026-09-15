@@ -1,0 +1,6 @@
+@import "@impulza/ui/styles.css";
+
+/* Tailwind v4 no detecta automáticamente las clases usadas dentro de un paquete del workspace
+   fuera de este directorio — se declara explícitamente para que packages/ui/src no quede sin
+   sus utilidades generadas. */
+@source "../../../packages/ui/src";

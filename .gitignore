@@ -33,3 +33,7 @@ coverage/
 # misc
 .env.vercel
 next-env.d.ts
+# Next.js 16 regenera esto en cada `next dev`/`next build` (avisos de versión para agentes IA) —
+# no es contenido de proyecto, y CLAUDE.md real del repo vive solo en la raíz.
+apps/*/AGENTS.md
+apps/*/CLAUDE.md

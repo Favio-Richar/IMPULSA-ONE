@@ -100,6 +100,12 @@ export class AuthController {
     await this.authService.resetPassword(body.token, body.password);
   }
 
+  @Get("me")
+  @UseGuards(SessionAuthGuard)
+  me(@CurrentUser() user: User): { id: string; email: string; emailVerifiedAt: Date | null } {
+    return { id: user.id, email: user.email, emailVerifiedAt: user.emailVerifiedAt };
+  }
+
   @Get("sessions")
   @UseGuards(SessionAuthGuard)
   async listSessions(@CurrentUser() user: User, @Req() req: RequestWithUser) {

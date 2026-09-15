@@ -12,7 +12,10 @@ import { RATE_LIMIT_KEY, type RateLimitOptions } from "./rate-limit.decorator.js
 @Injectable()
 export class RateLimitGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
+    // @Inject explícito: emitDecoratorMetadata no siempre resuelve el tipo implícito de
+    // parámetros bajo runners basados en esbuild (tsx) — funciona con tsc/Vitest pero rompe en
+    // `pnpm dev`. Explícito es correcto en cualquier transform, no solo un workaround puntual.
+    @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(REDIS) private readonly redis: Redis,
   ) {}
 

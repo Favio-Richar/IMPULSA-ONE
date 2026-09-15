@@ -83,6 +83,29 @@ separado. El job `ci-ok` es la única verificación requerida a proteger en la r
 job individualmente en la configuración de branch protection). Cualquier job que falle hace fallar
 el pipeline completo — no hay pasos informativos silenciosos.
 
+## Design system (`packages/ui`)
+
+Tokens en `src/styles/tokens.css` (Tailwind v4, `@theme`): fondo claro, tipografía del sistema,
+radios moderados, sombras discretas — dirección visual obligatoria de `CLAUDE.md`. Componentes
+base: `Button`, `Input`, `Card`, `Table`, y los estados obligatorios `EmptyState`/`LoadingState`/
+`ErrorState`/`OfflineState`.
+
+**Auditoría de contraste real, no a ojo**: `src/styles/contrast.test.ts` calcula la fórmula de
+luminancia relativa WCAG 2.x para cada par texto/fondo del sistema y falla si algún color no llega
+a AA (4.5:1 texto normal, 3:1 componentes de UI). Si cambias un color en `tokens.css`, actualiza el
+valor espejo en ese test — está duplicado a propósito para que el test pueda detectar una regresión
+de contraste en vez de asumir que el token sigue siendo válido.
+
+```bash
+pnpm --filter @impulza/ui run storybook         # explorar componentes en localhost:6006
+pnpm --filter @impulza/ui run build-storybook   # build estático, valida toda la config
+```
+
+> Nota: las skills de diseño que `CLAUDE.md` pide usar para revisar pantallas
+> (`design-system`, `design-critique`, `accessibility-review`, `design-handoff`, `ux-copy`) no
+> están disponibles como skills instalables en este entorno de Claude Code — se aplicaron a mano
+> los criterios de contraste (con test automatizado) y de dirección visual del propio `CLAUDE.md`.
+
 ## Estructura
 
 ```text
@@ -94,7 +117,7 @@ apps/
 └── worker/       Procesamiento asíncrono (BullMQ se agrega cuando exista el primer job real)
 
 packages/
-├── ui/               Design system compartido (tokens y componentes llegan en F1.1)
+├── ui/               Design system: tokens, Button/Input/Card/Table/estados, Storybook
 ├── database/         Prisma — schema, migraciones y seeds (schema real en F1.3)
 ├── auth/             Contratos y utilidades de autenticación
 ├── validation/       Esquemas Zod compartidos

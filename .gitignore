@@ -9,6 +9,7 @@ build/
 out/
 .turbo/
 *.tsbuildinfo
+storybook-static/
 
 # env
 .env

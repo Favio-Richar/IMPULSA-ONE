@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  /* Foco visible siempre — nunca eliminarlo, solo restylearlo (WCAG 2.4.11/2.4.13). */
+  :focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+}

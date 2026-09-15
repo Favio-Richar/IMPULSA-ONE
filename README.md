@@ -184,6 +184,30 @@ CI ahora corre el seed (`db:seed`) además de las migraciones antes de testear �
 organizaciones dependían de los roles sembrados desde F1.5, solo que no estaba explícito en el
 pipeline hasta ahora.
 
+## Auditoría (F1.7)
+
+`AuditService` (`apps/api/src/modules/audit`) es global — cualquier servicio la inyecta sin
+importar el módulo. Registra `actor`, `acción`, `objetivo` y `timestamp` para:
+
+| Acción | Actor | Cuándo |
+|---|---|---|
+| `organization.created` | quien crea | al crear una organización |
+| `membership.invited` | quien invita | al invitar a un miembro |
+| `membership.role_changed` | quien cambia | al cambiar el rol de un miembro |
+| `membership.removed` | quien remueve | al remover a un miembro |
+| `auth.account_locked` | `null` | tras 5 intentos de login fallidos (nadie demostró identidad) |
+| `auth.password_reset` | el propio usuario | al completar recuperación de contraseña |
+| `auth.two_factor_enabled`/`_disabled` | el propio usuario | al activar/desactivar 2FA |
+
+`metadata` solo lleva datos que ya serían visibles para quien tiene acceso legítimo al recurso
+(correo, nombre de rol) — nunca contraseñas, hashes ni tokens (ST §16, no negociable); verificado
+con una aserción explícita en los tests, no solo por convención. Sin endpoint de lectura todavía
+— no hay consumidor real (panel de superadmin es Fase 6); se agrega cuando exista.
+
+Verificado con 3 pruebas de integración reales adicionales
+(`apps/api/src/modules/audit/audit.e2e.test.ts`) que consultan `audit_logs` directamente después
+de cada acción, no solo el código de estado HTTP.
+
 ## CI
 
 `.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible

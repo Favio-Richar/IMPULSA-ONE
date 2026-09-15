@@ -19,6 +19,7 @@ import {
 import { type PrismaClient, type Session, type User, VerificationTokenType } from "@impulza/database";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
+import { AuditService } from "../audit/audit.service.js";
 import { EMAIL_ADAPTER } from "./email-adapter.token.js";
 import { SESSION_TTL_MS } from "./session-cookie.js";
 
@@ -41,6 +42,7 @@ export class AuthService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(EMAIL_ADAPTER) private readonly emailAdapter: EmailAdapter,
+    private readonly auditService: AuditService,
   ) {}
 
   async register(email: string, password: string): Promise<{ userId: string }> {
@@ -136,6 +138,18 @@ export class AuthService {
         lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
       },
     });
+
+    if (shouldLock) {
+      // "login fallido repetido" (F1.7) — sin actor autenticado real: nadie demostró identidad,
+      // el evento es sobre la cuenta objetivo, no una acción que alguien "hizo" con autoridad.
+      await this.auditService.record({
+        actorId: null,
+        action: "auth.account_locked",
+        targetType: "User",
+        targetId: user.id,
+        metadata: { attempts: MAX_FAILED_LOGIN_ATTEMPTS },
+      });
+    }
   }
 
   async logout(sessionId: string): Promise<void> {
@@ -189,6 +203,13 @@ export class AuthService {
         data: { usedAt: new Date() },
       }),
     ]);
+
+    await this.auditService.record({
+      actorId: token.userId,
+      action: "auth.password_reset",
+      targetType: "User",
+      targetId: token.userId,
+    });
   }
 
   private async consumeToken(
@@ -257,6 +278,13 @@ export class AuthService {
       where: { id: user.id },
       data: { twoFactorEnabled: true },
     });
+
+    await this.auditService.record({
+      actorId: user.id,
+      action: "auth.two_factor_enabled",
+      targetType: "User",
+      targetId: user.id,
+    });
   }
 
   async disableTwoFactor(user: User, code: string): Promise<void> {
@@ -269,6 +297,13 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: { twoFactorEnabled: false, twoFactorSecretEncrypted: null },
+    });
+
+    await this.auditService.record({
+      actorId: user.id,
+      action: "auth.two_factor_disabled",
+      targetType: "User",
+      targetId: user.id,
     });
   }
 

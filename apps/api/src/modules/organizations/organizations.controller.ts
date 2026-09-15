@@ -47,9 +47,10 @@ export class OrganizationsController {
   @RequirePermission(PERMISSIONS.ORGANIZATION_MEMBERS_INVITE)
   async inviteMember(
     @Param("organizationId") organizationId: string,
+    @CurrentUser() user: User,
     @Body(new ZodValidationPipe(inviteMemberSchema)) body: InviteMemberDto,
   ) {
-    return this.organizationsService.inviteMember(organizationId, body.email, body.role);
+    return this.organizationsService.inviteMember(organizationId, user.id, body.email, body.role);
   }
 
   @Patch(":organizationId/members/:membershipId")
@@ -59,9 +60,10 @@ export class OrganizationsController {
   async changeRole(
     @Param("organizationId") organizationId: string,
     @Param("membershipId") membershipId: string,
+    @CurrentUser() user: User,
     @Body(new ZodValidationPipe(changeRoleSchema)) body: ChangeRoleDto,
   ): Promise<void> {
-    await this.organizationsService.changeRole(organizationId, membershipId, body.role);
+    await this.organizationsService.changeRole(organizationId, user.id, membershipId, body.role);
   }
 
   @Delete(":organizationId/members/:membershipId")
@@ -71,7 +73,8 @@ export class OrganizationsController {
   async removeMember(
     @Param("organizationId") organizationId: string,
     @Param("membershipId") membershipId: string,
+    @CurrentUser() user: User,
   ): Promise<void> {
-    await this.organizationsService.removeMember(organizationId, membershipId);
+    await this.organizationsService.removeMember(organizationId, user.id, membershipId);
   }
 }

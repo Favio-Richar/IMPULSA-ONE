@@ -14,6 +14,7 @@ import {
 import type { EmailAdapter } from "@impulza/auth";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
+import { AuditService } from "../audit/audit.service.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import type { AssignableRole } from "./assignable-roles.js";
 import type { MembershipWithRole } from "./request-with-membership.js";
@@ -23,6 +24,7 @@ export class OrganizationsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(EMAIL_ADAPTER) private readonly emailAdapter: EmailAdapter,
+    private readonly auditService: AuditService,
   ) {}
 
   async createOrganization(owner: User, name: string, slug: string): Promise<Organization> {
@@ -33,21 +35,31 @@ export class OrganizationsService {
       throw new ConflictException("Ese slug ya está en uso.");
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const organization = await tx.organization.create({ data: { name, slug } });
+    const organization = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.organization.create({ data: { name, slug } });
 
       await tx.membership.create({
         data: {
           userId: owner.id,
-          organizationId: organization.id,
+          organizationId: created.id,
           roleId: ownerRole.id,
           status: MembershipStatus.ACTIVE,
           acceptedAt: new Date(),
         },
       });
 
-      return organization;
+      return created;
     });
+
+    await this.auditService.record({
+      organizationId: organization.id,
+      actorId: owner.id,
+      action: "organization.created",
+      targetType: "Organization",
+      targetId: organization.id,
+    });
+
+    return organization;
   }
 
   async listMyOrganizations(userId: string): Promise<Organization[]> {
@@ -84,6 +96,7 @@ export class OrganizationsService {
 
   async inviteMember(
     organizationId: string,
+    actorId: string,
     email: string,
     roleName: AssignableRole,
   ): Promise<{ membershipId: string }> {
@@ -122,6 +135,15 @@ export class OrganizationsService {
       text: `Te invitaron a unirte a "${organization.name}" con el rol ${roleName}. Entra a ${env.APP_BASE_URL}/invitaciones para aceptar.`,
     });
 
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "membership.invited",
+      targetType: "Membership",
+      targetId: membership.id,
+      metadata: { email: invitee.email, role: roleName },
+    });
+
     return { membershipId: membership.id };
   }
 
@@ -143,6 +165,7 @@ export class OrganizationsService {
 
   async changeRole(
     organizationId: string,
+    actorId: string,
     targetMembershipId: string,
     roleName: AssignableRole,
   ): Promise<void> {
@@ -153,9 +176,18 @@ export class OrganizationsService {
 
     const role = await this.prisma.role.findUniqueOrThrow({ where: { name: roleName } });
     await this.prisma.membership.update({ where: { id: target.id }, data: { roleId: role.id } });
+
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "membership.role_changed",
+      targetType: "Membership",
+      targetId: target.id,
+      metadata: { previousRole: target.role.name, newRole: roleName },
+    });
   }
 
-  async removeMember(organizationId: string, targetMembershipId: string): Promise<void> {
+  async removeMember(organizationId: string, actorId: string, targetMembershipId: string): Promise<void> {
     const target = await this.getOrgMembershipOrThrow(organizationId, targetMembershipId);
     if (target.role.name === "OWNER") {
       throw new ForbiddenException("No se puede remover al OWNER de la organización.");
@@ -164,6 +196,15 @@ export class OrganizationsService {
     await this.prisma.membership.update({
       where: { id: target.id },
       data: { status: MembershipStatus.REMOVED },
+    });
+
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "membership.removed",
+      targetType: "Membership",
+      targetId: target.id,
+      metadata: { role: target.role.name },
     });
   }
 

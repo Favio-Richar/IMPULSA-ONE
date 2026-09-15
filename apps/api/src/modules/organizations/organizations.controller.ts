@@ -1,7 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
-import type { User } from "@impulza/database";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { PERMISSIONS, type User } from "@impulza/database";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
+import { PermissionGuard } from "../rbac/permission.guard.js";
+import { RequirePermission } from "../rbac/require-permission.decorator.js";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
 import { changeRoleSchema, type ChangeRoleDto } from "./dto/change-role.dto.js";
@@ -9,7 +11,6 @@ import { createOrganizationSchema, type CreateOrganizationDto } from "./dto/crea
 import { inviteMemberSchema, type InviteMemberDto } from "./dto/invite-member.dto.js";
 import { OrganizationMembershipGuard } from "./guards/organization-membership.guard.js";
 import { OrganizationsService } from "./organizations.service.js";
-import type { RequestWithMembership } from "./request-with-membership.js";
 
 @Controller("organizations")
 @UseGuards(CsrfGuard, SessionAuthGuard)
@@ -42,35 +43,35 @@ export class OrganizationsController {
   }
 
   @Post(":organizationId/members")
-  @UseGuards(OrganizationMembershipGuard)
+  @UseGuards(OrganizationMembershipGuard, PermissionGuard)
+  @RequirePermission(PERMISSIONS.ORGANIZATION_MEMBERS_INVITE)
   async inviteMember(
     @Param("organizationId") organizationId: string,
-    @Req() req: RequestWithMembership,
     @Body(new ZodValidationPipe(inviteMemberSchema)) body: InviteMemberDto,
   ) {
-    return this.organizationsService.inviteMember(organizationId, req.membership, body.email, body.role);
+    return this.organizationsService.inviteMember(organizationId, body.email, body.role);
   }
 
   @Patch(":organizationId/members/:membershipId")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(OrganizationMembershipGuard)
+  @UseGuards(OrganizationMembershipGuard, PermissionGuard)
+  @RequirePermission(PERMISSIONS.ORGANIZATION_MEMBERS_UPDATE_ROLE)
   async changeRole(
     @Param("organizationId") organizationId: string,
     @Param("membershipId") membershipId: string,
-    @Req() req: RequestWithMembership,
     @Body(new ZodValidationPipe(changeRoleSchema)) body: ChangeRoleDto,
   ): Promise<void> {
-    await this.organizationsService.changeRole(organizationId, req.membership, membershipId, body.role);
+    await this.organizationsService.changeRole(organizationId, membershipId, body.role);
   }
 
   @Delete(":organizationId/members/:membershipId")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(OrganizationMembershipGuard)
+  @UseGuards(OrganizationMembershipGuard, PermissionGuard)
+  @RequirePermission(PERMISSIONS.ORGANIZATION_MEMBERS_REMOVE)
   async removeMember(
     @Param("organizationId") organizationId: string,
     @Param("membershipId") membershipId: string,
-    @Req() req: RequestWithMembership,
   ): Promise<void> {
-    await this.organizationsService.removeMember(organizationId, req.membership, membershipId);
+    await this.organizationsService.removeMember(organizationId, membershipId);
   }
 }

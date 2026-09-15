@@ -18,14 +18,6 @@ import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import type { AssignableRole } from "./assignable-roles.js";
 import type { MembershipWithRole } from "./request-with-membership.js";
 
-const MANAGER_ROLES = new Set(["OWNER", "ADMIN"]);
-
-function assertCanManageMembers(actor: MembershipWithRole): void {
-  if (!MANAGER_ROLES.has(actor.role.name)) {
-    throw new ForbiddenException("Solo OWNER o ADMIN pueden gestionar miembros.");
-  }
-}
-
 @Injectable()
 export class OrganizationsService {
   constructor(
@@ -92,12 +84,9 @@ export class OrganizationsService {
 
   async inviteMember(
     organizationId: string,
-    actor: MembershipWithRole,
     email: string,
     roleName: AssignableRole,
   ): Promise<{ membershipId: string }> {
-    assertCanManageMembers(actor);
-
     const invitee = await this.prisma.user.findUnique({ where: { email } });
     if (!invitee) {
       // A diferencia de login/forgot-password, aquí sí se puede confirmar: quien invita ya
@@ -154,12 +143,9 @@ export class OrganizationsService {
 
   async changeRole(
     organizationId: string,
-    actor: MembershipWithRole,
     targetMembershipId: string,
     roleName: AssignableRole,
   ): Promise<void> {
-    assertCanManageMembers(actor);
-
     const target = await this.getOrgMembershipOrThrow(organizationId, targetMembershipId);
     if (target.role.name === "OWNER") {
       throw new ForbiddenException("El rol de OWNER no se cambia por esta vía.");
@@ -169,13 +155,7 @@ export class OrganizationsService {
     await this.prisma.membership.update({ where: { id: target.id }, data: { roleId: role.id } });
   }
 
-  async removeMember(
-    organizationId: string,
-    actor: MembershipWithRole,
-    targetMembershipId: string,
-  ): Promise<void> {
-    assertCanManageMembers(actor);
-
+  async removeMember(organizationId: string, targetMembershipId: string): Promise<void> {
     const target = await this.getOrgMembershipOrThrow(organizationId, targetMembershipId);
     if (target.role.name === "OWNER") {
       throw new ForbiddenException("No se puede remover al OWNER de la organización.");

@@ -196,6 +196,54 @@ describe("Organizations (e2e)", () => {
       .expect(403);
   });
 
+  it("RBAC (F1.6): ADMIN también tiene los permisos de gestión de miembros, no solo OWNER", async () => {
+    const owner = await registerLoggedInUser();
+    const admin = await registerLoggedInUser();
+    const org = await createOrg(owner.agent);
+
+    const adminInvite = await owner.agent
+      .post(`/api/v1/organizations/${org.id}/members`)
+      .set(CSRF_HEADERS)
+      .send({ email: admin.email, role: "ADMIN" })
+      .expect(201);
+    await admin.agent
+      .post(`/api/v1/memberships/${adminInvite.body.membershipId}/accept`)
+      .set(CSRF_HEADERS)
+      .expect(204);
+
+    // El ADMIN (no el OWNER) invita a un tercero — prueba el grant de permiso del seed, no un
+    // caso especial hardcodeado para OWNER.
+    const third = await registerLoggedInUser();
+    await admin.agent
+      .post(`/api/v1/organizations/${org.id}/members`)
+      .set(CSRF_HEADERS)
+      .send({ email: third.email, role: "SUPPORT" })
+      .expect(201);
+  });
+
+  it("RBAC (F1.6): EDITOR sin permiso recibe 403 con mensaje que referencia su rol", async () => {
+    const owner = await registerLoggedInUser();
+    const editor = await registerLoggedInUser();
+    const org = await createOrg(owner.agent);
+
+    const invite = await owner.agent
+      .post(`/api/v1/organizations/${org.id}/members`)
+      .set(CSRF_HEADERS)
+      .send({ email: editor.email, role: "EDITOR" })
+      .expect(201);
+    await editor.agent
+      .post(`/api/v1/memberships/${invite.body.membershipId}/accept`)
+      .set(CSRF_HEADERS)
+      .expect(204);
+
+    const denied = await editor.agent
+      .post(`/api/v1/organizations/${org.id}/members`)
+      .set(CSRF_HEADERS)
+      .send({ email: uniqueEmail(), role: "EDITOR" })
+      .expect(403);
+    expect(denied.body.message).toContain("EDITOR");
+  });
+
   it("OWNER cambia el rol de un miembro y luego lo remueve", async () => {
     const owner = await registerLoggedInUser();
     const member = await registerLoggedInUser();

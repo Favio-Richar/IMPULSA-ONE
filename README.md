@@ -152,10 +152,37 @@ acceso" (no revela qué organizaciones existen a quien no pertenece a ellas).
 - Un usuario puede pertenecer a varias organizaciones (`GET /organizations` lista las propias);
   el cambio de organización activa en el frontend es responsabilidad de `apps/dashboard` (F1.8+).
 
-Verificado con 9 pruebas de integración reales adicionales
+Verificado con 11 pruebas de integración reales
 (`apps/api/src/modules/organizations/organizations.e2e.test.ts`), incluyendo un caso explícito de
 aislamiento multi-tenant con dos organizaciones reales — la misma base que exige F1.9 de forma
 transversal para toda Fase 1.
+
+## Roles y permisos — RBAC (F1.6)
+
+Catálogo de permisos explícito en `packages/database/src/permissions.ts` — única fuente de verdad
+compartida entre `apps/api` (guard) y `packages/database/prisma/seed.ts` (datos). Reemplaza el
+chequeo `OWNER/ADMIN` hardcodeado que F1.5 tenía en el servicio de organizaciones por un mecanismo
+declarativo y reutilizable:
+
+```ts
+@UseGuards(OrganizationMembershipGuard, PermissionGuard)
+@RequirePermission(PERMISSIONS.ORGANIZATION_MEMBERS_INVITE)
+```
+
+`PermissionGuard` consulta `RolePermission` en la base (rol de la membresía activa, resuelta por
+`OrganizationMembershipGuard` — nunca un rol declarado por el cliente) y siempre corre después del
+guard de membresía. Hoy los permisos se evalúan solo por rol global; el modelo
+(`Role` → `RolePermission` → `Permission`) ya soporta restricciones más finas por recurso cuando
+haga falta, sin cambio de esquema — cumple el criterio de F1.6 de estar "preparado" sin
+implementar el detalle fino todavía.
+
+Solo existen los 3 permisos que ya tienen un endpoint real detrás (invitar/cambiar rol/remover
+miembro) — no se inventan permisos para funciones de fases futuras. `SUPER_ADMIN` no recibe
+permisos de organización por este mecanismo (ADR-002 §4: ruta de superadministración aparte).
+
+CI ahora corre el seed (`db:seed`) además de las migraciones antes de testear — los tests de
+organizaciones dependían de los roles sembrados desde F1.5, solo que no estaba explícito en el
+pipeline hasta ahora.
 
 ## CI
 

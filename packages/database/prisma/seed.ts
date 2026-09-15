@@ -1,5 +1,6 @@
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
+import { PERMISSION_CATALOG, ROLE_PERMISSIONS } from "../src/permissions.js";
 
 try {
   process.loadEnvFile(path.join(import.meta.dirname, "..", ".env"));
@@ -9,7 +10,7 @@ try {
 
 const prisma = new PrismaClient();
 
-// Roles técnicos iniciales (ST §7) — el catálogo de permisos por rol se implementa en F1.6.
+// Roles técnicos iniciales (ST §7).
 const ROLES = [
   { name: "OWNER", description: "Administra la organización, el sitio y la operación." },
   { name: "ADMIN", description: "Administración completa salvo baja/transferencia de la organización." },
@@ -44,6 +45,28 @@ async function main(): Promise<void> {
     });
   }
 
+  for (const permission of PERMISSION_CATALOG) {
+    await prisma.permission.upsert({
+      where: { key: permission.key },
+      update: { description: permission.description },
+      create: permission,
+    });
+  }
+
+  // Reconstruye las relaciones rol-permiso desde ROLE_PERMISSIONS (única fuente de verdad,
+  // compartida con apps/api vía @impulza/database) — idempotente: borra y vuelve a crear.
+  let rolePermissionCount = 0;
+  for (const [roleName, permissionKeys] of Object.entries(ROLE_PERMISSIONS)) {
+    const role = await prisma.role.findUniqueOrThrow({ where: { name: roleName } });
+    await prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
+
+    for (const key of permissionKeys) {
+      const permission = await prisma.permission.findUniqueOrThrow({ where: { key } });
+      await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+      rolePermissionCount += 1;
+    }
+  }
+
   await prisma.plan.upsert({
     where: { code: FREE_PLAN.code },
     update: {
@@ -55,7 +78,10 @@ async function main(): Promise<void> {
     create: FREE_PLAN,
   });
 
-  console.log(`Seed OK: ${ROLES.length} roles, 1 plan (${FREE_PLAN.code}).`);
+  console.log(
+    `Seed OK: ${ROLES.length} roles, ${PERMISSION_CATALOG.length} permisos, ` +
+      `${rolePermissionCount} asignaciones rol-permiso, 1 plan (${FREE_PLAN.code}).`,
+  );
 }
 
 main()

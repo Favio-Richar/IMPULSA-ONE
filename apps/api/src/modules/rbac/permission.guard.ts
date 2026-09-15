@@ -1,0 +1,38 @@
+import { type CanActivate, type ExecutionContext, ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import type { PermissionKey, PrismaClient } from "@impulza/database";
+import { PRISMA } from "../../database/prisma.module.js";
+import type { RequestWithMembership } from "../organizations/request-with-membership.js";
+import { PERMISSION_KEY } from "./require-permission.decorator.js";
+
+// Guard declarativo y reutilizable (F1.6) — reemplaza los chequeos de rol hardcodeados que F1.5
+// tenía en el servicio. Debe usarse siempre después de OrganizationMembershipGuard (necesita
+// req.membership ya resuelto con el rol de la membresía activa).
+@Injectable()
+export class PermissionGuard implements CanActivate {
+  constructor(
+    private readonly reflector: Reflector,
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const required = this.reflector.get<PermissionKey | undefined>(PERMISSION_KEY, context.getHandler());
+    if (!required) {
+      return true;
+    }
+
+    const request = context.switchToHttp().getRequest<RequestWithMembership>();
+    const grant = await this.prisma.rolePermission.findFirst({
+      where: {
+        roleId: request.membership.roleId,
+        permission: { key: required },
+      },
+    });
+
+    if (!grant) {
+      throw new ForbiddenException(`Tu rol (${request.membership.role.name}) no tiene el permiso requerido.`);
+    }
+
+    return true;
+  }
+}

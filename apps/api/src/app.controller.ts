@@ -1,7 +1,7 @@
 import { Controller, Get } from "@nestjs/common";
 
-// Controlador placeholder de la fundación del monorepo (F0.2).
-// El endpoint de salud real (/health) llega en F1.10 (observabilidad mínima).
+// Controlador placeholder de la fundación del monorepo (F0.2) — sanity check de que la API
+// responde. El endpoint de salud real vive en HealthController (/health, F1.10).
 @Controller()
 export class AppController {
   @Get()

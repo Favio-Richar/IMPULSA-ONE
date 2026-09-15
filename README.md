@@ -268,6 +268,55 @@ hasta Fase 1:
 Este archivo es la base a extender en cada fase posterior que agregue endpoints con datos de
 organización — el criterio de F1.9 se re-exige, no se da por cumplido una sola vez.
 
+## Observabilidad mínima (F1.10)
+
+`packages/observability` — nuevo paquete compartido (ya estaba reservado en ARCHITECTURE.md §3
+desde F0.2), consumido por `apps/api` y `apps/worker`:
+
+- **Logs JSON estructurados**: `createLogger(service)` emite una línea JSON por evento
+  (`timestamp`, `level`, `service`, `message`, `request_id`, `trace_id`, ...campos) por
+  `stdout` — listo para un colector tipo Loki/CloudWatch (ARCHITECTURE.md §2). Redacta
+  recursivamente cualquier clave que matchee `password|secret|token|authorization|cookie|api[-_
+  ]?key|encryptionKey|dsn` en cualquier profundidad del objeto, y serializa instancias de `Error`
+  como `{name, message, stack}` — defensa en profundidad además del cuidado de cada caller.
+- **Correlación por request**: `runWithRequestContext`/`getRequestId`/`getTraceId` usan
+  `AsyncLocalStorage` para que todo log emitido durante el ciclo de vida de una request (incluidos
+  callbacks async y el evento `finish` de la respuesta) lleve el mismo `request_id`. `trace_id` se
+  toma del header `traceparent` (W3C Trace Context) o `x-trace-id` si vienen, o se genera si es la
+  raíz del trace — pensado para cuando `apps/api` encole un job y `apps/worker` continúe el mismo
+  trace.
+  - `apps/api`: `common/request-context.middleware.ts`, primer middleware de la cadena; agrega el
+    header de respuesta `X-Request-Id` y loguea un evento `"request"` por cada request con
+    método/ruta/status/duración. Los logs internos de Nest (bootstrap, rutas mapeadas) se puentean
+    al mismo formato JSON vía `NestJsonLogger` (`observability/nest-logger.ts`), pasado como
+    `logger` a `NestFactory.create`.
+  - `apps/worker`: mismo patrón sobre el servidor HTTP mínimo de `/health` (`health-server.ts`) —
+    el worker placeholder de F0.2 todavía no tiene BullMQ real, así que hoy es lo único que
+    escucha.
+- **`/health`**: `runHealthChecks(service, checks[])` corre cada dependencia con timeout individual
+  (por defecto 2s) sin lanzar nunca — una caída degrada el reporte (`status: "degraded"`, HTTP 503)
+  en vez de tumbar el endpoint.
+  - `apps/api` — `GET /health` (fuera del prefijo `/api/v1` a propósito, es un endpoint de
+    infraestructura): comprueba `SELECT 1` en Postgres y `PING` en Redis de verdad, sin guards
+    (un probe de LB no manda cookie de sesión ni cabecera CSRF).
+  - `apps/worker` — `GET /health` en `WORKER_PORT` (`4100` en desarrollo, variable propia porque
+    ambos procesos leen el mismo `.env` de raíz y no pueden compartir `PORT`): liveness pura hoy
+    (sin checks — el worker no abre ninguna conexión real todavía, ver `apps/worker/src/env.ts`);
+    sumará un check `redis`/`queue` cuando llegue la primera cola BullMQ real.
+- **Sentry**: `initSentry({dsn, environment, service, release})` es un no-op explícito sin
+  `SENTRY_DSN` (no es requisito para arrancar en desarrollo). Con DSN, `sendDefaultPii: false` y un
+  `beforeSend` que elimina cookies/headers/body/query string del evento antes de enviarlo — nunca
+  viaja una cookie de sesión, cabecera `Authorization` ni el cuerpo de un request a un tercero. El
+  filtro catch-all de Nest (`common/all-exceptions.filter.ts`, patrón oficial de Nest para
+  reporters externos) solo envía a Sentry y loguea como `error` las excepciones ≥500 — un 400/403
+  es un flujo esperado de la app, no un incidente, y no debe llenar Sentry de ruido.
+
+Verificado en vivo (no solo con tests): arrancados `apps/api` y `apps/worker` con `pnpm dev`, se
+confirmó por `curl` que `/health` responde 200 con `checks` reales, que cada request deja una línea
+JSON con `request_id`/`trace_id` correlacionados con el header `X-Request-Id` de la respuesta, y que
+un 400 de validación (`POST /auth/register` con email inválido) **no** genera un log `error` ni
+tocaría Sentry — solo los `status >= 500` lo hacen.
+
 ## CI
 
 `.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible

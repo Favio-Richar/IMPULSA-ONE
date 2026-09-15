@@ -12,7 +12,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@impulza/config": "workspace:*"
+    "@impulza/config": "workspace:*",
+    "@impulza/observability": "workspace:*",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@impulza/eslint-config": "workspace:*",

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   corsOriginsSchema,
   databaseUrlSchema,
@@ -22,4 +23,8 @@ export const env = loadEnv({
   AUTH_ENCRYPTION_KEY: encryptionKeySchema,
   // Base de las URLs de verificación/recuperación que se envían por email.
   APP_BASE_URL: urlSchema,
+  // Opcional a propósito: Sentry no es requerido para arrancar (F1.10). Sin DSN, initSentry() es
+  // un no-op — así se puede desarrollar localmente sin cuenta de Sentry.
+  SENTRY_DSN: urlSchema.optional(),
+  SENTRY_RELEASE: z.string().optional(),
 });

@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
+import { AppModule } from "./app.module.js";
+import { env } from "./env.js";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -8,8 +9,7 @@ async function bootstrap(): Promise<void> {
   // Contrato de API oficial: REST versionada /api/v1 (ver 02_STACK §4.3).
   app.setGlobalPrefix("api/v1");
 
-  const port = process.env.PORT ?? 4000;
-  await app.listen(port);
+  await app.listen(env.PORT);
 }
 
 void bootstrap();

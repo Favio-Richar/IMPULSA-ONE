@@ -30,12 +30,14 @@ todavía (eso llega en Fase 1).
 
 ```bash
 corepack enable
+cp .env.example .env    # ajustar si hace falta
 pnpm install
-pnpm build      # turbo run build en todas las apps/paquetes
-pnpm dev        # turbo run dev (apps Next.js + API en watch mode)
+pnpm docker:up           # Postgres + Redis locales (ver "Entorno local" abajo)
+pnpm build                # turbo run build en todas las apps/paquetes
+pnpm dev                  # turbo run dev (apps Next.js + API en watch mode)
 ```
 
-Scripts disponibles en la raíz (delegan en Turborepo):
+Scripts disponibles en la raíz (delegan en Turborepo salvo los de Docker):
 
 | Script | Qué hace |
 |---|---|
@@ -44,6 +46,34 @@ Scripts disponibles en la raíz (delegan en Turborepo):
 | `pnpm lint` | Lint en todo el monorepo. |
 | `pnpm typecheck` | Chequeo de tipos en todo el monorepo. |
 | `pnpm test` | Pruebas en todo el monorepo (Vitest; hoy `--passWithNoTests`, se llenan desde Fase 1). |
+| `pnpm docker:up` | Levanta Postgres + Redis (`docker compose up -d`). |
+| `pnpm docker:down` | Detiene y elimina los contenedores. |
+| `pnpm docker:logs` | Sigue los logs de los contenedores. |
+
+## Entorno local
+
+`packages/config` valida las variables de entorno con Zod al arrancar cada app — si falta una
+requerida o tiene un formato inválido, el proceso no arranca y explica exactamente cuál falla (ver
+`packages/config/src/index.ts`). Copiar `.env.example` a `.env` (nunca commitear el real) y ajustar
+si es necesario.
+
+`docker-compose.yml` levanta Postgres 18 y Redis 8 para desarrollo local (`pnpm docker:up`).
+**Puertos no estándar a propósito**: esta máquina de desarrollo ya corre otros proyectos con
+Postgres en `5432`/`55432` y Redis en `6379`/`56379`, así que Impulza One usa:
+
+| Servicio | Puerto host | Motivo |
+|---|---|---|
+| Postgres | `55433` | evita choque con otros proyectos locales |
+| Redis | `56380` | evita choque con otros proyectos locales |
+| MinIO (opcional, perfil `storage`) | `9010`/`9011` | evita choque con otros proyectos locales |
+
+Ajustable vía `POSTGRES_PORT`/`REDIS_PORT`/`MINIO_PORT`/`MINIO_CONSOLE_PORT` en `.env` si estos
+también chocan en otra máquina. MinIO no se levanta por defecto — solo con
+`docker compose --profile storage up -d`.
+
+> **Nota Postgres 18**: la imagen oficial cambió la convención de volumen — monta en
+> `/var/lib/postgresql` (no `.../data`), porque ahora organiza los datos por versión mayor
+> (estilo `pg_ctlcluster`). Si vienes de Postgres ≤17, no reutilices ese volumen tal cual.
 
 ## CI
 

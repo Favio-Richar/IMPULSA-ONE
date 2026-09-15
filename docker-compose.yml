@@ -1,0 +1,58 @@
+name: impulza-one
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-impulza}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-impulza_local_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-impulza}
+    ports:
+      - "${POSTGRES_PORT:-55433}:5432"
+    volumes:
+      # Postgres 18 cambió la convención: el volumen va en /var/lib/postgresql (no .../data),
+      # porque ahora organiza los datos en subcarpetas por versión mayor (pg_ctlcluster-style).
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-impulza} -d $${POSTGRES_DB:-impulza}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${REDIS_PORT:-56380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Opcional: almacenamiento S3-compatible para desarrollo local de packages relacionados con
+  # media (Fase 2). No se levanta por defecto — activar con: docker compose --profile storage up.
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    profiles: ["storage"]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-impulza}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-impulza_local_dev}
+    ports:
+      - "${MINIO_PORT:-9010}:9000"
+      - "${MINIO_CONSOLE_PORT:-9011}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  minio_data:

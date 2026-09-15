@@ -15,6 +15,6 @@ import { EMAIL_ADAPTER } from "./email-adapter.token.js";
       useFactory: (): EmailAdapter => new ConsoleEmailAdapter(),
     },
   ],
-  exports: [AuthService],
+  exports: [AuthService, EMAIL_ADAPTER],
 })
 export class AuthModule {}

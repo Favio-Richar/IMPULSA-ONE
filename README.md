@@ -132,6 +132,31 @@ Verificado con 11 pruebas de integración reales (`apps/api/src/modules/auth/aut
 NestJS completo + Postgres/Redis reales de `docker-compose.yml`, sin mocks de base de datos.
 Corren en CI contra servicios Postgres/Redis dedicados (ver `.github/workflows/ci.yml`).
 
+## Organizaciones y membresías (F1.5)
+
+`apps/api/src/modules/organizations` — implementa directamente el principio central de ADR-002:
+**ningún endpoint confía en el `organizationId` de la URL**. `OrganizationMembershipGuard`
+resuelve la membresía real del usuario autenticado (`Membership` en la base, no el parámetro de
+la request) y exige que esté `ACTIVE`; si no, `403` sin distinguir "no existe" de "no tienes
+acceso" (no revela qué organizaciones existen a quien no pertenece a ellas).
+
+- Crear organización (el creador queda `OWNER` con membresía `ACTIVE` en la misma transacción).
+- Invitar por correo — requiere que la persona ya tenga cuenta registrada (si no, `404` explícito;
+  invitar a alguien sin cuenta queda fuera de alcance de F1.5 a propósito, no es un olvido).
+- Aceptar invitación — endpoint aparte (`POST /memberships/:id/accept`, no bajo
+  `/organizations/:id/...`) porque quien acepta todavía no tiene membresía `ACTIVE` y no pasaría
+  el guard de organización; solo verifica que la invitación sea la suya.
+- Cambiar rol / remover miembro — solo `OWNER`/`ADMIN` (chequeo en el servicio; el guard
+  declarativo por rol reutilizable llega en F1.6). El rol `OWNER` no se cambia ni se remueve por
+  esta vía.
+- Un usuario puede pertenecer a varias organizaciones (`GET /organizations` lista las propias);
+  el cambio de organización activa en el frontend es responsabilidad de `apps/dashboard` (F1.8+).
+
+Verificado con 9 pruebas de integración reales adicionales
+(`apps/api/src/modules/organizations/organizations.e2e.test.ts`), incluyendo un caso explícito de
+aislamiento multi-tenant con dos organizaciones reales — la misma base que exige F1.9 de forma
+transversal para toda Fase 1.
+
 ## CI
 
 `.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible
@@ -172,7 +197,7 @@ apps/
 ├── web/          Next.js — sitio comercial + páginas públicas de usuarios
 ├── dashboard/    Next.js — panel del propietario/colaborador y modo agencia
 ├── admin/        Next.js — superadministración
-├── api/          NestJS — API REST /api/v1. Módulo auth completo (F1.4); el resto llega por fase
+├── api/          NestJS — API REST /api/v1. Módulos auth (F1.4) y organizations (F1.5) completos
 └── worker/       Procesamiento asíncrono (BullMQ se agrega cuando exista el primer job real)
 
 packages/

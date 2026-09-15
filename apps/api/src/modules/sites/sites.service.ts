@@ -2,6 +2,7 @@ import { ConflictException, Inject, Injectable, NotFoundException } from "@nestj
 import { Prisma, type PrismaClient, type Site, SiteStatus } from "@impulza/database";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
+import { HOME_PAGE_SLUG } from "../pages/home-page.js";
 
 // P2002 = violación de restricción única en Prisma. La comprobación previa de disponibilidad de
 // slug deja una ventana de carrera (dos peticiones simultáneas la pasan y una pierde en el
@@ -58,8 +59,19 @@ export class SitesService {
 
     let site: Site;
     try {
-      site = await this.prisma.site.create({
-        data: { organizationId, name, slug, status: SiteStatus.DRAFT },
+      // La página de inicio se crea en la misma transacción (F2.3): un sitio sin home no es un
+      // estado válido del que el usuario pueda salir solo — no existe endpoint para crear *la*
+      // home, precisamente porque siempre debe existir.
+      site = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.site.create({
+          data: { organizationId, name, slug, status: SiteStatus.DRAFT },
+        });
+
+        await tx.page.create({
+          data: { siteId: created.id, slug: HOME_PAGE_SLUG, position: 0, isHome: true },
+        });
+
+        return created;
       });
     } catch (error) {
       if (isUniqueViolation(error)) {

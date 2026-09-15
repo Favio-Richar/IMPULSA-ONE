@@ -392,6 +392,46 @@ quitó a propósito el filtro por organización de `getSiteOrThrow` y se comprob
 falla (devolvía 200 en vez de 404). Una prueba de aislamiento que pasa aunque la protección no
 exista no prueba nada.
 
+## Páginas: CRUD, orden, visibilidad y borrado lógico (F2.3)
+
+`apps/api/src/modules/pages/` — endpoints bajo
+`/organizations/:organizationId/sites/:siteId/pages`.
+
+**La home se crea sola, con el sitio, en la misma transacción.** No hay endpoint para crear *la*
+home precisamente porque siempre debe existir: un sitio sin página de inicio no es un estado del
+que el usuario pueda salir por su cuenta. No se puede eliminar ni renombrar (su slug no aparece en
+la URL pública: la home se sirve en la raíz del sitio), pero sí cambiarle la visibilidad.
+
+**Borrado lógico, no físico.** Borrar una página conserva la fila y todo su historial de versiones
+— destruir trabajo del usuario desde un CRUD va contra CLAUDE.md; la purga definitiva es una
+operación aparte y explícita. Esto obligó a una decisión de esquema: el índice único de
+`(site_id, slug)` pasó a ser **parcial** (`WHERE deleted_at IS NULL`), creado con SQL a mano en la
+migración porque Prisma no sabe expresarlo. Sin el `WHERE`, una página borrada seguiría reservando
+su nombre para siempre y el usuario nunca podría reutilizarlo. Restaurar existe, y devuelve 409
+con un mensaje útil si otra página ocupó el slug mientras tanto.
+
+**Reordenar recibe el orden completo**, no "movete a la posición 3": así el resultado no depende
+del orden de llegada de varias peticiones, no quedan huecos, y se puede exigir de una sola vez que
+la lista sea exactamente el conjunto de páginas vivas del sitio — se rechaza si viene incompleta,
+con repetidos o con una página de otro sitio.
+
+**Visibilidad y publicación son ejes independientes**: una página puede estar publicada pero oculta
+del menú (alcanzable por enlace directo) o visible pero aún en borrador.
+
+**El slug de página NO usa la lista de reservados del slug de sitio.** Las pruebas encontraron este
+error: `contacto` estaba reservado, así que la página más común que va a crear cualquier usuario
+era imposible. La lista protege el espacio de nombres de *la plataforma*, que está un nivel más
+arriba; dentro de su propio sitio el usuario debe poder llamar a sus páginas `contacto`, `blog` o
+`soporte`. Quedaron `publicSlugSchema` (sitios: formato + reservados) y `pageSlugSchema` (páginas:
+solo formato), con una prueba de regresión que fija la diferencia.
+
+**Sobre las pruebas de aislamiento por mutación**: la primera versión del ataque de `pageId`
+cruzado *pasaba igual* con la verificación de organización quitada — usaba el `siteId` propio, así
+que el filtro por sitio ya lo bloqueaba y la comprobación real nunca se ejercía. Se agregó el caso
+combinado (organizationId propio + sitio **y** página ajenos, coherentes entre sí), que es el único
+que obliga a validar la cadena completa organización → sitio → página; verificado que pasa con el
+código correcto y falla con 200 al quitar la protección.
+
 ## CI
 
 `.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isReservedSlug, publicSlugSchema, RESERVED_SLUGS, slugSchema } from "./slug.js";
+import { isReservedSlug, pageSlugSchema, publicSlugSchema, RESERVED_SLUGS, slugSchema } from "./slug.js";
 
 describe("slugSchema", () => {
   it("acepta slugs válidos", () => {
@@ -55,6 +55,23 @@ describe("slugs reservados", () => {
         expect(slugSchema.safeParse(reserved).success, `reservado con formato inválido: ${reserved}`).toBe(true);
       }
     }
+  });
+});
+
+describe("pageSlugSchema", () => {
+  it("permite los nombres de página más comunes, aunque estén reservados a nivel de sitio", () => {
+    // Regresión: la lista de reservados protege el espacio de nombres de la plataforma (un nivel
+    // más arriba). Aplicarla también a las páginas impedía que alguien llamara "contacto" a su
+    // página de contacto — el nombre más probable de todos.
+    for (const slug of ["contacto", "contact", "blog", "soporte", "about", "legal"]) {
+      expect(pageSlugSchema.safeParse(slug).success, `debería permitir la página "${slug}"`).toBe(true);
+      expect(publicSlugSchema.safeParse(slug).success, `pero NO como slug de sitio: ${slug}`).toBe(false);
+    }
+  });
+
+  it("sigue aplicando el formato", () => {
+    expect(pageSlugSchema.safeParse("MAYUS").success).toBe(false);
+    expect(pageSlugSchema.safeParse("ab").success).toBe(false);
   });
 });
 

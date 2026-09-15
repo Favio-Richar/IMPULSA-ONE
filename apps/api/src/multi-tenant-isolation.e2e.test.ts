@@ -338,6 +338,80 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Páginas (F2.3): ningún acceso cruzado entre organizaciones", () => {
+    it("OWNER de A no puede listar ni crear páginas en el sitio de B", async () => {
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`).expect(403);
+      await orgA.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .set(CSRF_HEADERS)
+        .send({ slug: "intrusa" })
+        .expect(403);
+    });
+
+    it("ataque de siteId cruzado sobre páginas: organizationId propio + sitio ajeno da 404", async () => {
+      // La cadena completa organización → sitio → página debe validarse, no solo el primer salto.
+      await orgA.ownerAgent
+        .get(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages`)
+        .expect(404);
+      await orgA.ownerAgent
+        .post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages`)
+        .set(CSRF_HEADERS)
+        .send({ slug: "intrusa" })
+        .expect(404);
+      await orgA.ownerAgent
+        .put(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/reorder`)
+        .set(CSRF_HEADERS)
+        .send({ pageIds: [orgB.siteId] })
+        .expect(404);
+    });
+
+    it("ataque de pageId cruzado: sitio propio de A + pageId de una página de B da 404", async () => {
+      const pagesOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .expect(200);
+      const homeOfB = pagesOfB.body[0].id;
+
+      await orgA.ownerAgent
+        .get(`/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/pages/${homeOfB}`)
+        .expect(404);
+      await orgA.ownerAgent
+        .patch(`/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/pages/${homeOfB}`)
+        .set(CSRF_HEADERS)
+        .send({ visibility: "HIDDEN" })
+        .expect(404);
+      await orgA.ownerAgent
+        .delete(`/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/pages/${homeOfB}`)
+        .set(CSRF_HEADERS)
+        .expect(404);
+    });
+
+    it("ataque combinado: organizationId propio de A + sitio Y página de B, ambos ajenos", async () => {
+      // Este es el caso que de verdad ejercita la verificación de organización dentro de
+      // getPageOrThrow: el siteId y el pageId son coherentes entre sí (los dos de B), así que
+      // filtrar solo por siteId no alcanza — lo único que frena esto es comprobar que el sitio
+      // pertenezca a la organización del contexto.
+      const pagesOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .expect(200);
+      const homeOfB = pagesOfB.body[0].id;
+      const crossPath = `/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/${homeOfB}`;
+
+      await orgA.ownerAgent.get(crossPath).expect(404);
+      await orgA.ownerAgent.patch(crossPath).set(CSRF_HEADERS).send({ visibility: "HIDDEN" }).expect(404);
+      await orgA.ownerAgent.delete(crossPath).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.post(`${crossPath}/restore`).set(CSRF_HEADERS).expect(404);
+    });
+
+    it("la home de B sigue intacta y visible solo para B", async () => {
+      const pages = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .expect(200);
+
+      expect(pages.body).toHaveLength(1);
+      expect(pages.body[0]).toMatchObject({ slug: "inicio", isHome: true, visibility: "PUBLIC" });
+    });
+  });
+
   describe("Ningún dato de una organización aparece en las respuestas de la otra", () => {
     it("GET /organizations no cruza organizaciones entre usuarios sin relación", async () => {
       const orgsOfA = await orgA.ownerAgent.get("/api/v1/organizations");

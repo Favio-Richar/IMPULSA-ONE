@@ -351,6 +351,9 @@ model Page {
   isHome     Boolean        @default(false) @map("is_home")
   // Título, descripción, canonical, robots y Open Graph (F2.8). Validado por Zod en servidor.
   seoMeta    Json?          @map("seo_meta")
+  // Borrado lógico (F2.3): borrar una página no puede destruir su historial de versiones — es
+  // trabajo del usuario (CLAUDE.md). La purga definitiva es una operación aparte y explícita.
+  deletedAt  DateTime?      @map("deleted_at") @db.Timestamptz(6)
   createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -359,7 +362,12 @@ model Page {
   versions PageVersion[]
 
   // Resolución del render público: slug de página dentro del sitio (ERD.md §3).
-  @@unique([siteId, slug])
+  //
+  // La unicidad real es un índice **parcial** (`WHERE deleted_at IS NULL`), creado con SQL en la
+  // migración: Prisma no sabe expresarlo. Sin "parcial", una página borrada seguiría reservando
+  // su slug para siempre y el usuario no podría volver a usar ese nombre. Acá queda solo el
+  // índice de búsqueda; la restricción la impone Postgres igual y sigue emitiendo P2002.
+  @@index([siteId, slug])
   @@index([siteId, position])
   @@map("pages")
 }

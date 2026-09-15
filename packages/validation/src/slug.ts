@@ -82,8 +82,16 @@ export function isReservedSlug(slug: string): boolean {
   return RESERVED_SLUGS.has(slug.toLowerCase());
 }
 
-// Slug público de un sitio: además del formato, no puede ser uno reservado. La colisión con otro
-// sitio o con una redirección viva es una regla entre tablas y se verifica en la API (F2.2).
+// Slug público de un SITIO: además del formato, no puede ser uno reservado — vive en el mismo
+// espacio de nombres que las rutas de la plataforma. La colisión con otro sitio o con una
+// redirección viva es una regla entre tablas y se verifica en la API (F2.2).
 export const publicSlugSchema = slugSchema.refine((slug) => !isReservedSlug(slug), {
   message: "Ese nombre está reservado por la plataforma. Elige otro.",
 });
+
+// Slug de una PÁGINA dentro de un sitio: solo formato, sin lista de reservados. La lista de arriba
+// protege el espacio de nombres de la plataforma, que es un nivel más arriba; dentro de su propio
+// sitio el usuario debe poder llamar a sus páginas "contacto", "blog" o "soporte" — de hecho son
+// los nombres más probables. Lo único que compite ahí es otra página del mismo sitio, y eso lo
+// resuelve el índice único parcial por (site_id, slug) (F2.3).
+export const pageSlugSchema = slugSchema;

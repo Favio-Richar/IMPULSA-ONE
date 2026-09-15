@@ -54,6 +54,7 @@ model User {
   memberships         Membership[]
   verificationTokens  VerificationToken[]
   auditLogsAsActor    AuditLog[]          @relation("AuditLogActor")
+  pageVersionsCreated PageVersion[]       @relation("PageVersionAuthor")
 
   @@map("users")
 }
@@ -100,6 +101,8 @@ model Organization {
   subscriptions Subscription[]
   usageCounters UsageCounter[]
   auditLogs     AuditLog[]
+  sites         Site[]
+  themes        Theme[]
 
   @@map("organizations")
 }
@@ -239,4 +242,203 @@ model VerificationToken {
 
   @@index([userId, type])
   @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fase 2 — Sitios, páginas y bloques (ERD.md §3).
+//
+// Nota de nomenclatura: el ERD llama `order` al campo de orden de Page/Block; acá se llama
+// `position` porque `order` es palabra reservada de SQL. Es el mismo concepto.
+// ---------------------------------------------------------------------------------------------
+
+enum SiteStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum PageVisibility {
+  PUBLIC
+  HIDDEN
+}
+
+enum SiteDomainType {
+  SUBDOMAIN
+  CUSTOM
+}
+
+enum DomainVerificationStatus {
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum DomainSslStatus {
+  PENDING
+  ACTIVE
+  FAILED
+}
+
+model Site {
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
+  name           String
+  // Único global: es la identidad pública del sitio (slug.dominio). La reserva de nombres
+  // (www, api, admin, ...) y la colisión con redirecciones vivas se validan en servidor (F2.2).
+  slug           String     @unique
+  status         SiteStatus @default(DRAFT)
+  themeId        String?    @map("theme_id") @db.Uuid
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  theme         Theme?             @relation(fields: [themeId], references: [id], onDelete: SetNull)
+  pages         Page[]
+  domains       SiteDomain[]
+  slugRedirects SiteSlugRedirect[]
+
+  @@index([organizationId])
+  @@map("sites")
+}
+
+model SiteDomain {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  siteId             String                   @map("site_id") @db.Uuid
+  domain             String                   @unique
+  type               SiteDomainType           @default(SUBDOMAIN)
+  verificationStatus DomainVerificationStatus @default(PENDING) @map("verification_status")
+  sslStatus          DomainSslStatus          @default(PENDING) @map("ssl_status")
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@map("site_domains")
+}
+
+// No está en el ERD original: lo exige el criterio de F2.2 ("cambiar el slug de un sitio
+// publicado deja una redirección registrada") y PM §9.14 ("Redirecciones"). Se agregó también a
+// ERD.md §3 para no dejar el modelo de datos desalineado de la implementación.
+model SiteSlugRedirect {
+  id        String   @id @default(uuid()) @db.Uuid
+  siteId    String   @map("site_id") @db.Uuid
+  // Único global por la misma razón que Site.slug: resuelve una URL pública. Que un `fromSlug`
+  // no colisione con un Site.slug vivo es una regla entre tablas — se valida en servidor (F2.2).
+  fromSlug  String   @unique @map("from_slug")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@map("site_slug_redirects")
+}
+
+model Page {
+  id     String @id @default(uuid()) @db.Uuid
+  siteId String @map("site_id") @db.Uuid
+  slug   String
+  // Orden persistente dentro del sitio. Sin restricción de unicidad a propósito: reordenar
+  // intercambia posiciones y un UNIQUE no diferido fallaría a mitad de la transacción.
+  position   Int
+  visibility PageVisibility @default(PUBLIC)
+  status     PageStatus     @default(DRAFT)
+  // Página de inicio del sitio: no se puede eliminar ni cambiar de slug (F2.3).
+  isHome     Boolean        @default(false) @map("is_home")
+  // Título, descripción, canonical, robots y Open Graph (F2.8). Validado por Zod en servidor.
+  seoMeta    Json?          @map("seo_meta")
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  site     Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  blocks   Block[]
+  versions PageVersion[]
+
+  // Resolución del render público: slug de página dentro del sitio (ERD.md §3).
+  @@unique([siteId, slug])
+  @@index([siteId, position])
+  @@map("pages")
+}
+
+model PageVersion {
+  id            String @id @default(uuid()) @db.Uuid
+  pageId        String @map("page_id") @db.Uuid
+  versionNumber Int    @map("version_number")
+  // Snapshot inmutable del contenido completo al publicar — es lo que permite restaurar sin
+  // depender del estado actual de los bloques (F2.6).
+  contentSnapshot Json      @map("content_snapshot")
+  publishedAt     DateTime? @map("published_at") @db.Timestamptz(6)
+  createdById     String?   @map("created_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  page      Page  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  createdBy User? @relation("PageVersionAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([pageId, versionNumber])
+  @@index([pageId])
+  @@map("page_versions")
+}
+
+model Block {
+  id     String @id @default(uuid()) @db.Uuid
+  pageId String @map("page_id") @db.Uuid
+  // Catálogo cerrado de tipos con esquema Zod versionado por tipo (F2.4). String y no enum de
+  // Postgres a propósito: la biblioteca de bloques crece (PM §9.3) y no queremos una migración
+  // por cada tipo nuevo. La fuente de verdad del catálogo vive en packages/database/src/blocks.ts,
+  // mismo patrón que permissions.ts (compartido entre validación de API y seed).
+  type     String
+  position Int
+  // Permite renderizar de forma degradada un bloque guardado con un esquema más nuevo (F2.4).
+  configSchemaVersion Int       @default(1) @map("config_schema_version")
+  visible             Boolean   @default(true)
+  scheduledStart      DateTime? @map("scheduled_start") @db.Timestamptz(6)
+  scheduledEnd        DateTime? @map("scheduled_end") @db.Timestamptz(6)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  page     Page           @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  versions BlockVersion[]
+
+  @@index([pageId, position])
+  @@map("blocks")
+}
+
+model BlockVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  blockId       String   @map("block_id") @db.Uuid
+  versionNumber Int      @map("version_number")
+  // Configuración tipada por `Block.type` — nunca HTML/JS arbitrario (ST §22, no negociable).
+  config        Json
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  block Block @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@unique([blockId, versionNumber])
+  @@index([blockId])
+  @@map("block_versions")
+}
+
+model Theme {
+  id String @id @default(uuid()) @db.Uuid
+  // Null = tema del catálogo global de Impulza One; con valor = tema propio de la organización.
+  organizationId String? @map("organization_id") @db.Uuid
+  // Solo para los temas del catálogo, para que el seed sea idempotente. Los temas propios de una
+  // organización lo dejan en null (Postgres permite múltiples NULL en un índice único).
+  code           String? @unique
+  name           String
+  // Paleta, tipografía, radios, espaciado y densidad. El usuario elige de un conjunto validado
+  // en servidor — nunca CSS libre (F2.5).
+  tokens         Json
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sites        Site[]
+
+  @@index([organizationId])
+  @@map("themes")
 }

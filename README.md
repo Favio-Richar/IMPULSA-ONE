@@ -317,6 +317,39 @@ JSON con `request_id`/`trace_id` correlacionados con el header `X-Request-Id` de
 un 400 de validación (`POST /auth/register` con email inválido) **no** genera un log `error` ni
 tocaría Sentry — solo los `status >= 500` lo hacen.
 
+## Modelo de datos de sitios, páginas y bloques (F2.1)
+
+Primera historia de Fase 2 (ver `docs/BACKLOG_FASE_2.md`). Agrega al esquema las entidades de
+`ERD.md` §3: `Site`, `SiteDomain`, `SiteSlugRedirect`, `Page`, `PageVersion`, `Block`,
+`BlockVersion` y `Theme`. Decisiones que no se leen solas en el esquema:
+
+- **`order` → `position`**: el ERD llama `order` al campo de orden de `Page`/`Block`; en Prisma se
+  llama `position` porque `order` es palabra reservada de SQL. Mismo concepto, anotado en el ERD.
+- **`SiteSlugRedirect` no estaba en el ERD**: lo exige el criterio de F2.2 ("cambiar el slug de un
+  sitio publicado deja una redirección registrada") y PM §9.14. Se agregó al modelo **y al ERD** en
+  vez de inventarlo solo en el código.
+- **`position` sin restricción de unicidad** en `Page`/`Block`: reordenar intercambia posiciones y
+  un `UNIQUE` no diferido fallaría a mitad de la transacción. El orden lo garantiza la aplicación.
+- **`Block.type` es `String`, no un enum de Postgres**: la biblioteca de bloques crece (PM §9.3) y
+  no queremos una migración por cada tipo nuevo. El catálogo cerrado con su esquema Zod versionado
+  llega en F2.4, en `packages/database/src/blocks.ts` — mismo patrón que `permissions.ts`, que ya
+  es fuente de verdad única compartida entre la validación de la API y el seed.
+- **`Theme.code` único y anulable**: los temas del catálogo global llevan código (para que el seed
+  sea idempotente) y los temas propios de una organización lo dejan en `null`; Postgres permite
+  múltiples `NULL` en un índice único, así que ambas cosas conviven sin una tabla aparte.
+
+`packages/database/src/schema-sites.test.ts` prueba contra el Postgres real lo que garantiza la
+**base de datos** aunque la aplicación tenga un bug: unicidad global del slug de sitio (incluso
+entre organizaciones distintas), unicidad del slug de página por sitio (y que sí se repita entre
+sitios), unicidad del número de versión, que dos páginas puedan compartir posición, el borrado en
+cascada completo sin huérfanos, y que borrar un tema deje el sitio sin tema en vez de borrarlo.
+
+**Migración verificada de ida y vuelta**, no por confianza: se creó una base desechable
+(`impulza_migcheck`), se aplicó toda la cadena desde cero, se ejecutó el `down.sql` que acompaña a
+la migración, se comprobó que solo quedaran las tablas de Fase 0/1, y se volvió a aplicar la
+migración. La base de desarrollo nunca recibió nada más que DDL aditivo (`CREATE TABLE`/`CREATE
+INDEX` y claves foráneas sobre tablas nuevas; ningún `DROP`/`DELETE`/`TRUNCATE`).
+
 ## CI
 
 `.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible

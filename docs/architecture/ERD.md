@@ -43,15 +43,23 @@ Plan (1) ──< UsageCounter >── (1) Organization
 
 ```text
 Organization (1) ──< Site (1) ──< SiteDomain
+Site (1) ──< SiteSlugRedirect
 Site (1) ──< Page (1) ──< PageVersion
 Page (1) ──< Block (1) ──< BlockVersion
 Site (N) ──1 Theme
 Site/Page (N) ──1 Template (opcional, origen de la página)
 ```
 
-- **Site**: id, organization_id, name, slug (único global), status (draft/published), theme_id.
+- **Site**: id, organization_id, name, slug (único global), status (draft/published/archived), theme_id.
 - **SiteDomain**: id, site_id, domain, type (subdominio/propio), verification_status, ssl_status.
-- **Page**: id, site_id, slug (único por site), order, visibility, seo_meta, status.
+- **SiteSlugRedirect**: id, site_id, from_slug (único global), created_at.
+  - Agregado en F2.1 (no estaba en la versión original de este ERD): lo exige el criterio de F2.2
+    ("cambiar el slug de un sitio publicado deja una redirección registrada") y PM §9.14
+    ("Redirecciones"). Sin esto, renombrar un sitio publicado rompe todos sus enlaces vivos.
+- **Page**: id, site_id, slug (único por site), order, visibility, seo_meta, status, is_home.
+  - `is_home` marca la página de inicio no eliminable del sitio (F2.3).
+  - Nota de implementación: `order` es palabra reservada de SQL, así que en Prisma el campo se
+    llama `position` (mismo concepto). Aplica igual a **Block**.
 - **PageVersion**: id, page_id, version_number, content_snapshot, published_at, created_by.
   - Guarda el historial versionado exigido por el constructor (borrador vs. publicado, restauración).
 - **Block**: id, page_id, type, order, config_schema_version, visible, scheduled_start/end.

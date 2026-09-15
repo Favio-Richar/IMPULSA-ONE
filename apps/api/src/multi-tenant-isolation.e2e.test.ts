@@ -43,7 +43,13 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
 
   // Dos organizaciones completas, cada una con OWNER y un miembro con permisos (ADMIN) — para
   // probar que ni siquiera un ADMIN de la organización A puede tocar la B.
-  let orgA: { id: string; ownerEmail: string; ownerAgent: ReturnType<typeof request.agent>; adminAgent: ReturnType<typeof request.agent> };
+  let orgA: {
+    id: string;
+    ownerEmail: string;
+    ownerAgent: ReturnType<typeof request.agent>;
+    adminAgent: ReturnType<typeof request.agent>;
+    siteId: string;
+  };
   let orgB: {
     id: string;
     ownerEmail: string;
@@ -51,6 +57,7 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     ownerMembershipId: string;
     memberEmail: string;
     memberMembershipId: string;
+    siteId: string;
   };
 
   beforeAll(async () => {
@@ -110,11 +117,18 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       .set(CSRF_HEADERS)
       .expect(204);
 
+    const siteA = await ownerA.agent
+      .post(`/api/v1/organizations/${orgAResponse.body.id}/sites`)
+      .set(CSRF_HEADERS)
+      .send({ name: "Sitio de A", slug: uniqueSlug() })
+      .expect(201);
+
     orgA = {
       id: orgAResponse.body.id,
       ownerEmail: ownerA.email,
       ownerAgent: ownerA.agent,
       adminAgent: adminA.agent,
+      siteId: siteA.body.id,
     };
 
     // --- Organización B: OWNER + un miembro EDITOR ---
@@ -138,6 +152,12 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     const membersOfB = await ownerB.agent.get(`/api/v1/organizations/${orgBResponse.body.id}/members`);
     const ownerMembershipB = membersOfB.body.find((m: { role: string }) => m.role === "OWNER");
 
+    const siteB = await ownerB.agent
+      .post(`/api/v1/organizations/${orgBResponse.body.id}/sites`)
+      .set(CSRF_HEADERS)
+      .send({ name: "Sitio de B", slug: uniqueSlug() })
+      .expect(201);
+
     orgB = {
       id: orgBResponse.body.id,
       ownerEmail: ownerB.email,
@@ -145,6 +165,7 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       ownerMembershipId: ownerMembershipB.membershipId,
       memberEmail: memberB.email,
       memberMembershipId: inviteMemberB.body.membershipId,
+      siteId: siteB.body.id,
     };
   });
 
@@ -252,6 +273,68 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         .set(CSRF_HEADERS)
         .send({ email: uniqueEmail(), role: "EDITOR" })
         .expect(403);
+    });
+  });
+
+  // --- Fase 2 ---
+
+  describe("Sitios (F2.2): ningún acceso cruzado entre organizaciones", () => {
+    it("OWNER de A no puede listar, leer, editar ni archivar sitios de B", async () => {
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites`).expect(403);
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}`).expect(403);
+      await orgA.ownerAgent
+        .patch(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Secuestrado" })
+        .expect(403);
+      await orgA.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/archive`)
+        .set(CSRF_HEADERS)
+        .expect(403);
+      await orgA.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Intruso", slug: uniqueSlug() })
+        .expect(403);
+    });
+
+    it("ataque de siteId cruzado: organizationId propio de A + siteId de B devuelve 404", async () => {
+      // El guard de membresía pasa (A es suya), así que el único que puede frenar esto es la
+      // verificación de dueño real del recurso dentro del servicio (getSiteOrThrow).
+      await orgA.ownerAgent
+        .get(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}`)
+        .expect(404);
+      await orgA.ownerAgent
+        .patch(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Secuestrado por id cruzado" })
+        .expect(404);
+      await orgA.ownerAgent
+        .post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/archive`)
+        .set(CSRF_HEADERS)
+        .expect(404);
+    });
+
+    it("el sitio de B sigue intacto después de todos los intentos de A", async () => {
+      const site = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}`)
+        .expect(200);
+
+      expect(site.body.name).toBe("Sitio de B");
+      expect(site.body.status).toBe("DRAFT");
+    });
+
+    it("el listado de sitios de A no incluye ningún sitio de B", async () => {
+      const sitesOfA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/sites`).expect(200);
+      const ids = sitesOfA.body.map((s: { id: string }) => s.id);
+
+      expect(ids).toContain(orgA.siteId);
+      expect(ids).not.toContain(orgB.siteId);
+    });
+
+    it("simétrico: OWNER de B tampoco alcanza los sitios de A", async () => {
+      await orgB.ownerAgent.get(`/api/v1/organizations/${orgA.id}/sites`).expect(403);
+      await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites/${orgA.siteId}`).expect(404);
     });
   });
 

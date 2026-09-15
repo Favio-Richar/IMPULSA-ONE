@@ -1,3 +1,3 @@
-// Esquemas Zod compartidos entre apps y API — se completan junto con cada módulo de dominio.
-// Placeholder de la fundación del monorepo (F0.2) — ver docs/BACKLOG_FASE_0_1.md.
-export {};
+// Esquemas Zod compartidos entre apps y API. Cada módulo de dominio agrega los suyos acá cuando
+// el mismo contrato lo necesitan cliente y servidor (el servidor siempre revalida, ST §15).
+export { slugSchema, publicSlugSchema, isReservedSlug, RESERVED_SLUGS } from "./slug.js";

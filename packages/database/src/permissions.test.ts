@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PERMISSION_CATALOG, ROLE_PERMISSIONS } from "./permissions.js";
+import { PERMISSION_CATALOG, PERMISSIONS, ROLE_PERMISSIONS } from "./permissions.js";
 
 const KNOWN_ROLE_NAMES = [
   "OWNER",
@@ -40,5 +40,11 @@ describe("catálogo de permisos (F1.6)", () => {
   it("no hay claves de permiso duplicadas en el catálogo", () => {
     const keys = PERMISSION_CATALOG.map((p) => p.key);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("todo permiso declarado en PERMISSIONS está descrito en el catálogo (y al revés)", () => {
+    // Sin esto, un permiso declarado pero no catalogado nunca se sembraría y el guard siempre
+    // denegaría — un fallo silencioso difícil de rastrear desde el 403.
+    expect(new Set(PERMISSION_CATALOG.map((p) => p.key))).toEqual(new Set(Object.values(PERMISSIONS)));
   });
 });

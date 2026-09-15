@@ -6,6 +6,9 @@ export const PERMISSIONS = {
   ORGANIZATION_MEMBERS_INVITE: "organization.members.invite",
   ORGANIZATION_MEMBERS_UPDATE_ROLE: "organization.members.update_role",
   ORGANIZATION_MEMBERS_REMOVE: "organization.members.remove",
+  SITE_CREATE: "site.create",
+  SITE_UPDATE: "site.update",
+  SITE_ARCHIVE: "site.archive",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -23,23 +26,45 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.ORGANIZATION_MEMBERS_REMOVE,
     description: "Remover a un miembro de la organización.",
   },
+  {
+    key: PERMISSIONS.SITE_CREATE,
+    description: "Crear un sitio nuevo en la organización.",
+  },
+  {
+    key: PERMISSIONS.SITE_UPDATE,
+    description: "Editar el nombre, slug y tema de un sitio.",
+  },
+  {
+    key: PERMISSIONS.SITE_ARCHIVE,
+    description: "Archivar un sitio (deja de estar publicado).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
 // y para los tests. SUPER_ADMIN es un rol de plataforma (ADR-002 §4): no gana permisos de
 // organización por esta vía, opera por su propio camino de superadministración.
+// EDITOR sí edita sitios (es su trabajo: contenido), pero no los crea ni los archiva — crear
+// consume cupo del plan y archivar saca un sitio de producción; ambas son decisiones de
+// OWNER/ADMIN. ANALYST y SUPPORT solo leen (la lectura no pasa por un permiso: basta con ser
+// miembro activo de la organización).
 export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
   OWNER: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
     PERMISSIONS.ORGANIZATION_MEMBERS_UPDATE_ROLE,
     PERMISSIONS.ORGANIZATION_MEMBERS_REMOVE,
+    PERMISSIONS.SITE_CREATE,
+    PERMISSIONS.SITE_UPDATE,
+    PERMISSIONS.SITE_ARCHIVE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
     PERMISSIONS.ORGANIZATION_MEMBERS_UPDATE_ROLE,
     PERMISSIONS.ORGANIZATION_MEMBERS_REMOVE,
+    PERMISSIONS.SITE_CREATE,
+    PERMISSIONS.SITE_UPDATE,
+    PERMISSIONS.SITE_ARCHIVE,
   ],
-  EDITOR: [],
+  EDITOR: [PERMISSIONS.SITE_UPDATE],
   ANALYST: [],
   SUPPORT: [],
   AGENCY_MANAGER: [],

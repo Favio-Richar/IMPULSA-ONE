@@ -350,6 +350,48 @@ la migración, se comprobó que solo quedaran las tablas de Fase 0/1, y se volvi
 migración. La base de desarrollo nunca recibió nada más que DDL aditivo (`CREATE TABLE`/`CREATE
 INDEX` y claves foráneas sobre tablas nuevas; ningún `DROP`/`DELETE`/`TRUNCATE`).
 
+## Sitios: CRUD y reglas de slug (F2.2)
+
+`apps/api/src/modules/sites/` — endpoints bajo `/organizations/:organizationId/sites`. La ruta
+cuelga de la organización a propósito: así `OrganizationMembershipGuard` resuelve el tenant desde
+la membresía real (ADR-002) antes de que el servicio vea nada.
+
+**El slug es un espacio de nombres único y compartido.** Tres reglas, todas en servidor:
+
+1. Formato (`packages/validation`): minúsculas, dígitos y guiones, 3–63 caracteres, sin guiones al
+   borde. Vive en el paquete compartido porque el constructor (F2.9) necesita la misma regla para
+   dar feedback inmediato — pero el servidor siempre revalida, nunca confía en el cliente.
+2. Lista de reservados (`www`, `api`, `admin`, `panel`, `checkout`, `sitemap`, `health`, …): un
+   usuario no puede tomar un nombre que colisiona con infraestructura o con rutas de la plataforma.
+3. Disponibilidad **cruzada entre dos tablas**: un slug está libre solo si no lo usa otro sitio
+   *y* no lo ocupa una redirección viva. Ambas resuelven la misma URL pública, así que compiten por
+   el mismo nombre; la base de datos garantiza unicidad dentro de cada tabla, pero esta regla
+   cruzada solo puede vivir en la aplicación.
+
+**Redirecciones al renombrar**: cambiar el slug de un sitio *publicado* deja un `SiteSlugRedirect`
+desde el slug viejo, porque tiene enlaces vivos afuera. Un borrador no la genera: nunca fue
+alcanzable públicamente y sería basura. Un sitio sí puede recuperar un slug propio que dejó atrás
+(esa redirección se libera, apuntaría a sí misma), pero otro sitio no puede quedárselo.
+
+**Carrera de slug cubierta**: entre la comprobación de disponibilidad y el `INSERT` hay una
+ventana en la que dos peticiones simultáneas pueden pasar ambas. La restricción única de Postgres
+es la que decide de verdad, y el `P2002` se traduce a 409 — hay una prueba que lanza las dos
+creaciones en paralelo y exige `[201, 409]`, nunca un 500.
+
+**Archivar, no borrar** (`POST /sites/:id/archive`, no `DELETE`): el contenido del usuario no se
+destruye desde un CRUD. Es idempotente — archivar dos veces no falla ni duplica la auditoría.
+
+**Permisos** (`site.create` / `site.update` / `site.archive`, añadidos al catálogo compartido de
+F1.6): EDITOR **sí** edita sitios, que es su trabajo, pero no los crea ni los archiva — crear
+consume cupo del plan y archivar saca un sitio de producción, ambas decisiones de OWNER/ADMIN.
+Leer no exige permiso: basta con ser miembro activo (ANALYST y SUPPORT necesitan ver para trabajar).
+
+**Aislamiento verificado por mutación, no solo por prueba verde**: además de extender la suite
+transversal con el ataque de `siteId` cruzado (organizationId propio + siteId ajeno → 404), se
+quitó a propósito el filtro por organización de `getSiteOrThrow` y se comprobó que la prueba
+falla (devolvía 200 en vez de 404). Una prueba de aislamiento que pasa aunque la protección no
+exista no prueba nada.
+
 ## CI
 
 `.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible

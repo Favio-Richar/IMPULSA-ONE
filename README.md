@@ -75,6 +75,28 @@ también chocan en otra máquina. MinIO no se levanta por defecto — solo con
 > `/var/lib/postgresql` (no `.../data`), porque ahora organiza los datos por versión mayor
 > (estilo `pg_ctlcluster`). Si vienes de Postgres ≤17, no reutilices ese volumen tal cual.
 
+## Base de datos (`packages/database`)
+
+Prisma sobre PostgreSQL. La migración inicial cubre las entidades de identidad/organización del
+ERD: `User`, `Session`, `Account`, `Organization`, `Membership`, `Role`, `Permission`,
+`RolePermission`, `Plan`, `Subscription`, `UsageCounter`, `AuditLog`. Reservas/catálogo/pagos de
+negocio se agregan recién en Fase 5 (`docs/architecture/ERD.md` §10) — no antes.
+
+```bash
+pnpm docker:up                                          # Postgres + Redis arriba
+cp .env.example packages/database/.env                  # Prisma CLI lee .env desde su propio cwd
+pnpm --filter @impulza/database run db:migrate:dev       # crea/aplica migraciones
+pnpm --filter @impulza/database run db:seed              # 7 roles + plan Gratis
+pnpm --filter @impulza/database run db:studio            # explorar datos (opcional)
+```
+
+> **Prisma 7, cambio real de API (no cosmético)**: `datasource { url = env(...) }` en
+> `schema.prisma` ya no existe — la URL para Migrate/CLI vive en `prisma.config.ts`, y
+> `PrismaClient` en runtime requiere un **driver adapter** explícito (`@prisma/adapter-pg`) en vez
+> de leer `DATABASE_URL` implícitamente. Ver `packages/database/src/index.ts` y
+> `prisma.config.ts`. Verificado migrando y sembrando contra el Postgres real de
+> `docker-compose.yml`, no solo compilado.
+
 ## CI
 
 `.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible
@@ -118,7 +140,7 @@ apps/
 
 packages/
 ├── ui/               Design system: tokens, Button/Input/Card/Table/estados, Storybook
-├── database/         Prisma — schema, migraciones y seeds (schema real en F1.3)
+├── database/         Prisma — schema, migración inicial y seeds (roles + plan Gratis)
 ├── auth/             Contratos y utilidades de autenticación
 ├── validation/       Esquemas Zod compartidos
 ├── contracts/        DTOs y contratos de la API
@@ -153,9 +175,12 @@ incompatibilidad real verificada, no por precaución genérica:
   para necesitar sus schematics o HMR.
 - **`apps/worker` sin `bullmq`/`ioredis` todavía**: se agregan cuando exista el primer job real
   (Fase 1 tardía o Fase 3), para no cargar una dependencia sin uso.
+- **Prisma `7.10.0`** (fijado en F1.3): el dist-tag `latest` de `prisma` en npm apunta hoy a
+  `8.0.0-rc.15` (un release candidate), mientras que `@prisma/client` sigue en `7.10.0` estable —
+  se usó `7.10.0` para ambos, la última versión realmente estable y coherente entre CLI y client.
 
 Revisar estas decisiones si se retoma el trabajo mucho después: el ecosistema puede haber
-alcanzado a ESLint 10 / TypeScript 7 para entonces.
+alcanzado a ESLint 10 / TypeScript 7 para entonces, y Prisma 8 puede ya haber salido de RC.
 
 ## Documentación de referencia
 

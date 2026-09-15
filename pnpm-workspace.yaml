@@ -2,9 +2,13 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
+  # @prisma/engines / prisma: descargan el binario del query engine oficial de Prisma —
+  # necesario para que el ORM funcione, paquete propio del fabricante (no un tercero).
+  '@prisma/engines': true
   # esbuild: binario nativo requerido por tsx (dev runner de apps/api y apps/worker). Paquete
   # ampliamente usado y auditado; se aprueba explícitamente en vez de bloquear el script.
   esbuild: true
+  prisma: true
   # unrs-resolver: resolutor nativo usado transitivamente por el tooling de ESLint/Next.js.
   unrs-resolver: true
 minimumReleaseAgeExclude:

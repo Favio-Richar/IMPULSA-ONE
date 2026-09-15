@@ -1,0 +1,208 @@
+// Esquema inicial — entidades de identidad/organización del ERD (docs/architecture/ERD.md §1-2,
+// §8). Reservas/catálogo/pedidos/pagos de negocio se agregan en Fase 5 (ERD.md §10) — no antes,
+// para no crear tablas vacías.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// La URL de conexión vive en ../prisma.config.ts (Prisma 7) — no aquí.
+datasource db {
+  provider = "postgresql"
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sessions      Session[]
+  accounts      Account[]
+  memberships   Membership[]
+  auditLogsAsActor AuditLog[] @relation("AuditLogActor")
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  userAgent String?  @map("user_agent")
+  // Nunca la IP completa en texto plano — hash/truncada (ST §8, no negociable de privacidad).
+  ipHash    String?  @map("ip_hash")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  provider          String
+  providerAccountId String   @map("provider_account_id")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  planId    String?  @map("plan_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  plan          Plan?          @relation(fields: [planId], references: [id])
+  memberships   Membership[]
+  subscriptions Subscription[]
+  usageCounters UsageCounter[]
+  auditLogs     AuditLog[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  roleId         String           @map("role_id") @db.Uuid
+  status         MembershipStatus @default(INVITED)
+  invitedAt      DateTime         @default(now()) @map("invited_at") @db.Timestamptz(6)
+  acceptedAt     DateTime?        @map("accepted_at") @db.Timestamptz(6)
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id])
+
+  // Un usuario tiene una sola membresía (y por lo tanto un solo rol) por organización.
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+model Role {
+  id          String  @id @default(uuid()) @db.Uuid
+  // OWNER, ADMIN, EDITOR, ANALYST, SUPPORT, AGENCY_MANAGER, SUPER_ADMIN (ST §7) — catálogo
+  // completo de permisos por rol se implementa en F1.6.
+  name        String  @unique
+  description String?
+
+  memberships Membership[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid()) @db.Uuid
+  key         String  @unique
+  description String?
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Plan {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  // Precio en unidad mínima de moneda (centavos) + código ISO — nunca float (ST §8).
+  price     Int
+  currency  String
+  limits    Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organizations Organization[]
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                  String             @id @default(uuid()) @db.Uuid
+  organizationId      String             @map("organization_id") @db.Uuid
+  planId              String             @map("plan_id") @db.Uuid
+  status              SubscriptionStatus @default(TRIALING)
+  currentPeriodStart  DateTime           @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd    DateTime           @map("current_period_end") @db.Timestamptz(6)
+  // Referencia del proveedor de pago — nunca datos de tarjeta (ST §12, no negociable).
+  externalProviderRef String?            @map("external_provider_ref")
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id])
+
+  @@index([organizationId])
+  @@map("subscriptions")
+}
+
+model UsageCounter {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  metric         String
+  period         String
+  value          Int    @default(0)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, metric, period])
+  @@map("usage_counters")
+}
+
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  // Nullable: acciones de superadmin no siempre pertenecen a una organización (ADR-002 §4).
+  organizationId String?  @map("organization_id") @db.Uuid
+  actorId        String?  @map("actor_id") @db.Uuid
+  action         String
+  targetType     String   @map("target_type")
+  targetId       String?  @map("target_id")
+  // Nunca secretos/contraseñas/tokens en metadata (ST §16, no negociable).
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actor        User?         @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([actorId])
+  @@map("audit_logs")
+}

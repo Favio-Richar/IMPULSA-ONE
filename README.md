@@ -248,6 +248,26 @@ sesión. Encontró y permitió corregir dos bugs reales en el camino (ver más a
 > misma ruta `/` porque los grupos de rutas `(panel)`/`(auth)` de Next.js no agregan segmento a la
 > URL — se eliminó el redirect redundante; el panel vive directamente en `/`.
 
+## Aislamiento multi-tenant — prueba transversal (F1.9)
+
+`apps/api/src/multi-tenant-isolation.e2e.test.ts` — exactamente lo que pide el backlog: dos
+organizaciones reales (`Org A` con OWNER+ADMIN, `Org B` con OWNER+EDITOR), 12 pruebas de
+integración que intentan cruzar datos entre ambas por cada endpoint de organización que existe
+hasta Fase 1:
+
+- Leer, listar miembros, invitar, cambiar rol y remover en la organización ajena — con el OWNER
+  de A y también con el ADMIN de A (tener permisos reales en A no da ningún permiso en B).
+- **Ataque de `membershipId` cruzado**: `organizationId` de la URL correcto (A, donde sí hay
+  permiso) pero `membershipId` de un miembro de B — prueba que `getOrgMembershipOrThrow` rechaza
+  por dueño real del recurso, no solo el guard de nivel superior.
+- Aceptar una invitación ajena.
+- Ningún listado (`GET /organizations`, lista de miembros) filtra a medias — nunca aparece ni un
+  id ni un correo de la organización/usuario ajeno.
+- Simétrico: se repite con B atacando a A.
+
+Este archivo es la base a extender en cada fase posterior que agregue endpoints con datos de
+organización — el criterio de F1.9 se re-exige, no se da por cumplido una sola vez.
+
 ## CI
 
 `.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible

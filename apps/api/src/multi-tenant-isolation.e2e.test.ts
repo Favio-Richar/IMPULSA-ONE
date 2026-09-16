@@ -77,6 +77,16 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
 
+    // El limitador de peticiones es real y cuenta por IP: los archivos e2e corren en serie
+    // (`fileParallelism: false`) sobre el mismo servidor, así que este `beforeAll` arranca con el
+    // presupuesto ya gastado por la suite anterior. Se limpia acá igual que en `beforeEach` —
+    // si no, el fallo depende del orden de los archivos, que es lo peor que puede pasarle a una
+    // prueba de seguridad.
+    const staleKeys = await redis.keys("ratelimit:*");
+    if (staleKeys.length > 0) {
+      await redis.del(...staleKeys);
+    }
+
     async function registerLoggedInUser(): Promise<{ email: string; agent: ReturnType<typeof request.agent> }> {
       const email = uniqueEmail();
       const password = "password1234";
@@ -472,6 +482,66 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         .expect(200);
       expect(blocksOfB.body).toHaveLength(1);
       expect(blocksOfB.body[0].config.html).toBe("<p>privado de B</p>");
+    });
+  });
+
+  describe("Temas (F2.5): ningún acceso cruzado entre organizaciones", () => {
+    it("A no alcanza los temas de B por ninguna combinación de ids, ni se los aplica a su sitio", async () => {
+      const themeOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/themes`)
+        .set(CSRF_HEADERS)
+        .send({
+          name: "Tema privado de B",
+          tokens: {
+            palette: {
+              background: "#ffffff",
+              surface: "#f8fafc",
+              foreground: "#0f172a",
+              mutedForeground: "#475569",
+              primary: "#1d4ed8",
+              primaryForeground: "#ffffff",
+              border: "#e2e8f0",
+            },
+            fontFamily: "system",
+            radius: "moderate",
+            density: "comfortable",
+            shadow: "subtle",
+            buttonStyle: "solid",
+          },
+        })
+        .expect(201);
+
+      // Con la organización de B en la URL: frenado por el guard de membresía.
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/themes`).expect(403);
+      await orgA.ownerAgent
+        .patch(`/api/v1/organizations/${orgB.id}/themes/${themeOfB.body.id}`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Secuestrado" })
+        .expect(403);
+
+      // Con la organización propia de A y el themeId ajeno: lo único que frena esto es que el
+      // servicio solo considere visibles el catálogo global y los temas propios del tenant.
+      const crossPath = `/api/v1/organizations/${orgA.id}/themes/${themeOfB.body.id}`;
+      await orgA.ownerAgent.get(crossPath).expect(404);
+      await orgA.ownerAgent.patch(crossPath).set(CSRF_HEADERS).send({ name: "Secuestrado" }).expect(404);
+      await orgA.ownerAgent.delete(crossPath).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.post(`${crossPath}/duplicate`).set(CSRF_HEADERS).send({}).expect(404);
+
+      // Aplicarlo al sitio propio de A tampoco: sería llevarse el diseño de otro tenant.
+      await orgA.ownerAgent
+        .put(`/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/theme`)
+        .set(CSRF_HEADERS)
+        .send({ themeId: themeOfB.body.id })
+        .expect(404);
+
+      // El listado de A no lo incluye y el tema de B sigue intacto.
+      const themesOfA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/themes`).expect(200);
+      expect(themesOfA.body.map((t: { id: string }) => t.id)).not.toContain(themeOfB.body.id);
+
+      const afterB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/themes/${themeOfB.body.id}`)
+        .expect(200);
+      expect(afterB.body.name).toBe("Tema privado de B");
     });
   });
 

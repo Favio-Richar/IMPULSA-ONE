@@ -23,6 +23,27 @@ Ambas exclusiones son de alcance, no de calidad: lo que sí entra, entra complet
 
 ## Fase 2 — Sitio público y constructor
 
+**Estado de la fase** (se actualiza al cerrar cada historia contra la Definición de Terminado; una
+historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los visibles):
+
+| Historia | Estado |
+|---|---|
+| F2.1 — Modelo de datos de sitios, páginas y bloques | Terminada |
+| F2.2 — Sitios (CRUD + slug) | Terminada |
+| F2.3 — Páginas (CRUD, slug, orden, visibilidad) | Terminada |
+| F2.4 — Bloques tipados | Terminada |
+| F2.5 — Temas y apariencia | Terminada |
+| F2.6 — Borrador, publicación e historial | Pendiente (siguiente) |
+| F2.7 — Render público (`apps/web`) | Pendiente |
+| F2.8 — SEO base | Pendiente |
+| F2.9 — Constructor visual (`apps/dashboard`) | Pendiente |
+| F2.10 — Aislamiento multi-tenant de Fase 2 | Pendiente (se re-verifica al cerrar la fase) |
+
+> **Deuda declarada de la fase**: el repositorio todavía no publica un documento OpenAPI
+> (`docs/api/` está vacío desde F0.1) pese a que la Definición de Terminado lo exige al modificar la
+> API. No es una omisión de una historia concreta: falta el mecanismo completo. Arreglarlo es una
+> tarea propia, no parte de F2.6 — ver nota al cierre de F2.5.
+
 ### F2.1 — Modelo de datos de sitios, páginas y bloques
 **Criterios de aceptación:**
 - `Site`, `SiteDomain`, `Page`, `PageVersion`, `Block`, `BlockVersion` y `Theme` en

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
+import { THEME_CATALOG } from "@impulza/validation";
 import { PERMISSION_CATALOG, ROLE_PERMISSIONS } from "../src/permissions.js";
 
 try {
@@ -78,9 +79,21 @@ async function main(): Promise<void> {
     create: FREE_PLAN,
   });
 
+  // Temas del catálogo global (F2.5): organizationId null. Idempotente por `code`, de modo que
+  // ajustar una paleta acá se propaga al volver a sembrar sin duplicar filas ni tocar los temas
+  // propios de las organizaciones.
+  for (const theme of THEME_CATALOG) {
+    await prisma.theme.upsert({
+      where: { code: theme.code },
+      update: { name: theme.name, tokens: theme.tokens },
+      create: { code: theme.code, name: theme.name, tokens: theme.tokens, organizationId: null },
+    });
+  }
+
   console.log(
     `Seed OK: ${ROLES.length} roles, ${PERMISSION_CATALOG.length} permisos, ` +
-      `${rolePermissionCount} asignaciones rol-permiso, 1 plan (${FREE_PLAN.code}).`,
+      `${rolePermissionCount} asignaciones rol-permiso, 1 plan (${FREE_PLAN.code}), ` +
+      `${THEME_CATALOG.length} temas de catálogo.`,
   );
 }
 

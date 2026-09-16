@@ -11,6 +11,7 @@ export const PERMISSIONS = {
   SITE_ARCHIVE: "site.archive",
   PAGE_MANAGE: "page.manage",
   PAGE_DELETE: "page.delete",
+  THEME_MANAGE: "theme.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -48,6 +49,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.PAGE_DELETE,
     description: "Borrar (lógicamente) y restaurar páginas de un sitio.",
   },
+  {
+    key: PERMISSIONS.THEME_MANAGE,
+    description: "Crear y editar temas propios de la organización.",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -67,6 +72,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.SITE_ARCHIVE,
     PERMISSIONS.PAGE_MANAGE,
     PERMISSIONS.PAGE_DELETE,
+    PERMISSIONS.THEME_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -77,6 +83,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.SITE_ARCHIVE,
     PERMISSIONS.PAGE_MANAGE,
     PERMISSIONS.PAGE_DELETE,
+    PERMISSIONS.THEME_MANAGE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio.

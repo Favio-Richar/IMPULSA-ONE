@@ -3,13 +3,17 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 0 — Preparación, historia F0.2 (inicialización del monorepo).** Ver
-`docs/BACKLOG_FASE_0_1.md` para el backlog completo y `CLAUDE.md` para las reglas de trabajo del
+**Estado actual: Fase 2 — Sitio público y constructor, historia F2.5 (temas y apariencia)
+terminada. Siguiente: F2.6 (borrador, publicación e historial).** Fase 0 y Fase 1 cerradas
+(F0.1–F0.5, F1.1–F1.10). Ver `docs/BACKLOG_FASE_2.md` para el backlog de la fase activa,
+`docs/BACKLOG_FASE_0_1.md` para las anteriores y `CLAUDE.md` para las reglas de trabajo del
 repositorio.
 
-Este repositorio contiene por ahora la **fundación estructural** del monorepo: apps y paquetes con
-esqueleto mínimo que compila, sin lógica de negocio, autenticación, base de datos ni diseño real
-todavía (eso llega en Fase 1).
+| Fase | Historias | Estado |
+|---|---|---|
+| 0 — Preparación | F0.1–F0.5 | Terminada |
+| 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
+| 2 — Sitio público y constructor | F2.1–F2.5 | En curso (F2.6–F2.10 pendientes) |
 
 ## Requisitos
 
@@ -480,6 +484,49 @@ suelto no es trabajo que el usuario espere rescatar de una papelera, y el histor
 (F2.6) conserva igual el estado anterior completo — la vía de recuperación existe y es restaurar
 una versión de la página.
 
+## Temas y apariencia (F2.5)
+
+Un tema es un conjunto **cerrado** de tokens —paleta de 7 colores, familia tipográfica, radio,
+densidad, sombra y estilo de botón— en `packages/validation/src/themes/`. El usuario elige valores
+de un conjunto validado en el servidor: los colores son hexadecimales de 6 dígitos y todo lo demás
+son enumeraciones. **Nunca CSS libre.** Un hex es un dato, no una regla de estilo: no puede cerrar
+una declaración e inyectar otra, que es justo el riesgo de aceptar CSS.
+
+Las escalas están recortadas por la dirección visual obligatoria de `CLAUDE.md`, no por gusto: no
+existe un radio "pill" ni una sombra pesada, porque "bordes moderados, sombras discretas, nada
+excesivamente redondo" no es una sugerencia que el usuario pueda desactivar.
+
+**El contraste se verifica en el servidor, al guardar.** `themeTokensSchema` comprueba cada par
+texto/fondo contra WCAG 2.2 AA (4.5:1) y el color primario contra 3:1 como componente de interfaz.
+El objetivo de accesibilidad del proyecto no puede depender de que el cliente haya corrido la misma
+comprobación: un tema ilegible guardado es una página pública rota. `border` queda fuera a
+propósito — WCAG 1.4.11 exige 3:1 a los límites *esenciales* de un componente, no a un separador
+decorativo, y exigírselo obligaría a bordes pesados que contradicen la dirección visual.
+
+La calculadora de contraste se movió de `packages/ui` a `packages/validation`: estaba duplicada, y
+ahora el mismo verificador audita los tokens del design system, los cinco temas del catálogo y los
+temas propios que crea un usuario — un solo lugar donde puede estar mal.
+
+**Catálogo base** (`claro-profesional`, `editorial`, `natural`, `oceano`, `carbon`): temas globales
+(`organization_id` null) sembrados de forma idempotente por `code` desde `prisma/seed.ts`. Cada
+paleta se eligió calculando el contraste, no a ojo, y una prueba vuelve a exigir AA sobre el
+catálogo completo — aflojar un color rompe el build. Son de solo lectura: para personalizar uno se
+duplica, que es el único camino y por eso existe el endpoint.
+
+**Permisos, deliberadamente separados** (RBAC de F1.6): crear y editar temas necesita
+`theme.manage` (OWNER/ADMIN); *aplicar* un tema a un sitio es configuración del sitio y usa
+`site.update`, así que un EDITOR puede cambiar de apariencia sin poder inventar paletas nuevas.
+
+**Un tema aplicado no se borra.** `Site.theme_id` tiene `onDelete: SetNull`, así que borrarlo
+dejaría los sitios afectados cambiando de apariencia en silencio; el servicio responde 409 hasta
+que esos sitios cambien de tema. Y un sitio sin tema elegido no queda "sin apariencia": el tema
+efectivo cae al del catálogo por defecto, resuelto en el servidor para que el render público (F2.7)
+y el constructor den la misma respuesta.
+
+Aislamiento: solo son visibles el catálogo global y los temas de la propia organización. El tema de
+otra organización devuelve 404 —no 403— por id cruzado, y no se puede aplicar a un sitio propio;
+cubierto tanto en `themes.e2e.test.ts` como en la suite transversal de F1.9.
+
 ## CI
 
 `.github/workflows/ci.yml` corre en cada PR y en push a `main`: install reproducible
@@ -497,11 +544,13 @@ radios moderados, sombras discretas — dirección visual obligatoria de `CLAUDE
 base: `Button`, `Input`, `Card`, `Table`, y los estados obligatorios `EmptyState`/`LoadingState`/
 `ErrorState`/`OfflineState`.
 
-**Auditoría de contraste real, no a ojo**: `src/styles/contrast.test.ts` calcula la fórmula de
-luminancia relativa WCAG 2.x para cada par texto/fondo del sistema y falla si algún color no llega
-a AA (4.5:1 texto normal, 3:1 componentes de UI). Si cambias un color en `tokens.css`, actualiza el
-valor espejo en ese test — está duplicado a propósito para que el test pueda detectar una regresión
-de contraste en vez de asumir que el token sigue siendo válido.
+**Auditoría de contraste real, no a ojo**: `src/styles/contrast.test.ts` verifica cada par
+texto/fondo del sistema contra AA (4.5:1 texto normal, 3:1 componentes de UI). La fórmula de
+luminancia relativa WCAG 2.x vive desde F2.5 en `packages/validation/src/contrast.ts` —la
+comparten el design system, los temas del catálogo y la validación de temas en el servidor—, pero
+los **valores de color** siguen duplicados a propósito en el test: si cambias un color en
+`tokens.css`, actualiza el valor espejo, para que el test pueda detectar una regresión de contraste
+en vez de asumir que el token sigue siendo válido.
 
 ```bash
 pnpm --filter @impulza/ui run storybook         # explorar componentes en localhost:6006
@@ -520,14 +569,17 @@ apps/
 ├── web/          Next.js — sitio comercial + páginas públicas de usuarios
 ├── dashboard/    Next.js — panel autenticado (F1.8): auth, layout, organizaciones
 ├── admin/        Next.js — superadministración
-├── api/          NestJS — API REST /api/v1. Módulos auth (F1.4) y organizations (F1.5) completos
+├── api/          NestJS — API REST /api/v1: auth, organizations, rbac, audit, sites, pages,
+│                 blocks y themes (F1.4–F2.5)
 └── worker/       Procesamiento asíncrono (BullMQ se agrega cuando exista el primer job real)
 
 packages/
 ├── ui/               Design system: tokens, Button/Input/Card/Table/estados, Storybook
-├── database/         Prisma — schema, migración inicial y seeds (roles + plan Gratis)
+├── database/         Prisma — schema, migraciones y seeds (roles, permisos, plan Gratis y
+│                     catálogo de temas)
 ├── auth/             Hash de contraseñas (Argon2id), tokens, cifrado 2FA, adaptador de email
-├── validation/       Esquemas Zod compartidos
+├── validation/       Esquemas Zod compartidos: slugs, catálogo de bloques (F2.4), tokens de tema
+│                     y verificador de contraste WCAG (F2.5)
 ├── contracts/        DTOs y contratos de la API
 ├── analytics/        Taxonomía y utilidades de eventos
 ├── config/           Configuración de entorno validada (real en F1.2)

@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient, type Site, SiteStatus } from "@impulza/datab
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
 import { HOME_PAGE_SLUG } from "../pages/home-page.js";
+import { ThemesService, type ThemeView } from "../themes/themes.service.js";
 
 // P2002 = violación de restricción única en Prisma. La comprobación previa de disponibilidad de
 // slug deja una ventana de carrera (dos peticiones simultáneas la pasan y una pierde en el
@@ -17,6 +18,7 @@ export class SitesService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
+    private readonly themesService: ThemesService,
   ) {}
 
   /**
@@ -187,5 +189,57 @@ export class SitesService {
     });
 
     return archived;
+  }
+
+  /**
+   * Tema con el que se muestra el sitio: el aplicado, o el del catálogo por defecto si todavía no
+   * eligió uno. Nunca devuelve "sin tema" — una página pública siempre tiene apariencia (F2.5).
+   */
+  async getSiteTheme(organizationId: string, siteId: string): Promise<ThemeView & { isDefault: boolean }> {
+    const site = await this.getSiteOrThrow(organizationId, siteId);
+
+    if (site.themeId === null) {
+      const fallback = await this.themesService.getDefaultTheme();
+      return { ...(await this.themesService.getTheme(organizationId, fallback.id)), isDefault: true };
+    }
+
+    return { ...(await this.themesService.getTheme(organizationId, site.themeId)), isDefault: false };
+  }
+
+  /**
+   * Aplica un tema al sitio, o lo devuelve al del catálogo por defecto con `null`.
+   *
+   * Aplicar un tema es configuración del sitio (`site.update`), no autoría de temas
+   * (`theme.manage`): un EDITOR puede cambiar de apariencia sin poder inventar paletas nuevas.
+   * `assertThemeApplicable` es lo que impide aplicar el tema de otra organización pasando su id —
+   * el guard de membresía prueba que el usuario pertenece al tenant, no que el tema sea suyo.
+   */
+  async setSiteTheme(
+    organizationId: string,
+    actorId: string,
+    siteId: string,
+    themeId: string | null,
+  ): Promise<Site> {
+    const site = await this.getSiteOrThrow(organizationId, siteId);
+
+    if (themeId !== null) {
+      await this.themesService.assertThemeApplicable(organizationId, themeId);
+    }
+
+    const updated = await this.prisma.site.update({
+      where: { id: site.id },
+      data: { themeId },
+    });
+
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "site.theme_changed",
+      targetType: "Site",
+      targetId: site.id,
+      metadata: { themeFrom: site.themeId, themeTo: themeId },
+    });
+
+    return updated;
   }
 }

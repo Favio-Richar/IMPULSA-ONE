@@ -570,6 +570,9 @@ importers:
       '@impulza/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@impulza/validation':
+        specifier: workspace:*
+        version: link:../validation
       '@types/node':
         specifier: 26.5.1
         version: 26.5.1
@@ -655,6 +658,9 @@ importers:
       '@impulza/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@impulza/validation':
+        specifier: workspace:*
+        version: link:../validation
       '@storybook/addon-a11y':
         specifier: 10.6.0
         version: 10.6.0(storybook@10.6.0(@types/react@19.3.0)(prettier@3.9.6)(react@19.3.0))

@@ -1,6 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { pageResponse } from "@impulza/contracts";
+import { pageResponse, pageVersionResponse, pageVersionSummaryResponse } from "@impulza/contracts";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
 import type { PrismaClient } from "@impulza/database";
 import cookieParser from "cookie-parser";
@@ -90,9 +90,10 @@ describe("Pages (e2e) — F2.3", () => {
     organizationId: string;
     siteId: string;
     agent: ReturnType<typeof request.agent>;
+    email: string;
     basePath: string;
   }> {
-    const { agent } = await registerLoggedInUser();
+    const { agent, email } = await registerLoggedInUser();
     const org = await agent
       .post("/api/v1/organizations")
       .set(CSRF_HEADERS)
@@ -107,6 +108,7 @@ describe("Pages (e2e) — F2.3", () => {
     return {
       organizationId: org.body.id,
       siteId: site.body.id,
+      email,
       agent,
       basePath: `/api/v1/organizations/${org.body.id}/sites/${site.body.id}/pages`,
     };
@@ -321,6 +323,259 @@ describe("Pages (e2e) — F2.3", () => {
         .expect(200);
 
       await editorAgent.delete(`${basePath}/${page.body.id}`).set(CSRF_HEADERS).expect(403);
+    });
+  });
+
+  describe("publicación e historial (F2.6)", () => {
+    async function addTextBlock(
+      agent: ReturnType<typeof request.agent>,
+      basePath: string,
+      pageId: string,
+      html: string,
+    ) {
+      return agent
+        .post(`${basePath}/${pageId}/blocks`)
+        .set(CSRF_HEADERS)
+        .send({ type: "text", config: { html, alignment: "left" } })
+        .expect(201);
+    }
+
+    it("publicar crea una versión con snapshot, y marca la página como PUBLISHED", async () => {
+      const { agent, basePath } = await createSiteWithOwner();
+      const page = await agent.post(basePath).set(CSRF_HEADERS).send({ slug: "publicable" }).expect(201);
+      await addTextBlock(agent, basePath, page.body.id, "<p>Contenido inicial</p>");
+
+      expect((await agent.get(`${basePath}/${page.body.id}`).expect(200)).body.status).toBe("DRAFT");
+
+      const published = await agent
+        .post(`${basePath}/${page.body.id}/publish`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+
+      pageVersionResponse.parse(published.body);
+      expect(published.body).toMatchObject({ pageId: page.body.id, versionNumber: 1 });
+      expect(published.body.contentSnapshot.blocks).toHaveLength(1);
+      expect(published.body.contentSnapshot.blocks[0].config.html).toBe("<p>Contenido inicial</p>");
+
+      expect((await agent.get(`${basePath}/${page.body.id}`).expect(200)).body.status).toBe("PUBLISHED");
+    });
+
+    it("editar después de publicar no cambia el snapshot ya publicado", async () => {
+      const { agent, basePath } = await createSiteWithOwner();
+      const page = await agent.post(basePath).set(CSRF_HEADERS).send({ slug: "estable" }).expect(201);
+      const block = await addTextBlock(agent, basePath, page.body.id, "<p>v1</p>");
+
+      const firstPublish = await agent
+        .post(`${basePath}/${page.body.id}/publish`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+
+      // Se edita el bloque vivo después de publicar: el snapshot ya guardado no se toca.
+      await agent
+        .patch(`${basePath}/${page.body.id}/blocks/${block.body.id}`)
+        .set(CSRF_HEADERS)
+        .send({ config: { html: "<p>v2 sin publicar</p>", alignment: "left" } })
+        .expect(200);
+
+      const versionAfterEdit = await agent
+        .get(`${basePath}/${page.body.id}/versions/${firstPublish.body.id}`)
+        .expect(200);
+      expect(versionAfterEdit.body.contentSnapshot.blocks[0].config.html).toBe("<p>v1</p>");
+
+      // Y el segundo publish sí refleja el cambio, como una versión nueva.
+      const secondPublish = await agent
+        .post(`${basePath}/${page.body.id}/publish`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+      expect(secondPublish.body.versionNumber).toBe(2);
+      expect(secondPublish.body.contentSnapshot.blocks[0].config.html).toBe("<p>v2 sin publicar</p>");
+    });
+
+    it("publicar dos veces sin cambios es idempotente: no crea versión ni auditoría nuevas", async () => {
+      const { agent, basePath, email } = await createSiteWithOwner();
+      const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+      const page = await agent.post(basePath).set(CSRF_HEADERS).send({ slug: "sin-cambios" }).expect(201);
+      await addTextBlock(agent, basePath, page.body.id, "<p>fijo</p>");
+
+      const first = await agent.post(`${basePath}/${page.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+      const second = await agent.post(`${basePath}/${page.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+      const third = await agent.post(`${basePath}/${page.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+      expect(first.body.id).toBe(second.body.id);
+      expect(second.body.id).toBe(third.body.id);
+      expect(await prisma.pageVersion.count({ where: { pageId: page.body.id } })).toBe(1);
+
+      const logs = await prisma.auditLog.findMany({ where: { action: "page.published", targetId: page.body.id } });
+      expect(logs).toHaveLength(1);
+      expect(logs[0]?.actorId).toBe(user.id);
+    });
+
+    it("el historial lista de la más reciente a la más antigua, sin el snapshot", async () => {
+      const { agent, basePath } = await createSiteWithOwner();
+      const page = await agent.post(basePath).set(CSRF_HEADERS).send({ slug: "historial" }).expect(201);
+      const block = await addTextBlock(agent, basePath, page.body.id, "<p>v1</p>");
+      await agent.post(`${basePath}/${page.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+      await agent
+        .patch(`${basePath}/${page.body.id}/blocks/${block.body.id}`)
+        .set(CSRF_HEADERS)
+        .send({ config: { html: "<p>v2</p>", alignment: "left" } })
+        .expect(200);
+      await agent.post(`${basePath}/${page.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+      const list = await agent.get(`${basePath}/${page.body.id}/versions`).expect(200);
+      for (const entry of list.body) {
+        pageVersionSummaryResponse.parse(entry);
+        expect(entry.contentSnapshot).toBeUndefined();
+      }
+      expect(list.body.map((v: { versionNumber: number }) => v.versionNumber)).toEqual([2, 1]);
+      expect(list.body[0].createdBy).toMatchObject({ email: expect.any(String) });
+    });
+
+    it("restaurar aplica el contenido antiguo, crea una versión nueva y no reescribe el historial", async () => {
+      const { agent, basePath, email } = await createSiteWithOwner();
+      const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+      const page = await agent.post(basePath).set(CSRF_HEADERS).send({ slug: "restaurable" }).expect(201);
+      const block = await addTextBlock(agent, basePath, page.body.id, "<p>v1</p>");
+      const v1 = await agent.post(`${basePath}/${page.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+      // v2: se cambia el contenido del bloque y se agrega uno nuevo, luego se publica.
+      await agent
+        .patch(`${basePath}/${page.body.id}/blocks/${block.body.id}`)
+        .set(CSRF_HEADERS)
+        .send({ config: { html: "<p>v2</p>", alignment: "left" } })
+        .expect(200);
+      await addTextBlock(agent, basePath, page.body.id, "<p>bloque nuevo de v2</p>");
+      await agent.post(`${basePath}/${page.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+      expect(
+        (await agent.get(`${basePath}/${page.body.id}/blocks`).expect(200)).body,
+      ).toHaveLength(2);
+
+      // Restaurar v1: vuelve a tener un solo bloque, con el contenido original.
+      const restored = await agent
+        .post(`${basePath}/${page.body.id}/versions/${v1.body.id}/restore`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+
+      pageVersionResponse.parse(restored.body);
+      expect(restored.body.versionNumber).toBe(3);
+      expect(restored.body.contentSnapshot.blocks).toHaveLength(1);
+      expect(restored.body.contentSnapshot.blocks[0].config.html).toBe("<p>v1</p>");
+
+      const blocksAfterRestore = await agent.get(`${basePath}/${page.body.id}/blocks`).expect(200);
+      expect(blocksAfterRestore.body).toHaveLength(1);
+      expect(blocksAfterRestore.body[0].config.html).toBe("<p>v1</p>");
+
+      // El historial completo sigue ahí — restaurar agregó, no reescribió.
+      const history = await agent.get(`${basePath}/${page.body.id}/versions`).expect(200);
+      expect(history.body.map((v: { versionNumber: number }) => v.versionNumber)).toEqual([3, 2, 1]);
+
+      const logs = await prisma.auditLog.findMany({
+        where: { action: "page.version_restored", targetId: page.body.id },
+      });
+      expect(logs).toHaveLength(1);
+      expect(logs[0]?.actorId).toBe(user.id);
+      expect(logs[0]?.metadata).toMatchObject({ restoredFromVersion: 1, newVersion: 3 });
+    });
+
+    it("restaurar también repone el slug y la visibilidad de esa versión, y da 409 si el slug fue reocupado", async () => {
+      const { agent, basePath } = await createSiteWithOwner();
+      const page = await agent.post(basePath).set(CSRF_HEADERS).send({ slug: "slug-v1" }).expect(201);
+      const v1 = await agent.post(`${basePath}/${page.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+      await agent
+        .patch(`${basePath}/${page.body.id}`)
+        .set(CSRF_HEADERS)
+        .send({ slug: "slug-v2", visibility: "HIDDEN" })
+        .expect(200);
+      await agent.post(`${basePath}/${page.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+      const restored = await agent
+        .post(`${basePath}/${page.body.id}/versions/${v1.body.id}/restore`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+      expect(restored.body.contentSnapshot.slug).toBe("slug-v1");
+
+      const pageNow = await agent.get(`${basePath}/${page.body.id}`).expect(200);
+      expect(pageNow.body).toMatchObject({ slug: "slug-v1", visibility: "PUBLIC" });
+
+      // Otra página se queda con "slug-v1" antes de intentar restaurar de nuevo.
+      await agent.patch(`${basePath}/${page.body.id}`).set(CSRF_HEADERS).send({ slug: "slug-v3" }).expect(200);
+      await agent.post(basePath).set(CSRF_HEADERS).send({ slug: "slug-v1" }).expect(201);
+
+      await agent
+        .post(`${basePath}/${page.body.id}/versions/${v1.body.id}/restore`)
+        .set(CSRF_HEADERS)
+        .expect(409);
+    });
+
+    it("versión inexistente o de otra página da 404 en ver y restaurar", async () => {
+      const { agent, basePath } = await createSiteWithOwner();
+      const pageA = await agent.post(basePath).set(CSRF_HEADERS).send({ slug: "pagina-a" }).expect(201);
+      const pageB = await agent.post(basePath).set(CSRF_HEADERS).send({ slug: "pagina-b" }).expect(201);
+      const versionOfA = await agent
+        .post(`${basePath}/${pageA.body.id}/publish`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+
+      await agent.get(`${basePath}/${pageA.body.id}/versions/00000000-0000-0000-0000-000000000000`).expect(404);
+      await agent
+        .post(`${basePath}/${pageA.body.id}/versions/00000000-0000-0000-0000-000000000000/restore`)
+        .set(CSRF_HEADERS)
+        .expect(404);
+
+      // versión real, pero de la página B: el id de versión no alcanza, tiene que coincidir con pageId.
+      await agent.get(`${basePath}/${pageB.body.id}/versions/${versionOfA.body.id}`).expect(404);
+      await agent
+        .post(`${basePath}/${pageB.body.id}/versions/${versionOfA.body.id}/restore`)
+        .set(CSRF_HEADERS)
+        .expect(404);
+    });
+
+    it("EDITOR publica y restaura versiones; ANALYST no puede publicar", async () => {
+      const { organizationId, basePath, agent: ownerAgent } = await createSiteWithOwner();
+      const page = await ownerAgent.post(basePath).set(CSRF_HEADERS).send({ slug: "permisos-f26" }).expect(201);
+
+      const { agent: editorAgent, email: editorEmail } = await registerLoggedInUser();
+      const inviteEditor = await ownerAgent
+        .post(`/api/v1/organizations/${organizationId}/members`)
+        .set(CSRF_HEADERS)
+        .send({ email: editorEmail, role: "EDITOR" })
+        .expect(201);
+      await editorAgent
+        .post(`/api/v1/memberships/${inviteEditor.body.membershipId}/accept`)
+        .set(CSRF_HEADERS)
+        .expect(204);
+
+      const published = await editorAgent
+        .post(`${basePath}/${page.body.id}/publish`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+      await editorAgent
+        .post(`${basePath}/${page.body.id}/versions/${published.body.id}/restore`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+
+      const { agent: analystAgent, email: analystEmail } = await registerLoggedInUser();
+      const inviteAnalyst = await ownerAgent
+        .post(`/api/v1/organizations/${organizationId}/members`)
+        .set(CSRF_HEADERS)
+        .send({ email: analystEmail, role: "ANALYST" })
+        .expect(201);
+      await analystAgent
+        .post(`/api/v1/memberships/${inviteAnalyst.body.membershipId}/accept`)
+        .set(CSRF_HEADERS)
+        .expect(204);
+
+      // ANALYST sí puede leer el historial (basta con ser miembro activo)...
+      await analystAgent.get(`${basePath}/${page.body.id}/versions`).expect(200);
+      // ...pero no publicar ni restaurar.
+      await analystAgent.post(`${basePath}/${page.body.id}/publish`).set(CSRF_HEADERS).expect(403);
+      await analystAgent
+        .post(`${basePath}/${page.body.id}/versions/${published.body.id}/restore`)
+        .set(CSRF_HEADERS)
+        .expect(403);
     });
   });
 });

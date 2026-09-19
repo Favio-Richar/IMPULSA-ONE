@@ -1,17 +1,10 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, type PrismaClient, type Site, SiteStatus } from "@impulza/database";
+import { type PrismaClient, type Site, SiteStatus } from "@impulza/database";
+import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
 import { HOME_PAGE_SLUG } from "../pages/home-page.js";
 import { ThemesService, type ThemeView } from "../themes/themes.service.js";
-
-// P2002 = violación de restricción única en Prisma. La comprobación previa de disponibilidad de
-// slug deja una ventana de carrera (dos peticiones simultáneas la pasan y una pierde en el
-// INSERT); la restricción de la base de datos es la que decide de verdad. Traducirla a 409 evita
-// que esa carrera se vea como un 500.
-function isUniqueViolation(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
-}
 
 @Injectable()
 export class SitesService {

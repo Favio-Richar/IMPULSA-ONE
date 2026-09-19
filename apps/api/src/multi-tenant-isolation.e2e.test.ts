@@ -545,6 +545,67 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Publicación e historial de páginas (F2.6): ningún acceso cruzado entre organizaciones", () => {
+    it("A no puede publicar, listar ni ver el historial de una página de B", async () => {
+      const pagesOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .expect(200);
+      const homeOfB = pagesOfB.body[0].id;
+      const versionOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/publish`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+
+      // Con la organización de B en la URL: frenado por el guard de membresía.
+      await orgA.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/publish`)
+        .set(CSRF_HEADERS)
+        .expect(403);
+      await orgA.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/versions`)
+        .expect(403);
+
+      // Con la organización propia de A pero sitio y página de B: frenado por la verificación de
+      // dueño real, la misma cadena completa que ya protege el resto de los endpoints de página.
+      const crossPath = `/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/${homeOfB}`;
+      await orgA.ownerAgent.post(`${crossPath}/publish`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.get(`${crossPath}/versions`).expect(404);
+      await orgA.ownerAgent.get(`${crossPath}/versions/${versionOfB.body.id}`).expect(404);
+      await orgA.ownerAgent
+        .post(`${crossPath}/versions/${versionOfB.body.id}/restore`)
+        .set(CSRF_HEADERS)
+        .expect(404);
+
+      // El historial de B sigue teniendo exactamente esa versión, sin nada agregado por A.
+      const historyOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/versions`)
+        .expect(200);
+      expect(historyOfB.body).toHaveLength(1);
+      expect(historyOfB.body[0].id).toBe(versionOfB.body.id);
+    });
+
+    it("ataque combinado: organizationId propio de A + sitio Y página Y versión de B, todos ajenos", async () => {
+      const pagesOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .expect(200);
+      const homeOfB = pagesOfB.body[0].id;
+      const versionOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/publish`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+      const crossPath = `/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/${homeOfB}/versions/${versionOfB.body.id}`;
+
+      await orgA.ownerAgent.get(crossPath).expect(404);
+      await orgA.ownerAgent.post(`${crossPath}/restore`).set(CSRF_HEADERS).expect(404);
+
+      // La página de B no se movió del estado que publicó su propio dueño.
+      const afterAttack = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}`)
+        .expect(200);
+      expect(afterAttack.body.status).toBe("PUBLISHED");
+    });
+  });
+
   describe("Ningún dato de una organización aparece en las respuestas de la otra", () => {
     it("GET /organizations no cruza organizaciones entre usuarios sin relación", async () => {
       const orgsOfA = await orgA.ownerAgent.get("/api/v1/organizations");

@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { pageResponse } from "@impulza/contracts";
+import { pageResponse, pageVersionResponse, pageVersionSummaryResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
@@ -26,11 +26,13 @@ import {
   type ReorderPagesDto,
   type UpdatePageDto,
 } from "./dto/page.dto.js";
+import { PageVersionsService } from "./page-versions.service.js";
 import { PagesService } from "./pages.service.js";
 
 const PAGE_NOT_FOUND =
   "Página no encontrada: no existe, está en la papelera, o el sitio pertenece a otra organización (ADR-002).";
 const SLUG_TAKEN = "Ya existe una página con ese slug en este sitio.";
+const VERSION_NOT_FOUND = "Versión no encontrada: no existe, o no pertenece a esta página.";
 
 @ApiTags("pages")
 @ApiCookieAuth(SESSION_AUTH)
@@ -39,7 +41,10 @@ const SLUG_TAKEN = "Ya existe una página con ese slug en este sitio.";
 @Controller("organizations/:organizationId/sites/:siteId/pages")
 @UseGuards(CsrfGuard, SessionAuthGuard, OrganizationMembershipGuard)
 export class PagesController {
-  constructor(private readonly pagesService: PagesService) {}
+  constructor(
+    private readonly pagesService: PagesService,
+    private readonly pageVersionsService: PageVersionsService,
+  ) {}
 
   // Leer no exige permiso: basta con ser miembro activo (mismo criterio que los sitios, F2.2).
   @Get()
@@ -192,5 +197,104 @@ export class PagesController {
     @CurrentUser() user: User,
   ) {
     return this.pagesService.restorePage(organizationId, user.id, siteId, pageId);
+  }
+
+  // --- Publicación e historial (F2.6) ---
+  //
+  // Editar una página o sus bloques (arriba) nunca toca estos endpoints ni lo que ve el público:
+  // el borrador vive en las tablas `Page`/`Block` de siempre, y lo publicado es un snapshot
+  // inmutable aparte (`PageVersion.content_snapshot`) que solo cambia al llamar a `/publish` o a
+  // `/versions/:versionId/restore`. El render público (F2.7) sirve desde ese snapshot, no desde el
+  // estado vivo — así un borrador a medio editar nunca es alcanzable públicamente.
+
+  @Post(":pageId/publish")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.PAGE_MANAGE)
+  @ApiOperation({
+    summary: "Publicar la página",
+    description:
+      "Requiere `page.manage`. Toma una foto inmutable del contenido vivo (campos de la página + bloques con su configuración vigente) y la agrega al historial; marca la página como `PUBLISHED`. **Idempotente**: si el contenido no cambió desde la última publicación, no crea una versión nueva — devuelve la última tal cual, para que dejar la pestaña de publicar abierta y hacer clic varias veces no llene el historial de entradas idénticas.",
+  })
+  @ApiUuidParam("siteId", "Sitio dueño de la página.")
+  @ApiUuidParam("pageId", "Página a publicar.")
+  @ApiZodResponse(
+    201,
+    pageVersionResponse,
+    "Versión vigente después de publicar (nueva, o la última si no hubo cambios).",
+  )
+  @ApiResponse({ status: 404, description: PAGE_NOT_FOUND })
+  async publish(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("pageId") pageId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.pageVersionsService.publishPage(organizationId, user.id, siteId, pageId);
+  }
+
+  // Leer el historial no exige permiso, mismo criterio que leer la página: basta con ser miembro
+  // activo de la organización.
+  @Get(":pageId/versions")
+  @ApiOperation({
+    summary: "Historial de versiones publicadas",
+    description:
+      "De la más reciente a la más antigua, con autor y fecha. Sin el snapshot completo — liviano a propósito para un panel de historial; el detalle está en `GET .../versions/:versionId`.",
+  })
+  @ApiUuidParam("siteId", "Sitio dueño de la página.")
+  @ApiUuidParam("pageId", "Página cuyo historial se lista.")
+  @ApiZodArrayResponse(200, pageVersionSummaryResponse, "Versiones publicadas de la página.")
+  @ApiResponse({ status: 404, description: "Sitio no encontrado, o de otra organización (ADR-002)." })
+  async listVersions(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("pageId") pageId: string,
+  ) {
+    return this.pageVersionsService.listVersions(organizationId, siteId, pageId);
+  }
+
+  @Get(":pageId/versions/:versionId")
+  @ApiOperation({
+    summary: "Ver una versión del historial",
+    description: "Incluye el snapshot completo — para previsualizar el contenido antes de restaurarla.",
+  })
+  @ApiUuidParam("siteId", "Sitio dueño de la página.")
+  @ApiUuidParam("pageId", "Página dueña de la versión.")
+  @ApiUuidParam("versionId", "Versión del historial.")
+  @ApiZodResponse(200, pageVersionResponse, "La versión solicitada, con su snapshot.")
+  @ApiResponse({ status: 404, description: VERSION_NOT_FOUND })
+  async getVersion(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("pageId") pageId: string,
+    @Param("versionId") versionId: string,
+  ) {
+    return this.pageVersionsService.getVersion(organizationId, siteId, pageId, versionId);
+  }
+
+  @Post(":pageId/versions/:versionId/restore")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.PAGE_MANAGE)
+  @ApiOperation({
+    summary: "Restaurar una versión del historial",
+    description:
+      "Requiere `page.manage`. **No es** el `POST .../restore` de la papelera (esa es otra acción, sobre páginas eliminadas): esta reemplaza el contenido vivo (página y bloques) por el de una versión anterior y agrega una versión **nueva** con ese contenido — nunca reescribe ni borra el historial. A diferencia de publicar, siempre crea una fila nueva: la propia decisión de restaurar es un evento que vale la pena dejar registrado.",
+  })
+  @ApiUuidParam("siteId", "Sitio dueño de la página.")
+  @ApiUuidParam("pageId", "Página a restaurar.")
+  @ApiUuidParam("versionId", "Versión del historial a la que volver.")
+  @ApiZodResponse(201, pageVersionResponse, "Versión nueva, con el contenido restaurado.")
+  @ApiResponse({ status: 404, description: VERSION_NOT_FOUND })
+  @ApiResponse({
+    status: 409,
+    description: "El slug de esa versión ya lo usa otra página del sitio. Renómbrala antes de restaurar esta.",
+  })
+  async restoreVersion(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("pageId") pageId: string,
+    @Param("versionId") versionId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.pageVersionsService.restoreVersion(organizationId, user.id, siteId, pageId, versionId);
   }
 }

@@ -61,6 +61,37 @@ export const blockResponse = z.object({
   degraded: z.enum(["unknown_type", "future_version", "invalid_config"]).nullable(),
 });
 
+/** Autor de una versión de página — `null` si la cuenta que la publicó ya no existe (F2.6). */
+const pageVersionAuthor = z.object({ id: uuid, email: z.email() }).nullable();
+
+/**
+ * Entrada del historial de una página, sin el snapshot completo (F2.6). Deliberadamente ligero:
+ * un historial puede tener decenas de entradas y el snapshot de cada una incluye la configuración
+ * de todos los bloques — cargarlo entero en la lista haría pesado justo el endpoint que un panel
+ * de historial pide primero. El detalle completo está en `GET .../versions/:versionId`.
+ */
+export const pageVersionSummaryResponse = z.object({
+  id: uuid,
+  pageId: uuid,
+  versionNumber: z.number().int(),
+  publishedAt: isoDateTime,
+  createdAt: isoDateTime,
+  createdBy: pageVersionAuthor,
+});
+
+/**
+ * Versión completa, con el snapshot inmutable del contenido en el momento de publicar o
+ * restaurar. `contentSnapshot` es `unknown` por la misma razón que `BlockResponse.config`: su
+ * forma exacta (campos de la página + lista de bloques) es un detalle interno de almacenamiento
+ * del servidor, no un contrato que el cliente construya — solo lo lee para mostrar una vista
+ * previa antes de restaurar.
+ */
+export const pageVersionResponse = pageVersionSummaryResponse.extend({
+  contentSnapshot: z.unknown(),
+});
+
 export type SiteResponse = z.infer<typeof siteResponse>;
 export type PageResponse = z.infer<typeof pageResponse>;
 export type BlockResponse = z.infer<typeof blockResponse>;
+export type PageVersionSummaryResponse = z.infer<typeof pageVersionSummaryResponse>;
+export type PageVersionResponse = z.infer<typeof pageVersionResponse>;

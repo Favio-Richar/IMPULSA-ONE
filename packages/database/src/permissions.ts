@@ -43,7 +43,8 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
   },
   {
     key: PERMISSIONS.PAGE_MANAGE,
-    description: "Crear, editar y reordenar páginas de un sitio.",
+    description:
+      "Crear, editar y reordenar páginas de un sitio; publicarlas y restaurar versiones de su historial (F2.6).",
   },
   {
     key: PERMISSIONS.PAGE_DELETE,

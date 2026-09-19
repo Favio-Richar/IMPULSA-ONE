@@ -3,8 +3,8 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 2 — Sitio público y constructor, historia F2.5 (temas y apariencia)
-terminada. Siguiente: F2.6 (borrador, publicación e historial).** Fase 0 y Fase 1 cerradas
+**Estado actual: Fase 2 — Sitio público y constructor, historia F2.6 (borrador, publicación e
+historial) terminada. Siguiente: F2.7 (render público, `apps/web`).** Fase 0 y Fase 1 cerradas
 (F0.1–F0.5, F1.1–F1.10). Ver `docs/BACKLOG_FASE_2.md` para el backlog de la fase activa,
 `docs/BACKLOG_FASE_0_1.md` para las anteriores y `CLAUDE.md` para las reglas de trabajo del
 repositorio.
@@ -13,7 +13,7 @@ repositorio.
 |---|---|---|
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
-| 2 — Sitio público y constructor | F2.1–F2.5 | En curso (F2.6–F2.10 pendientes) |
+| 2 — Sitio público y constructor | F2.1–F2.6 | En curso (F2.7–F2.10 pendientes) |
 
 ## Requisitos
 
@@ -528,9 +528,58 @@ Aislamiento: solo son visibles el catálogo global y los temas de la propia orga
 otra organización devuelve 404 —no 403— por id cruzado, y no se puede aplicar a un sitio propio;
 cubierto tanto en `themes.e2e.test.ts` como en la suite transversal de F1.9.
 
+## Borrador, publicación e historial (F2.6)
+
+**Editar nunca es publicar.** Una página y sus bloques viven siempre como borrador en las tablas de
+siempre (`Page`, `Block`, `BlockVersion`); lo que ve el público es un objeto completamente aparte —
+un snapshot inmutable en `PageVersion.content_snapshot` — que solo cambia al llamar a
+`POST .../pages/:pageId/publish`. El render público (F2.7) leerá ese snapshot, no el estado vivo:
+así un borrador a medio editar, o un bloque a medio configurar, nunca es alcanzable públicamente,
+ni por casualidad ni por una carrera entre guardar y renderizar.
+
+**Publicar arma el snapshot con el contenido vivo actual** — los campos de la página que afectan al
+render (`slug`, `visibility`, `seoMeta`) más la lista ordenada de bloques con la configuración de su
+versión vigente — y marca la página `PUBLISHED`. La forma exacta del snapshot
+(`apps/api/src/modules/pages/page-content-snapshot.ts`) es un detalle de almacenamiento interno, no
+un contrato de `@impulza/contracts`: el cliente nunca construye ni envía uno, solo edita por los
+endpoints normales.
+
+**Publicar es idempotente.** Si el contenido no cambió desde la última versión, no se crea una fila
+nueva ni una entrada de auditoría — se devuelve la última versión tal cual. La comparación es por
+contenido, no por identidad de objeto ni por orden de claves (JSONB de Postgres no preserva el
+orden en el que se insertaron): ambos lados se canonicalizan (claves ordenadas recursivamente) antes
+de comparar. Sin esto, dejar la pestaña de publicar abierta y hacer clic varias veces llenaría el
+historial de versiones idénticas entre sí — justo lo que el criterio de aceptación prohíbe.
+
+**El historial es navegable y nunca se reescribe.** `GET .../versions` lista de la más reciente a
+la más antigua, con autor y fecha, deliberadamente sin el snapshot completo (una página puede
+acumular decenas de versiones y cada una incluye la configuración de todos sus bloques — cargarlo
+en la lista haría pesado justo el endpoint que un panel de historial pide primero).
+`GET .../versions/:versionId` sí trae el snapshot completo, para previsualizar antes de restaurar.
+
+**Restaurar reemplaza el contenido vivo por el de una versión anterior y agrega una versión
+nueva** — nunca reescribe ni borra una fila existente. A diferencia de publicar, restaurar **no**
+es idempotente: la propia decisión de "volver a esta versión" es un evento que vale la pena dejar
+registrado, incluso en el caso raro en que el contenido resultante coincida con el actual. Los
+bloques vivos se reemplazan por completo (se borran y se recrean desde el snapshot, todo en una
+transacción): mismo criterio que ya documentaba `BlocksService.deleteBlock` desde F2.4 — un bloque
+individual no tiene papelera propia, la vía de recuperación es restaurar la versión de la página.
+Si el slug de la versión restaurada choca con el de otra página del sitio (alguien lo tomó
+mientras tanto), la restauración completa se revierte y responde 409, no un 500 a mitad de camino.
+
+**Publicar y restaurar usan el mismo permiso que editar** (`page.manage`): en esta fase no hay un
+flujo de aprobación separado (eso es Fase 6, PM §11.3); publicar es, todavía, parte del trabajo
+editorial normal de quien ya puede crear y modificar páginas.
+
+**Auditoría con actor real** en ambas acciones (`page.published`, `page.version_restored`,
+distinto de `page.restored` que es el undelete de la papelera de F2.3 — son dos "restaurar"
+completamente distintos y conviene no confundirlos). Cubierto en `pages.e2e.test.ts` y en la suite
+transversal de aislamiento multi-tenant (F1.9): ninguna combinación de ids permite publicar, leer
+el historial o restaurar una página de otra organización.
+
 ## Contrato de la API — OpenAPI
 
-`docs/api/openapi.json` describe la API completa: 34 rutas, 48 operaciones, todas con resumen,
+`docs/api/openapi.json` describe la API completa: 38 rutas, 52 operaciones, todas con resumen,
 etiqueta, cuerpo, respuestas y errores. Se genera desde la aplicación real, nunca a mano — un
 documento mantenido a mano describe la API que alguien recuerda, no la que está desplegada.
 
@@ -614,8 +663,8 @@ apps/
 ├── web/          Next.js — sitio comercial + páginas públicas de usuarios
 ├── dashboard/    Next.js — panel autenticado (F1.8): auth, layout, organizaciones
 ├── admin/        Next.js — superadministración
-├── api/          NestJS — API REST /api/v1: auth, organizations, rbac, audit, sites, pages,
-│                 blocks y themes (F1.4–F2.5)
+├── api/          NestJS — API REST /api/v1: auth, organizations, rbac, audit, sites, pages
+│                 (con publicación e historial), blocks y themes (F1.4–F2.6)
 └── worker/       Procesamiento asíncrono (BullMQ se agrega cuando exista el primer job real)
 
 packages/

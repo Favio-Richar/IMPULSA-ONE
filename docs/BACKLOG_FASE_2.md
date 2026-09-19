@@ -33,8 +33,8 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F2.3 — Páginas (CRUD, slug, orden, visibilidad) | Terminada |
 | F2.4 — Bloques tipados | Terminada |
 | F2.5 — Temas y apariencia | Terminada |
-| F2.6 — Borrador, publicación e historial | Pendiente (siguiente) |
-| F2.7 — Render público (`apps/web`) | Pendiente |
+| F2.6 — Borrador, publicación e historial | Terminada |
+| F2.7 — Render público (`apps/web`) | Pendiente (siguiente) |
 | F2.8 — SEO base | Pendiente |
 | F2.9 — Constructor visual (`apps/dashboard`) | Pendiente |
 | F2.10 — Aislamiento multi-tenant de Fase 2 | Pendiente (se re-verifica al cerrar la fase) |

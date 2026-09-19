@@ -5,13 +5,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { type Page, type PageVisibility, Prisma, type PrismaClient } from "@impulza/database";
+import { type Page, type PageVisibility, type PrismaClient } from "@impulza/database";
+import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
-
-function isUniqueViolation(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
-}
 
 @Injectable()
 export class PagesService {

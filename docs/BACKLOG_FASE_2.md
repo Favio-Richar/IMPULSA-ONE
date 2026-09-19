@@ -39,10 +39,28 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F2.9 — Constructor visual (`apps/dashboard`) | Pendiente |
 | F2.10 — Aislamiento multi-tenant de Fase 2 | Pendiente (se re-verifica al cerrar la fase) |
 
-> **Deuda declarada de la fase**: el repositorio todavía no publica un documento OpenAPI
-> (`docs/api/` está vacío desde F0.1) pese a que la Definición de Terminado lo exige al modificar la
-> API. No es una omisión de una historia concreta: falta el mecanismo completo. Arreglarlo es una
-> tarea propia, no parte de F2.6 — ver nota al cierre de F2.5.
+> **Deuda saldada el 2026-09-19 — OpenAPI**: el repositorio no publicaba un documento OpenAPI
+> (`docs/api/` estaba vacío desde F0.1) pese a que la Definición de Terminado lo exige al modificar
+> la API, así que ninguna historia de F1.4 a F2.5 pudo cumplir ese criterio. Cerrado: `docs/api/openapi.json`
+> describe las 48 operaciones derivando los esquemas de los mismos Zod que validan las peticiones, y
+> `apps/api/src/openapi/openapi.test.ts` hace fallar CI si el documento y la API se separan. Ver
+> `README.md` §"Contrato de la API — OpenAPI". **A partir de acá, una historia que toque la API y no
+> regenere el documento no pasa CI.**
+>
+> **Deuda declarada nueva — rate limiting parcial**: `CLAUDE.md` exige "rate limiting por
+> IP/usuario/organización" como no negociable, pero `RateLimitGuard` hoy solo está montado en los
+> cinco endpoints públicos de `/auth`. Todo el resto de la API —incluidos los endpoints de escritura
+> de sitios, páginas y bloques— no tiene límite de peticiones. Se detectó al anotar OpenAPI (el
+> decorador de errores compartido documentaba un 429 que ningún guard podía devolver). No es parte
+> de F2.6; necesita su propia tarea, con la decisión de si el límite es por IP, por usuario o por
+> organización en cada familia de endpoints.
+>
+> **Deuda declarada nueva — apagado de `RedisModule`**: el cliente de ioredis se provee con una
+> factoría suelta, sin gancho de apagado, así que su socket mantiene vivo el bucle de eventos:
+> `app.close()` no termina. El generador de OpenAPI lo sortea con un `process.exit(0)` explícito y
+> un `TODO` en `apps/api/src/openapi/generate.ts`, pero **el mismo socket colgado afecta al apagado
+> del servidor real**, no solo al script. Corresponde a una tarea de apagado ordenado
+> (`onApplicationShutdown`), no a este trabajo de documentación.
 
 ### F2.1 — Modelo de datos de sitios, páginas y bloques
 **Criterios de aceptación:**

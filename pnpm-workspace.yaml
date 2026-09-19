@@ -12,6 +12,10 @@ allowBuilds:
   # @prisma/engines / prisma: descargan el binario del query engine oficial de Prisma —
   # necesario para que el ORM funcione, paquete propio del fabricante (no un tercero).
   '@prisma/engines': true
+  # @scarf/scarf: dependencia transitiva de @nestjs/swagger. Su script de instalación existe solo
+  # para enviar telemetría de uso a un tercero. No aporta nada al funcionamiento del paquete y sale
+  # datos del entorno de build, así que queda bloqueado explícitamente.
+  '@scarf/scarf': false
   # argon2: hashing de contraseñas (OWASP recomienda Argon2id sobre bcrypt). Necesita compilar/
   # descargar su binario nativo para funcionar.
   argon2: true

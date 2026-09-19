@@ -9,24 +9,27 @@
     "start": "node dist/main.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "openapi:generate": "vite-node src/openapi/generate.ts"
   },
   "dependencies": {
     "@impulza/auth": "workspace:*",
     "@impulza/config": "workspace:*",
+    "@impulza/contracts": "workspace:*",
     "@impulza/database": "workspace:*",
     "@impulza/observability": "workspace:*",
+    "@impulza/validation": "workspace:*",
     "@nestjs/common": "12.0.2",
     "@nestjs/core": "12.0.2",
     "@nestjs/platform-express": "12.0.2",
+    "@nestjs/swagger": "12.0.1",
     "cookie-parser": "1.4.7",
     "helmet": "8.3.0",
     "ioredis": "6.0.0",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
-    "zod": "4.6.5",
-    "@impulza/validation": "workspace:*",
-    "sanitize-html": "2.17.7"
+    "sanitize-html": "2.17.7",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@impulza/eslint-config": "workspace:*",
@@ -35,6 +38,7 @@
     "@types/cookie-parser": "1.4.10",
     "@types/express": "5.0.6",
     "@types/node": "26.5.1",
+    "@types/sanitize-html": "2.16.1",
     "@types/supertest": "7.2.1",
     "eslint": "9.39.5",
     "otplib": "13.5.0",
@@ -42,7 +46,6 @@
     "typescript": "6.0.3",
     "vite": "8.3.0",
     "vite-node": "6.0.0",
-    "vitest": "5.0.0",
-    "@types/sanitize-html": "2.16.1"
+    "vitest": "5.0.0"
   }
 }

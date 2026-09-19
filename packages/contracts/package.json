@@ -11,6 +11,9 @@
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests"
   },
+  "dependencies": {
+    "zod": "4.6.5"
+  },
   "devDependencies": {
     "@impulza/eslint-config": "workspace:*",
     "@impulza/tsconfig": "workspace:*",

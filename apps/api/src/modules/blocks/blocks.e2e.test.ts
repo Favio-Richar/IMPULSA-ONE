@@ -1,5 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { blockResponse } from "@impulza/contracts";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
 import type { PrismaClient } from "@impulza/database";
 import cookieParser from "cookie-parser";
@@ -199,6 +200,9 @@ describe("Blocks (e2e) — F2.4", () => {
         .send({ type: "video", config: { video: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" } })
         .expect(201);
 
+      // El contrato publicado en OpenAPI se ejecuta contra la respuesta real: un contrato que
+      // nadie corre es documentación, no contrato.
+      blockResponse.parse(ok.body);
       // No se guarda una URL de iframe: se guarda lo mínimo para que el render arme un src fijo.
       expect(ok.body.config.video).toEqual({ provider: "youtube", videoId: "dQw4w9WgXcQ" });
     });

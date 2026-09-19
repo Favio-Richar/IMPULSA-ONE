@@ -53,6 +53,7 @@ Scripts disponibles en la raíz (delegan en Turborepo salvo los de Docker):
 | `pnpm lint` | Lint en todo el monorepo. |
 | `pnpm typecheck` | Chequeo de tipos en todo el monorepo. |
 | `pnpm test` | Pruebas en todo el monorepo (Vitest; hoy `--passWithNoTests`, se llenan desde Fase 1). |
+| `pnpm openapi:generate` | Regenera `docs/api/openapi.json` desde la API real (necesita Postgres + Redis). |
 | `pnpm docker:up` | Levanta Postgres + Redis (`docker compose up -d`). |
 | `pnpm docker:down` | Detiene y elimina los contenedores. |
 | `pnpm docker:logs` | Sigue los logs de los contenedores. |
@@ -526,6 +527,50 @@ y el constructor den la misma respuesta.
 Aislamiento: solo son visibles el catálogo global y los temas de la propia organización. El tema de
 otra organización devuelve 404 —no 403— por id cruzado, y no se puede aplicar a un sitio propio;
 cubierto tanto en `themes.e2e.test.ts` como en la suite transversal de F1.9.
+
+## Contrato de la API — OpenAPI
+
+`docs/api/openapi.json` describe la API completa: 34 rutas, 48 operaciones, todas con resumen,
+etiqueta, cuerpo, respuestas y errores. Se genera desde la aplicación real, nunca a mano — un
+documento mantenido a mano describe la API que alguien recuerda, no la que está desplegada.
+
+```bash
+pnpm openapi:generate    # necesita Postgres y Redis arriba (docker compose up -d)
+```
+
+**El documento no puede mentir sobre la validación, porque no la copia.** `@nestjs/swagger` deduce
+la forma de un cuerpo por reflexión sobre clases de class-validator, y este proyecto valida con Zod
+(ST §4.3): no hay clase que inspeccionar. La salida fácil sería describir cada cuerpo a mano en el
+decorador, y ahí es donde la documentación empieza a envejecer sin que nada falle. En vez de eso,
+`apps/api/src/openapi/zod-openapi.ts` convierte a JSON Schema **el mismo esquema Zod que usa
+`ZodValidationPipe`**: el decorador recibe ese objeto, no una copia. Los cuerpos se describen con
+`io: "input"` (lo que el cliente envía, antes de `.trim()` y los valores por defecto) y las
+respuestas con `io: "output"` (lo ya transformado).
+
+**Y no puede envejecer, porque hay una prueba que lo impide.** `apps/api/src/openapi/openapi.test.ts`
+regenera el documento y lo compara con el archivo versionado: si alguien cambia la API y no lo
+regenera, falla CI con el comando exacto a correr. Eso es lo que convierte "actualiza OpenAPI si
+modificas la API" (`CLAUDE.md`, Definición de Terminado) en un criterio verificado y no en una
+intención — sin esa prueba nadie lo comprueba, que es exactamente cómo el repositorio llegó hasta
+F2.5 sin documento. La misma prueba exige que ninguna operación quede sin resumen ni etiqueta, y
+que toda operación fuera de la lista explícita de públicas declare la cookie de sesión.
+
+Los **contratos de respuesta** viven en `packages/contracts` y se comparten con los frontends. Solo
+describen respuestas: los cuerpos de petición ya tienen su fuente de verdad en los esquemas que los
+validan, y duplicarlos sería crear una segunda versión capaz de mentir. Que digan la verdad tampoco
+se supone: las pruebas e2e parsean respuestas reales contra ellos, así que un cambio de forma en un
+servicio rompe el contrato antes de llegar a un cliente. En `/auth` se comprueba además el conjunto
+exacto de claves — que no aparezcan hash, secreto 2FA ni token es tan parte del contrato como lo
+que sí aparece.
+
+El archivo se versiona a propósito: así el contrato se revisa en el diff de un PR, se puede generar
+un cliente sin levantar la API, y la prueba de sincronización tiene contra qué comparar.
+
+**Documentación navegable en `/docs`**, montada solo si `NODE_ENV !== "production"`: publicarla es
+regalar el mapa completo de la superficie de ataque. La CSP global es `default-src 'none'`, que
+bloquea los propios assets de swagger-ui; se aplica una CSP más laxa **solo** sobre `/docs`, montada
+después del helmet global para que la sobrescriba ahí y en ningún otro lado. Relajar la CSP global
+para que se vea una pantalla de desarrollo sería pagar en toda la API por comodidad.
 
 ## CI
 

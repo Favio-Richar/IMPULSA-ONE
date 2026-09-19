@@ -18,6 +18,11 @@
     },
     "test": {
       "dependsOn": ["^build"]
+    },
+    "openapi:generate": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "outputs": []
     }
   }
 }

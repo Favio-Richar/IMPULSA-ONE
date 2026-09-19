@@ -1,5 +1,12 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import {
+  currentUserResponse,
+  loginResponse as loginContract,
+  registerResponse,
+  sessionResponse,
+  twoFactorSetupResponse,
+} from "@impulza/contracts";
 import type { PrismaClient } from "@impulza/database";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
 import cookieParser from "cookie-parser";
@@ -82,11 +89,13 @@ describe("Auth (e2e)", () => {
 
   async function registerAndVerify(password = "password1234"): Promise<{ email: string }> {
     const email = uniqueEmail();
-    await request(app.getHttpServer())
+    const registered = await request(app.getHttpServer())
       .post("/api/v1/auth/register")
       .set(CSRF_HEADERS)
       .send({ email, password })
       .expect(201);
+
+    registerResponse.parse(registered.body);
 
     const token = emailAdapter.lastToken();
     await request(app.getHttpServer())
@@ -109,6 +118,10 @@ describe("Auth (e2e)", () => {
       .expect(201);
 
     const me = await agent.get("/api/v1/auth/me").expect(200);
+    currentUserResponse.parse(me.body);
+    // El contrato dice que acá no hay hash, secreto 2FA ni token. Eso solo es cierto si se
+    // comprueba: `parse` valida lo que está, esta línea valida lo que NO está.
+    expect(Object.keys(me.body).sort()).toEqual(["email", "emailVerifiedAt", "id"]);
     expect(me.body.email).toBe(email);
     expect(me.body.emailVerifiedAt).not.toBeNull();
 
@@ -124,6 +137,9 @@ describe("Auth (e2e)", () => {
       .send({ email, password: "password1234" })
       .expect(201);
 
+    loginContract.parse(loginResponse.body);
+    expect(Object.keys(loginResponse.body)).toEqual(["user"]);
+    expect(Object.keys(loginResponse.body.user).sort()).toEqual(["email", "id"]);
     expect(loginResponse.body.user.email).toBe(email);
     expect(loginResponse.headers["set-cookie"]?.[0]).toMatch(/impulza_session=.*HttpOnly/);
   });
@@ -200,6 +216,9 @@ describe("Auth (e2e)", () => {
       .expect(201);
 
     const sessionsResponse = await agent.get("/api/v1/auth/sessions").expect(200);
+    for (const session of sessionsResponse.body) {
+      sessionResponse.parse(session);
+    }
     expect(sessionsResponse.body).toHaveLength(1);
     expect(sessionsResponse.body[0].current).toBe(true);
     const sessionId: string = sessionsResponse.body[0].id;
@@ -314,6 +333,7 @@ describe("Auth (e2e)", () => {
       .expect(201);
 
     const setupResponse = await agent.post("/api/v1/auth/2fa/setup").set(CSRF_HEADERS).expect(201);
+    twoFactorSetupResponse.parse(setupResponse.body);
     expect(setupResponse.body.secret).toBeTruthy();
     expect(setupResponse.body.otpauthUrl).toContain("otpauth://totp/");
 

@@ -10,6 +10,8 @@ import { AllExceptionsFilter } from "./common/all-exceptions.filter.js";
 import { requestContextMiddleware } from "./common/request-context.middleware.js";
 import { env } from "./env.js";
 import { NestJsonLogger } from "./observability/nest-logger.js";
+import { DOCS_PATH, setupSwaggerUi } from "./openapi/document.js";
+import { applyApiPrefix } from "./openapi/openapi-file.js";
 
 async function bootstrap(): Promise<void> {
   // Antes que cualquier otra cosa: si algo revienta durante el bootstrap mismo, ya queremos
@@ -21,9 +23,8 @@ async function bootstrap(): Promise<void> {
     service: "impulza-api",
   });
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    logger: new NestJsonLogger(),
-  });
+  const logger = new NestJsonLogger();
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger });
 
   // Primer middleware de la cadena: todo lo que ocurra después (guards, controllers, errores)
   // debe poder correlacionarse con este request_id/trace_id (F1.10).
@@ -53,11 +54,21 @@ async function bootstrap(): Promise<void> {
 
   app.use(cookieParser());
 
-  // Contrato de API oficial: REST versionada /api/v1 (ver 02_STACK §4.3). /health queda fuera
-  // del prefijo a propósito — es un endpoint de infraestructura, no de negocio (F1.10).
-  app.setGlobalPrefix("api/v1", { exclude: ["health"] });
+  // Contrato de API oficial: REST versionada /api/v1 (ver 02_STACK §4.3). El prefijo se aplica
+  // desde un único lugar compartido con el generador de OpenAPI: si se escribiera dos veces, un
+  // día dejarían de coincidir y el contrato apuntaría a rutas que no existen.
+  applyApiPrefix(app);
+
+  // Después del helmet global a propósito: la documentación necesita su propia CSP y solo puede
+  // sobrescribir la global si se monta después. Devuelve false en producción.
+  const docsMounted = setupSwaggerUi(app, env.NODE_ENV);
 
   await app.listen(env.PORT);
+
+  if (docsMounted) {
+    // Por el logger JSON, no por console: es un evento del arranque como cualquier otro (F1.10).
+    logger.log(`Documentación de la API en http://localhost:${env.PORT}/${DOCS_PATH}`, "Bootstrap");
+  }
 }
 
 void bootstrap();

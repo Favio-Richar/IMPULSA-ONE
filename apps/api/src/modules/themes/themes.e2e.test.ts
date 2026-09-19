@@ -1,5 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { siteThemeResponse, themeResponse } from "@impulza/contracts";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
 import type { PrismaClient } from "@impulza/database";
 import { DEFAULT_THEME_CODE, THEME_CATALOG } from "@impulza/validation";
@@ -151,6 +152,11 @@ describe("Themes (e2e) — F2.5", () => {
       const { agent, themesPath } = await createOrgWithOwner();
 
       const response = await agent.get(themesPath).expect(200);
+      // El contrato publicado en OpenAPI se ejecuta contra la respuesta real: un contrato que
+      // nadie corre es documentación, no contrato.
+      for (const theme of response.body) {
+        themeResponse.parse(theme);
+      }
       const catalog = response.body.filter((t: { source: string }) => t.source === "catalog");
 
       expect(catalog.length).toBe(THEME_CATALOG.length);
@@ -204,6 +210,7 @@ describe("Themes (e2e) — F2.5", () => {
         .send({ name: "Marca propia", tokens: VALID_TOKENS })
         .expect(201);
 
+      themeResponse.parse(created.body);
       expect(created.body).toMatchObject({ name: "Marca propia", source: "organization", editable: true });
       expect(created.body.tokens.palette.primary).toBe("#1d4ed8");
     });
@@ -321,6 +328,7 @@ describe("Themes (e2e) — F2.5", () => {
 
       const theme = await agent.get(`${sitePath}/theme`).expect(200);
 
+      siteThemeResponse.parse(theme.body);
       expect(theme.body.code).toBe(DEFAULT_THEME_CODE);
       expect(theme.body.isDefault).toBe(true);
     });

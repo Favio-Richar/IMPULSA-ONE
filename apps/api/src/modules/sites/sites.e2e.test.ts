@@ -1,5 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { siteResponse } from "@impulza/contracts";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
 import type { PrismaClient } from "@impulza/database";
 import cookieParser from "cookie-parser";
@@ -127,9 +128,15 @@ describe("Sites (e2e) — F2.2", () => {
         .send({ name: "Mi sitio", slug })
         .expect(201);
 
+      // El contrato publicado en OpenAPI se ejecuta contra la respuesta real: un contrato que
+      // nadie corre es documentación, no contrato.
+      siteResponse.parse(created.body);
       expect(created.body).toMatchObject({ name: "Mi sitio", slug, status: "DRAFT", organizationId });
 
       const list = await agent.get(`/api/v1/organizations/${organizationId}/sites`).expect(200);
+      for (const site of list.body) {
+        siteResponse.parse(site);
+      }
       expect(list.body.map((s: { id: string }) => s.id)).toContain(created.body.id);
     });
 

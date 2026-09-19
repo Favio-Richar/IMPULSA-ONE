@@ -1,5 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { healthResponse } from "@impulza/contracts";
 import cookieParser from "cookie-parser";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -25,6 +26,10 @@ describe("Health (e2e)", () => {
 
   it("responde 200 con status ok y ambas dependencias arriba, sin exponer el prefijo /api/v1", async () => {
     const response = await request(app.getHttpServer()).get("/health").expect(200);
+
+    // El contrato publicado en OpenAPI se ejecuta contra la respuesta real: un contrato que
+    // nadie corre es documentación, no contrato.
+    healthResponse.parse(response.body);
 
     expect(response.body.status).toBe("ok");
     expect(response.body.service).toBe("impulza-api");

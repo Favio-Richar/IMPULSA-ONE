@@ -13,6 +13,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "openapi:generate": "turbo run openapi:generate",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "docker:up": "docker compose up -d",

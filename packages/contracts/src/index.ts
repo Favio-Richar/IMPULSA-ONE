@@ -1,3 +1,15 @@
-// DTOs y contratos de la API (/api/v1) compartidos entre backend y frontends.
-// Placeholder de la fundación del monorepo (F0.2) — ver docs/BACKLOG_FASE_0_1.md.
-export {};
+// Contratos de respuesta de la API (`/api/v1`), compartidos entre el backend y los frontends.
+//
+// Solo describen **respuestas**. Los cuerpos de petición ya tienen su fuente de verdad en los
+// esquemas Zod que los validan (`apps/api/**/dto` y `@impulza/validation`), y el documento OpenAPI
+// los deriva de ahí: duplicarlos acá sería crear una segunda versión que puede mentir.
+//
+// Que estos esquemas describan la realidad no se supone — se prueba: las pruebas e2e de `apps/api`
+// parsean respuestas reales contra ellos, así que un cambio de forma en un servicio rompe el
+// contrato antes de llegar a un cliente.
+export * from "./primitives.js";
+export * from "./auth.js";
+export * from "./health.js";
+export * from "./organizations.js";
+export * from "./sites.js";
+export * from "./themes.js";

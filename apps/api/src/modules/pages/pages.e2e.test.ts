@@ -1,5 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { pageResponse } from "@impulza/contracts";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
 import type { PrismaClient } from "@impulza/database";
 import cookieParser from "cookie-parser";
@@ -117,6 +118,11 @@ describe("Pages (e2e) — F2.3", () => {
 
       const pages = await agent.get(basePath).expect(200);
 
+      // El contrato publicado en OpenAPI se ejecuta contra la respuesta real: un contrato que
+      // nadie corre es documentación, no contrato.
+      for (const page of pages.body) {
+        pageResponse.parse(page);
+      }
       expect(pages.body).toHaveLength(1);
       expect(pages.body[0]).toMatchObject({ slug: "inicio", isHome: true, position: 0, status: "DRAFT" });
     });

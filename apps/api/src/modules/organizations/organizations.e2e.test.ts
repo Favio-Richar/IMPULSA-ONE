@@ -1,5 +1,6 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { invitationResponse, memberResponse, organizationResponse } from "@impulza/contracts";
 import type { PrismaClient } from "@impulza/database";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
 import cookieParser from "cookie-parser";
@@ -106,6 +107,9 @@ describe("Organizations (e2e)", () => {
       .set(CSRF_HEADERS)
       .send({ name: "Test Org", slug })
       .expect(201);
+    // El contrato publicado en OpenAPI se ejecuta contra la respuesta real: un contrato que nadie
+    // corre es documentación, no contrato.
+    organizationResponse.parse(response.body);
     return { id: response.body.id, slug };
   }
 
@@ -114,6 +118,9 @@ describe("Organizations (e2e)", () => {
     const org = await createOrg(agent);
 
     const members = await agent.get(`/api/v1/organizations/${org.id}/members`).expect(200);
+    for (const member of members.body) {
+      memberResponse.parse(member);
+    }
     expect(members.body).toHaveLength(1);
     expect(members.body[0]).toMatchObject({ role: "OWNER", status: "ACTIVE" });
 
@@ -138,6 +145,7 @@ describe("Organizations (e2e)", () => {
       .set(CSRF_HEADERS)
       .send({ email: invitee.email, role: "EDITOR" })
       .expect(201);
+    invitationResponse.parse(inviteResponse.body);
     const membershipId: string = inviteResponse.body.membershipId;
 
     // Invitado, todavía no acepta: sin acceso.

@@ -3,17 +3,16 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 2 — Sitio público y constructor, historia F2.6 (borrador, publicación e
-historial) terminada. Siguiente: F2.7 (render público, `apps/web`).** Fase 0 y Fase 1 cerradas
-(F0.1–F0.5, F1.1–F1.10). Ver `docs/BACKLOG_FASE_2.md` para el backlog de la fase activa,
-`docs/BACKLOG_FASE_0_1.md` para las anteriores y `CLAUDE.md` para las reglas de trabajo del
-repositorio.
+**Estado actual: Fase 2 — Sitio público y constructor, historia F2.7 (render público, `apps/web`)
+terminada. Siguiente: F2.8 (SEO base).** Fase 0 y Fase 1 cerradas (F0.1–F0.5, F1.1–F1.10). Ver
+`docs/BACKLOG_FASE_2.md` para el backlog de la fase activa, `docs/BACKLOG_FASE_0_1.md` para las
+anteriores y `CLAUDE.md` para las reglas de trabajo del repositorio.
 
 | Fase | Historias | Estado |
 |---|---|---|
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
-| 2 — Sitio público y constructor | F2.1–F2.6 | En curso (F2.7–F2.10 pendientes) |
+| 2 — Sitio público y constructor | F2.1–F2.7 | En curso (F2.8–F2.10 pendientes) |
 
 ## Requisitos
 
@@ -576,6 +575,47 @@ distinto de `page.restored` que es el undelete de la papelera de F2.3 — son do
 completamente distintos y conviene no confundirlos). Cubierto en `pages.e2e.test.ts` y en la suite
 transversal de aislamiento multi-tenant (F1.9): ninguna combinación de ids permite publicar, leer
 el historial o restaurar una página de otra organización.
+
+## Render público (F2.7)
+
+**`apps/web` es el único proceso que sirve tráfico anónimo.** Resuelve `/[siteSlug]` y
+`/[siteSlug]/[pageSlug]` contra `GET /public/sites/*` (`PublicSitesController`,
+`apps/api/src/modules/public-sites/`) — la única familia de endpoints de la API sin sesión, sin
+`organizationId` en la ruta y con su propio `RateLimitGuard` (120 peticiones/minuto por IP): es la
+superficie alcanzable sin autenticarse, así que es la que primero necesita su propio límite. Un
+sitio archivado, una página en la papelera o sin publicar, o un tipo de sitio/página inexistente
+responden todos con el 404 propio de `apps/web` (`not-found.tsx`) — nunca una página en blanco ni
+un error genérico; `error.tsx` cubre además la falla del propio proceso de render.
+
+**Solo se sirve lo publicado.** `PublicSitesService` lee `PageVersion.content_snapshot` (F2.6), no
+el estado vivo de la página, y dentro de ese snapshot filtra en servidor los bloques ocultos
+(`visible: false`), los fuera de su ventana programada (`scheduledStart`/`scheduledEnd`) y los
+degradados (tipo desconocido o versión de esquema futura) — lo que llega a `apps/web` ya es
+exactamente lo que hay que pintar, en orden, sin que el renderer tenga que repetir esa lógica.
+
+**La caché se invalida solo al publicar, nunca por tiempo.** Cada página se pide con
+`cache: "force-cache"` bajo una etiqueta por sitio (`lib/api.ts`, `siteCacheTag`); al publicar o
+restaurar una versión, `RevalidateWebService` (apps/api) llama a `POST /api/revalidate` en
+`apps/web` con un secreto compartido comparado con `timingSafeEqual` (no `===`, para no filtrar por
+tiempo cuánto del secreto coincide), y ese webhook invalida la etiqueta con `revalidateTag(...,
+{ expire: 0 })`. El aviso es *best-effort*: si `apps/web` no responde, publicar igual sucede en
+`apps/api` (queda un log de error, no una petición fallida) — el próximo `revalidate` manual o
+redeploy la pone al día igual.
+
+**Bloques tipados con degradación real, no solo en teoría** (`apps/web/components/blocks/`): cada
+tipo del catálogo de F2.4 tiene su propio componente, el texto enriquecido se sanea otra vez en el
+cliente (`lib/sanitize.ts`, defensa en profundidad — ya se saneó al guardar en F2.4) y las imágenes
+pasan por `SiteImage`, que exige `alt` salvo que el bloque la marque `decorative` (WCAG 1.1.1).
+
+Cubierto por `public-sites.e2e.test.ts` (14 casos: sitio archivado, tema propio vs. catálogo,
+navegación solo con páginas `PUBLIC` publicadas, página oculta alcanzable por enlace directo, home
+por el slug fijo `inicio`, papelera, borrador no visible hasta el siguiente publish, y los tres
+casos de filtrado de bloques) y por la extensión de `multi-tenant-isolation.e2e.test.ts`.
+
+**Deuda declarada** (ver `docs/BACKLOG_FASE_2.md`): el resto de la API autenticada (sitios,
+páginas, bloques, temas, organizaciones) todavía no tiene límite de peticiones propio, solo exigir
+sesión; y el `RedisModule` no cierra su socket en `onApplicationShutdown`, así que `app.close()` no
+termina por sí solo. Ninguna de las dos bloquea F2.7: son tareas propias, ya con su alcance escrito.
 
 ## Contrato de la API — OpenAPI
 

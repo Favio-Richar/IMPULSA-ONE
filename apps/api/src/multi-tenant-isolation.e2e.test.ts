@@ -606,6 +606,83 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Render público (F2.7): solo contenido publicado, sin datos internos ni de otra organización", () => {
+    it("el sitio público de B no expone ids internos, y A no ve nada distinto sin sesión", async () => {
+      const pagesOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .expect(200);
+      const homeOfB = pagesOfB.body[0].id;
+      // Idempotente: si un test anterior ya publicó la home de B, esto no crea ruido (F2.6).
+      await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/publish`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+
+      const siteOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}`)
+        .expect(200);
+
+      // Sin ninguna cookie de sesión — el render público no pide una.
+      const publicSite = await request(httpServer)
+        .get(`/api/v1/public/sites/${siteOfB.body.slug}`)
+        .expect(200);
+
+      // El contrato público es deliberadamente mínimo: nada de id, organizationId ni themeId —
+      // un visitante anónimo no necesita ni debe recibir identificadores internos (F2.7).
+      expect(Object.keys(publicSite.body).sort()).toEqual(["name", "pages", "slug", "theme"]);
+      expect(publicSite.body).not.toHaveProperty("id");
+      expect(publicSite.body).not.toHaveProperty("organizationId");
+      expect(JSON.stringify(publicSite.body)).not.toContain(orgB.id);
+      expect(JSON.stringify(publicSite.body)).not.toContain(orgA.id);
+    });
+
+    it("una página de B que nunca se publicó no es alcanzable públicamente, ni adivinando el slug exacto", async () => {
+      const draftSlug = `borrador-${Date.now().toString(36)}`;
+      await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .set(CSRF_HEADERS)
+        .send({ slug: draftSlug })
+        .expect(201);
+
+      const siteOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}`)
+        .expect(200);
+
+      await request(httpServer)
+        .get(`/api/v1/public/sites/${siteOfB.body.slug}/pages/${draftSlug}`)
+        .expect(404);
+    });
+
+    it("un sitio archivado no es públicamente alcanzable, aunque tenga contenido publicado", async () => {
+      // Sitio propio para este caso: archivar es irreversible en el sentido de que no hay
+      // "desarchivar" todavía, y no debe afectar al resto de las pruebas de este archivo.
+      const freshSite = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Sitio efímero", slug: uniqueSlug() })
+        .expect(201);
+      const pagesOfFresh = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${freshSite.body.id}/pages`)
+        .expect(200);
+      await orgB.ownerAgent
+        .post(
+          `/api/v1/organizations/${orgB.id}/sites/${freshSite.body.id}/pages/${pagesOfFresh.body[0].id}/publish`,
+        )
+        .set(CSRF_HEADERS)
+        .expect(201);
+
+      await request(httpServer).get(`/api/v1/public/sites/${freshSite.body.slug}`).expect(200);
+
+      await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${freshSite.body.id}/archive`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+
+      await request(httpServer).get(`/api/v1/public/sites/${freshSite.body.slug}`).expect(404);
+      await request(httpServer).get(`/api/v1/public/sites/${freshSite.body.slug}/pages/inicio`).expect(404);
+    });
+  });
+
   describe("Ningún dato de una organización aparece en las respuestas de la otra", () => {
     it("GET /organizations no cruza organizaciones entre usuarios sin relación", async () => {
       const orgsOfA = await orgA.ownerAgent.get("/api/v1/organizations");

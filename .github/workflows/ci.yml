@@ -125,6 +125,15 @@ jobs:
     name: Build
     needs: install
     runs-on: ubuntu-latest
+    # `next build` evalúa el schema de entorno de cada app Next.js al prerenderizar (no negociable
+    # "validadas al iniciar", CLAUDE.md) aunque la página en sí no llame a la API en build time —
+    # sin esto el job queda roto igual que estuvo desde F1.8 (dashboard) hasta que F2.7 lo notó al
+    # agregar apps/web con la misma validación. Valores de relleno a propósito: este job solo
+    # verifica que el build compile, nunca despliega ni necesita una API real detrás.
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+      API_BASE_URL: http://localhost:4000/api/v1
+      REVALIDATE_SECRET: ci-build-placeholder-secret-not-a-real-value
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

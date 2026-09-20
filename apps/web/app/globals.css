@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/*
+ * A diferencia de `packages/ui` (design system fijo del panel interno), este archivo **no**
+ * declara una paleta de marca en `@theme`: cada sitio público trae la suya propia (F2.5), inyectada
+ * en tiempo de petición como propiedades custom `--site-*` sobre el contenedor del sitio (ver
+ * `lib/theme-css.ts` y `@impulza/validation`). Acá solo van los resets estructurales que no
+ * dependen del tenant — tipografía base, foco visible, caja — para que Impulza One (esta misma app
+ * también sirve `/`, su propio sitio comercial) y cualquier sitio de un usuario compartan la misma
+ * higiene básica sin compartir color.
+ */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Foco visible siempre — nunca se quita, solo se restylea (WCAG 2.4.11/2.4.13). */
+  :focus-visible {
+    outline: 2px solid var(--site-color-primary, #4338ca);
+    outline-offset: 2px;
+  }
+}
+
+/*
+ * Estilos del HTML ya saneado de un bloque de texto enriquecido (`RichText`, F2.7). A mano y no
+ * `@tailwindcss/typography`: la lista de etiquetas permitidas es deliberadamente corta (F2.4,
+ * `RICH_TEXT_ALLOWED_TAGS`), así que el plugin completo sería tamaño de CSS para etiquetas que
+ * nunca van a aparecer.
+ */
+.prose-content :where(p, ul, ol, blockquote) {
+  margin-block: 0.75em;
+}
+.prose-content :where(h2, h3, h4) {
+  margin-block: 1em 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.prose-content h2 {
+  font-size: 1.375em;
+}
+.prose-content h3 {
+  font-size: 1.175em;
+}
+.prose-content h4 {
+  font-size: 1.05em;
+}
+.prose-content :where(ul, ol) {
+  padding-inline-start: 1.5em;
+}
+.prose-content ul {
+  list-style: disc;
+}
+.prose-content ol {
+  list-style: decimal;
+}
+.prose-content blockquote {
+  border-inline-start: 3px solid var(--site-color-border, #e2e8f0);
+  padding-inline-start: 1em;
+  color: var(--site-color-muted-foreground, #475569);
+}
+.prose-content code {
+  background: var(--site-color-surface, #f8fafc);
+  border-radius: 0.25em;
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+}
+.prose-content a {
+  color: var(--site-color-primary, #4338ca);
+  text-underline-offset: 2px;
+}
+.prose-content :first-child {
+  margin-block-start: 0;
+}
+.prose-content :last-child {
+  margin-block-end: 0;
+}

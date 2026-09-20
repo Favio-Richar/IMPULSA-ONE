@@ -36,7 +36,7 @@ export type BlockType = (typeof BLOCK_TYPES)[number];
 
 const alignmentSchema = z.enum(["left", "center", "right"]).default("left");
 
-const profileSchema = z.object({
+export const profileSchema = z.object({
   name: plainTextSchema(120),
   headline: plainTextSchema(160).optional(),
   bio: richTextSchema.optional(),
@@ -44,7 +44,7 @@ const profileSchema = z.object({
   verified: z.boolean().default(false),
 });
 
-const heroSchema = z.object({
+export const heroSchema = z.object({
   title: plainTextSchema(160),
   subtitle: plainTextSchema(300).optional(),
   background: imageSchema.optional(),
@@ -52,12 +52,12 @@ const heroSchema = z.object({
   cta: z.object({ label: plainTextSchema(60), url: safeUrlSchema }).optional(),
 });
 
-const textSchema = z.object({
+export const textSchema = z.object({
   html: richTextSchema,
   alignment: alignmentSchema,
 });
 
-const linkSchema = z.object({
+export const linkSchema = z.object({
   label: plainTextSchema(80),
   url: safeUrlSchema,
   description: plainTextSchema(160).optional(),
@@ -65,7 +65,7 @@ const linkSchema = z.object({
   icon: socialNetworkSchema.optional(),
 });
 
-const socialSchema = z.object({
+export const socialSchema = z.object({
   links: z
     .array(z.object({ network: socialNetworkSchema, url: safeUrlSchema }))
     .min(1)
@@ -73,31 +73,31 @@ const socialSchema = z.object({
   style: z.enum(["icons", "buttons"]).default("icons"),
 });
 
-const imageBlockSchema = z.object({
+export const imageBlockSchema = z.object({
   image: imageSchema,
   caption: plainTextSchema(300).optional(),
   link: safeUrlSchema.optional(),
 });
 
-const gallerySchema = z.object({
+export const gallerySchema = z.object({
   images: z.array(imageSchema).min(1).max(24),
   layout: z.enum(["grid", "carousel"]).default("grid"),
 });
 
-const videoSchema = z.object({
+export const videoSchema = z.object({
   // Se guarda proveedor + id, nunca una URL de iframe libre (ver primitives.ts).
   video: videoEmbedSchema,
   title: plainTextSchema(160).optional(),
 });
 
-const whatsappSchema = z.object({
+export const whatsappSchema = z.object({
   phone: phoneSchema,
   label: plainTextSchema(60).default("Escríbenos por WhatsApp"),
   // Mensaje que se precarga en el chat. Texto plano: viaja en la URL, no se renderiza como HTML.
   prefilledMessage: z.string().trim().max(500).optional(),
 });
 
-const contactActionsSchema = z
+export const contactActionsSchema = z
   .object({
     email: emailSchema.optional(),
     phone: phoneSchema.optional(),
@@ -108,7 +108,7 @@ const contactActionsSchema = z
     message: "Indica al menos un correo o un teléfono.",
   });
 
-const contactFormSchema = z.object({
+export const contactFormSchema = z.object({
   title: plainTextSchema(160).optional(),
   // El formulario real (campos, envíos, anti-spam) es de Fase 3; el bloque solo declara que hay
   // uno y su copy. No se inventa el modelo de datos de formularios antes de tiempo.
@@ -121,7 +121,7 @@ const contactFormSchema = z.object({
   successMessage: plainTextSchema(300).default("¡Gracias! Te responderemos pronto."),
 });
 
-const serviceSchema = z.object({
+export const serviceSchema = z.object({
   name: plainTextSchema(120),
   description: richTextSchema.optional(),
   image: imageSchema.optional(),
@@ -131,12 +131,12 @@ const serviceSchema = z.object({
   cta: z.object({ label: plainTextSchema(60), url: safeUrlSchema }).optional(),
 });
 
-const dividerSchema = z.object({
+export const dividerSchema = z.object({
   style: z.enum(["line", "space"]).default("line"),
   size: z.enum(["sm", "md", "lg"]).default("md"),
 });
 
-const faqSchema = z.object({
+export const faqSchema = z.object({
   title: plainTextSchema(160).optional(),
   items: z
     .array(z.object({ question: plainTextSchema(300), answer: richTextSchema }))
@@ -144,7 +144,7 @@ const faqSchema = z.object({
     .max(30),
 });
 
-const testimonialsSchema = z.object({
+export const testimonialsSchema = z.object({
   title: plainTextSchema(160).optional(),
   items: z
     .array(
@@ -218,3 +218,22 @@ export function getBlockDefinition(type: string): BlockDefinition | null {
 
 /** Esquema del `type` para los DTO de la API: rechaza cualquier tipo fuera del catálogo. */
 export const blockTypeSchema = z.enum(BLOCK_TYPES);
+
+// Tipos inferidos por tipo de bloque — para que un renderer (apps/web, F2.7) o un editor de
+// propiedades (constructor, F2.9) reciban la forma exacta de `config` en vez de `unknown`, sin
+// mantener una segunda definición a mano que pueda desalinearse del esquema real.
+export type ProfileBlockConfig = z.infer<typeof profileSchema>;
+export type HeroBlockConfig = z.infer<typeof heroSchema>;
+export type TextBlockConfig = z.infer<typeof textSchema>;
+export type LinkBlockConfig = z.infer<typeof linkSchema>;
+export type SocialBlockConfig = z.infer<typeof socialSchema>;
+export type ImageBlockConfig = z.infer<typeof imageBlockSchema>;
+export type GalleryBlockConfig = z.infer<typeof gallerySchema>;
+export type VideoBlockConfig = z.infer<typeof videoSchema>;
+export type WhatsappBlockConfig = z.infer<typeof whatsappSchema>;
+export type ContactActionsBlockConfig = z.infer<typeof contactActionsSchema>;
+export type ContactFormBlockConfig = z.infer<typeof contactFormSchema>;
+export type ServiceBlockConfig = z.infer<typeof serviceSchema>;
+export type DividerBlockConfig = z.infer<typeof dividerSchema>;
+export type FaqBlockConfig = z.infer<typeof faqSchema>;
+export type TestimonialsBlockConfig = z.infer<typeof testimonialsSchema>;

@@ -7,6 +7,7 @@ import { AuthModule } from "./modules/auth/auth.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { OrganizationsModule } from "./modules/organizations/organizations.module.js";
 import { PagesModule } from "./modules/pages/pages.module.js";
+import { PublicSitesModule } from "./modules/public-sites/public-sites.module.js";
 import { SitesModule } from "./modules/sites/sites.module.js";
 import { ThemesModule } from "./modules/themes/themes.module.js";
 import { RedisModule } from "./redis/redis.module.js";
@@ -24,6 +25,7 @@ import { RedisModule } from "./redis/redis.module.js";
     SitesModule,
     PagesModule,
     BlocksModule,
+    PublicSitesModule,
     HealthModule,
   ],
   controllers: [AppController],

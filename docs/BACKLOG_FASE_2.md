@@ -34,7 +34,7 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F2.4 — Bloques tipados | Terminada |
 | F2.5 — Temas y apariencia | Terminada |
 | F2.6 — Borrador, publicación e historial | Terminada |
-| F2.7 — Render público (`apps/web`) | Pendiente (siguiente) |
+| F2.7 — Render público (`apps/web`) | Terminada |
 | F2.8 — SEO base | Pendiente |
 | F2.9 — Constructor visual (`apps/dashboard`) | Pendiente |
 | F2.10 — Aislamiento multi-tenant de Fase 2 | Pendiente (se re-verifica al cerrar la fase) |
@@ -47,13 +47,15 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 > `README.md` §"Contrato de la API — OpenAPI". **A partir de acá, una historia que toque la API y no
 > regenere el documento no pasa CI.**
 >
-> **Deuda declarada nueva — rate limiting parcial**: `CLAUDE.md` exige "rate limiting por
-> IP/usuario/organización" como no negociable, pero `RateLimitGuard` hoy solo está montado en los
-> cinco endpoints públicos de `/auth`. Todo el resto de la API —incluidos los endpoints de escritura
-> de sitios, páginas y bloques— no tiene límite de peticiones. Se detectó al anotar OpenAPI (el
-> decorador de errores compartido documentaba un 429 que ningún guard podía devolver). No es parte
-> de F2.6; necesita su propia tarea, con la decisión de si el límite es por IP, por usuario o por
-> organización en cada familia de endpoints.
+> **Deuda declarada — rate limiting parcial (acotada en F2.7)**: `CLAUDE.md` exige "rate limiting
+> por IP/usuario/organización" como no negociable. `RateLimitGuard` está montado en los cinco
+> endpoints públicos de `/auth` y, desde F2.7, en los dos endpoints del render público
+> (`GET /public/sites/*`, 120 peticiones/minuto por IP) — la superficie más expuesta, alcanzable
+> sin sesión. Todo el resto de la API autenticada —sitios, páginas, bloques, temas, organizaciones—
+> sigue sin límite de peticiones propio (solo lo protege exigir sesión). Se detectó al anotar
+> OpenAPI (F2.6: el decorador de errores compartido documentaba un 429 que ningún guard podía
+> devolver). Necesita su propia tarea, con la decisión de si el límite es por IP, por usuario o por
+> organización en cada familia de endpoints autenticados.
 >
 > **Deuda declarada nueva — apagado de `RedisModule`**: el cliente de ioredis se provee con una
 > factoría suelta, sin gancho de apagado, así que su socket mantiene vivo el bucle de eventos:

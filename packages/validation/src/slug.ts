@@ -95,3 +95,14 @@ export const publicSlugSchema = slugSchema.refine((slug) => !isReservedSlug(slug
 // los nombres más probables. Lo único que compite ahí es otra página del mismo sitio, y eso lo
 // resuelve el índice único parcial por (site_id, slug) (F2.3).
 export const pageSlugSchema = slugSchema;
+
+/**
+ * Slug de la página de inicio de todo sitio. No aparece en la URL pública (la home se sirve en la
+ * raíz del sitio, F2.7); existe para que la home ocupe el mismo espacio de nombres que el resto y
+ * nadie pueda crear otra página que colisione con ella. Es fijo: no se puede renombrar ni borrar.
+ *
+ * Isomorfo a propósito: `apps/api` la usa para crear la home de todo sitio nuevo (F2.2) y
+ * `apps/web` la misma constante para saber qué página pedirle al endpoint público cuando resuelve
+ * la raíz de un sitio (F2.7) — un solo lugar, no dos copias del mismo string que puedan divergir.
+ */
+export const HOME_PAGE_SLUG = "inicio";

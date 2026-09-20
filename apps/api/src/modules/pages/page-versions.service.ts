@@ -3,6 +3,7 @@ import { PageStatus, Prisma, type PrismaClient } from "@impulza/database";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
+import { RevalidateWebService } from "../public-sites/revalidate-web.service.js";
 import { pageContentSnapshotSchema, snapshotsEqual, type PageContentSnapshot } from "./page-content-snapshot.js";
 
 /** Resumen de una versión para el historial navegable — sin el snapshot completo (F2.6). */
@@ -27,6 +28,7 @@ export class PageVersionsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
+    private readonly revalidateWebService: RevalidateWebService,
   ) {}
 
   /**
@@ -205,6 +207,9 @@ export class PageVersionsService {
         targetId: pageId,
         metadata: { siteId, versionNumber: version.versionNumber },
       });
+      // Solo si de verdad hay algo nuevo que mostrar: si el contenido no cambió, la caché pública
+      // ya está sirviendo exactamente esto y no hay nada que invalidar (F2.7).
+      await this.revalidateWebService.revalidateSite(siteId);
     }
 
     return this.getVersion(organizationId, siteId, pageId, versionId);
@@ -314,6 +319,9 @@ export class PageVersionsService {
       targetId: pageId,
       metadata: { siteId, restoredFromVersion: target.versionNumber, newVersion: newVersion.versionNumber },
     });
+    // Restaurar siempre reemplaza el contenido vivo, así que siempre hay algo nuevo que mostrar
+    // (F2.7) — a diferencia de publicar, acá no hay caso idempotente que saltarse.
+    await this.revalidateWebService.revalidateSite(siteId);
 
     return this.getVersion(organizationId, siteId, pageId, newVersionId);
   }

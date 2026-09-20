@@ -60,6 +60,10 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     .addTag("pages", "Páginas de un sitio: orden, visibilidad y papelera.")
     .addTag("blocks", "Bloques tipados de una página.")
     .addTag("themes", "Catálogo de temas y temas propios de la organización.")
+    .addTag(
+      "public-sites",
+      "Render público (F2.7): sitios y páginas publicadas, por slug. Sin autenticación.",
+    )
     .addTag("health", "Estado de la API y sus dependencias. Sin autenticación.")
     .addTag("meta", "Raíz de la API. Sanity check, no monitoreo.")
     .build();

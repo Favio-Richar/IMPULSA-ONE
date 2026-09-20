@@ -1,9 +1,9 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { type PrismaClient, type Site, SiteStatus } from "@impulza/database";
+import { HOME_PAGE_SLUG } from "@impulza/validation";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
-import { HOME_PAGE_SLUG } from "../pages/home-page.js";
 import { ThemesService, type ThemeView } from "../themes/themes.service.js";
 
 @Injectable()

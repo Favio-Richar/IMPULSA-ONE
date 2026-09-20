@@ -6,9 +6,46 @@ export {
   isBlockType,
   type BlockDefinition,
   type BlockType,
+  // Esquema y tipo por bloque — el render público (F2.7) y, más adelante, el constructor (F2.9)
+  // necesitan la forma exacta de cada `config`, no `unknown`.
+  profileSchema,
+  heroSchema,
+  textSchema,
+  linkSchema,
+  socialSchema,
+  imageBlockSchema,
+  gallerySchema,
+  videoSchema,
+  whatsappSchema,
+  contactActionsSchema,
+  contactFormSchema,
+  serviceSchema,
+  dividerSchema,
+  faqSchema,
+  testimonialsSchema,
+  type ProfileBlockConfig,
+  type HeroBlockConfig,
+  type TextBlockConfig,
+  type LinkBlockConfig,
+  type SocialBlockConfig,
+  type ImageBlockConfig,
+  type GalleryBlockConfig,
+  type VideoBlockConfig,
+  type WhatsappBlockConfig,
+  type ContactActionsBlockConfig,
+  type ContactFormBlockConfig,
+  type ServiceBlockConfig,
+  type DividerBlockConfig,
+  type FaqBlockConfig,
+  type TestimonialsBlockConfig,
 } from "./catalog.js";
 export { parseStoredBlock, type StoredBlockResult } from "./stored-block.js";
 export { collectRichTextPaths } from "./rich-text-paths.js";
+export {
+  RICH_TEXT_ALLOWED_TAGS,
+  RICH_TEXT_LINK_ATTRIBUTES,
+  RICH_TEXT_ALLOWED_SCHEMES,
+} from "./rich-text-policy.js";
 export {
   SOCIAL_NETWORKS,
   VIDEO_PROVIDERS,

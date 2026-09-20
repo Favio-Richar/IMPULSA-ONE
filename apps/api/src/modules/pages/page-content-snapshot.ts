@@ -1,10 +1,12 @@
 import { z } from "zod";
 
 // Forma interna del "content_snapshot" que guarda cada `PageVersion` (F2.6). No es un contrato de
-// `@impulza/contracts`: el cliente nunca construye ni envía un snapshot, solo edita páginas y
-// bloques por los endpoints normales — esto es exclusivamente el formato de almacenamiento que el
-// servidor arma al publicar y vuelve a leer al restaurar. Vive acá y no en `@impulza/validation`
-// porque nada fuera de este módulo lo necesita.
+// `@impulza/contracts`: ningún cliente (dashboard, apps/web) construye ni envía un snapshot, solo
+// edita páginas y bloques por los endpoints normales, o lee el contenido ya resuelto del render
+// público (F2.7) — esto es exclusivamente el formato de almacenamiento que el servidor arma al
+// publicar y vuelve a leer al restaurar o al resolver una página pública. Vive acá y no en
+// `@impulza/validation` porque solo lo usan otros módulos de este mismo backend (`pages`,
+// `public-sites`), nunca un cliente fuera de `apps/api`.
 //
 // Captura todo lo que hace falta para reconstruir la página sin depender del estado actual de sus
 // bloques (ERD §3, comentario de `PageVersion.content_snapshot`): los campos propios de la página

@@ -4917,6 +4917,193 @@
         ]
       }
     },
+    "/api/v1/public/sites/{siteSlug}": {
+      "get": {
+        "description": "Identidad del sitio, su tema efectivo y la lista de páginas para el menú (solo las `PUBLIC` y publicadas). Es lo que resuelve la raíz de un sitio en `apps/web`.",
+        "operationId": "PublicSitesController_getSite",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El sitio, listo para renderizar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "theme": {
+                      "type": "object",
+                      "properties": {
+                        "tokens": {}
+                      },
+                      "required": [
+                        "tokens"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "isHome": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "slug",
+                          "isHome"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "slug",
+                    "theme",
+                    "pages"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sitio no encontrado: no existe, o está archivado. Un sitio en borrador sin ninguna página publicada tampoco tiene nada que mostrar, pero eso lo decide cada página, no este endpoint."
+          },
+          "429": {
+            "description": "Límite de peticiones superado (120 por minuto y IP)."
+          }
+        },
+        "summary": "Sitio público por slug",
+        "tags": [
+          "public-sites"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/pages/{pageSlug}": {
+      "get": {
+        "description": "El slug de la home es `inicio` (constante compartida, `@impulza/validation`); no tiene ruta propia porque es una página real como cualquier otra, solo que `apps/web` la sirve en la raíz del sitio. Los bloques ya vienen filtrados: sin los ocultos, sin los fuera de su ventana programada y sin los degradados — lo que se devuelve es exactamente lo que hay que pintar, en orden.",
+        "operationId": "PublicSitesController_getPage",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La página, con sus bloques listos para renderizar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "isHome": {
+                      "type": "boolean"
+                    },
+                    "seoMeta": {
+                      "nullable": true
+                    },
+                    "blocks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string"
+                          },
+                          "config": {}
+                        },
+                        "required": [
+                          "type",
+                          "config"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "isHome",
+                    "seoMeta",
+                    "blocks"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Página no encontrada: no existe, está en la papelera, o nunca se publicó — un borrador nunca es alcanzable acá, ni adivinando el slug exacto."
+          },
+          "429": {
+            "description": "Límite de peticiones superado (120 por minuto y IP)."
+          }
+        },
+        "summary": "Página publicada de un sitio, por slug",
+        "tags": [
+          "public-sites"
+        ]
+      }
+    },
     "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks": {
       "get": {
         "description": "En orden de `position`, con la configuración de su versión vigente. Un bloque que no se puede renderizar viene con `degraded` en vez de romper la respuesta: el render lo omite y el constructor puede avisar. Solo pide membresía activa.",
@@ -6012,6 +6199,10 @@
     {
       "name": "themes",
       "description": "Catálogo de temas y temas propios de la organización."
+    },
+    {
+      "name": "public-sites",
+      "description": "Render público (F2.7): sitios y páginas publicadas, por slug. Sin autenticación."
     },
     {
       "name": "health",

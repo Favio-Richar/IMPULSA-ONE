@@ -11,5 +11,6 @@ export * from "./primitives.js";
 export * from "./auth.js";
 export * from "./health.js";
 export * from "./organizations.js";
+export * from "./public.js";
 export * from "./sites.js";
 export * from "./themes.js";

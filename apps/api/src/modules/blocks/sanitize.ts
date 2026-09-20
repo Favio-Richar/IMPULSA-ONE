@@ -1,36 +1,23 @@
-import { getBlockDefinition } from "@impulza/validation";
+import {
+  getBlockDefinition,
+  RICH_TEXT_ALLOWED_SCHEMES,
+  RICH_TEXT_ALLOWED_TAGS,
+  RICH_TEXT_LINK_ATTRIBUTES,
+} from "@impulza/validation";
 import sanitizeHtml from "sanitize-html";
 
 /**
- * Lista blanca de etiquetas y atributos del texto enriquecido (F2.4). Es deliberadamente corta:
- * lo que el constructor puede producir con Tiptap y nada más. Todo lo que no esté acá se elimina,
- * incluidos `<script>`, `<iframe>`, `<style>`, `<form>` y cualquier atributo `on*`.
+ * Lista blanca de etiquetas y atributos del texto enriquecido (F2.4), compartida con la segunda
+ * pasada de saneo que hace `apps/web` al renderizar en público — ver `@impulza/validation` para
+ * por qué la política vive ahí y no acá.
  */
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
-  allowedTags: [
-    "p",
-    "br",
-    "strong",
-    "b",
-    "em",
-    "i",
-    "u",
-    "s",
-    "ul",
-    "ol",
-    "li",
-    "blockquote",
-    "h2",
-    "h3",
-    "h4",
-    "a",
-    "code",
-  ],
+  allowedTags: [...RICH_TEXT_ALLOWED_TAGS],
   allowedAttributes: {
-    a: ["href", "target", "rel"],
+    a: [...RICH_TEXT_LINK_ATTRIBUTES],
   },
   // Mismo criterio que safeUrlSchema: un `href` es un enlace, no una vía de ejecución.
-  allowedSchemes: ["http", "https", "mailto", "tel"],
+  allowedSchemes: [...RICH_TEXT_ALLOWED_SCHEMES],
   allowedSchemesAppliedToAttributes: ["href"],
   // Un enlace a otro dominio que abre en pestaña nueva sin `noopener` deja al sitio destino
   // manipular la ventana original (tabnabbing). Se fuerza siempre, no se confía en el editor.

@@ -1,4 +1,4 @@
-import { Slot } from "@radix-ui/react-slot";
+import { Slot, Slottable } from "@radix-ui/react-slot";
 import { type VariantProps, cva } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import { type ButtonHTMLAttributes, forwardRef } from "react";
@@ -50,7 +50,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {loading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-        {children}
+        {/* `Slottable` en vez de `{children}` a secas: con `asChild`, `Comp` es el `Slot` de Radix,
+            que exige un único elemento hijo para fusionarle las props. El spinner de arriba ya
+            hace que este componente tenga dos hijos siempre que `asChild` y `loading` conviven —
+            `Slottable` le marca a `Slot` cuál de los dos es el que hay que fusionar, en vez de
+            reventar con "expected a single React element child". Sin `asChild` (el caso normal,
+            `Comp` es un `<button>`), `Slottable` no hace nada distinto de renderizar tal cual. */}
+        <Slottable>{children}</Slottable>
       </Comp>
     );
   },

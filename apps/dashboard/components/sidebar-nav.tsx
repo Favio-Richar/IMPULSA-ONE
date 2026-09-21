@@ -1,15 +1,16 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { Home, Settings } from "lucide-react";
+import { Globe, Home, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Solo los módulos que ya existen de verdad (auth + organizations, F1.4/F1.5) — el resto de la
-// navegación de PM §13 (Mi sitio, Negocio, Analítica, Herramientas...) llega con sus fases y se
+// Solo los módulos que ya existen de verdad (auth + organizations F1.4/F1.5, sitios F2.9) — el
+// resto de la navegación de PM §13 (Negocio, Analítica, Herramientas...) llega con sus fases y se
 // agrega aquí recién cuando haya algo real detrás. "El menú mostrará solo módulos habilitados."
 const NAV_ITEMS = [
   { href: "/", label: "Inicio", icon: Home },
+  { href: "/sitios", label: "Sitios", icon: Globe },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];
 
@@ -19,7 +20,9 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }): React.J
   return (
     <nav className="flex flex-col gap-1 p-3" aria-label="Navegación principal">
       {NAV_ITEMS.map((item) => {
-        const isActive = pathname === item.href;
+        // "/" solo coincide exacto (si no, "Inicio" quedaría activo en cualquier ruta); el resto
+        // usa prefijo para que una ruta anidada (p. ej. /sitios/:siteId) siga marcando su sección.
+        const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         const Icon = item.icon;
         return (
           <Link

@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "@hookform/resolvers": "5.9.1",
+    "@impulza/contracts": "workspace:*",
     "@impulza/ui": "workspace:*",
+    "@impulza/validation": "workspace:*",
     "@tanstack/react-query": "5.102.8",
     "lucide-react": "1.46.0",
     "next": "16.3.5",

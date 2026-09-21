@@ -36,7 +36,7 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F2.6 — Borrador, publicación e historial | Terminada |
 | F2.7 — Render público (`apps/web`) | Terminada |
 | F2.8 — SEO base | Terminada |
-| F2.9 — Constructor visual (`apps/dashboard`) | Pendiente (siguiente) |
+| F2.9 — Constructor visual (`apps/dashboard`) | En curso (Etapa A cerrada, Etapa B pendiente) |
 | F2.10 — Aislamiento multi-tenant de Fase 2 | Pendiente (se re-verifica al cerrar la fase) |
 
 > **Deuda saldada el 2026-09-19 — OpenAPI**: el repositorio no publicaba un documento OpenAPI
@@ -167,6 +167,18 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 - Publicar desde el constructor, con diferencia clara entre "guardado" y "publicado".
 - Estados de carga, vacío, error y éxito en toda la UI; responsive real.
 - Ningún control de negocio confiado al frontend: toda validación se repite en servidor.
+
+> **Avance parcial — Etapa A cerrada (2026-09-21), Etapa B pendiente**: `apps/dashboard` no tenía
+> ninguna UI de sitios/páginas/temas (F2.2–F2.8 eran solo API); sin eso, el editor de bloques en sí
+> es inalcanzable. La Etapa A agrega las pantallas de gestión: listar/crear/archivar sitios, elegir
+> tema del catálogo, listar/crear/reordenar/ocultar/enviar a la papelera páginas (con deshacer),
+> editar SEO, publicar y ver/restaurar el historial de versiones — todo sobre la API ya existente,
+> sin bloques nuevos de negocio del lado del cliente. **No cumple los criterios de arriba**: no hay
+> arrastrar y soltar, ni biblioteca de bloques, ni vista previa, ni deshacer/rehacer de contenido —
+> eso es la Etapa B, todavía sin empezar. Ver `README.md` §"Gestión de sitios y páginas (F2.9,
+> Etapa A)". Nota aparte: se corrigió en el camino un bug real de `packages/ui` — `Button asChild`
+> rompía porque el spinner de carga le agregaba un segundo hijo al `Slot` de Radix (primer uso real
+> de `asChild` en el repo); ver el comentario en `Button.tsx`.
 
 ### F2.10 — Aislamiento multi-tenant de Fase 2
 **Criterios de aceptación:**

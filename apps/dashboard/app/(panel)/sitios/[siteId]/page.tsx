@@ -1,0 +1,470 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { publicSlugSchema, themeTokensToCssVariables, type ThemeTokens } from "@impulza/validation";
+import type { PageResponse, ThemeResponse } from "@impulza/contracts";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  EmptyState,
+  ErrorState,
+  Input,
+  LoadingState,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@impulza/ui";
+import { ArrowDown, ArrowUp } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { ConfirmButton } from "../../../../components/confirm-button";
+import { useActiveOrgStore } from "../../../../lib/active-org-store";
+import { ApiError } from "../../../../lib/api-client";
+import {
+  useDeletePage,
+  usePages,
+  useReorderPages,
+  useRestorePage,
+  useUpdatePage,
+} from "../../../../lib/hooks/use-pages";
+import { useAssignSiteTheme, useSite, useSiteTheme, useUpdateSite } from "../../../../lib/hooks/use-sites";
+import { useThemes } from "../../../../lib/hooks/use-themes";
+
+const PAGE_VISIBILITY_LABEL: Record<string, string> = { PUBLIC: "Pública", HIDDEN: "Oculta" };
+const PAGE_STATUS_LABEL: Record<string, string> = { DRAFT: "Borrador", PUBLISHED: "Publicada" };
+
+export default function SitioDetallePage(): React.JSX.Element {
+  const params = useParams<{ siteId: string }>();
+  return <SiteDetail siteId={params.siteId} />;
+}
+
+function SiteDetail({ siteId }: { siteId: string }): React.JSX.Element {
+  // Todas las rutas de la API cuelgan de `organizations/:organizationId/...` (ADR-002): no hay un
+  // `GET /sites/:siteId` a secas, así que hace falta la organización activa para armar la URL.
+  const activeOrganizationId = useActiveOrgStore((state) => state.activeOrganizationId);
+
+  if (!activeOrganizationId) {
+    return (
+      <EmptyState
+        title="Selecciona una organización"
+        description="Elige una organización arriba para ver este sitio."
+      />
+    );
+  }
+
+  return <SiteDetailContent organizationId={activeOrganizationId} siteId={siteId} />;
+}
+
+function SiteDetailContent({ organizationId, siteId }: { organizationId: string; siteId: string }): React.JSX.Element {
+  const siteQuery = useSite(organizationId, siteId);
+
+  if (siteQuery.isPending) {
+    return <LoadingState label="Cargando sitio…" />;
+  }
+
+  if (siteQuery.isError) {
+    if (siteQuery.error instanceof ApiError && siteQuery.error.status === 404) {
+      return <ErrorState title="Sitio no encontrado" description="No existe, o es de otra organización." />;
+    }
+    return <ErrorState onRetry={() => siteQuery.refetch()} />;
+  }
+
+  const site = siteQuery.data;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <Link href="/sitios" className="text-sm text-muted-foreground hover:underline">
+          ← Sitios
+        </Link>
+        <h1 className="mt-1 text-lg font-semibold text-foreground">{site.name}</h1>
+        <p className="text-sm text-muted-foreground">{site.slug}</p>
+      </div>
+
+      <SiteSettingsForm organizationId={organizationId} siteId={siteId} name={site.name} slug={site.slug} />
+      <ThemePicker organizationId={organizationId} siteId={siteId} />
+      <PagesSection organizationId={organizationId} siteId={siteId} />
+    </div>
+  );
+}
+
+function SiteSettingsForm({
+  organizationId,
+  siteId,
+  name,
+  slug,
+}: {
+  organizationId: string;
+  siteId: string;
+  name: string;
+  slug: string;
+}): React.JSX.Element {
+  const updateMutation = useUpdateSite(organizationId, siteId);
+  const formSchema = z.object({ name: z.string().min(2).max(120), slug: publicSlugSchema });
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isDirty },
+  } = useForm<{ name: string; slug: string }>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { name, slug },
+  });
+
+  async function onSubmit(values: { name: string; slug: string }): Promise<void> {
+    try {
+      await updateMutation.mutateAsync(values);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setError("slug", { message: "Ese slug ya está tomado. Elige otro." });
+        return;
+      }
+      setError("root", { message: "No pudimos guardar los cambios." });
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Datos del sitio</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form className="flex flex-col gap-4 sm:flex-row sm:items-end" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div className="flex-1">
+            <Input label="Nombre" error={errors.name?.message} {...register("name")} />
+          </div>
+          <div className="flex-1">
+            <Input
+              label="Slug"
+              helperText={errors.slug ? undefined : "Cambiarlo deja una redirección desde el anterior."}
+              error={errors.slug?.message}
+              {...register("slug")}
+            />
+          </div>
+          <Button type="submit" loading={updateMutation.isPending} disabled={!isDirty}>
+            Guardar
+          </Button>
+        </form>
+        {errors.root ? (
+          <p role="alert" className="mt-2 text-sm text-danger">
+            {errors.root.message}
+          </p>
+        ) : null}
+        {updateMutation.isSuccess ? <p className="mt-2 text-sm text-success">Guardado.</p> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ThemePicker({ organizationId, siteId }: { organizationId: string; siteId: string }): React.JSX.Element {
+  const themesQuery = useThemes(organizationId);
+  const effectiveThemeQuery = useSiteTheme(organizationId, siteId);
+  const assignMutation = useAssignSiteTheme(organizationId, siteId);
+
+  if (themesQuery.isPending || effectiveThemeQuery.isPending) {
+    return <LoadingState label="Cargando temas…" />;
+  }
+
+  if (themesQuery.isError || effectiveThemeQuery.isError) {
+    return (
+      <ErrorState
+        onRetry={() => {
+          void themesQuery.refetch();
+          void effectiveThemeQuery.refetch();
+        }}
+      />
+    );
+  }
+
+  const effectiveThemeId = effectiveThemeQuery.data.id;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Apariencia</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {themesQuery.data.map((theme) => (
+            <ThemeCard
+              key={theme.id}
+              theme={theme}
+              selected={theme.id === effectiveThemeId}
+              disabled={assignMutation.isPending}
+              onSelect={() => assignMutation.mutate(theme.id)}
+            />
+          ))}
+        </div>
+        {assignMutation.isError ? (
+          <p role="alert" className="mt-3 text-sm text-danger">
+            No pudimos aplicar el tema. Intenta de nuevo.
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ThemeCard({
+  theme,
+  selected,
+  disabled,
+  onSelect,
+}: {
+  theme: ThemeResponse;
+  selected: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+}): React.JSX.Element {
+  const tokens = theme.tokens as ThemeTokens;
+  const vars = themeTokensToCssVariables(tokens);
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={disabled || selected}
+      className={
+        "flex flex-col gap-2 rounded-lg border p-3 text-left transition-colors disabled:cursor-default " +
+        (selected ? "border-primary ring-2 ring-primary" : "border-border hover:border-border-strong")
+      }
+      style={vars as React.CSSProperties}
+    >
+      <div
+        className="flex h-14 items-center gap-2 rounded-md border p-2"
+        style={{
+          background: "var(--site-color-background)",
+          borderColor: "var(--site-color-border)",
+        }}
+      >
+        <span className="h-full w-2 rounded-full" style={{ background: "var(--site-color-primary)" }} />
+        <span className="text-xs" style={{ color: "var(--site-color-foreground)" }}>
+          Aa
+        </span>
+        <span className="text-xs" style={{ color: "var(--site-color-muted-foreground)" }}>
+          Aa
+        </span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-foreground">{theme.name}</span>
+        {selected ? <span className="text-xs font-medium text-primary">Actual</span> : null}
+      </div>
+    </button>
+  );
+}
+
+function PagesSection({ organizationId, siteId }: { organizationId: string; siteId: string }): React.JSX.Element {
+  const pagesQuery = usePages(organizationId, siteId);
+  const reorderMutation = useReorderPages(organizationId, siteId);
+  const [justDeleted, setJustDeleted] = useState<{ id: string; slug: string } | null>(null);
+
+  if (pagesQuery.isPending) {
+    return <LoadingState label="Cargando páginas…" />;
+  }
+
+  if (pagesQuery.isError) {
+    return <ErrorState onRetry={() => pagesQuery.refetch()} />;
+  }
+
+  const pages = [...pagesQuery.data].sort((a, b) => a.position - b.position);
+
+  function movePage(index: number, direction: -1 | 1): void {
+    const target = index + direction;
+    if (target < 0 || target >= pages.length) {
+      return;
+    }
+    const reordered = [...pages];
+    const [moved] = reordered.splice(index, 1);
+    if (!moved) {
+      return;
+    }
+    reordered.splice(target, 0, moved);
+    reorderMutation.mutate(reordered.map((page) => page.id));
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle>Páginas</CardTitle>
+        <Button asChild size="sm">
+          <Link href={`/sitios/${siteId}/paginas/nueva`}>Crear página</Link>
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {justDeleted ? (
+          <UndoDeleteBanner
+            organizationId={organizationId}
+            siteId={siteId}
+            deleted={justDeleted}
+            onDone={() => setJustDeleted(null)}
+          />
+        ) : null}
+
+        {pages.length === 0 ? (
+          <EmptyState title="Este sitio todavía no tiene páginas" />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Slug</TableHead>
+                <TableHead>Visibilidad</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pages.map((page, index) => (
+                <PageRow
+                  key={page.id}
+                  organizationId={organizationId}
+                  siteId={siteId}
+                  page={page}
+                  canMoveUp={index > 0}
+                  canMoveDown={index < pages.length - 1}
+                  onMoveUp={() => movePage(index, -1)}
+                  onMoveDown={() => movePage(index, 1)}
+                  onDeleted={() => setJustDeleted({ id: page.id, slug: page.slug })}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        )}
+
+        {reorderMutation.isError ? (
+          <p role="alert" className="mt-2 text-sm text-danger">
+            No pudimos guardar el nuevo orden. Intenta de nuevo.
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PageRow({
+  organizationId,
+  siteId,
+  page,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
+  onDeleted,
+}: {
+  organizationId: string;
+  siteId: string;
+  page: PageResponse;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDeleted: () => void;
+}): React.JSX.Element {
+  const updateMutation = useUpdatePage(organizationId, siteId, page.id);
+  const deleteMutation = useDeletePage(organizationId, siteId);
+
+  return (
+    <TableRow>
+      <TableCell>
+        <Link href={`/sitios/${siteId}/paginas/${page.id}`} className="font-medium text-primary hover:underline">
+          {page.isHome ? `${page.slug} (inicio)` : page.slug}
+        </Link>
+      </TableCell>
+      <TableCell className="text-muted-foreground">{PAGE_VISIBILITY_LABEL[page.visibility]}</TableCell>
+      <TableCell className="text-muted-foreground">{PAGE_STATUS_LABEL[page.status]}</TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Subir"
+            disabled={!canMoveUp}
+            onClick={onMoveUp}
+          >
+            <ArrowUp className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Bajar"
+            disabled={!canMoveDown}
+            onClick={onMoveDown}
+          >
+            <ArrowDown className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={updateMutation.isPending}
+            onClick={() =>
+              updateMutation.mutate({ visibility: page.visibility === "PUBLIC" ? "HIDDEN" : "PUBLIC" })
+            }
+          >
+            {page.visibility === "PUBLIC" ? "Ocultar" : "Mostrar"}
+          </Button>
+          <ConfirmButton
+            variant="ghost"
+            size="sm"
+            disabled={page.isHome}
+            title={page.isHome ? "La página de inicio no se puede eliminar." : undefined}
+            confirmLabel={`¿Mandar "${page.slug}" a la papelera?`}
+            loading={deleteMutation.isPending}
+            onConfirm={() => deleteMutation.mutate(page.id, { onSuccess: onDeleted })}
+          >
+            Eliminar
+          </ConfirmButton>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+/**
+ * La API no tiene un endpoint para listar la papelera (F2.3: `GET /pages` filtra `deletedAt` en
+ * el servidor) — la única forma de restaurar una página es conociendo su id, y la única vez que
+ * este panel lo conoce sin haberlo guardado en ningún lado es justo después de borrarla. Por eso
+ * "deshacer" vive acá, con el id en memoria, y no como una pantalla de "papelera" que la API no
+ * puede respaldar todavía.
+ */
+function UndoDeleteBanner({
+  organizationId,
+  siteId,
+  deleted,
+  onDone,
+}: {
+  organizationId: string;
+  siteId: string;
+  deleted: { id: string; slug: string };
+  onDone: () => void;
+}): React.JSX.Element {
+  const restoreMutation = useRestorePage(organizationId, siteId);
+
+  return (
+    <div className="mb-3 flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2 text-sm">
+      <span>
+        Página <span className="font-medium">{deleted.slug}</span> movida a la papelera.
+      </span>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          loading={restoreMutation.isPending}
+          onClick={() => restoreMutation.mutate(deleted.id, { onSuccess: onDone })}
+        >
+          Deshacer
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onDone}>
+          Cerrar
+        </Button>
+      </div>
+    </div>
+  );
+}

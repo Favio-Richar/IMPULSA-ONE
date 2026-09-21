@@ -3,17 +3,17 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 2 — Sitio público y constructor, historia F2.8 (SEO base) terminada.
-Siguiente: F2.9 (constructor visual, `apps/dashboard`).** Fase 0 y Fase 1 cerradas (F0.1–F0.5,
-F1.1–F1.10). Ver `docs/BACKLOG_FASE_2.md` para el backlog de la fase activa,
-`docs/BACKLOG_FASE_0_1.md` para las anteriores y `CLAUDE.md` para las reglas de trabajo del
-repositorio.
+**Estado actual: Fase 2 — Sitio público y constructor, historia F2.9 (constructor visual,
+`apps/dashboard`) en curso: Etapa A (gestión de sitios y páginas) cerrada, Etapa B (editor de
+bloques) pendiente.** Fase 0 y Fase 1 cerradas (F0.1–F0.5, F1.1–F1.10). Ver
+`docs/BACKLOG_FASE_2.md` para el backlog de la fase activa, `docs/BACKLOG_FASE_0_1.md` para las
+anteriores y `CLAUDE.md` para las reglas de trabajo del repositorio.
 
 | Fase | Historias | Estado |
 |---|---|---|
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
-| 2 — Sitio público y constructor | F2.1–F2.8 | En curso (F2.9–F2.10 pendientes) |
+| 2 — Sitio público y constructor | F2.1–F2.8 | En curso (F2.9 en progreso, F2.10 pendiente) |
 
 ## Requisitos
 
@@ -657,6 +657,47 @@ Cubierto por la suite `SEO (F2.8)` de `public-sites.e2e.test.ts` (derivación po
 explícito, canonical resuelto y huérfano, rechazo de un `robots` fuera del enum cerrado),
 `seo-resolver.test.ts`, `seo.test.ts` (`@impulza/validation`) y las pruebas de
 `apps/web/app/[siteSlug]/{sitemap.xml,robots.txt}/route.test.ts`.
+
+## Gestión de sitios y páginas (F2.9, Etapa A)
+
+**`apps/dashboard` no tenía ninguna UI de sitios/páginas/temas.** F2.2–F2.8 fueron enteramente API
+— sin una pantalla para crear un sitio o abrir una página, el editor de bloques de F2.9 (el
+"constructor visual" en sí) sería inalcanzable. Esta etapa agrega esa gestión, reusando 100% la API
+ya existente y probada: nada de lógica de negocio nueva, solo pantallas.
+
+**`/sitios`**: listar/crear/archivar sitios de la organización activa. **`/sitios/:siteId`**:
+renombrar/cambiar slug, elegir tema (grid de tarjetas con los colores reales de cada tema del
+catálogo — `themeTokensToCssVariables`, la misma función que ya usa el render público, F2.7), y la
+lista de páginas del sitio (crear, reordenar con subir/bajar, ocultar/mostrar, enviar a la
+papelera). **`/sitios/:siteId/paginas/:pageId`**: renombrar (bloqueado en la home), visibilidad,
+formulario de SEO completo (título, descripción, canonical como selector de páginas del sitio —
+nunca texto libre, robots, Open Graph — F2.8), publicar, e historial de versiones con restaurar.
+
+**Sin diálogos nativos.** Las acciones destructivas (archivar, enviar a la papelera, restaurar una
+versión) usan una confirmación en la propia pantalla (`components/confirm-button.tsx`) en vez de
+`window.confirm()`: un diálogo nativo bloquea todo el hilo de render del navegador hasta que
+alguien lo cierra a mano — se detectó probando esta misma etapa, cuando bloqueó la pestaña de
+pruebas entera. Borrar una página deja un aviso con **Deshacer** inmediato (F2.3 no tiene un
+endpoint para *listar* la papelera — solo para restaurar por id — así que "deshacer" es la única
+vía real hasta que exista esa pantalla).
+
+**Bug real encontrado y corregido en el camino, no solo en esta etapa:** `Button asChild` de
+`packages/ui` rompía (`Slot failed to slot onto its children`) porque el spinner de carga del botón
+le agrega un segundo hijo incluso sin estar cargando — el primer uso real de `asChild` en el repo
+fue el que lo destapó. Corregido con `Slottable` de Radix (ver el comentario en
+`packages/ui/src/components/Button.tsx`); cualquier otro consumidor futuro de `asChild` ya queda
+cubierto.
+
+**Lo que falta (Etapa B, sin empezar):** el editor de bloques en sí — arrastrar y soltar,
+biblioteca de bloques, panel de configuración por tipo, vista previa en vivo, deshacer/rehacer de
+contenido, guardado automático. Es lo que describen de verdad los criterios de aceptación de F2.9;
+esta etapa es la gestión previa que hacía falta para llegar hasta ahí.
+
+**Pruebas**: ni `apps/web` ni `apps/dashboard` tienen pruebas de renderizado de componentes (no hay
+React Testing Library en el repo) — se verificó a mano en el navegador el flujo completo (crear
+sitio → tema → crear página → reordenar → ocultar/mostrar → SEO → publicar → historial → restaurar
+→ ver el resultado en `apps/web`) contra la API real, siguiendo el mismo criterio de testing que ya
+usa el resto del frontend (lógica pura con Vitest, UI verificada en el navegador).
 
 ## Contrato de la API — OpenAPI
 

@@ -330,9 +330,15 @@ importers:
       '@hookform/resolvers':
         specifier: 5.9.1
         version: 5.9.1(@standard-schema/spec@1.1.0)(effect@3.21.0)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)
+      '@impulza/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@impulza/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@impulza/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
       '@tanstack/react-query':
         specifier: 5.102.8
         version: 5.102.8(react@19.3.0)

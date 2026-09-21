@@ -29,6 +29,10 @@ export const pageResponse = z.object({
   status: pageStatus,
   /** La página de inicio: no se elimina ni cambia de slug, y se sirve en la raíz del sitio. */
   isHome: z.boolean(),
+  /** Lo que el usuario escribió, todo opcional — forma exacta en `@impulza/validation`
+   *  (`seoMetaSchema`, F2.8), mismo criterio que `BlockResponse.config`. El render público no lee
+   *  esto directamente: consume `publicSeoResponse` de `public.ts`, ya con los valores por defecto
+   *  resueltos cuando el usuario no puso nada. */
   seoMeta: z.unknown().nullable(),
   /** Borrado lógico: con valor, la página está en la papelera pero conserva su historial. */
   deletedAt: isoDateTime.nullable(),

@@ -20,3 +20,4 @@ export {
 } from "./contrast.js";
 export * from "./blocks/index.js";
 export * from "./themes/index.js";
+export * from "./seo/index.js";

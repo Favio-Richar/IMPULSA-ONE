@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isoDateTime } from "./primitives.js";
 
 // Contratos del render público (F2.7): lo que ve un visitante sin sesión. Deliberadamente **no**
 // derivan de `siteResponse`/`pageResponse`/`blockResponse` (contratos de la API autenticada,
@@ -20,6 +21,9 @@ export const publicThemeResponse = z.object({
 export const publicNavPageResponse = z.object({
   slug: z.string(),
   isHome: z.boolean(),
+  /** Cuándo se publicó la versión vigente — el `lastmod` real de `sitemap.xml` (F2.8), no la
+   *  última edición del borrador. */
+  publishedAt: isoDateTime,
 });
 
 export const publicSiteResponse = z.object({
@@ -37,11 +41,39 @@ export const publicBlockResponse = z.object({
   config: z.unknown(),
 });
 
+// Duplicado a propósito de `SEO_ROBOTS_VALUES`/`SeoRobots` de `@impulza/validation` — mismo
+// criterio que `pageVisibility` más arriba en `sites.ts`: este paquete no depende de `validation`
+// (se mantiene sin dependencias de workspace), así que el valor cerrado se repite acá, no se
+// importa. Si el catálogo de `@impulza/validation` cambia, este también tiene que cambiar.
+export const PUBLIC_SEO_ROBOTS_VALUES = ["index_follow", "noindex_follow", "index_nofollow", "noindex_nofollow"] as const;
+export const publicSeoRobots = z.enum(PUBLIC_SEO_ROBOTS_VALUES);
+
+export const publicOpenGraphResponse = z.object({
+  title: z.string(),
+  description: z.string().optional(),
+  /** http/https únicamente (misma regla que cualquier imagen de bloque, F2.4). */
+  image: z.string().optional(),
+});
+
+/**
+ * SEO ya resuelto (F2.8): a diferencia de `Page.seoMeta` de la API autenticada (lo que el usuario
+ * escribió, todo opcional), esto es lo que `apps/web` pinta tal cual — con los valores por defecto
+ * ya derivados del contenido cuando el usuario no puso nada (`PublicSitesService.resolveSeo`).
+ * `canonicalPath` es relativo (`/mi-sitio` o `/mi-sitio/servicios`): `apps/web` arma la URL
+ * absoluta con su propio origen, este contrato no asume ningún dominio.
+ */
+export const publicSeoResponse = z.object({
+  title: z.string(),
+  description: z.string().optional(),
+  canonicalPath: z.string(),
+  robots: publicSeoRobots,
+  openGraph: publicOpenGraphResponse,
+});
+
 export const publicPageResponse = z.object({
   slug: z.string(),
   isHome: z.boolean(),
-  /** Forma pendiente de F2.8 (SEO base); por ahora se pasa tal cual, sin interpretar. */
-  seoMeta: z.unknown().nullable(),
+  seo: publicSeoResponse,
   /**
    * Ya filtrados: sin los ocultos, sin los fuera de su ventana programada y sin los degradados
    * (tipo desconocido, versión futura o configuración inválida — F2.4). En el orden en que se
@@ -54,4 +86,6 @@ export type PublicThemeResponse = z.infer<typeof publicThemeResponse>;
 export type PublicNavPageResponse = z.infer<typeof publicNavPageResponse>;
 export type PublicSiteResponse = z.infer<typeof publicSiteResponse>;
 export type PublicBlockResponse = z.infer<typeof publicBlockResponse>;
+export type PublicOpenGraphResponse = z.infer<typeof publicOpenGraphResponse>;
+export type PublicSeoResponse = z.infer<typeof publicSeoResponse>;
 export type PublicPageResponse = z.infer<typeof publicPageResponse>;

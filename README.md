@@ -3,16 +3,17 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 2 — Sitio público y constructor, historia F2.7 (render público, `apps/web`)
-terminada. Siguiente: F2.8 (SEO base).** Fase 0 y Fase 1 cerradas (F0.1–F0.5, F1.1–F1.10). Ver
-`docs/BACKLOG_FASE_2.md` para el backlog de la fase activa, `docs/BACKLOG_FASE_0_1.md` para las
-anteriores y `CLAUDE.md` para las reglas de trabajo del repositorio.
+**Estado actual: Fase 2 — Sitio público y constructor, historia F2.8 (SEO base) terminada.
+Siguiente: F2.9 (constructor visual, `apps/dashboard`).** Fase 0 y Fase 1 cerradas (F0.1–F0.5,
+F1.1–F1.10). Ver `docs/BACKLOG_FASE_2.md` para el backlog de la fase activa,
+`docs/BACKLOG_FASE_0_1.md` para las anteriores y `CLAUDE.md` para las reglas de trabajo del
+repositorio.
 
 | Fase | Historias | Estado |
 |---|---|---|
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
-| 2 — Sitio público y constructor | F2.1–F2.7 | En curso (F2.8–F2.10 pendientes) |
+| 2 — Sitio público y constructor | F2.1–F2.8 | En curso (F2.9–F2.10 pendientes) |
 
 ## Requisitos
 
@@ -617,9 +618,49 @@ páginas, bloques, temas, organizaciones) todavía no tiene límite de peticione
 sesión; y el `RedisModule` no cierra su socket en `onApplicationShutdown`, así que `app.close()` no
 termina por sí solo. Ninguna de las dos bloquea F2.7: son tareas propias, ya con su alcance escrito.
 
+## SEO base (F2.8)
+
+**Título, descripción, canonical, robots y Open Graph, por página** (`Page.seoMeta`, esquema
+cerrado en `@impulza/validation` — `seoMetaSchema`, nunca meta libre ni HTML: mismo criterio de
+"conjunto validado en servidor" que temas y bloques). Todo opcional: sin nada propio, el render
+público deriva valores por defecto reales del contenido de la página en vez de dejar un `<title>`
+vacío (`resolveSeo`, `apps/api/src/modules/public-sites/seo-resolver.ts`) — el nombre de un bloque
+de perfil o el título de un hero para el título, y el primer campo con contenido entre el subtítulo
+del hero, la bajada o la bio del perfil, la descripción de un servicio o el primer bloque de texto
+para la descripción (desnudando su HTML antes de truncar, nunca metiendo etiquetas en un `<meta>`).
+
+**Canonical apunta a otra página del mismo sitio, nunca a una URL libre.** `seoMeta.canonicalPageSlug`
+es un slug, no un link: `resolveSeo` lo resuelve a la ruta pública real de esa página, y si quedó
+huérfano (la página destino se borró o se despublicó desde que se guardó) cae de vuelta al
+canonical propio en silencio — un canonical roto sería peor que no tener override.
+
+**`GET /public/sites/*` expone el SEO ya resuelto** (`seo`, `publicSeoResponse` en
+`@impulza/contracts`), no el `seoMeta` crudo que escribió el usuario: cualquier cliente que consuma
+la API pública recibe el mismo título/descripción/canonical/robots/Open Graph sin reimplementar la
+derivación. `apps/web` lo traduce a `Metadata` de Next (`lib/seo-metadata.ts`) — `<title>`,
+`<meta description>`, `<link rel="canonical">`, `<meta name="robots">` y `og:*`, todos escapados
+por el propio motor de metadata de Next, nunca interpolados a mano en el HTML.
+
+**`sitemap.xml` y `robots.txt`, por sitio** (`/:siteSlug/sitemap.xml`, `/:siteSlug/robots.txt`),
+con solo páginas `PUBLIC` y publicadas — mismo filtro que ya usa la navegación del sitio (F2.7),
+reutilizado en vez de duplicado — y `lastmod` real (cuándo se publicó la versión vigente de cada
+página, no cuándo se editó el borrador). **Limitación real, documentada en el propio código**
+(`app/[siteSlug]/robots.txt/route.ts`): el estándar (RFC 9309) solo hace que un crawler busque
+`robots.txt` en la raíz del host, nunca en un subpath — mientras el hosting sea por path
+(`impulza.one/mi-sitio`, sin dominio propio hasta que `SiteDomain`, modelada desde F2.1, tenga su
+propio ruteo) esta ruta no es la que Google ni Bing descubren solos. Sirve igual para envío manual
+a Search Console (que sí admite verificar un prefijo de URL) y queda lista para el día en que un
+sitio tenga dominio propio. El control real de indexado por página, mientras tanto, es
+`<meta name="robots">`, que un crawler sí respeta sin importar el path.
+
+Cubierto por la suite `SEO (F2.8)` de `public-sites.e2e.test.ts` (derivación por defecto, override
+explícito, canonical resuelto y huérfano, rechazo de un `robots` fuera del enum cerrado),
+`seo-resolver.test.ts`, `seo.test.ts` (`@impulza/validation`) y las pruebas de
+`apps/web/app/[siteSlug]/{sitemap.xml,robots.txt}/route.test.ts`.
+
 ## Contrato de la API — OpenAPI
 
-`docs/api/openapi.json` describe la API completa: 38 rutas, 52 operaciones, todas con resumen,
+`docs/api/openapi.json` describe la API completa: 40 rutas, 54 operaciones, todas con resumen,
 etiqueta, cuerpo, respuestas y errores. Se genera desde la aplicación real, nunca a mano — un
 documento mantenido a mano describe la API que alguien recuerda, no la que está desplegada.
 

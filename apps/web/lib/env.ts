@@ -12,9 +12,17 @@ const envSchema = z.object({
   // webhook de invalidación de caché (F2.7). Mismo criterio de longitud que
   // `WEB_REVALIDATE_SECRET` en apps/api/src/env.ts.
   REVALIDATE_SECRET: z.string().min(32),
+  // Origen público de este mismo proceso (F2.8), p. ej. https://impulza.one o
+  // http://localhost:3000 en desarrollo — sin path ni slash final. Todo lo que sirve una URL
+  // absoluta a un visitante o a un crawler (canonical, Open Graph, `sitemap.xml`, el `Sitemap:` de
+  // `robots.txt`) se arma con esta base, nunca adivinándola del header `Host` de la petición: ese
+  // header lo controla quien lo manda, y una URL de SEO mal armada es una vía de manipulación, no
+  // solo un bug cosmético.
+  PUBLIC_WEB_BASE_URL: z.url(),
 });
 
 export const env = envSchema.parse({
   API_BASE_URL: process.env.API_BASE_URL,
   REVALIDATE_SECRET: process.env.REVALIDATE_SECRET,
+  PUBLIC_WEB_BASE_URL: process.env.PUBLIC_WEB_BASE_URL,
 });

@@ -3734,6 +3734,58 @@
                       "PUBLIC",
                       "HIDDEN"
                     ]
+                  },
+                  "seoMeta": {
+                    "nullable": true,
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 70
+                      },
+                      "description": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "canonicalPageSlug": {
+                        "nullable": true,
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 63,
+                        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+                      },
+                      "robots": {
+                        "type": "string",
+                        "enum": [
+                          "index_follow",
+                          "noindex_follow",
+                          "index_nofollow",
+                          "noindex_nofollow"
+                        ]
+                      },
+                      "openGraph": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 70
+                          },
+                          "description": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "image": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -4977,11 +5029,17 @@
                           },
                           "isHome": {
                             "type": "boolean"
+                          },
+                          "publishedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                           }
                         },
                         "required": [
                           "slug",
-                          "isHome"
+                          "isHome",
+                          "publishedAt"
                         ],
                         "additionalProperties": false
                       }
@@ -5059,8 +5117,53 @@
                     "isHome": {
                       "type": "boolean"
                     },
-                    "seoMeta": {
-                      "nullable": true
+                    "seo": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "canonicalPath": {
+                          "type": "string"
+                        },
+                        "robots": {
+                          "type": "string",
+                          "enum": [
+                            "index_follow",
+                            "noindex_follow",
+                            "index_nofollow",
+                            "noindex_nofollow"
+                          ]
+                        },
+                        "openGraph": {
+                          "type": "object",
+                          "properties": {
+                            "title": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "image": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "title"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "canonicalPath",
+                        "robots",
+                        "openGraph"
+                      ],
+                      "additionalProperties": false
                     },
                     "blocks": {
                       "type": "array",
@@ -5083,7 +5186,7 @@
                   "required": [
                     "slug",
                     "isHome",
-                    "seoMeta",
+                    "seo",
                     "blocks"
                   ],
                   "additionalProperties": false

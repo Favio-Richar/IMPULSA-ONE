@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { getPublicSite } from "../../lib/api";
@@ -9,22 +8,16 @@ interface Props {
   params: Promise<{ siteSlug: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { siteSlug } = await params;
-  const site = await getPublicSite(siteSlug);
-
-  if (!site) {
-    return {};
-  }
-
-  return { title: { default: site.name, template: `%s · ${site.name}` } };
-}
-
 /**
  * Resuelve el sitio **una vez** por árbol de rutas: la home (`page.tsx`) y cada página interna
  * (`[pageSlug]/page.tsx`) llaman a `getPublicSite` de nuevo para leer el tema, pero es la misma
  * URL con las mismas opciones — Next la deduplica dentro del mismo render (memoización de
  * peticiones), así que no hay una segunda ida a la red.
+ *
+ * A propósito, este layout **no** define `generateMetadata`: el `<title>` de cada página (F2.8) ya
+ * viene armado del lado de la API con el nombre del sitio incluido cuando corresponde
+ * (`resolveSeo`, `apps/api`) — un `title.template` acá lo duplicaría (`"X · Sitio · Sitio"`), y un
+ * título elegido a mano por el usuario dejaría de respetarse tal cual lo escribió.
  *
  * A propósito, este segmento **no tiene** `loading.tsx`: verificado en caliente contra un build
  * real, un `loading.tsx` envuelve el segmento en un límite de Suspense, y una vez que ese límite

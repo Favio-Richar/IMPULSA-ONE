@@ -154,7 +154,11 @@ describe("Public sites (e2e) — F2.7", () => {
         where: { code: DEFAULT_THEME_CODE, organizationId: null },
       });
       expect(response.body.theme.tokens).toEqual(catalogDefault.tokens);
-      expect(response.body.pages).toEqual([{ slug: "inicio", isHome: true }]);
+      expect(response.body.pages).toHaveLength(1);
+      expect(response.body.pages[0]).toMatchObject({ slug: "inicio", isHome: true });
+      // `publishedAt` (F2.8, `lastmod` de sitemap.xml): de la versión publicada, no un timestamp
+      // arbitrario — por eso se compara con `Date.parse`, no con una cadena exacta.
+      expect(Date.parse(response.body.pages[0].publishedAt)).not.toBeNaN();
     });
 
     it("un sitio sin ninguna página publicada responde igual (no hay un interruptor de 'sitio' aparte), pero su home todavía no", async () => {
@@ -242,7 +246,8 @@ describe("Public sites (e2e) — F2.7", () => {
       void draft;
 
       const response = await request(httpServer).get(`/api/v1/public/sites/${siteSlug}`).expect(200);
-      expect(response.body.pages).toEqual([{ slug: "inicio", isHome: true }]);
+      expect(response.body.pages).toHaveLength(1);
+      expect(response.body.pages[0]).toMatchObject({ slug: "inicio", isHome: true });
     });
   });
 
@@ -393,6 +398,118 @@ describe("Public sites (e2e) — F2.7", () => {
           .expect(200);
         expect(response.body.blocks).toHaveLength(1);
         expect(response.body.blocks[0].config.html).toBe("<p>bloque sano</p>");
+      });
+    });
+
+    describe("SEO (F2.8)", () => {
+      it("sin seoMeta propio, deriva título y descripción del contenido real de la página", async () => {
+        const { agent, siteSlug, pagesPath } = await createSiteWithOwner();
+        const home = (await agent.get(pagesPath).expect(200)).body[0];
+        await agent
+          .post(`${pagesPath}/${home.id}/blocks`)
+          .set(CSRF_HEADERS)
+          .send({ type: "hero", config: { title: "Pan fresco cada mañana", subtitle: "Hecho a mano, todos los días." } })
+          .expect(201);
+        await agent.post(`${pagesPath}/${home.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+        const response = await request(httpServer)
+          .get(`/api/v1/public/sites/${siteSlug}/pages/inicio`)
+          .expect(200);
+        publicPageResponse.parse(response.body);
+        expect(response.body.seo.title).toBe("Pan fresco cada mañana · Sitio Público");
+        expect(response.body.seo.description).toBe("Hecho a mano, todos los días.");
+        expect(response.body.seo.canonicalPath).toBe(`/${siteSlug}`);
+        expect(response.body.seo.robots).toBe("index_follow");
+        expect(response.body.seo.openGraph.title).toBe(response.body.seo.title);
+      });
+
+      it("un seoMeta propio (título, descripción, robots, Open Graph) gana sobre lo derivado del contenido", async () => {
+        const { agent, siteSlug, pagesPath } = await createSiteWithOwner();
+        const home = (await agent.get(pagesPath).expect(200)).body[0];
+        await addTextBlock(agent, pagesPath, home.id, "<p>contenido</p>");
+        await agent
+          .patch(`${pagesPath}/${home.id}`)
+          .set(CSRF_HEADERS)
+          .send({
+            seoMeta: {
+              title: "Título elegido a mano",
+              description: "Descripción elegida a mano.",
+              robots: "noindex_follow",
+              openGraph: { title: "Para compartir", image: "https://cdn.example.com/og.jpg" },
+            },
+          })
+          .expect(200);
+        await agent.post(`${pagesPath}/${home.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+        const response = await request(httpServer)
+          .get(`/api/v1/public/sites/${siteSlug}/pages/inicio`)
+          .expect(200);
+        expect(response.body.seo).toMatchObject({
+          title: "Título elegido a mano",
+          description: "Descripción elegida a mano.",
+          robots: "noindex_follow",
+          canonicalPath: `/${siteSlug}`,
+          openGraph: { title: "Para compartir", image: "https://cdn.example.com/og.jpg" },
+        });
+      });
+
+      it("un canonical que apunta a otra página del mismo sitio se resuelve a su ruta pública", async () => {
+        const { agent, siteSlug, pagesPath } = await createSiteWithOwner();
+        const home = (await agent.get(pagesPath).expect(200)).body[0];
+        await addTextBlock(agent, pagesPath, home.id, "<p>home</p>");
+        await agent.post(`${pagesPath}/${home.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+        const duplicate = await agent
+          .post(pagesPath)
+          .set(CSRF_HEADERS)
+          .send({ slug: "duplicada" })
+          .expect(201);
+        await addTextBlock(agent, pagesPath, duplicate.body.id, "<p>mismo contenido que la home</p>");
+        await agent
+          .patch(`${pagesPath}/${duplicate.body.id}`)
+          .set(CSRF_HEADERS)
+          .send({ seoMeta: { canonicalPageSlug: "inicio" } })
+          .expect(200);
+        await agent.post(`${pagesPath}/${duplicate.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+        const response = await request(httpServer)
+          .get(`/api/v1/public/sites/${siteSlug}/pages/duplicada`)
+          .expect(200);
+        expect(response.body.seo.canonicalPath).toBe(`/${siteSlug}`);
+      });
+
+      it("un canonical huérfano (la página destino se borró) cae de vuelta a la ruta propia, sin romper", async () => {
+        const { agent, siteSlug, pagesPath } = await createSiteWithOwner();
+        const target = await agent.post(pagesPath).set(CSRF_HEADERS).send({ slug: "destino" }).expect(201);
+        await addTextBlock(agent, pagesPath, target.body.id, "<p>destino</p>");
+        await agent.post(`${pagesPath}/${target.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+        const source = await agent.post(pagesPath).set(CSRF_HEADERS).send({ slug: "origen" }).expect(201);
+        await addTextBlock(agent, pagesPath, source.body.id, "<p>origen</p>");
+        await agent
+          .patch(`${pagesPath}/${source.body.id}`)
+          .set(CSRF_HEADERS)
+          .send({ seoMeta: { canonicalPageSlug: "destino" } })
+          .expect(200);
+        await agent.post(`${pagesPath}/${source.body.id}/publish`).set(CSRF_HEADERS).expect(201);
+
+        // La página destino se borra (papelera) después de haber quedado referenciada.
+        await agent.delete(`${pagesPath}/${target.body.id}`).set(CSRF_HEADERS).expect(200);
+
+        const response = await request(httpServer)
+          .get(`/api/v1/public/sites/${siteSlug}/pages/origen`)
+          .expect(200);
+        expect(response.body.seo.canonicalPath).toBe(`/${siteSlug}/origen`);
+      });
+
+      it("rechaza un seoMeta con un campo fuera del esquema cerrado (validación de servidor)", async () => {
+        const { agent, pagesPath } = await createSiteWithOwner();
+        const home = (await agent.get(pagesPath).expect(200)).body[0];
+        await agent
+          .patch(`${pagesPath}/${home.id}`)
+          .set(CSRF_HEADERS)
+          .send({ seoMeta: { robots: "always_index" } })
+          .expect(400);
       });
     });
   });

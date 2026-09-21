@@ -108,6 +108,12 @@ jobs:
       CORS_ORIGINS: http://localhost:3000
       AUTH_ENCRYPTION_KEY: MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
       APP_BASE_URL: http://localhost:3100
+      # apps/web valida su entorno al importar `lib/env.ts` (mismo no negociable que apps/api) —
+      # algunas de sus pruebas lo importan transitivamente (rutas de F2.7/F2.8), así que este job
+      # también necesita valores, aunque ninguno apunte a un servicio real.
+      API_BASE_URL: http://localhost:4000/api/v1
+      REVALIDATE_SECRET: ci-test-placeholder-secret-not-a-real-value
+      PUBLIC_WEB_BASE_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -134,6 +140,7 @@ jobs:
       NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
       API_BASE_URL: http://localhost:4000/api/v1
       REVALIDATE_SECRET: ci-build-placeholder-secret-not-a-real-value
+      PUBLIC_WEB_BASE_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

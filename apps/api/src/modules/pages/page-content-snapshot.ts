@@ -1,3 +1,4 @@
+import { seoMetaSchema } from "@impulza/validation";
 import { z } from "zod";
 
 // Forma interna del "content_snapshot" que guarda cada `PageVersion` (F2.6). No es un contrato de
@@ -16,7 +17,10 @@ import { z } from "zod";
 export const pageContentSnapshotSchema = z.object({
   slug: z.string(),
   visibility: z.enum(["PUBLIC", "HIDDEN"]),
-  seoMeta: z.unknown().nullable(),
+  // Tipado desde F2.8 (antes `z.unknown()`): revalida acá lo que ya se validó al guardar, mismo
+  // criterio que la config de cada bloque — el snapshot no confía ciegamente en lo que hay en la
+  // columna JSON de Postgres.
+  seoMeta: seoMetaSchema.nullable(),
   blocks: z.array(
     z.object({
       type: z.string(),

@@ -35,8 +35,8 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F2.5 — Temas y apariencia | Terminada |
 | F2.6 — Borrador, publicación e historial | Terminada |
 | F2.7 — Render público (`apps/web`) | Terminada |
-| F2.8 — SEO base | Pendiente |
-| F2.9 — Constructor visual (`apps/dashboard`) | Pendiente |
+| F2.8 — SEO base | Terminada |
+| F2.9 — Constructor visual (`apps/dashboard`) | Pendiente (siguiente) |
 | F2.10 — Aislamiento multi-tenant de Fase 2 | Pendiente (se re-verifica al cerrar la fase) |
 
 > **Deuda saldada el 2026-09-19 — OpenAPI**: el repositorio no publicaba un documento OpenAPI
@@ -63,6 +63,19 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 > un `TODO` en `apps/api/src/openapi/generate.ts`, pero **el mismo socket colgado afecta al apagado
 > del servidor real**, no solo al script. Corresponde a una tarea de apagado ordenado
 > (`onApplicationShutdown`), no a este trabajo de documentación.
+>
+> **Deuda declarada nueva — `robots.txt` por sitio no es descubrible por crawlers reales (F2.8)**:
+> el estándar (RFC 9309) hace que un crawler solo busque `robots.txt` en la raíz del host, nunca en
+> un subpath — mientras el hosting sea por path (`impulza.one/mi-sitio`, sin dominio propio hasta
+> que `SiteDomain`, modelada desde F2.1, tenga su propio ruteo) `/:siteSlug/robots.txt` no es lo que
+> Google ni Bing van a encontrar solos, aunque el criterio de aceptación de F2.8 pedía "robots.txt
+> por sitio" y esta ruta cumple exactamente eso. Sirve igual hoy para envío manual a Search Console
+> (que sí admite verificar un prefijo de URL) y queda lista para cuando exista ruteo por dominio
+> propio, momento en el que pasa a ser, literalmente, la raíz de ese host. El control real de
+> indexado por página no depende de esto: ya está cubierto por `<meta name="robots">`
+> (`seoToMetadata`, `apps/web`), que un crawler sí respeta sin importar el path. No bloquea F2.8
+> porque la ruta cumple lo escrito en el backlog; queda anotado para cuando se diseñe el ruteo por
+> dominio propio, que es cuando esta limitación deja de existir.
 
 ### F2.1 — Modelo de datos de sitios, páginas y bloques
 **Criterios de aceptación:**

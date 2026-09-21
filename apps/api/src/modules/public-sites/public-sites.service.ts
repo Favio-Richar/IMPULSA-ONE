@@ -4,18 +4,19 @@ import { parseStoredBlock } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { pageContentSnapshotSchema } from "../pages/page-content-snapshot.js";
 import { ThemesService } from "../themes/themes.service.js";
+import { resolveSeo, type ResolvedSeo } from "./seo-resolver.js";
 
 export interface PublicSiteView {
   name: string;
   slug: string;
   theme: { tokens: unknown };
-  pages: Array<{ slug: string; isHome: boolean }>;
+  pages: Array<{ slug: string; isHome: boolean; publishedAt: Date }>;
 }
 
 export interface PublicPageView {
   slug: string;
   isHome: boolean;
-  seoMeta: unknown;
+  seo: ResolvedSeo;
   blocks: Array<{ type: string; config: unknown }>;
 }
 
@@ -69,18 +70,29 @@ export class PublicSitesService {
 
     // Solo la navegación: `PUBLIC` y con al menos una versión publicada. Una página `HIDDEN`
     // sigue siendo alcanzable por enlace directo (F2.3) — por eso esto NO es el filtro que decide
-    // si una página existe, solo el de qué aparece en el menú.
+    // si una página existe, solo el de qué aparece en el menú (y, desde F2.8, de qué entra en
+    // `sitemap.xml`: mismo criterio, "públicas y publicadas").
     const navPages = await this.prisma.page.findMany({
       where: { siteId: site.id, deletedAt: null, visibility: "PUBLIC", status: "PUBLISHED" },
       orderBy: { position: "asc" },
-      select: { slug: true, isHome: true },
+      select: {
+        slug: true,
+        isHome: true,
+        // `lastmod` real de F2.8: cuándo se publicó la versión vigente, no cuándo se editó el
+        // borrador por última vez (eso puede ser mucho más reciente que lo que el público ve).
+        versions: { orderBy: { versionNumber: "desc" }, take: 1, select: { publishedAt: true } },
+      },
     });
 
     return {
       name: site.name,
       slug: site.slug,
       theme: { tokens: theme.tokens },
-      pages: navPages,
+      pages: navPages.map((page) => ({
+        slug: page.slug,
+        isHome: page.isHome,
+        publishedAt: page.versions[0]?.publishedAt ?? new Date(0),
+      })),
     };
   }
 
@@ -133,11 +145,48 @@ export class PublicSitesService {
       })
       .filter((block): block is { type: string; config: unknown } => block !== null);
 
+    const canonicalOverridePath = await this.resolveCanonicalOverride(site.id, site.slug, snapshot.seoMeta);
+
     return {
       slug: page.slug,
       isHome: page.isHome,
-      seoMeta: snapshot.seoMeta,
+      seo: resolveSeo({
+        site: { name: site.name },
+        page: { slug: page.slug, isHome: page.isHome },
+        seoMeta: snapshot.seoMeta,
+        blocks,
+        canonicalOverridePath,
+        selfPath: this.publicPath(site.slug, page),
+      }),
       blocks,
     };
+  }
+
+  private publicPath(siteSlug: string, page: { slug: string; isHome: boolean }): string {
+    return page.isHome ? `/${siteSlug}` : `/${siteSlug}/${page.slug}`;
+  }
+
+  /**
+   * Resuelve `seoMeta.canonicalPageSlug` a una ruta pública real, o `null` si no hay override (el
+   * caso normal) o si quedó huérfano: apunta a una página que ya no existe, se borró o se
+   * despublicó desde que se guardó. Un canonical roto sería peor que no tener override — mejor
+   * caer de vuelta a la ruta propia en silencio que servir un `<link rel="canonical">` a un 404.
+   */
+  private async resolveCanonicalOverride(
+    siteId: string,
+    siteSlug: string,
+    seoMeta: { canonicalPageSlug?: string | null } | null,
+  ): Promise<string | null> {
+    const targetSlug = seoMeta?.canonicalPageSlug;
+    if (!targetSlug) {
+      return null;
+    }
+
+    const target = await this.prisma.page.findFirst({
+      where: { siteId, slug: targetSlug, deletedAt: null, status: "PUBLISHED" },
+      select: { slug: true, isHome: true },
+    });
+
+    return target ? this.publicPath(siteSlug, target) : null;
   }
 }

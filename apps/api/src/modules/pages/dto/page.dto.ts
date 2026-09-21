@@ -1,4 +1,4 @@
-import { pageSlugSchema } from "@impulza/validation";
+import { pageSlugSchema, seoMetaSchema } from "@impulza/validation";
 import { z } from "zod";
 
 // La visibilidad es independiente del estado de publicación (F2.3): una página puede estar
@@ -14,6 +14,9 @@ export const updatePageSchema = z
   .object({
     slug: pageSlugSchema.optional(),
     visibility: pageVisibilitySchema.optional(),
+    // `null` limpia el SEO propio de la página (vuelve a los valores derivados del contenido,
+    // F2.8); `undefined` (el campo ausente del cuerpo) es "no tocar lo que ya había".
+    seoMeta: seoMetaSchema.nullable().optional(),
   })
   .refine((body) => Object.keys(body).length > 0, {
     message: "Envía al menos un campo a modificar.",

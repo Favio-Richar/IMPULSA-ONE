@@ -5,7 +5,8 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { type Page, type PageVisibility, type PrismaClient } from "@impulza/database";
+import { Prisma, type Page, type PageVisibility, type PrismaClient } from "@impulza/database";
+import type { SeoMeta } from "@impulza/validation";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
@@ -123,7 +124,7 @@ export class PagesService {
     actorId: string,
     siteId: string,
     pageId: string,
-    changes: { slug?: string; visibility?: PageVisibility },
+    changes: { slug?: string; visibility?: PageVisibility; seoMeta?: SeoMeta | null },
   ): Promise<Page> {
     const page = await this.getPageOrThrow(organizationId, siteId, pageId);
 
@@ -140,6 +141,12 @@ export class PagesService {
         data: {
           ...(changes.slug === undefined ? {} : { slug: changes.slug }),
           ...(changes.visibility === undefined ? {} : { visibility: changes.visibility }),
+          // `Prisma.DbNull`, no `null` a secas: en una columna JSON, `null` llano deja la columna
+          // sin tocar (Prisma la interpreta como "no seteado") en vez de guardar un JSON `null`
+          // real — mismo caso ya resuelto en `PageVersionsService.restoreVersion` (F2.6).
+          ...(changes.seoMeta === undefined
+            ? {}
+            : { seoMeta: changes.seoMeta === null ? Prisma.DbNull : (changes.seoMeta as Prisma.InputJsonValue) }),
         },
       });
     } catch (error) {

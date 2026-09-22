@@ -179,15 +179,18 @@ function BlockEditor({
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col gap-4">
-      <div className="flex items-center justify-between">
+    // El alto fijo y el recorte son del layout de tres columnas: cada panel tiene su propio scroll
+    // dentro de una pantalla que no se mueve. En una sola columna eso aplasta los tres paneles en
+    // franjas inservibles, así que abajo de `lg` la página fluye y scrollea una sola vez.
+    <div className="flex flex-col gap-4 lg:h-[calc(100vh-8rem)]">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div>
           <Link href={`/sitios/${siteId}/paginas/${pageId}`} className="text-sm text-muted-foreground hover:underline">
             ← {page.isHome ? "Inicio" : page.slug}
           </Link>
           <h1 className="mt-1 text-lg font-semibold text-foreground">Constructor visual</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {history.hasError ? (
             <p role="alert" className="text-sm text-danger">
               No pudimos deshacer ese cambio. Intenta de nuevo.
@@ -241,17 +244,23 @@ function BlockEditor({
       ) : null}
       {publishMutation.isSuccess ? <p className="-mt-2 self-end text-sm text-success">Publicado.</p> : null}
 
-      <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[260px_1fr_360px]">
-        <div className="flex flex-col gap-4 overflow-y-auto rounded-lg border border-border bg-background p-3">
+      <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:grid-cols-[260px_1fr_360px]">
+        <section
+          aria-label="Biblioteca de bloques"
+          className="flex flex-col gap-4 rounded-lg border border-border bg-background p-3 lg:overflow-y-auto"
+        >
           <BlockLibrary onAdd={addBlock} disabled={createMutation.isPending} />
           {createMutation.isError ? (
             <p role="alert" className="text-sm text-danger">
               No pudimos agregar ese bloque. Intenta de nuevo.
             </p>
           ) : null}
-        </div>
+        </section>
 
-        <div className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-background p-3">
+        <section
+          aria-label="Lienzo"
+          className="flex flex-col gap-3 rounded-lg border border-border bg-background p-3 lg:overflow-y-auto"
+        >
           <p className="text-sm font-medium text-foreground">Lienzo</p>
           <BlockCanvas
             blocks={blocks}
@@ -278,12 +287,15 @@ function BlockEditor({
               No pudimos cambiar la visibilidad de ese bloque. Intenta de nuevo.
             </p>
           ) : null}
-        </div>
+        </section>
 
-        <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-background">
+        <section
+          aria-label="Configuración del bloque"
+          className="flex flex-col rounded-lg border border-border bg-background lg:overflow-hidden"
+        >
           <p className="p-3 pb-0 text-sm font-medium text-foreground">Configuración</p>
           {selectedBlock ? (
-            <div className="flex-1 overflow-y-auto">
+            <div className="lg:flex-1 lg:overflow-y-auto">
               <BlockConfigPanel
                 organizationId={organizationId}
                 siteId={siteId}
@@ -298,7 +310,7 @@ function BlockEditor({
               Selecciona un bloque del lienzo para editarlo.
             </div>
           )}
-        </div>
+        </section>
       </div>
 
       <div className="h-80 shrink-0 lg:h-96">

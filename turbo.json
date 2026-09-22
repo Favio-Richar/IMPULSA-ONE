@@ -19,6 +19,11 @@
     "test": {
       "dependsOn": ["^build"]
     },
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "outputs": []
+    },
     "openapi:generate": {
       "dependsOn": ["^build"],
       "cache": false,

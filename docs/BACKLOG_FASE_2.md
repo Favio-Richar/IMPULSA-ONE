@@ -36,7 +36,7 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F2.6 — Borrador, publicación e historial | Terminada |
 | F2.7 — Render público (`apps/web`) | Terminada |
 | F2.8 — SEO base | Terminada |
-| F2.9 — Constructor visual (`apps/dashboard`) | En curso (criterios cubiertos; falta verificar responsive real antes de cerrar) |
+| F2.9 — Constructor visual (`apps/dashboard`) | Terminada |
 | F2.10 — Aislamiento multi-tenant de Fase 2 | Terminada |
 
 > **Deuda saldada el 2026-09-19 — OpenAPI**: el repositorio no publicaba un documento OpenAPI
@@ -194,15 +194,22 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 > opcionales dentro de un `array`/`group` que nunca se omitían al normalizar, un import con
 > extensión `.js` que pasaba `tsc` pero rompía `next build` con Turbopack, y `reset()` de
 > `react-hook-form` re-disparando su propio `watch()` de autoguardado durante deshacer/rehacer — ver
-> `README.md` §"Editor de bloques" para el detalle de cada uno). Con esto, **los criterios de
-> aceptación escritos ya están cubiertos**. **Pendiente antes de cerrar F2.9 del todo**: verificar el
-> responsive real del panel del constructor en una pantalla angosta (solo se probó en ancho de
-> escritorio — el simulador de dispositivo de la vista previa sí se probó, pero es otra cosa).
-> Confirmado que no es posible desde esta sesión: `resize_window` de la herramienta de navegador no
-> cambia el viewport real en esta máquina (`window.innerWidth` se midió por JS después del resize y
-> siguió en 1920 sin importar qué tamaño se pidiera) — requiere que el propio Favio lo revise en un
-> teléfono real o en las devtools de su navegador. Ver `README.md` §"Gestión de sitios y páginas
-> (F2.9, Etapa A)" y §"Editor de bloques (F2.9, Etapa B1 y B2 parcial)".
+> `README.md` §"Editor de bloques" para el detalle de cada uno).
+>
+> **Cerrada el 2026-09-22 con el responsive verificado de verdad.** Era el único criterio que
+> quedaba sin confirmar y no había con qué: la herramienta de navegador de las sesiones asistidas no
+> cambia el viewport real de esta máquina (`window.innerWidth` medido por JS después del resize
+> seguía en 1920). Se resolvió agregando Playwright al repositorio (ADR-003, `packages/e2e`), que da
+> viewport real. La primera corrida encontró un defecto real que leyendo el código no se veía: el
+> constructor aplicaba en una sola columna el alto fijo y el recorte que necesita su layout de tres
+> columnas, así que en un teléfono los tres paneles quedaban apilados en franjas de ~200px con
+> scroll propio — 533px de biblioteca escondidos y el panel de configuración en 61px con un bloque
+> abierto. Corregido acotando el alto fijo y el recorte a `lg` y dejando que abajo de eso la página
+> fluya y scrollee una sola vez. La prueba se verificó contra el layout anterior para confirmar que
+> lo detecta (no alcanzaba con medir alturas: ~200px "parece" razonable; lo que delata el defecto es
+> el scroll anidado). Las tres zonas pasaron además a ser `<section>` con nombre accesible. Ver
+> `README.md` §"Gestión de sitios y páginas (F2.9, Etapa A)", §"Editor de bloques" y
+> §"Pruebas de extremo a extremo".
 
 ### F2.10 — Aislamiento multi-tenant de Fase 2
 **Criterios de aceptación:**

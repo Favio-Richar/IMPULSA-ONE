@@ -127,6 +127,70 @@ jobs:
         run: pnpm --filter @impulza/database run db:seed
       - run: pnpm test
 
+  e2e:
+    name: E2E (navegador real)
+    needs: install
+    runs-on: ubuntu-latest
+    # ADR-003: estas pruebas corren contra la API real y un navegador real porque miden lo que
+    # ninguna otra capa ve — geometría del layout en un viewport angosto de verdad. Van aparte de
+    # `pnpm test` justamente porque necesitan todo esto levantado.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: impulza
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d impulza"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/impulza
+      REDIS_URL: redis://localhost:6379
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3100
+      AUTH_ENCRYPTION_KEY: MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
+      APP_BASE_URL: http://localhost:3100
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: corepack enable && corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+      - run: pnpm install --frozen-lockfile
+      - name: Apply database migrations
+        run: pnpm --filter @impulza/database run db:migrate:deploy
+      - name: Seed roles and permissions
+        run: pnpm --filter @impulza/database run db:seed
+      # Solo Chromium: lo que se mide es la geometría del layout, no la compatibilidad entre
+      # navegadores (ADR-003).
+      - name: Install Playwright browser
+        run: pnpm --filter @impulza/e2e exec playwright install --with-deps chromium
+      # Playwright levanta la API y el dashboard por su cuenta (`webServer`) y espera a que
+      # respondan antes de empezar.
+      - run: pnpm test:e2e
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: packages/e2e/playwright-report/
+          retention-days: 7
+
   build:
     name: Build
     needs: install
@@ -167,7 +231,7 @@ jobs:
   ci-ok:
     name: CI OK
     if: always()
-    needs: [lint, typecheck, test, build, audit]
+    needs: [lint, typecheck, test, e2e, build, audit]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs succeeded

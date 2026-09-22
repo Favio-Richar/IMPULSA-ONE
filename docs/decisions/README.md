@@ -36,3 +36,4 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 |---|---|---|
 | [ADR-001](./ADR-001-modular-monolith.md) | Monolito modular sobre microservicios para el MVP | Aceptado |
 | [ADR-002](./ADR-002-multi-tenancy.md) | Multi-tenancy estricto por organización desde el primer commit | Aceptado |
+| [ADR-003](./ADR-003-playwright-e2e.md) | Usar Playwright para las pruebas de interfaz de extremo a extremo | Aceptado |

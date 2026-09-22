@@ -3,14 +3,10 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 2 — Sitio público y constructor. F2.10 (aislamiento multi-tenant de la fase)
-terminada. F2.9 (constructor visual, `apps/dashboard`) en curso: Etapa A cerrada; Etapa B cubre ya
-los criterios de aceptación escritos — lienzo, biblioteca, panel de configuración, vista previa en
-vivo, deshacer/rehacer (acotado a bloques existentes) y publicar desde el propio constructor, para
-los 15 tipos del catálogo. Antes de marcar F2.9 (y con ella, toda la Fase 2) como terminada falta
-un solo punto: verificar el responsive real del panel en una pantalla angosta (no solo el simulador
-de la vista previa) — no se pudo confirmar desde esta sesión, ver más abajo.**
-Fase 0 y Fase 1 cerradas (F0.1–F0.5, F1.1–F1.10). Ver
+**Estado actual: Fase 2 — Sitio público y constructor — terminada (F2.1–F2.10).** Un usuario puede
+crear un sitio con su slug, elegir tema, armar sus páginas con el constructor visual (15 tipos de
+bloque, arrastrar y soltar, vista previa en vivo, deshacer/rehacer y autoguardado), editar su SEO,
+publicar y ver el resultado en la web pública. Fase 0 y Fase 1 cerradas (F0.1–F0.5, F1.1–F1.10). Ver
 `docs/BACKLOG_FASE_2.md` para el backlog de la fase activa, `docs/BACKLOG_FASE_0_1.md` para las
 anteriores y `CLAUDE.md` para las reglas de trabajo del repositorio.
 
@@ -18,7 +14,7 @@ anteriores y `CLAUDE.md` para las reglas de trabajo del repositorio.
 |---|---|---|
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
-| 2 — Sitio público y constructor | F2.1–F2.10 | En curso (F2.1–F2.8 y F2.10 terminadas; falta un punto de F2.9) |
+| 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
 
 ## Requisitos
 
@@ -819,18 +815,57 @@ repetir configuración por app. Como es un efecto global que nada exporta, `src/
 fija: nada más que una prueba puede detectar que alguien lo borre o que un consumidor termine
 resolviendo otra copia de Zod.
 
-**No cerrada del todo — una verificación pendiente antes de marcarla como terminada:** el
-**responsive real del propio panel del constructor en pantallas angostas** (no el simulador de
-dispositivo de la vista previa, que sí se probó). Confirmado que `resize_window` de la herramienta
-de navegador no cambia el viewport real en esta máquina — no solo la captura, sino
-`window.innerWidth` medido por JS después del resize, que siguió en 1920 sin importar qué tamaño se
-pidiera. Solo se pudo verificar a mano en ancho de escritorio. Las clases responsive
-(`grid-cols-1 lg:grid-cols-[...]`) siguen la misma convención que el resto del dashboard, pero eso
-es leer el código, no verlo andar en un teléfono real — falta que alguien lo revise en un
-dispositivo de verdad o en las devtools de su propio navegador.
+**Responsive real (resuelto, y con un defecto real encontrado en el camino):** el criterio pedía que
+el panel del constructor funcione en un teléfono, no solo el simulador de dispositivo de la vista
+previa (que solo cambia el ancho de un iframe y no dice nada sobre el panel en sí). No había con
+qué verificarlo, así que se agregó Playwright (ADR-003, ver §"Pruebas de extremo a extremo"). La
+primera corrida en un viewport de 412px encontró lo que leyendo el código no se veía: el alto fijo
+(`h-[calc(100vh-8rem)]`) y el recorte (`overflow-hidden`) que necesita el layout de tres columnas se
+aplicaban igual en una sola columna, así que biblioteca, lienzo y configuración quedaban apilados en
+franjas de ~200px, **cada una con su propio scroll interno** — 533px de biblioteca escondidos y el
+panel de configuración en 61px con un bloque abierto, con el texto cortado a la mitad. Corregido
+acotando el alto fijo y el recorte a `lg`: abajo de ese punto la página fluye y scrollea una sola
+vez, cada panel toma su alto natural y nada queda cortado. El encabezado además envuelve en vez de
+apretarse. De paso, las tres zonas pasaron a ser `<section>` con nombre accesible (`aria-label`), lo
+que las vuelve puntos de referencia reales para un lector de pantalla y da a las pruebas un
+selector que no depende del estilo.
 
 Fuera de los criterios de aceptación (no exigido, pendiente aparte): sin UI para
 `scheduledStart`/`scheduledEnd` (el campo existe en la API desde F2.4).
+
+## Pruebas de extremo a extremo (`packages/e2e`)
+
+Playwright sobre un navegador real y la **API real** (Postgres y Redis de verdad, igual que las
+pruebas de integración de `apps/api` — sin mocks de servidor). Ver `docs/decisions/ADR-003-playwright-e2e.md`
+para por qué se agregó y qué alternativas se descartaron.
+
+```bash
+docker compose up -d                 # Postgres + Redis
+pnpm --filter @impulza/e2e exec playwright install chromium   # una sola vez por máquina
+pnpm test:e2e
+```
+
+Playwright levanta la API y el dashboard por su cuenta (`webServer`) y reutiliza los que ya estén
+corriendo. El arnés (`global-setup.ts`) registra un usuario nuevo por corrida contra la API real,
+crea su organización, sitio, página de inicio y unos bloques, y deja la sesión lista para el
+navegador. El único atajo es marcar el correo como verificado directo en la base: lo que estas
+pruebas miden es el constructor, no el flujo de alta — ese ya tiene su propia cobertura e2e en
+`apps/api`, y repetirlo acá solo agregaría una forma más de fallar por un motivo ajeno.
+
+Dos proyectos, `movil` (Pixel 7, 412px) y `escritorio` (1440px), sobre el mismo archivo: el punto es
+contrastar los dos extremos. Las pruebas afirman **propiedades del layout** — que nada se desborde
+horizontalmente, que los controles del encabezado queden dentro de la pantalla, que en una sola
+columna ningún panel scrollee por dentro, que se pueda tocar un bloque y llegar a sus campos — nunca
+comparan capturas pixel a pixel, que se romperían con cualquier cambio legítimo de diseño.
+
+**Las pruebas se verificaron contra el código roto, no solo contra el corregido**: se revirtieron
+temporalmente las clases del layout anterior y se confirmó que fallan con el defecto real
+(533px de scroll oculto, panel de configuración en 61px). Una prueba que nunca se vio fallar no
+prueba nada. Medir solo alturas no habría alcanzado — ~200px "parece" razonable; lo que delata el
+defecto es el scroll anidado.
+
+`pnpm test:e2e` va aparte de `pnpm test` a propósito: necesita servidores levantados y es de otro
+orden de duración. En CI tiene su propio job con Postgres, Redis y Chromium.
 
 ## Aislamiento multi-tenant de Fase 2 (F2.10)
 

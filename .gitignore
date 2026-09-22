@@ -29,6 +29,9 @@ pnpm-debug.log*
 
 # testing / coverage
 coverage/
+# Playwright: sesión y datos sembrados del arnés e2e, trazas y capturas de fallos, reporte HTML.
+.playwright/
+playwright-report/
 
 # misc
 .env.vercel

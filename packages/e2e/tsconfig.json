@@ -1,0 +1,14 @@
+{
+  "extends": "@impulza/tsconfig/base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    // El código de las pruebas corre en Node, pero los callbacks de `page.evaluate` se serializan y
+    // corren dentro del navegador — ahí `document` y `window` sí existen, así que hacen falta las
+    // dos librerías de tipos en el mismo archivo.
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["playwright.config.ts", "global-setup.ts", "tests"]
+}

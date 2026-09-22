@@ -143,7 +143,16 @@ Del PM §21 — deben resolverse **antes de fases que dependan de ellas** (marca
 7. Cuotas de almacenamiento/tráfico — antes de Fase 4 (límites de plan) y Fase 2 (media).
 8. Alcance inicial de agencia — antes de Fase 6.
 9. Política de moderación — antes de Fase 4 (superadministración/moderación).
-10. Condiciones de privacidad y retención — antes de Fase 3 (analítica) y Fase 1 (auth/datos).
+10. ~~Condiciones de privacidad y retención — antes de Fase 3 (analítica) y Fase 1 (auth/datos).~~
+    **Resuelta a nivel de modelo de datos el 2026-09-22**: ver `docs/decisions/ADR-004-privacidad-
+    retencion-datos.md` (Ley 21.719, Chile, vigente desde diciembre de 2026) — minimización en
+    `AnalyticsEvent` (sin IP cruda, visitante anonimizado con rotación diaria, exclusión de bots),
+    consentimiento auditado en `Contact`, retención por defecto configurable (14 meses eventos
+    crudos / revisión a los 36 meses de inactividad para contactos) y borrado/exportación por
+    API+auditoría para atender derechos ARCO+. Pendiente aún, y explícitamente fuera de esta ADR:
+    el texto público de política de privacidad, un DPO si corresponde, y el registro ante la
+    Agencia — decisiones de negocio/legales, no de ingeniería, que siguen bloqueando el
+    **lanzamiento comercial**, no la construcción del módulo.
 
 **No bloquean Fase 0/1**: se puede avanzar con fundación técnica, auth, organizaciones/roles y
 design system sin estas decisiones, siempre que no se publique nada comercialmente ni se fije el

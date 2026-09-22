@@ -1,5 +1,5 @@
 import type { FaqBlockConfig } from "@impulza/validation";
-import { RichText } from "../ui/rich-text";
+import { RichText } from "../ui/rich-text.js";
 
 /**
  * `<details>/<summary>` nativos: acordeón accesible por teclado y lector de pantalla sin una

@@ -1,5 +1,5 @@
 import type { ImageBlockConfig } from "@impulza/validation";
-import { SiteImage } from "../ui/site-image";
+import { SiteImage } from "../ui/site-image.js";
 
 export function ImageBlock({ config }: { config: ImageBlockConfig }) {
   const figure = (

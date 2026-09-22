@@ -1,7 +1,7 @@
 import type { ServiceBlockConfig } from "@impulza/validation";
-import { LinkButton, type ButtonVariant } from "../ui/link-button";
-import { RichText } from "../ui/rich-text";
-import { SiteImage } from "../ui/site-image";
+import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
+import { RichText } from "../ui/rich-text.js";
+import { SiteImage } from "../ui/site-image.js";
 
 function formatPrice(amount: number, currency: string): string {
   // `priceAmount` está en la unidad mínima de la moneda (centavos, ST §8) — Intl la divide sola

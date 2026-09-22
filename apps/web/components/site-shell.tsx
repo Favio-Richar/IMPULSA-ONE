@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
+import { Container } from "@impulza/blocks-renderer";
 import type { PublicSiteResponse } from "@impulza/contracts";
 import { themeTokensSchema, themeTokensToCssVariables } from "@impulza/validation";
-import { Container } from "./ui/container";
 
 /**
  * Envoltorio de todo sitio público: inyecta el tema del tenant como propiedades custom de CSS

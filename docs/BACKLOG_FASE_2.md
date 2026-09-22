@@ -36,8 +36,8 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F2.6 — Borrador, publicación e historial | Terminada |
 | F2.7 — Render público (`apps/web`) | Terminada |
 | F2.8 — SEO base | Terminada |
-| F2.9 — Constructor visual (`apps/dashboard`) | En curso (Etapa A cerrada, Etapa B pendiente) |
-| F2.10 — Aislamiento multi-tenant de Fase 2 | Pendiente (se re-verifica al cerrar la fase) |
+| F2.9 — Constructor visual (`apps/dashboard`) | En curso (criterios cubiertos; falta verificar responsive real antes de cerrar) |
+| F2.10 — Aislamiento multi-tenant de Fase 2 | Terminada |
 
 > **Deuda saldada el 2026-09-19 — OpenAPI**: el repositorio no publicaba un documento OpenAPI
 > (`docs/api/` estaba vacío desde F0.1) pese a que la Definición de Terminado lo exige al modificar
@@ -168,17 +168,41 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 - Estados de carga, vacío, error y éxito en toda la UI; responsive real.
 - Ningún control de negocio confiado al frontend: toda validación se repite en servidor.
 
-> **Avance parcial — Etapa A cerrada (2026-09-21), Etapa B pendiente**: `apps/dashboard` no tenía
-> ninguna UI de sitios/páginas/temas (F2.2–F2.8 eran solo API); sin eso, el editor de bloques en sí
-> es inalcanzable. La Etapa A agrega las pantallas de gestión: listar/crear/archivar sitios, elegir
-> tema del catálogo, listar/crear/reordenar/ocultar/enviar a la papelera páginas (con deshacer),
-> editar SEO, publicar y ver/restaurar el historial de versiones — todo sobre la API ya existente,
-> sin bloques nuevos de negocio del lado del cliente. **No cumple los criterios de arriba**: no hay
-> arrastrar y soltar, ni biblioteca de bloques, ni vista previa, ni deshacer/rehacer de contenido —
-> eso es la Etapa B, todavía sin empezar. Ver `README.md` §"Gestión de sitios y páginas (F2.9,
-> Etapa A)". Nota aparte: se corrigió en el camino un bug real de `packages/ui` — `Button asChild`
-> rompía porque el spinner de carga le agregaba un segundo hijo al `Slot` de Radix (primer uso real
-> de `asChild` en el repo); ver el comentario en `Button.tsx`.
+> **Avance parcial — Etapa A cerrada (2026-09-21), Etapa B en progreso (B1, 2026-09-21)**:
+> `apps/dashboard` no tenía ninguna UI de sitios/páginas/temas (F2.2–F2.8 eran solo API); sin eso,
+> el editor de bloques en sí es inalcanzable. La Etapa A agrega las pantallas de gestión:
+> listar/crear/archivar sitios, elegir tema del catálogo, listar/crear/reordenar/ocultar/enviar a la
+> papelera páginas (con deshacer), editar SEO, publicar y ver/restaurar el historial de versiones —
+> todo sobre la API ya existente, sin bloques nuevos de negocio del lado del cliente. Nota aparte:
+> se corrigió en el camino un bug real de `packages/ui` — `Button asChild` rompía porque el spinner
+> de carga le agregaba un segundo hijo al `Slot` de Radix (primer uso real de `asChild` en el repo);
+> ver el comentario en `Button.tsx`.
+>
+> La Etapa B agrega el editor de bloques en sí en `/sitios/:siteId/paginas/:pageId/editor`:
+> biblioteca de bloques, lienzo con arrastrar y soltar (`dnd-kit`) para reordenar/duplicar/ocultar/
+> eliminar, panel de configuración por tipo con guardado automático (indicador de estado + reintento
+> explícito ante error, con los motivos de validación reales junto a cada campo — resolver a medida
+> sobre el mismo schema Zod del catálogo, no una copia), deshacer/rehacer (acotado a bloques que ya
+> existen — agregar/eliminar/duplicar limpia el historial en vez de entrar en él, porque el id de
+> un bloque lo asigna el servidor y "rehacer un agregado" no puede recrear el mismo id), publicar
+> desde el propio encabezado del constructor (con el estado "Publicada"/"Borrador" siempre visible,
+> sin volver a la pantalla de la página), y vista previa protagonista (móvil/tablet/escritorio) con
+> el mismo `PageBlocks` que el render público (movido a `packages/blocks-renderer`, compartido entre
+> `apps/web` y `apps/dashboard`). Los 15 tipos del catálogo tienen panel de edición, verificados uno
+> por uno a mano en el navegador contra la API real — incluidos varios bugs reales encontrados y
+> corregidos en el camino (seeds de `link`/`image` que no pasaban su propia validación, campos
+> opcionales dentro de un `array`/`group` que nunca se omitían al normalizar, un import con
+> extensión `.js` que pasaba `tsc` pero rompía `next build` con Turbopack, y `reset()` de
+> `react-hook-form` re-disparando su propio `watch()` de autoguardado durante deshacer/rehacer — ver
+> `README.md` §"Editor de bloques" para el detalle de cada uno). Con esto, **los criterios de
+> aceptación escritos ya están cubiertos**. **Pendiente antes de cerrar F2.9 del todo**: verificar el
+> responsive real del panel del constructor en una pantalla angosta (solo se probó en ancho de
+> escritorio — el simulador de dispositivo de la vista previa sí se probó, pero es otra cosa).
+> Confirmado que no es posible desde esta sesión: `resize_window` de la herramienta de navegador no
+> cambia el viewport real en esta máquina (`window.innerWidth` se midió por JS después del resize y
+> siguió en 1920 sin importar qué tamaño se pidiera) — requiere que el propio Favio lo revise en un
+> teléfono real o en las devtools de su navegador. Ver `README.md` §"Gestión de sitios y páginas
+> (F2.9, Etapa A)" y §"Editor de bloques (F2.9, Etapa B1 y B2 parcial)".
 
 ### F2.10 — Aislamiento multi-tenant de Fase 2
 **Criterios de aceptación:**
@@ -186,6 +210,21 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
   (sitios, páginas, bloques, temas, publicación, historial).
 - Se re-verifica el ataque de id cruzado (id de organización propio + id de recurso ajeno).
 - El render público no expone contenido no publicado ni de otra organización.
+
+> **Terminada (2026-09-22)**: los tres criterios ya estaban cubiertos de forma incremental — cada
+> historia de F2.2 a F2.7 había sumado su propio bloque a este archivo al cerrarse, no se dejó para
+> el final. Sitios (F2.2), páginas (F2.3, incluido el ataque combinado organización propia + sitio Y
+> página ajenos), bloques (F2.4, editar/duplicar/borrar un bloque ajeno desde la página propia),
+> temas (F2.5, incluido aplicar un tema ajeno al sitio propio), publicación e historial (F2.6,
+> incluida la restauración de una versión ajena) y render público (F2.7, sitio archivado, página
+> nunca publicada) — 30 pruebas, todas con el mismo patrón: organización de A con permiso real +
+> recurso de B, por cada combinación de ids que un guard superficial podría dejar pasar. Al revisar
+> para cerrar esta historia se encontró un hueco puntual: se verificaba que el **sitio** público no
+> expusiera ids internos, pero no lo mismo para la **página** pública — se agregó esa prueba (ahora
+> 31), incluyendo que los bloques de la respuesta pública solo tengan `{type, config}`, nunca un id.
+> Verificado aislado (`pnpm --filter @impulza/api exec vitest run src/multi-tenant-isolation.e2e.test.ts`):
+> 31/31. Ver `README.md` §"Aislamiento multi-tenant de Fase 2 (F2.10)" y el propio archivo de
+> pruebas para el detalle caso por caso.
 
 ## Salida de Fase 2
 

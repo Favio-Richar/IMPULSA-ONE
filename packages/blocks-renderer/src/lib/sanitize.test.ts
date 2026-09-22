@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeRichText } from "./sanitize";
+import { sanitizeRichText } from "./sanitize.js";
 
 // Defensa en profundidad (F2.7): apps/api ya sanea al guardar, esto prueba que la segunda pasada
 // en el render público, por su cuenta, también neutraliza cualquier intento de ejecución.

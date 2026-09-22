@@ -1,6 +1,10 @@
 @import "@impulza/ui/styles.css";
+@import "@impulza/blocks-renderer/styles.css";
 
 /* Tailwind v4 no detecta automáticamente las clases usadas dentro de un paquete del workspace
-   fuera de este directorio — se declara explícitamente para que packages/ui/src no quede sin
-   sus utilidades generadas. */
+   fuera de este directorio — se declara explícitamente para que packages/ui/src y
+   packages/blocks-renderer/src no queden sin sus utilidades generadas. Este segundo paquete es el
+   que pinta la vista previa del constructor visual (F2.9) con los mismos componentes que
+   apps/web usa para el render público — necesita el mismo tratamiento. */
 @source "../../../packages/ui/src";
+@source "../../../packages/blocks-renderer/src";

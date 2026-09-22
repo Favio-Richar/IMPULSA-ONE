@@ -1,6 +1,6 @@
 import { Mail, Phone } from "lucide-react";
 import type { ContactActionsBlockConfig } from "@impulza/validation";
-import { LinkButton, type ButtonVariant } from "../ui/link-button";
+import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
 
 export function ContactActionsBlock({
   config,

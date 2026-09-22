@@ -636,6 +636,42 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       expect(JSON.stringify(publicSite.body)).not.toContain(orgA.id);
     });
 
+    it("la página pública de B tampoco expone ids internos ni de ninguna organización, ni siquiera dentro de sus bloques", async () => {
+      const pagesOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .expect(200);
+      const homeOfB = pagesOfB.body[0].id;
+      await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/blocks`)
+        .set(CSRF_HEADERS)
+        .send({ type: "text", config: { html: "<p>contenido público de B</p>" } })
+        .expect(201);
+      // Idempotente: si un test anterior ya publicó la home de B, esto solo agrega una versión más.
+      await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/publish`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+
+      const siteOfB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}`)
+        .expect(200);
+
+      const publicPage = await request(httpServer)
+        .get(`/api/v1/public/sites/${siteOfB.body.slug}/pages/inicio`)
+        .expect(200);
+
+      // Mismo criterio que el sitio público: el contrato es mínimo (F2.7) — ni id de página, ni de
+      // bloque, ni de organización, en ningún nivel de la respuesta, incluidos los bloques.
+      expect(Object.keys(publicPage.body).sort()).toEqual(["blocks", "isHome", "seo", "slug"]);
+      expect(publicPage.body).not.toHaveProperty("id");
+      expect(publicPage.body).not.toHaveProperty("organizationId");
+      for (const block of publicPage.body.blocks) {
+        expect(Object.keys(block).sort()).toEqual(["config", "type"]);
+      }
+      expect(JSON.stringify(publicPage.body)).not.toContain(orgB.id);
+      expect(JSON.stringify(publicPage.body)).not.toContain(orgA.id);
+    });
+
     it("una página de B que nunca se publicó no es alcanzable públicamente, ni adivinando el slug exacto", async () => {
       const draftSlug = `borrador-${Date.now().toString(36)}`;
       await orgB.ownerAgent

@@ -1,5 +1,5 @@
 import type { TextBlockConfig } from "@impulza/validation";
-import { RichText } from "../ui/rich-text";
+import { RichText } from "../ui/rich-text.js";
 
 const ALIGN_CLASSES: Record<TextBlockConfig["alignment"], string> = {
   left: "text-left",

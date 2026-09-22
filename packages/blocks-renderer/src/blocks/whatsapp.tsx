@@ -1,6 +1,6 @@
 import { MessageCircle } from "lucide-react";
 import type { WhatsappBlockConfig } from "@impulza/validation";
-import { LinkButton, type ButtonVariant } from "../ui/link-button";
+import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
 
 export function WhatsappBlock({
   config,

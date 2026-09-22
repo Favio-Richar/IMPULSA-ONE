@@ -86,11 +86,16 @@ function PageDetail({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/sitios/${siteId}`} className="text-sm text-muted-foreground hover:underline">
-          ← Sitio
-        </Link>
-        <h1 className="mt-1 text-lg font-semibold text-foreground">{page.isHome ? "Inicio" : page.slug}</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <Link href={`/sitios/${siteId}`} className="text-sm text-muted-foreground hover:underline">
+            ← Sitio
+          </Link>
+          <h1 className="mt-1 text-lg font-semibold text-foreground">{page.isHome ? "Inicio" : page.slug}</h1>
+        </div>
+        <Button asChild>
+          <Link href={`/sitios/${siteId}/paginas/${pageId}/editor`}>Editar contenido</Link>
+        </Button>
       </div>
 
       <PageSettingsForm organizationId={organizationId} siteId={siteId} pageId={pageId} page={page} />

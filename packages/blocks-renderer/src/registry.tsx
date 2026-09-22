@@ -17,28 +17,33 @@ import {
   videoSchema,
   whatsappSchema,
 } from "@impulza/validation";
-import type { ButtonVariant } from "../ui/link-button";
-import { ContactActionsBlock } from "./contact-actions";
-import { ContactFormBlock } from "./contact-form";
-import { DividerBlock } from "./divider";
-import { FaqBlock } from "./faq";
-import { GalleryBlock } from "./gallery";
-import { HeroBlock } from "./hero";
-import { ImageBlock } from "./image";
-import { LinkBlock } from "./link";
-import { ProfileBlock } from "./profile";
-import { ServiceBlock } from "./service";
-import { SocialBlock } from "./social";
-import { TestimonialsBlock } from "./testimonials";
-import { TextBlock } from "./text";
-import { VideoBlock } from "./video";
-import { WhatsappBlock } from "./whatsapp";
+import type { ButtonVariant } from "./ui/link-button.js";
+import { ContactActionsBlock } from "./blocks/contact-actions.js";
+import { ContactFormBlock } from "./blocks/contact-form.js";
+import { DividerBlock } from "./blocks/divider.js";
+import { FaqBlock } from "./blocks/faq.js";
+import { GalleryBlock } from "./blocks/gallery.js";
+import { HeroBlock } from "./blocks/hero.js";
+import { ImageBlock } from "./blocks/image.js";
+import { LinkBlock } from "./blocks/link.js";
+import { ProfileBlock } from "./blocks/profile.js";
+import { ServiceBlock } from "./blocks/service.js";
+import { SocialBlock } from "./blocks/social.js";
+import { TestimonialsBlock } from "./blocks/testimonials.js";
+import { TextBlock } from "./blocks/text.js";
+import { VideoBlock } from "./blocks/video.js";
+import { WhatsappBlock } from "./blocks/whatsapp.js";
 
 /**
- * Único punto de la página que decide "cómo se ve un bloque" a partir de su `type` (F2.7). Cada
- * caso reanaliza `block.config` contra el esquema **específico** de ese tipo, no contra el
- * genérico de `BlockDefinition` — así cada componente recibe la forma exacta inferida por Zod, sin
- * un cast a mano que alguien pueda dejar desalineado.
+ * Único punto que decide "cómo se ve un bloque" a partir de su `type` (F2.7). Cada caso reanaliza
+ * `block.config` contra el esquema **específico** de ese tipo, no contra el genérico de
+ * `BlockDefinition` — así cada componente recibe la forma exacta inferida por Zod, sin un cast a
+ * mano que alguien pueda dejar desalineado.
+ *
+ * Compartido entre el render público (`apps/web`, F2.7) y la vista previa del constructor visual
+ * (`apps/dashboard`, F2.9) — un solo lugar que decide el mapeo tipo→componente, para que lo que se
+ * ve al editar sea exactamente lo que se ve publicado, nunca dos implementaciones que puedan
+ * divergir.
  *
  * `apps/api` ya filtró los bloques degradados (tipo desconocido, versión futura, configuración
  * inválida — F2.4) antes de que la respuesta llegue acá, así que un `safeParse` que falla acá es

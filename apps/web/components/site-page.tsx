@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
+import { PageBlocks } from "@impulza/blocks-renderer";
 import { themeTokensSchema } from "@impulza/validation";
 import { getPublicPage, getPublicSite } from "../lib/api";
-import { PageBlocks } from "./page-blocks";
 
 /**
  * Cuerpo compartido de la home (`app/[siteSlug]/page.tsx`) y de cualquier otra página

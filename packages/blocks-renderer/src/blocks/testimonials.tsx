@@ -1,6 +1,6 @@
 import { Star } from "lucide-react";
 import type { TestimonialsBlockConfig } from "@impulza/validation";
-import { SiteImage } from "../ui/site-image";
+import { SiteImage } from "../ui/site-image.js";
 
 function Rating({ value }: { value: number }) {
   return (

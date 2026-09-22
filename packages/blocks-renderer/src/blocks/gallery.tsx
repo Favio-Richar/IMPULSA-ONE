@@ -1,5 +1,5 @@
 import type { GalleryBlockConfig } from "@impulza/validation";
-import { SiteImage } from "../ui/site-image";
+import { SiteImage } from "../ui/site-image.js";
 
 /**
  * "Carrusel" sin una línea de JavaScript: una fila con `scroll-snap`, que el navegador ya sabe

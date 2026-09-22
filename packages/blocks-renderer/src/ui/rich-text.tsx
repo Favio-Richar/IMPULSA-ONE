@@ -1,4 +1,4 @@
-import { sanitizeRichText } from "../../lib/sanitize";
+import { sanitizeRichText } from "../lib/sanitize.js";
 
 /**
  * Único punto del render público que usa `dangerouslySetInnerHTML` — y solo después de pasar por

@@ -1,4 +1,11 @@
 @import "tailwindcss";
+@import "@impulza/blocks-renderer/styles.css";
+
+/* Tailwind v4 no detecta automáticamente las clases usadas dentro de un paquete del workspace
+   fuera de este directorio — se declara explícitamente para que packages/blocks-renderer/src no
+   quede sin sus utilidades generadas (mismo mecanismo que ya usa apps/dashboard para
+   packages/ui). */
+@source "../../../packages/blocks-renderer/src";
 
 /*
  * A diferencia de `packages/ui` (design system fijo del panel interno), este archivo **no**
@@ -35,58 +42,4 @@
     outline: 2px solid var(--site-color-primary, #4338ca);
     outline-offset: 2px;
   }
-}
-
-/*
- * Estilos del HTML ya saneado de un bloque de texto enriquecido (`RichText`, F2.7). A mano y no
- * `@tailwindcss/typography`: la lista de etiquetas permitidas es deliberadamente corta (F2.4,
- * `RICH_TEXT_ALLOWED_TAGS`), así que el plugin completo sería tamaño de CSS para etiquetas que
- * nunca van a aparecer.
- */
-.prose-content :where(p, ul, ol, blockquote) {
-  margin-block: 0.75em;
-}
-.prose-content :where(h2, h3, h4) {
-  margin-block: 1em 0.5em;
-  font-weight: 600;
-  line-height: 1.3;
-}
-.prose-content h2 {
-  font-size: 1.375em;
-}
-.prose-content h3 {
-  font-size: 1.175em;
-}
-.prose-content h4 {
-  font-size: 1.05em;
-}
-.prose-content :where(ul, ol) {
-  padding-inline-start: 1.5em;
-}
-.prose-content ul {
-  list-style: disc;
-}
-.prose-content ol {
-  list-style: decimal;
-}
-.prose-content blockquote {
-  border-inline-start: 3px solid var(--site-color-border, #e2e8f0);
-  padding-inline-start: 1em;
-  color: var(--site-color-muted-foreground, #475569);
-}
-.prose-content code {
-  background: var(--site-color-surface, #f8fafc);
-  border-radius: 0.25em;
-  padding: 0.15em 0.4em;
-  font-size: 0.9em;
-}
-.prose-content a {
-  color: var(--site-color-primary, #4338ca);
-  text-underline-offset: 2px;
-}
-.prose-content :first-child {
-  margin-block-start: 0;
-}
-.prose-content :last-child {
-  margin-block-end: 0;
 }

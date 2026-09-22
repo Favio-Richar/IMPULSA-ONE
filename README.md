@@ -3,9 +3,14 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 2 — Sitio público y constructor, historia F2.9 (constructor visual,
-`apps/dashboard`) en curso: Etapa A (gestión de sitios y páginas) cerrada, Etapa B (editor de
-bloques) pendiente.** Fase 0 y Fase 1 cerradas (F0.1–F0.5, F1.1–F1.10). Ver
+**Estado actual: Fase 2 — Sitio público y constructor. F2.10 (aislamiento multi-tenant de la fase)
+terminada. F2.9 (constructor visual, `apps/dashboard`) en curso: Etapa A cerrada; Etapa B cubre ya
+los criterios de aceptación escritos — lienzo, biblioteca, panel de configuración, vista previa en
+vivo, deshacer/rehacer (acotado a bloques existentes) y publicar desde el propio constructor, para
+los 15 tipos del catálogo. Antes de marcar F2.9 (y con ella, toda la Fase 2) como terminada falta
+un solo punto: verificar el responsive real del panel en una pantalla angosta (no solo el simulador
+de la vista previa) — no se pudo confirmar desde esta sesión, ver más abajo.**
+Fase 0 y Fase 1 cerradas (F0.1–F0.5, F1.1–F1.10). Ver
 `docs/BACKLOG_FASE_2.md` para el backlog de la fase activa, `docs/BACKLOG_FASE_0_1.md` para las
 anteriores y `CLAUDE.md` para las reglas de trabajo del repositorio.
 
@@ -13,7 +18,7 @@ anteriores y `CLAUDE.md` para las reglas de trabajo del repositorio.
 |---|---|---|
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
-| 2 — Sitio público y constructor | F2.1–F2.8 | En curso (F2.9 en progreso, F2.10 pendiente) |
+| 2 — Sitio público y constructor | F2.1–F2.10 | En curso (F2.1–F2.8 y F2.10 terminadas; falta un punto de F2.9) |
 
 ## Requisitos
 
@@ -688,16 +693,161 @@ fue el que lo destapó. Corregido con `Slottable` de Radix (ver el comentario en
 `packages/ui/src/components/Button.tsx`); cualquier otro consumidor futuro de `asChild` ya queda
 cubierto.
 
-**Lo que falta (Etapa B, sin empezar):** el editor de bloques en sí — arrastrar y soltar,
-biblioteca de bloques, panel de configuración por tipo, vista previa en vivo, deshacer/rehacer de
-contenido, guardado automático. Es lo que describen de verdad los criterios de aceptación de F2.9;
-esta etapa es la gestión previa que hacía falta para llegar hasta ahí.
+**Pruebas**: se verificó a mano en el navegador el flujo completo (crear sitio → tema → crear
+página → reordenar → ocultar/mostrar → SEO → publicar → historial → restaurar → ver el resultado en
+`apps/web`) contra la API real, siguiendo el mismo criterio de testing que ya usa el resto del
+frontend (lógica pura con Vitest, UI verificada en el navegador — no hay React Testing Library en
+el repo).
 
-**Pruebas**: ni `apps/web` ni `apps/dashboard` tienen pruebas de renderizado de componentes (no hay
-React Testing Library en el repo) — se verificó a mano en el navegador el flujo completo (crear
-sitio → tema → crear página → reordenar → ocultar/mostrar → SEO → publicar → historial → restaurar
-→ ver el resultado en `apps/web`) contra la API real, siguiendo el mismo criterio de testing que ya
-usa el resto del frontend (lógica pura con Vitest, UI verificada en el navegador).
+## Editor de bloques (F2.9, Etapa B1 y B2 parcial)
+
+`/sitios/:siteId/paginas/:pageId/editor` — el lienzo del constructor: biblioteca de bloques,
+lienzo con arrastrar/soltar (`dnd-kit`) para reordenar, duplicar, ocultar y eliminar, panel de
+configuración del bloque seleccionado con guardado automático, y vista previa protagonista
+(móvil/tablet/escritorio) con el mismo componente que usa el render público.
+
+**Motor de campos, no un formulario por tipo (`apps/dashboard/lib/block-fields`):** un
+`BlockFieldSet` declarativo por tipo (`catalog.ts`) describe qué control pintar por campo — texto,
+enriquecido, número, booleano, selector, selección múltiple fija (`contact_form.fields`), video
+(YouTube/Vimeo), imagen, grupo anidado (`cta`) o arreglo repetible (`social.links`, `faq.items`,
+`testimonials.items`) — y `field-renderer.tsx` lo interpreta de forma recursiva con
+`react-hook-form`. Los 15 tipos del catálogo tienen panel de edición.
+
+La validación real sigue siendo el mismo schema Zod del catálogo (`@impulza/validation`,
+`BLOCK_CATALOG[type].schema`) — el motor de campos nunca decide qué es válido, solo qué input
+mostrar —, pero conectada con un resolver a medida (`resolver.ts`) en vez de `zodResolver` directo:
+el schema valida la forma **normalizada** (`undefined` en lo opcional vacío, no `""` ni un objeto
+de imagen sin URL, que es lo que el formulario tiene siempre), así que normaliza primero
+(`normalize.ts`, recursivo — también dentro de cada `group` y de cada ítem de un `array`, no solo
+al nivel del bloque) y solo entonces valida. Cuando algo no pasa, el motivo real aparece junto al
+campo (`formState.errors`) en vez de quedarse sin guardar en silencio. `toFormConfig`
+(`to-form-value.ts`) hace el camino inverso al cargar un bloque guardado — necesario en particular
+para `video`, que el servidor guarda como `{provider, videoId}` pero se edita como una URL de
+texto de ida y vuelta.
+
+**Bloques compartidos entre el editor y el render público (`packages/blocks-renderer`, nuevo):**
+los 15 componentes de bloque que antes vivían en `apps/web/components/blocks` se movieron a este
+paquete junto con el saneo de texto enriquecido (F2.4) y `PageBlocks` — tanto la vista previa del
+constructor como `apps/web` (F2.7) importan el mismo `PageBlocks`, así que lo que se ve al editar
+es exactamente lo que vería un visitante si se publicara en ese momento, nunca una aproximación
+aparte que se pueda desalinear.
+
+**Guardado automático con estado visible, no un botón "guardar":** cada campo dispara un
+autoguardado con debounce (800 ms) contra `PATCH .../blocks/:blockId`, con un indicador de estado
+("Guardando…", "Guardado", o un error explícito con botón "Reintentar" — nunca se pierde trabajo en
+silencio). **Publicar** vive directamente en el encabezado del constructor (junto a
+deshacer/rehacer), con el estado actual de la página ("Publicada" / "Borrador — nunca publicada")
+siempre visible — la distinción "guardado" (por bloque, automático) vs. "publicado" (de toda la
+página, un clic explícito) que pide el criterio de aceptación de F2.9 se ve en la misma pantalla,
+sin tener que volver a la pantalla de la página (F2.6) para publicar; esa pantalla sigue siendo el
+lugar para el historial de versiones y el SEO, que el constructor no duplica.
+
+**Bugs reales encontrados y corregidos en el camino, no solo en el incremento donde se escribieron
+originalmente:**
+- `BLOCK_FIELD_SETS.link`/`.image` sembraban `url: "https://"` como configuración inicial —
+  `new URL("https://")` lanza (sin *host*), así que `safeUrlSchema` la rechaza y agregar cualquiera
+  de esos dos bloques desde la biblioteca fallaba silenciosamente (la mutación de creación no tenía
+  manejo de error en la UI). Corregido el placeholder a `https://ejemplo.com` y agregado el
+  indicador de error que faltaba en el panel.
+- Los sub-campos opcionales dentro de un `group` o de cada ítem de un `array` (p. ej. `role` en
+  `testimonials.items`) nunca se omitían al normalizar aunque estuvieran vacíos — `normalize.ts` no
+  aplicaba la regla de "opcional vacío → omitir" más que al nivel superior del bloque. Corregido
+  compartiendo la misma función de normalización en los tres niveles.
+- Un `<select>` requerido sin opción en blanco muestra visualmente su primera opción aunque el
+  formulario todavía no la haya elegido — agregar un ítem nuevo a un `array` (p. ej. "Agregar red"
+  en `social.links`) dejaba el campo en `""` por dentro, lo que disparaba un error de validación
+  confuso apenas se agregaba el ítem, antes de que el usuario tocara nada. Corregido: el valor
+  inicial de un `select` requerido es su primera opción, no una cadena vacía.
+- Un import de valor (no de tipo) con extensión `.js` explícita (`from "./normalize.js"`) pasa
+  `tsc --noEmit` sin problema (NodeNext lo resuelve) pero rompe `next build`/`next dev` con
+  Turbopack ("Module not found") — un import de tipo con la misma extensión sí resuelve porque se
+  borra antes de que el bundler lo vea. Descubierto porque el `build` real falló después de que el
+  `typecheck` había pasado limpio; confirma por qué `next build` es obligatorio y no alcanza con
+  `tsc`.
+
+**Verificado a mano en el navegador** (no hay React Testing Library en el repo — mismo criterio de
+testing que el resto del frontend), incluyendo los 15 tipos del catálogo: agregar cada bloque desde
+la biblioteca, seleccionarlo, editar sus campos (incluidos los menos comunes — arreglo con select
+como `social`, grupo opcional como `hero.cta` en sus tres estados vacío/parcial/completo, arreglo de
+imágenes planas en `gallery`, texto enriquecido dentro de un arreglo en `faq`, selección múltiple en
+`contact_form`, número en `service`, y el video con su ida y vuelta URL↔`{provider,videoId}`), ver
+el autoguardado + la vista previa actualizarse en vivo, ocultar/mostrar, duplicar, eliminar con
+confirmación en pantalla, reordenar arrastrando y confirmar que el nuevo orden persiste tras
+recargar, y cambiar el dispositivo de la vista previa — todo contra la API real
+(`docker compose up -d` + Postgres/Redis locales).
+
+**Deshacer/rehacer (`use-block-history.ts`), acotado a propósito a bloques que ya existen** —
+editar un campo, ocultar/mostrar, reordenar. **Agregar/eliminar/duplicar un bloque limpia el
+historial en vez de entrar en él**: el id de un bloque lo asigna el servidor al crearlo, así que
+"rehacer un agregado" no puede recrear el mismo id, y cualquier cambio posterior del historial que
+siguiera apuntando a ese id quedaría roto (ej.: agregar un bloque, editarlo, deshacer dos veces,
+rehacer dos veces — el segundo rehacer intentaría reconstruir el mismo id que el primero acaba de
+inventar de nuevo, distinto del original). No es un recorte de pereza: es la frontera real hasta
+donde un historial de comandos con ids del servidor puede ser correcto sin una capa aparte de
+identidad estable del lado del cliente — construir esa capa es trabajo aparte, no de esta pasada.
+Los autoguardados sucesivos de una misma sesión de edición (tipear en el mismo campo) se
+**fusionan en una sola entrada** del historial en vez de apilar un paso por tecleo, y deshacer
+sincroniza el formulario en vivo aunque el bloque siga seleccionado. Botones visibles junto al
+título (no solo atajo de teclado) — `Ctrl/Cmd+Z` y `Ctrl/Cmd+Shift+Z`, que se desactivan solos con
+el foco en un campo de texto o el editor de texto enriquecido para no pisar su propio deshacer
+nativo. Verificado a mano en el navegador: editar y deshacer con el bloque todavía abierto (el
+caso que de verdad importa), ocultar/mostrar, reordenar, atajo de teclado, y que agregar un bloque
+limpia el historial — contra la API real, revisando el log del servidor para confirmar que cada
+paso dispara exactamente una petición, ninguna de más.
+
+**Otro bug real encontrado y corregido en el camino:** llamar `reset()` de `react-hook-form` para
+sincronizar el formulario con un cambio externo (deshacer/rehacer) también dispara su propio
+`watch()` — el mismo que maneja el autoguardado —, así que deshacer terminaba reenviando al
+servidor el valor que acababa de llegar de él. Sin guardarlo, era una vuelta redundante; en el peor
+caso, una carrera con el propio `reset()`. Corregido filtrando el `watch()` para que solo autoguarde
+en un evento `"change"` real (una tecla, no un `reset()` programático) — la forma en que
+`react-hook-form` distingue una interacción real del usuario de una sincronización que vino de
+otro lado.
+
+Con esto, los criterios de aceptación escritos de F2.9 están cubiertos: biblioteca + configuración
++ vista previa protagonista, arrastrar/soltar y agregar/editar/duplicar/ocultar/eliminar, deshacer
+y rehacer, guardado automático con estado y manejo explícito del fallo, publicar con la distinción
+clara "guardado" vs. "publicado", estados de carga/vacío/error/éxito, y ninguna validación de
+negocio confiada al frontend (todo pasa igual por el mismo schema del catálogo en el servidor).
+
+**No cerrada del todo — dos verificaciones pendientes antes de marcarla como terminada:**
+- **Responsive real del propio panel del constructor en pantallas angostas** (no el simulador de
+  dispositivo de la vista previa, que sí se probó): confirmado que `resize_window` de la
+  herramienta de navegador no cambia el viewport real en esta máquina — no solo la captura, sino
+  `window.innerWidth` medido por JS después del resize, que siguió en 1920 sin importar qué tamaño
+  se pidiera (ver memoria del proyecto). Solo se pudo verificar a mano en ancho de escritorio. Las
+  clases responsive (`grid-cols-1 lg:grid-cols-[...]`) siguen la misma convención que el resto del
+  dashboard, pero eso es leer el código, no verlo andar en un teléfono real — falta que alguien lo
+  revise en un dispositivo de verdad o en las devtools de su propio navegador.
+- Los mensajes de validación que Zod genera por defecto (largo mínimo, opción inválida, etc., no los
+  que `@impulza/validation` escribe a mano con `.superRefine`) salen en inglés — el motor de campos
+  los muestra tal cual junto al campo en vez de traducirlos. No bloquea nada (el campo se marca
+  igual y el usuario ve exactamente cuál está mal), pero no está localizado.
+
+Fuera de los criterios de aceptación (no exigido, pendiente aparte): sin UI para
+`scheduledStart`/`scheduledEnd` (el campo existe en la API desde F2.4).
+
+## Aislamiento multi-tenant de Fase 2 (F2.10)
+
+`apps/api/src/multi-tenant-isolation.e2e.test.ts` — la misma suite transversal de F1.9, extendida
+incrementalmente al cerrar cada historia de esta fase en vez de dejarla para el final: sitios
+(F2.2), páginas (F2.3), bloques (F2.4), temas (F2.5), publicación e historial (F2.6) y render
+público (F2.7). Dos organizaciones reales (A y B), cada endpoint nuevo probado con el mismo patrón
+— organización de A con permiso real de verdad + recurso de B, por cada combinación de ids que un
+guard superficial podría dejar pasar sin querer: con la organización de B en la URL (rechazado por
+el guard de membresía) y, el caso que de verdad importa, con la organización **propia** de A pero
+un sitio/página/bloque/tema/versión de B (rechazado por la verificación de dueño real dentro del
+servicio — `getXOrThrow`, no el guard). Incluye ataques combinados (organización propia + sitio Y
+página ajenos a la vez, donde filtrar solo por uno de los dos no alcanza) y que el recurso de B
+queda intacto después de cada intento.
+
+**Hueco real encontrado al revisar para cerrar esta historia:** se verificaba que el **sitio**
+público no expusiera ids internos (`id`, `organizationId`, ningún string de ningún id de
+organización en el JSON), pero no lo mismo para la **página** pública — el contrato
+(`publicPageResponse`) ya es mínimo por diseño (F2.7), pero nada probaba en runtime que el
+controlador no agregara algo de más. Se agregó esa prueba: mismo criterio que el sitio, más que
+cada bloque de la respuesta pública solo tenga `{type, config}` — nunca un id de bloque. 31/31
+verificado aislado (`pnpm --filter @impulza/api exec vitest run src/multi-tenant-isolation.e2e.test.ts`).
 
 ## Contrato de la API — OpenAPI
 

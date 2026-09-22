@@ -1,7 +1,7 @@
 import { BadgeCheck } from "lucide-react";
 import type { ProfileBlockConfig } from "@impulza/validation";
-import { RichText } from "../ui/rich-text";
-import { SiteImage } from "../ui/site-image";
+import { RichText } from "../ui/rich-text.js";
+import { SiteImage } from "../ui/site-image.js";
 
 export function ProfileBlock({ config }: { config: ProfileBlockConfig }) {
   return (

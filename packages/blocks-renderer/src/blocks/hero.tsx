@@ -1,6 +1,6 @@
 import type { HeroBlockConfig } from "@impulza/validation";
-import { LinkButton, type ButtonVariant } from "../ui/link-button";
-import { SiteImage } from "../ui/site-image";
+import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
+import { SiteImage } from "../ui/site-image.js";
 
 const ALIGN_CLASSES: Record<HeroBlockConfig["alignment"], string> = {
   left: "text-left items-start",

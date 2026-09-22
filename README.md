@@ -810,19 +810,24 @@ y rehacer, guardado automático con estado y manejo explícito del fallo, public
 clara "guardado" vs. "publicado", estados de carga/vacío/error/éxito, y ninguna validación de
 negocio confiada al frontend (todo pasa igual por el mismo schema del catálogo en el servidor).
 
-**No cerrada del todo — dos verificaciones pendientes antes de marcarla como terminada:**
-- **Responsive real del propio panel del constructor en pantallas angostas** (no el simulador de
-  dispositivo de la vista previa, que sí se probó): confirmado que `resize_window` de la
-  herramienta de navegador no cambia el viewport real en esta máquina — no solo la captura, sino
-  `window.innerWidth` medido por JS después del resize, que siguió en 1920 sin importar qué tamaño
-  se pidiera (ver memoria del proyecto). Solo se pudo verificar a mano en ancho de escritorio. Las
-  clases responsive (`grid-cols-1 lg:grid-cols-[...]`) siguen la misma convención que el resto del
-  dashboard, pero eso es leer el código, no verlo andar en un teléfono real — falta que alguien lo
-  revise en un dispositivo de verdad o en las devtools de su propio navegador.
-- Los mensajes de validación que Zod genera por defecto (largo mínimo, opción inválida, etc., no los
-  que `@impulza/validation` escribe a mano con `.superRefine`) salen en inglés — el motor de campos
-  los muestra tal cual junto al campo en vez de traducirlos. No bloquea nada (el campo se marca
-  igual y el usuario ve exactamente cuál está mal), pero no está localizado.
+**Mensajes de validación en español (resuelto):** los errores que Zod genera por defecto (largo
+mínimo, opción inválida, tipo equivocado — no los que `@impulza/validation` escribe a mano con
+`.superRefine`) salían en inglés y se mezclaban con una interfaz que es español de punta a punta.
+Resuelto con `z.config(es())` como efecto de módulo en `packages/validation/src/index.ts`: alcanza
+con importar el paquete, así que cubre de una sola vez la API, el dashboard y `apps/web` sin
+repetir configuración por app. Como es un efecto global que nada exporta, `src/locale.test.ts` lo
+fija: nada más que una prueba puede detectar que alguien lo borre o que un consumidor termine
+resolviendo otra copia de Zod.
+
+**No cerrada del todo — una verificación pendiente antes de marcarla como terminada:** el
+**responsive real del propio panel del constructor en pantallas angostas** (no el simulador de
+dispositivo de la vista previa, que sí se probó). Confirmado que `resize_window` de la herramienta
+de navegador no cambia el viewport real en esta máquina — no solo la captura, sino
+`window.innerWidth` medido por JS después del resize, que siguió en 1920 sin importar qué tamaño se
+pidiera. Solo se pudo verificar a mano en ancho de escritorio. Las clases responsive
+(`grid-cols-1 lg:grid-cols-[...]`) siguen la misma convención que el resto del dashboard, pero eso
+es leer el código, no verlo andar en un teléfono real — falta que alguien lo revise en un
+dispositivo de verdad o en las devtools de su propio navegador.
 
 Fuera de los criterios de aceptación (no exigido, pendiente aparte): sin UI para
 `scheduledStart`/`scheduledEnd` (el campo existe en la API desde F2.4).

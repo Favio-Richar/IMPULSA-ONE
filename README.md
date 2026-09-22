@@ -3,18 +3,20 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 2 — Sitio público y constructor — terminada (F2.1–F2.10).** Un usuario puede
-crear un sitio con su slug, elegir tema, armar sus páginas con el constructor visual (15 tipos de
-bloque, arrastrar y soltar, vista previa en vivo, deshacer/rehacer y autoguardado), editar su SEO,
-publicar y ver el resultado en la web pública. Fase 0 y Fase 1 cerradas (F0.1–F0.5, F1.1–F1.10). Ver
-`docs/BACKLOG_FASE_2.md` para el backlog de la fase activa, `docs/BACKLOG_FASE_0_1.md` para las
-anteriores y `CLAUDE.md` para las reglas de trabajo del repositorio.
+**Estado actual: Fase 3 — Conversión — en progreso (F3.1 terminada de F3.1–F3.8).** Fase 2 (sitio
+público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión (formularios,
+contactos/mini-CRM, QR/enlaces cortos y analítica) ya existe en `packages/database`, con
+consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
+retencion-datos.md`, Ley 21.719). Ver `docs/BACKLOG_FASE_3.md` para el backlog de la fase activa,
+`docs/BACKLOG_FASE_2.md`/`docs/BACKLOG_FASE_0_1.md` para las anteriores y `CLAUDE.md` para las
+reglas de trabajo del repositorio.
 
 | Fase | Historias | Estado |
 |---|---|---|
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
 | 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
+| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1 terminada) |
 
 ## Requisitos
 
@@ -888,6 +890,62 @@ organización en el JSON), pero no lo mismo para la **página** pública — el 
 controlador no agregara algo de más. Se agregó esa prueba: mismo criterio que el sitio, más que
 cada bloque de la respuesta pública solo tenga `{type, config}` — nunca un id de bloque. 31/31
 verificado aislado (`pnpm --filter @impulza/api exec vitest run src/multi-tenant-isolation.e2e.test.ts`).
+
+## Modelo de datos de conversión (F3.1)
+
+Primera historia de Fase 3 (ver `docs/BACKLOG_FASE_3.md`). Agrega al esquema las entidades de
+`ERD.md` §5/§6/§7: `Form`, `FormField`, `FormSubmission`, `Contact`, `ContactEvent`, `ShortLink`,
+`QrCode`, `AnalyticsEvent` y `AnalyticsAggregate`, más cuatro permisos nuevos (`form.manage`,
+`contact.manage`, `contact.delete`, `shortlink.manage`) en `packages/database/src/permissions.ts`.
+Decisiones que no se leen solas en el esquema:
+
+- **Privacidad y retención por diseño**: `docs/decisions/ADR-004-privacidad-retencion-datos.md`
+  resuelve la decisión pendiente #10 de la traceability anticipando la Ley 21.719 (Chile, vigente
+  desde diciembre de 2026). Por eso `AnalyticsEvent` no tiene columna de IP cruda,
+  `anonymized_visitor_id` está pensado como hash con sal rotada por sitio/día (se deriva en F3.6,
+  no se persiste la sal acá), y `Contact` guarda consentimiento auditado
+  (`consent_status`/`consent_source`/`consent_text_version`/`consent_at`) en vez de un campo
+  genérico.
+- **`FormField.type` incluye `CONSENT` como tipo propio**: para que el servidor pueda detectar en
+  F3.2 si un formulario puede crear un `Contact` con seguimiento sin adivinar por el texto de la
+  etiqueta — es la pieza que hace cumplible el punto 3 de ADR-004.
+- **Borrado real (no lógico) de `Contact`**: a diferencia de `Page` (F2.3, borrado lógico), un
+  `Contact` se borra en cascada de verdad (`ContactEvent`/`FormSubmission` incluidos) porque el
+  derecho de cancelación/ARCO+ (ADR-004 punto 5) exige que el dato desaparezca, no que se oculte.
+- **`ShortLink.slug` vive en su propio espacio de rutas** (`/s/:slug`), separado de `Site.slug` en
+  la raíz — para que un enlace corto nunca compita por nombre con un sitio. Aclarado en `ERD.md`
+  §6 al implementar.
+- **`AnalyticsAggregate.siteId` es obligatorio**, a diferencia de `AnalyticsEvent.siteId` (nullable
+  en el ERD): cada agregado está pre-calculado por sitio; un rollup de organización se suma en la
+  consulta del dashboard (F3.7), no se persiste aparte. Aclarado en `ERD.md` §7.
+- **Defecto real encontrado por el test, no por lectura de código**: `QrCode` exige por `CHECK`
+  tener `shortLinkId` o `directUrl`, pero la primera versión de la relación con `ShortLink` usaba
+  `SetNull` — al borrar un `ShortLink` con un `QrCode` que solo tenía esa referencia, Postgres
+  intentaba dejar `shortLinkId` en null y violaba su propio `CHECK`. `packages/database/src/schema-
+  conversion.test.ts` lo detectó antes de llegar a producción; se corrigió a `NoAction` (no
+  `Restrict`): Postgres verifica `NO ACTION` al final del `statement`, así que borrar una
+  organización completa (que en la misma sentencia cascada borra `ShortLink` y `QrCode`, cada uno
+  por su propio `organization_id`) sigue funcionando, mientras que borrar un `ShortLink` suelto con
+  un `QrCode` que depende solo de él queda bloqueado — no un huérfano silencioso.
+
+`packages/database/src/schema-conversion.test.ts` prueba contra el Postgres real (9 casos): slug de
+enlace corto único global, email de contacto único por organización (no entre organizaciones, y
+null no colisiona con null), el `CHECK` de `QrCode`, el `NoAction` de arriba, borrado en cascada de
+contacto → eventos/envíos, borrado en cascada de formulario → campos/envíos, unicidad del agregado
+analítico por organización/sitio/período/métrica, unicidad de la clave de idempotencia (y que
+varios eventos sin clave convivan), y borrado en cascada completo de una organización sin huérfanos.
+
+**Migración verificada de ida y vuelta**: base desechable (`impulza_migcheck`), cadena completa
+aplicada desde cero (`prisma migrate deploy`), los tres `down.sql` de esta historia ejecutados en
+orden inverso, confirmado que solo quedan las 22 tablas de Fase 0/1/2, y la cadena de Fase 3
+re-aplicada limpiando antes las filas de `_prisma_migrations` correspondientes (para que
+`migrate deploy` las reprodujera de verdad en vez de darlas por ya aplicadas). Solo DDL aditivo
+sobre la base de desarrollo real; ningún `DROP`/`DELETE`/`TRUNCATE` fuera de la base desechable.
+
+Verificado: `pnpm --filter @impulza/database exec vitest run` (22/22, incluye F2.1), `build`/
+`lint`/`typecheck` de `@impulza/database` limpios, `typecheck` de `@impulza/api` limpio (el cliente
+de Prisma regenerado no rompe nada existente), `pnpm db:seed` sigue funcionando (13 permisos, 32
+asignaciones rol-permiso).
 
 ## Contrato de la API — OpenAPI
 

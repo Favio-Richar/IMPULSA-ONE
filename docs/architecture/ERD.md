@@ -103,8 +103,12 @@ Organization (1) ──< QrCode >── (0..1) ShortLink
 ```
 
 - **ShortLink**: id, organization_id, slug, destination_url, utm, click_count_cached, created_at.
-- **QrCode**: id, organization_id, short_link_id (nullable, puede apuntar directo a una URL),
-  style_config, scan_count_cached, created_at.
+  El slug es único global pero vive en su propio espacio de rutas públicas (`/s/:slug`), separado
+  de `Site.slug` en la raíz — así un enlace corto nunca compite por nombre con un sitio (aclarado
+  al implementar F3.1, ver `packages/database/prisma/schema.prisma`).
+- **QrCode**: id, organization_id, short_link_id (nullable, puede apuntar directo a una URL vía
+  `direct_url`), style_config, scan_count_cached, created_at. Se exige en servidor (y con un CHECK
+  en la migración) que exista `short_link_id` o `direct_url`.
 
 ## 7. Analítica
 
@@ -112,13 +116,17 @@ Organization (1) ──< QrCode >── (0..1) ShortLink
 AnalyticsEvent (N) ──1 Organization
 AnalyticsEvent (N) ──1 Site (nullable)
 AnalyticsAggregate (N) ──1 Organization
+AnalyticsAggregate (N) ──1 Site
 ```
 
 - **AnalyticsEvent**: id, organization_id, site_id, type (page_view/block_click/whatsapp_click/
   form_submit/lead_created/qr_visit/...), anonymized_visitor_id, utm, device, geo_country/city,
-  created_at. Sin PII innecesaria; idempotency_key para eventos críticos.
-- **AnalyticsAggregate**: id, organization_id, site_id, period, metric, value — pre-agregado para
-  el dashboard, generado por el worker.
+  created_at. Sin PII innecesaria; idempotency_key para eventos críticos. Sin columna de IP cruda
+  (ADR-004): el visitante anonimizado se deriva con sal rotada por sitio/día.
+- **AnalyticsAggregate**: id, organization_id, site_id (obligatorio — cada agregado está
+  pre-calculado por sitio; un rollup a nivel de organización se suma en la consulta del dashboard,
+  no se persiste aparte), period, metric, value — pre-agregado para el dashboard, generado por el
+  worker.
 
 ## 8. Notificaciones, auditoría y flags
 

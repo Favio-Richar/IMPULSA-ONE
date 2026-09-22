@@ -27,7 +27,7 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 
 | Historia | Estado |
 |---|---|
-| F3.1 — Modelo de datos de conversión (Form, Contact, ShortLink, QrCode, Analytics) | Pendiente |
+| F3.1 — Modelo de datos de conversión (Form, Contact, ShortLink, QrCode, Analytics) | Terminada |
 | F3.2 — Formularios (constructor + envío público) | Pendiente |
 | F3.3 — Contactos (mini-CRM) | Pendiente |
 | F3.4 — WhatsApp (clic a conversación + analítica) | Pendiente |
@@ -51,6 +51,28 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
   en `AnalyticsEvent` para el dashboard.
 - Configuración de retención (14 meses eventos crudos / 36 meses inactividad de contacto, ADR-004
   punto 4) vive en config, no hardcodeada.
+
+> **Terminada (2026-09-22)**: `Form`, `FormField`, `FormSubmission`, `Contact`, `ContactEvent`,
+> `ShortLink`, `QrCode`, `AnalyticsEvent` y `AnalyticsAggregate` agregados a
+> `packages/database/prisma/schema.prisma` (migraciones `..._fase3_conversion_...`,
+> `..._fase3_contact_email_unique_qr_check` y `..._fase3_qrcode_shortlink_no_action`), con permisos
+> nuevos (`form.manage`, `contact.manage`, `contact.delete`, `shortlink.manage`) cableados en
+> `packages/database/src/permissions.ts` y sembrados (`pnpm db:seed`: 13 permisos, 32 asignaciones).
+> `docs/architecture/ERD.md` §6/§7 se ajustó con dos aclaraciones encontradas al implementar: la
+> ruta pública de `ShortLink` vive en su propio espacio (`/s/:slug`, no compite con `Site.slug`) y
+> `AnalyticsAggregate.siteId` es obligatorio.
+>
+> Un test real (`packages/database/src/schema-conversion.test.ts`, 9 casos contra Postgres real, no
+> contra el schema) encontró un defecto de diseño antes de que llegara a producción: el `QrCode`
+> exige por CHECK tener `shortLinkId` o `directUrl`, pero la relación con `ShortLink` estaba en
+> `SetNull` — al borrar un `ShortLink` con un `QrCode` que solo tenía esa referencia, Postgres
+> intentaba dejar `shortLinkId` en null y violaba el propio CHECK. Se corrigió a `NoAction` (no
+> `Restrict`): Postgres verifica `NO ACTION` al final del `statement`, así que borrar una
+> organización completa —que en la misma sentencia cascada borra `ShortLink` y `QrCode` cada uno
+> por su propio `organization_id`— sigue funcionando, mientras que borrar un `ShortLink` suelto con
+> un `QrCode` que depende solo de él sigue bloqueado (no un huérfano silencioso). Verificado con
+> `pnpm --filter @impulza/database exec vitest run`: 22/22 (incluye F2.1). `build`/`lint`/`typecheck`
+> de `@impulza/database` y `typecheck` de `@impulza/api` limpios. `pnpm db:seed` sigue funcionando.
 
 ### F3.2 — Formularios (constructor + envío público)
 **Criterios de aceptación:**

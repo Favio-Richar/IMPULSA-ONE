@@ -43,7 +43,7 @@ model User {
 
   // Diseño de datos de 2FA (F1.4): el secreto se guarda cifrado (ver packages/auth), nunca en
   // claro. No se exige en el login todavía — eso llega antes de producción comercial (ST §7).
-  twoFactorEnabled       Boolean @default(false) @map("two_factor_enabled")
+  twoFactorEnabled         Boolean @default(false) @map("two_factor_enabled")
   twoFactorSecretEncrypted String? @map("two_factor_secret_encrypted")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -55,6 +55,7 @@ model User {
   verificationTokens  VerificationToken[]
   auditLogsAsActor    AuditLog[]          @relation("AuditLogActor")
   pageVersionsCreated PageVersion[]       @relation("PageVersionAuthor")
+  contactsAssigned    Contact[]           @relation("ContactAssignee")
 
   @@map("users")
 }
@@ -96,13 +97,18 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  plan          Plan?          @relation(fields: [planId], references: [id])
-  memberships   Membership[]
-  subscriptions Subscription[]
-  usageCounters UsageCounter[]
-  auditLogs     AuditLog[]
-  sites         Site[]
-  themes        Theme[]
+  plan                Plan?                @relation(fields: [planId], references: [id])
+  memberships         Membership[]
+  subscriptions       Subscription[]
+  usageCounters       UsageCounter[]
+  auditLogs           AuditLog[]
+  sites               Site[]
+  themes              Theme[]
+  contacts            Contact[]
+  shortLinks          ShortLink[]
+  qrCodes             QrCode[]
+  analyticsEvents     AnalyticsEvent[]
+  analyticsAggregates AnalyticsAggregate[]
 
   @@map("organizations")
 }
@@ -228,15 +234,15 @@ model AuditLog {
 }
 
 model VerificationToken {
-  id     String                @id @default(uuid()) @db.Uuid
-  userId String                @map("user_id") @db.Uuid
+  id        String                @id @default(uuid()) @db.Uuid
+  userId    String                @map("user_id") @db.Uuid
   // Nunca el token en claro — solo su hash SHA-256 (ver packages/auth). El token crudo se envía
   // una vez al usuario (email) y no se puede recuperar desde la base de datos.
-  tokenHash String              @unique @map("token_hash")
+  tokenHash String                @unique @map("token_hash")
   type      VerificationTokenType
-  expiresAt DateTime            @map("expires_at") @db.Timestamptz(6)
-  usedAt    DateTime?           @map("used_at") @db.Timestamptz(6)
-  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime              @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime?             @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -296,11 +302,14 @@ model Site {
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  theme         Theme?             @relation(fields: [themeId], references: [id], onDelete: SetNull)
-  pages         Page[]
-  domains       SiteDomain[]
-  slugRedirects SiteSlugRedirect[]
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  theme               Theme?               @relation(fields: [themeId], references: [id], onDelete: SetNull)
+  pages               Page[]
+  domains             SiteDomain[]
+  slugRedirects       SiteSlugRedirect[]
+  forms               Form[]
+  analyticsEvents     AnalyticsEvent[]
+  analyticsAggregates AnalyticsAggregate[]
 
   @@index([organizationId])
   @@map("sites")
@@ -339,9 +348,9 @@ model SiteSlugRedirect {
 }
 
 model Page {
-  id     String @id @default(uuid()) @db.Uuid
-  siteId String @map("site_id") @db.Uuid
-  slug   String
+  id         String         @id @default(uuid()) @db.Uuid
+  siteId     String         @map("site_id") @db.Uuid
+  slug       String
   // Orden persistente dentro del sitio. Sin restricción de unicidad a propósito: reordenar
   // intercambia posiciones y un UNIQUE no diferido fallaría a mitad de la transacción.
   position   Int
@@ -373,9 +382,9 @@ model Page {
 }
 
 model PageVersion {
-  id            String @id @default(uuid()) @db.Uuid
-  pageId        String @map("page_id") @db.Uuid
-  versionNumber Int    @map("version_number")
+  id              String    @id @default(uuid()) @db.Uuid
+  pageId          String    @map("page_id") @db.Uuid
+  versionNumber   Int       @map("version_number")
   // Snapshot inmutable del contenido completo al publicar — es lo que permite restaurar sin
   // depender del estado actual de los bloques (F2.6).
   contentSnapshot Json      @map("content_snapshot")
@@ -392,15 +401,15 @@ model PageVersion {
 }
 
 model Block {
-  id     String @id @default(uuid()) @db.Uuid
-  pageId String @map("page_id") @db.Uuid
+  id                  String    @id @default(uuid()) @db.Uuid
+  pageId              String    @map("page_id") @db.Uuid
   // Catálogo cerrado de tipos con esquema Zod versionado por tipo (F2.4). String y no enum de
   // Postgres a propósito: la biblioteca de bloques crece (PM §9.3) y no queremos una migración
   // por cada tipo nuevo. La fuente de verdad del catálogo vive en
   // packages/validation/src/blocks/catalog.ts — se puso ahí y no en este paquete porque el
   // constructor (F2.9) necesita los mismos esquemas en el cliente, y `validation` es isomorfo.
-  type     String
-  position Int
+  type                String
+  position            Int
   // Permite renderizar de forma degradada un bloque guardado con un esquema más nuevo (F2.4).
   configSchemaVersion Int       @default(1) @map("config_schema_version")
   visible             Boolean   @default(true)
@@ -432,12 +441,12 @@ model BlockVersion {
 }
 
 model Theme {
-  id String @id @default(uuid()) @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
   // Null = tema del catálogo global de Impulza One; con valor = tema propio de la organización.
-  organizationId String? @map("organization_id") @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
   // Solo para los temas del catálogo, para que el seed sea idempotente. Los temas propios de una
   // organización lo dejan en null (Postgres permite múltiples NULL en un índice único).
-  code           String? @unique
+  code           String?  @unique
   name           String
   // Paleta, tipografía, radios, espaciado y densidad. El usuario elige de un conjunto validado
   // en servidor — nunca CSS libre (F2.5).
@@ -450,4 +459,252 @@ model Theme {
 
   @@index([organizationId])
   @@map("themes")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fase 3 — Conversión: formularios, contactos, QR/enlaces cortos y analítica (ERD.md §5/§6/§7).
+//
+// Privacidad y retención: ver docs/decisions/ADR-004-privacidad-retencion-datos.md (Ley 21.719).
+// - `AnalyticsEvent` no tiene columna de IP cruda a propósito (minimización, ADR-004 punto 1).
+// - `Contact` guarda el consentimiento auditado (ADR-004 punto 3), no solo un estado genérico.
+// - `AnalyticsAggregate.siteId` es obligatorio (a diferencia de `AnalyticsEvent.siteId`, que sí es
+//   nullable): un agregado siempre está pre-calculado por sitio; un rollup a nivel de organización
+//   se calcula sumando en la consulta del dashboard, no se persiste aparte. `ERD.md` §7 no marcaba
+//   esto explícitamente — se aclaró ahí mismo al implementar (CLAUDE.md: no redefinir el ERD sin
+//   justificarlo).
+// ---------------------------------------------------------------------------------------------
+
+enum FormType {
+  CONTACT
+  QUOTE
+  REGISTRATION
+  SURVEY
+  ORDER
+}
+
+enum FormFieldType {
+  TEXT
+  TEXTAREA
+  EMAIL
+  PHONE
+  NUMBER
+  SELECT
+  CHECKBOX
+  // Campo dedicado de consentimiento (ADR-004 punto 3): permite detectar en servidor, sin
+  // adivinar por texto de la etiqueta, si un formulario puede crear un Contact con seguimiento.
+  CONSENT
+}
+
+enum ConsentStatus {
+  GRANTED
+  WITHDRAWN
+  // Contacto creado sin paso por un formulario público (alta manual, import) — no aplica la
+  // misma exigencia de consentimiento explícito que a un formulario público (ADR-004 punto 3).
+  UNKNOWN
+}
+
+enum ContactCommercialStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  WON
+  LOST
+}
+
+enum ContactEventType {
+  FORM_SUBMISSION
+  BOOKING
+  PURCHASE
+  NOTE
+}
+
+model Form {
+  id            String   @id @default(uuid()) @db.Uuid
+  siteId        String   @map("site_id") @db.Uuid
+  name          String
+  type          FormType @default(CONTACT)
+  // Mensaje y/o redirect tras un envío exitoso — validado por Zod en servidor (F3.2), nunca HTML
+  // libre (mismo criterio que Block.config, ST §22).
+  successAction Json     @map("success_action")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  site        Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  fields      FormField[]
+  submissions FormSubmission[]
+
+  @@index([siteId])
+  @@map("forms")
+}
+
+model FormField {
+  id              String        @id @default(uuid()) @db.Uuid
+  formId          String        @map("form_id") @db.Uuid
+  type            FormFieldType
+  label           String
+  required        Boolean       @default(false)
+  // Opciones para SELECT; regla condicional de visibilidad (F3.2). Nunca ejecutado como código —
+  // solo datos que el motor de formularios interpreta (mismo criterio que Block.config).
+  options         Json?
+  conditionalRule Json?         @map("conditional_rule")
+  position        Int
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId, position])
+  @@map("form_fields")
+}
+
+model FormSubmission {
+  id        String   @id @default(uuid()) @db.Uuid
+  formId    String   @map("form_id") @db.Uuid
+  contactId String?  @map("contact_id") @db.Uuid
+  payload   Json
+  source    String?
+  utm       Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  form    Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  // Cascade: borrar un Contact (derecho de cancelación, ADR-004 punto 5) borra sus envíos.
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+  @@index([contactId])
+  @@map("form_submissions")
+}
+
+model Contact {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  organizationId     String                  @map("organization_id") @db.Uuid
+  name               String?
+  // Unicidad (organization_id, email) cuando email no es null: índice único parcial creado con
+  // SQL en la migración (mismo patrón que Page.slug en F2.3 — Prisma no expresa parciales).
+  email              String?
+  phone              String?
+  source             String?
+  tags               String[]                @default([])
+  // Consentimiento auditado (ADR-004 punto 3): qué se aceptó, de dónde y cuándo.
+  consentStatus      ConsentStatus           @default(UNKNOWN) @map("consent_status")
+  consentSource      String?                 @map("consent_source")
+  consentTextVersion String?                 @map("consent_text_version")
+  consentAt          DateTime?               @map("consent_at") @db.Timestamptz(6)
+  commercialStatus   ContactCommercialStatus @default(NEW) @map("commercial_status")
+  assignedToId       String?                 @map("assigned_to") @db.Uuid
+  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedTo   User?            @relation("ContactAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  submissions  FormSubmission[]
+  events       ContactEvent[]
+
+  @@index([organizationId])
+  @@map("contacts")
+}
+
+model ContactEvent {
+  id        String           @id @default(uuid()) @db.Uuid
+  contactId String           @map("contact_id") @db.Uuid
+  type      ContactEventType
+  payload   Json?
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@map("contact_events")
+}
+
+model ShortLink {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  // Único global: resuelve en la ruta pública dedicada a enlaces cortos (`/s/:slug`, distinta del
+  // espacio de nombres de Site.slug en la raíz), validado con las mismas reglas de formato/
+  // colisión/reservados que F2.2.
+  slug             String   @unique
+  destinationUrl   String   @map("destination_url")
+  utm              Json?
+  clickCountCached Int      @default(0) @map("click_count_cached")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  qrCodes      QrCode[]
+
+  @@index([organizationId])
+  @@map("short_links")
+}
+
+model QrCode {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  shortLinkId     String?  @map("short_link_id") @db.Uuid
+  // Alternativa cuando el QR no pasa por un ShortLink propio (ERD.md §6: "puede apuntar directo a
+  // una URL"). Se exige en servidor que al menos uno de los dos exista (CHECK en la migración).
+  directUrl       String?  @map("direct_url")
+  styleConfig     Json     @map("style_config")
+  scanCountCached Int      @default(0) @map("scan_count_cached")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // NoAction, no SetNull: un QrCode que solo tiene shortLinkId (sin directUrl) quedaría violando
+  // el CHECK de abajo si el enlace se borrara y la columna pasara a null. Borrar un ShortLink
+  // "suelto" con un QrCode propio exige primero borrarlo/reasignarlo (no un huérfano silencioso).
+  // NoAction (no Restrict) a propósito: Postgres verifica NO ACTION al final del statement, no
+  // por fila — así borrar la Organization completa (que en cascada borra ShortLink y QrCode a la
+  // vez, cada uno por su propio FK a organization_id) no choca contra este constraint, porque al
+  // terminar el statement ya no queda ninguna fila viva de ninguno de los dos lados.
+  shortLink    ShortLink?   @relation(fields: [shortLinkId], references: [id], onDelete: NoAction)
+
+  @@index([organizationId])
+  @@index([shortLinkId])
+  @@map("qr_codes")
+}
+
+model AnalyticsEvent {
+  id                  String   @id @default(uuid()) @db.Uuid
+  organizationId      String   @map("organization_id") @db.Uuid
+  siteId              String?  @map("site_id") @db.Uuid
+  // Catálogo abierto (page_view/block_click/whatsapp_click/form_submit/lead_created/qr_visit/...),
+  // igual que Block.type: crece con el producto sin exigir migración por cada tipo nuevo.
+  type                String
+  // Hash con sal rotada por sitio/día (ADR-004 punto 1) — nunca un identificador estable entre
+  // días ni reversible a IP/dispositivo real. No hay columna de IP cruda a propósito.
+  anonymizedVisitorId String?  @map("anonymized_visitor_id")
+  utm                 Json?
+  device              String?
+  geoCountry          String?  @map("geo_country")
+  geoCity             String?  @map("geo_city")
+  // Evita doble conteo por reintento de red en eventos críticos (F3.6).
+  idempotencyKey      String?  @unique @map("idempotency_key")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site?        @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([siteId, createdAt])
+  @@map("analytics_events")
+}
+
+model AnalyticsAggregate {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  // Obligatorio (a diferencia de AnalyticsEvent.siteId) — ver nota de nomenclatura arriba.
+  siteId         String   @map("site_id") @db.Uuid
+  // Granularidad diaria en formato "YYYY-MM-DD" (F3.6): suficiente para el dashboard de
+  // conversión (PM §9.12) sin la cardinalidad de guardar por hora.
+  period         String
+  metric         String
+  value          Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, siteId, period, metric])
+  @@map("analytics_aggregates")
 }

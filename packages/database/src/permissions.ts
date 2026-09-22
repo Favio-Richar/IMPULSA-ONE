@@ -12,6 +12,10 @@ export const PERMISSIONS = {
   PAGE_MANAGE: "page.manage",
   PAGE_DELETE: "page.delete",
   THEME_MANAGE: "theme.manage",
+  FORM_MANAGE: "form.manage",
+  CONTACT_MANAGE: "contact.manage",
+  CONTACT_DELETE: "contact.delete",
+  SHORTLINK_MANAGE: "shortlink.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -54,6 +58,24 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.THEME_MANAGE,
     description: "Crear y editar temas propios de la organización.",
   },
+  {
+    key: PERMISSIONS.FORM_MANAGE,
+    description: "Crear y editar formularios y sus campos en un sitio (F3.2).",
+  },
+  {
+    key: PERMISSIONS.CONTACT_MANAGE,
+    description:
+      "Editar contactos del mini-CRM: etiquetas, notas, estado comercial y asignación (F3.3).",
+  },
+  {
+    key: PERMISSIONS.CONTACT_DELETE,
+    description:
+      "Eliminar un contacto en cascada (derecho de cancelación/ARCO+, ADR-004) — acción destructiva y auditada.",
+  },
+  {
+    key: PERMISSIONS.SHORTLINK_MANAGE,
+    description: "Crear y editar enlaces cortos y códigos QR de la organización (F3.5).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -62,7 +84,7 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
 // EDITOR sí edita sitios (es su trabajo: contenido), pero no los crea ni los archiva — crear
 // consume cupo del plan y archivar saca un sitio de producción; ambas son decisiones de
 // OWNER/ADMIN. ANALYST y SUPPORT solo leen (la lectura no pasa por un permiso: basta con ser
-// miembro activo de la organización).
+// miembro activo de la organización) salvo lo que se detalla abajo para F3.3.
 export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
   OWNER: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -74,6 +96,10 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.PAGE_MANAGE,
     PERMISSIONS.PAGE_DELETE,
     PERMISSIONS.THEME_MANAGE,
+    PERMISSIONS.FORM_MANAGE,
+    PERMISSIONS.CONTACT_MANAGE,
+    PERMISSIONS.CONTACT_DELETE,
+    PERMISSIONS.SHORTLINK_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -85,12 +111,28 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.PAGE_MANAGE,
     PERMISSIONS.PAGE_DELETE,
     PERMISSIONS.THEME_MANAGE,
+    PERMISSIONS.FORM_MANAGE,
+    PERMISSIONS.CONTACT_MANAGE,
+    PERMISSIONS.CONTACT_DELETE,
+    PERMISSIONS.SHORTLINK_MANAGE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
-  // borrar saca contenido de circulación, misma lógica que archivar un sitio.
-  EDITOR: [PERMISSIONS.SITE_UPDATE, PERMISSIONS.PAGE_MANAGE],
+  // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y
+  // enlaces/QR son parte de ese mismo trabajo de contenido/marketing; contactos también, pero
+  // sin poder eliminarlos (acción destructiva y con implicancia legal, ADR-004 — reservada a
+  // OWNER/ADMIN, igual que PAGE_DELETE).
+  EDITOR: [
+    PERMISSIONS.SITE_UPDATE,
+    PERMISSIONS.PAGE_MANAGE,
+    PERMISSIONS.FORM_MANAGE,
+    PERMISSIONS.CONTACT_MANAGE,
+    PERMISSIONS.SHORTLINK_MANAGE,
+  ],
   ANALYST: [],
-  SUPPORT: [],
+  // SUPPORT es "soporte al cliente con acceso limitado y auditado" (seed.ts) — administrar el
+  // mini-CRM es exactamente ese trabajo, sin poder borrar contactos (ARCO+ es decisión de
+  // OWNER/ADMIN) ni tocar formularios/enlaces (eso es marketing/contenido, no soporte).
+  SUPPORT: [PERMISSIONS.CONTACT_MANAGE],
   AGENCY_MANAGER: [],
   SUPER_ADMIN: [],
 };

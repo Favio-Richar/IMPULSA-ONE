@@ -11,6 +11,7 @@ import { BLOCK_LABELS } from "../../lib/block-fields/labels";
 import { createBlockConfigResolver } from "../../lib/block-fields/resolver";
 import { toFormConfig } from "../../lib/block-fields/to-form-value";
 import { useUpdateBlock } from "../../lib/hooks/use-blocks";
+import { ContactFormPicker } from "./contact-form-picker";
 
 const AUTOSAVE_DELAY_MS = 800;
 
@@ -160,6 +161,16 @@ export function BlockConfigPanel({
         </div>
         <form className="flex flex-col gap-4" onSubmit={(event) => event.preventDefault()}>
           <FieldGroup fields={fieldSet.fields} />
+          {type === "contact_form" ? (
+            <ContactFormPicker
+              organizationId={organizationId}
+              siteId={siteId}
+              pageId={pageId}
+              blockId={block.id}
+              currentConfig={block.config as Record<string, unknown>}
+              onSaved={onSaved}
+            />
+          ) : null}
         </form>
       </div>
     </FormProvider>

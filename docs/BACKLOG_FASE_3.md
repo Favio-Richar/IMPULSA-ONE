@@ -28,7 +28,7 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | Historia | Estado |
 |---|---|
 | F3.1 — Modelo de datos de conversión (Form, Contact, ShortLink, QrCode, Analytics) | Terminada |
-| F3.2 — Formularios (constructor + envío público) | Pendiente |
+| F3.2 — Formularios (constructor + envío público) | Terminada |
 | F3.3 — Contactos (mini-CRM) | Pendiente |
 | F3.4 — WhatsApp (clic a conversación + analítica) | Pendiente |
 | F3.5 — QR y enlaces cortos | Pendiente |
@@ -90,6 +90,49 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
   ST §3.4 si ya existe; si no, se registra como deuda declarada, no se bloquea la historia por eso).
 - Permisos por rol (F1.6), auditoría de creación/edición de formularios, aislamiento multi-tenant
   probado.
+
+> **Terminada (2026-09-22)**: `Form`/`FormField` con CRUD completo bajo
+> `/organizations/:organizationId/sites/:siteId/forms` (`apps/api/src/modules/forms`), envío
+> público real bajo `/public/sites/:siteSlug/forms/:formId` (GET) y `.../submissions` (POST,
+> `apps/api/src/modules/public-forms`) con honeypot antispam, límite de tasa propio (20/min por
+> IP, más estricto que la lectura), validación server-side construida dinámicamente desde los
+> campos reales del formulario (`buildFormSubmissionSchema`, `@impulza/validation`), y
+> consentimiento aplicado exactamente como fija ADR-004 punto 3: un `FormField` de tipo `CONSENT`
+> marcado crea/actualiza un `Contact` (`ContactsService`, núcleo compartido con F3.3) y su
+> `ContactEvent`; sin ese campo, o presente pero sin marcar, solo queda el `FormSubmission` crudo.
+> Verificado en el navegador de punta a punta, no solo con tests: formulario creado desde el panel,
+> publicado, enviado desde el sitio público real, y confirmado en la base de datos que el `Contact`
+> quedó con `consent_status=GRANTED` y `consent_source=form:<formId>`, con su `ContactEvent`
+> `FORM_SUBMISSION` y el `FormSubmission` enlazado.
+>
+> El bloque `contact_form` (F2.4) pasó de v1 (declarativo, sin envío real) a v2: referencia un
+> `formId` real; una config v1 guardada sigue siendo válida (se lee como "sin formulario elegido"
+> en vez de degradarse a `invalid_config`) — ver `packages/validation/src/blocks/catalog.ts`. El
+> render público (`apps/web`) resuelve el formulario del lado del servidor y lo pasa ya listo al
+> bloque; el envío del visitante nunca llama a `apps/api` directamente — pasa por una ruta propia
+> de `apps/web` (`app/api/forms/[siteSlug]/[formId]/submissions/route.ts`) que reenvía server-to-
+> server, respetando el principio ya documentado en `apps/web/lib/env.ts` ("el navegador del
+> visitante nunca llama a la API directamente"). El constructor (`apps/dashboard`) no reconstruye el
+> formulario real en la vista previa (`mode="preview"`): muestra un estado explícito ("formulario
+> elegido, se verá real al publicar") en vez de datos live, para no escribir envíos de prueba en
+> `FormSubmission`/`Contact` reales — el selector de formulario sí es real (`ContactFormPicker.tsx`,
+> con "elegir uno existente" y "crear formulario rápido" con campos por defecto nombre/correo/
+> mensaje/consentimiento).
+>
+> **Deudas declaradas** (no bloquean el cierre, documentadas para no perderlas):
+> - **Notificación al propietario**: no implementada — no existe todavía un adaptador de email
+>   genérico para notificaciones de negocio (el de F1.4 es específico de auth). Falta una tarea
+>   propia cuando se diseñe ese adaptador (ST §3.4).
+> - **Rate limiting por visitante real**: la ruta proxy de `apps/web` no reenvía la IP del visitante
+>   a `apps/api` (no hay `X-Forwarded-For` ni `trust proxy` configurado), así que el límite de tasa
+>   del envío cuenta por el propio servidor de `apps/web`, no por visitante — mismo límite ya
+>   declarado como parcial en `BACKLOG_FASE_2.md`, no una regresión nueva.
+> - **Constructor visual de campos**: el panel de formularios ofrece "elegir existente" y "crear
+>   rápido con campos por defecto", no un editor visual campo por campo (agregar/quitar/reordenar
+>   campos, tipos, opciones) — eso es una etapa siguiente, análoga a como F2.9 separó Etapa A
+>   (pantallas de gestión) de Etapa B (editor de bloques real).
+> - **Borrado de formulario sin papelera**: borrar un `Form` es real (no lógico) y se lleva sus
+>   `FormSubmission` — decisión explícita documentada en el propio endpoint, no un descuido.
 
 ### F3.3 — Contactos (mini-CRM)
 **Criterios de aceptación:**

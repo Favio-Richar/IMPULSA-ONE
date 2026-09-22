@@ -1,7 +1,20 @@
 import { notFound } from "next/navigation";
 import { PageBlocks } from "@impulza/blocks-renderer";
+import type { PublicFormResponse } from "@impulza/contracts";
 import { themeTokensSchema } from "@impulza/validation";
-import { getPublicPage, getPublicSite } from "../lib/api";
+import { getPublicForm, getPublicPage, getPublicSite } from "../lib/api";
+
+/** Todo bloque `contact_form` con un `formId` real, sin duplicados: varios bloques pueden apuntar
+ *  al mismo formulario en la misma página. */
+function formIdsReferencedBy(blocks: { type: string; config: unknown }[]): string[] {
+  const ids = new Set<string>();
+  for (const block of blocks) {
+    if (block.type !== "contact_form") continue;
+    const formId = (block.config as { formId?: unknown } | null)?.formId;
+    if (typeof formId === "string") ids.add(formId);
+  }
+  return [...ids];
+}
 
 /**
  * Cuerpo compartido de la home (`app/[siteSlug]/page.tsx`) y de cualquier otra página
@@ -23,5 +36,24 @@ export async function SitePage({ siteSlug, pageSlug }: { siteSlug: string; pageS
 
   const tokens = themeTokensSchema.parse(site.theme.tokens);
 
-  return <PageBlocks blocks={page.blocks} buttonStyle={tokens.buttonStyle} />;
+  // F3.2: se resuelve el formulario real de cada bloque `contact_form` en el servidor — el
+  // visitante nunca llama a `apps/api` directamente (mismo principio que el resto de este
+  // archivo); el bloque recibe los datos ya listos, no una URL para ir a buscarlos.
+  const formIds = formIdsReferencedBy(page.blocks);
+  const resolvedForms = await Promise.all(formIds.map((formId) => getPublicForm(siteSlug, formId)));
+  const forms = Object.fromEntries(
+    formIds
+      .map((formId, index) => [formId, resolvedForms[index]] as const)
+      .filter((entry): entry is [string, PublicFormResponse] => entry[1] !== null),
+  );
+
+  return (
+    <PageBlocks
+      blocks={page.blocks}
+      buttonStyle={tokens.buttonStyle}
+      siteSlug={siteSlug}
+      forms={forms}
+      mode="public"
+    />
+  );
 }

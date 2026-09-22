@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { PublicBlockResponse } from "@impulza/contracts";
+import type { PublicBlockResponse, PublicFormResponse } from "@impulza/contracts";
 import {
   contactActionsSchema,
   contactFormSchema,
@@ -53,9 +53,15 @@ import { WhatsappBlock } from "./blocks/whatsapp.js";
 export function RenderBlock({
   block,
   buttonVariant,
+  siteSlug,
+  forms,
+  mode = "public",
 }: {
   block: PublicBlockResponse;
   buttonVariant: ButtonVariant;
+  siteSlug?: string;
+  forms?: Record<string, PublicFormResponse>;
+  mode?: "public" | "preview";
 }): ReactElement | null {
   switch (block.type) {
     case "profile": {
@@ -104,7 +110,13 @@ export function RenderBlock({
     }
     case "contact_form": {
       const parsed = contactFormSchema.safeParse(block.config);
-      return parsed.success ? <ContactFormBlock config={parsed.data} /> : null;
+      if (!parsed.success) {
+        return null;
+      }
+      const form = parsed.data.formId ? (forms?.[parsed.data.formId] ?? null) : null;
+      return (
+        <ContactFormBlock config={parsed.data} form={form} siteSlug={siteSlug} mode={mode} />
+      );
     }
     case "service": {
       const parsed = serviceSchema.safeParse(block.config);

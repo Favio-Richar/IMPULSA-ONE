@@ -33,3 +33,4 @@ export {
 export * from "./blocks/index.js";
 export * from "./themes/index.js";
 export * from "./seo/index.js";
+export * from "./forms/index.js";

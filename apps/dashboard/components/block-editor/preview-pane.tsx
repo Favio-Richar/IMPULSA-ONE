@@ -63,7 +63,7 @@ export function PreviewPane({ blocks, themeTokens }: { blocks: BlockResponse[]; 
                   Agrega un bloque para ver la vista previa.
                 </p>
               ) : (
-                <PageBlocks blocks={visibleBlocks} buttonStyle={tokens.buttonStyle} />
+                <PageBlocks blocks={visibleBlocks} buttonStyle={tokens.buttonStyle} mode="preview" />
               )}
             </div>
           </div>

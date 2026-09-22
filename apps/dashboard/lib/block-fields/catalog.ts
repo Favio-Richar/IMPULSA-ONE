@@ -230,33 +230,14 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
     seedConfig: () => ({ video: { provider: "youtube", videoId: "000000000AA" } }),
   },
 
+  // F3.2: el formulario en sí (campos, envíos, antispam) ya no vive en la config del bloque — se
+  // elige un `Form` real por id. Ese selector no es un campo genérico del motor declarativo (no
+  // es texto/número/opción fija: depende de una lista que hay que pedirle a la API para el sitio
+  // en cuestión), así que `BlockConfigPanel` lo agrega aparte para este tipo
+  // (`ContactFormPicker.tsx`) — acá solo queda el título, que sí es un campo simple de verdad.
   contact_form: {
-    fields: [
-      { name: "title", label: "Título", optional: true, control: { kind: "text", maxLength: 160 } },
-      {
-        name: "fields",
-        label: "Campos del formulario",
-        control: {
-          kind: "multiselect",
-          min: 1,
-          max: 4,
-          options: [
-            { value: "name", label: "Nombre" },
-            { value: "email", label: "Correo" },
-            { value: "phone", label: "Teléfono" },
-            { value: "message", label: "Mensaje" },
-          ],
-        },
-      },
-      { name: "submitLabel", label: "Texto del botón de envío", optional: true, control: { kind: "text", maxLength: 60 } },
-      {
-        name: "successMessage",
-        label: "Mensaje de éxito",
-        optional: true,
-        control: { kind: "text", maxLength: 300 },
-      },
-    ],
-    seedConfig: () => ({ fields: ["name", "email", "message"] }),
+    fields: [{ name: "title", label: "Título", optional: true, control: { kind: "text", maxLength: 160 } }],
+    seedConfig: () => ({}),
   },
 
   service: {

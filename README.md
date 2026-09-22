@@ -3,11 +3,13 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 3 — Conversión — en progreso (F3.1 terminada de F3.1–F3.8).** Fase 2 (sitio
-público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión (formularios,
-contactos/mini-CRM, QR/enlaces cortos y analítica) ya existe en `packages/database`, con
+**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.2 terminadas de F3.1–F3.8).** Fase 2
+(sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
+(formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
-retencion-datos.md`, Ley 21.719). Ver `docs/BACKLOG_FASE_3.md` para el backlog de la fase activa,
+retencion-datos.md`, Ley 21.719). Un sitio puede publicar un formulario de contacto real: se crea
+desde el panel, el visitante lo llena en el sitio público y el envío queda en el mini-CRM con
+consentimiento auditado. Ver `docs/BACKLOG_FASE_3.md` para el backlog de la fase activa,
 `docs/BACKLOG_FASE_2.md`/`docs/BACKLOG_FASE_0_1.md` para las anteriores y `CLAUDE.md` para las
 reglas de trabajo del repositorio.
 
@@ -16,7 +18,7 @@ reglas de trabajo del repositorio.
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
 | 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
-| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1 terminada) |
+| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.2 terminadas) |
 
 ## Requisitos
 
@@ -946,6 +948,70 @@ Verificado: `pnpm --filter @impulza/database exec vitest run` (22/22, incluye F2
 `lint`/`typecheck` de `@impulza/database` limpios, `typecheck` de `@impulza/api` limpio (el cliente
 de Prisma regenerado no rompe nada existente), `pnpm db:seed` sigue funcionando (13 permisos, 32
 asignaciones rol-permiso).
+
+## Formularios (F3.2)
+
+Segunda historia de Fase 3: `Form`/`FormField` con CRUD (`apps/api/src/modules/forms`) y envío
+público real (`apps/api/src/modules/public-forms`) — el primer módulo de Fase 3 con superficie
+visible de punta a punta, verificado a mano en el navegador (no solo con tests): formulario creado
+desde el panel del constructor, publicado, enviado desde el sitio público real, y confirmado en la
+base de datos que quedó todo enlazado correctamente.
+
+- **Antispam y validación real**: honeypot (`_hp`) que responde éxito sin persistir nada si viene
+  con contenido, y el esquema de validación del envío se arma en el servidor a partir de los campos
+  **reales** guardados del formulario (`buildFormSubmissionSchema`, `@impulza/validation`) — nunca
+  se confía en lo que declare el cliente. Límite de tasa propio del envío (20/min por IP), más
+  estricto que la lectura (120/min, mismo criterio que F2.7).
+- **Consentimiento exactamente como fija ADR-004 punto 3**: un `FormField` de tipo `CONSENT`
+  marcado en el envío crea o actualiza un `Contact` (matcheado por email dentro de la organización)
+  y agrega su `ContactEvent` `FORM_SUBMISSION`; sin ese campo, o presente pero sin marcar, el envío
+  solo deja el `FormSubmission` crudo — ningún seguimiento comercial sin consentimiento explícito.
+  `ContactsService` (`apps/api/src/modules/contacts`) es el núcleo compartido con el mini-CRM que
+  llega en F3.3, no una pieza de usar y tirar.
+- **El bloque `contact_form` (F2.4) pasa de v1 a v2**: ya no declara campos propios — referencia un
+  `formId` real. Una config `v1` guardada (`{title, fields, submitLabel, successMessage}`) sigue
+  siendo válida: se lee como "sin formulario elegido" en vez de degradarse a `invalid_config`,
+  porque el nuevo esquema solo exige `title` (opcional) y `formId` (con default `null`) — ver
+  `packages/validation/src/blocks/catalog.ts`.
+- **El navegador del visitante nunca llama a `apps/api` directamente**, ni para leer ni para
+  enviar — mismo principio ya documentado en `apps/web/lib/env.ts` para el resto del render
+  público. La definición del formulario se resuelve en el servidor (`apps/web/components/site-
+  page.tsx`, `getPublicForm`) y se le pasa ya lista al bloque; el envío pasa por una ruta propia de
+  `apps/web` (`app/api/forms/[siteSlug]/[formId]/submissions/route.ts`) que reenvía server-to-
+  server con la cabecera CSRF que `apps/api` exige. El bloque (`packages/blocks-renderer/src/
+  blocks/contact-form.tsx`) es el primer componente interactivo (`"use client"`) del paquete —
+  todo el resto es presentacional puro.
+- **La vista previa del constructor no reconstruye el formulario real**: `apps/dashboard` pasa
+  `mode="preview"` a `PageBlocks` sin resolver los campos del formulario — el bloque muestra
+  "formulario elegido, se verá real en el sitio publicado" en vez de datos live, para no escribir
+  envíos de prueba en `Contact`/`FormSubmission` reales durante la edición. El selector de
+  formulario en el panel de configuración (`ContactFormPicker.tsx`) sí es real: "elegir uno
+  existente" o "crear formulario rápido" (nombre, correo, mensaje, consentimiento) — guarda con su
+  propia llamada a `PATCH .../blocks/:blockId`, aparte del motor declarativo de campos de F2.9
+  Etapa B1 (`normalizeBlockConfig` solo conoce los campos declarados en `BLOCK_FIELD_SETS`, y
+  `formId` no es uno de ellos a propósito: no es un campo simple, depende de una lista que hay que
+  pedirle a la API).
+
+**Deudas declaradas** (no bloquean el cierre de la historia):
+
+- Sin notificación al propietario del sitio ante un envío nuevo — no existe todavía un adaptador de
+  email genérico para notificaciones de negocio (el de F1.4 es específico de autenticación).
+- El límite de tasa del envío público cuenta por la IP del propio servidor de `apps/web` (la ruta
+  proxy no reenvía la IP real del visitante) — mismo límite ya declarado como parcial en
+  `docs/BACKLOG_FASE_2.md`, no una regresión nueva de esta historia.
+- El panel del constructor no tiene todavía un editor visual campo por campo (agregar/quitar/
+  reordenar/tipos/opciones) — solo "elegir existente" y "crear rápido con campos por defecto". Es
+  una etapa siguiente, mismo criterio de F2.9 (Etapa A gestión, Etapa B editor real).
+- Borrar un `Form` es real (no lógico) y se lleva sus `FormSubmission` — decisión explícita, no un
+  descuido: un formulario no es "contenido" con historial propio como una `Page`.
+
+Verificado: 13 tests nuevos (`forms.e2e.test.ts`, `public-forms.e2e.test.ts`) más una prueba nueva
+de aislamiento multi-tenant en la suite central (32/32) — `pnpm --filter @impulza/api exec vitest
+run`: 197/197. `lint`/`typecheck`/`build` de todo el monorepo (`turbo run lint|typecheck|build`)
+limpios. Probado en el navegador de punta a punta: formulario creado y publicado desde
+`apps/dashboard`, enviado desde `apps/web` real, y confirmado en Postgres que el `Contact` quedó
+con `consent_status=GRANTED`, `consent_source=form:<formId>`, su `ContactEvent` y el
+`FormSubmission` enlazado.
 
 ## Contrato de la API — OpenAPI
 

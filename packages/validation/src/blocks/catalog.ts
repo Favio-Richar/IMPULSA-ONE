@@ -108,17 +108,14 @@ export const contactActionsSchema = z
     message: "Indica al menos un correo o un teléfono.",
   });
 
+// v2 (F3.2): el bloque ya no declara campos propios — resuelve un `Form` real de
+// `packages/database` por `formId`. `formId` en `null` es el estado "sin configurar" (vacío):
+// una config de v1 sin `formId` (`{title, fields: [...], submitLabel, successMessage}`) sigue
+// siendo válida acá — `title` se conserva y el resto de las claves de v1 se ignoran, en vez de
+// degradar el bloque a `invalid_config` — así un bloque viejo pasa a "vacío", no desaparece.
 export const contactFormSchema = z.object({
   title: plainTextSchema(160).optional(),
-  // El formulario real (campos, envíos, anti-spam) es de Fase 3; el bloque solo declara que hay
-  // uno y su copy. No se inventa el modelo de datos de formularios antes de tiempo.
-  fields: z
-    .array(z.enum(["name", "email", "phone", "message"]))
-    .min(1)
-    .max(4)
-    .default(["name", "email", "message"]),
-  submitLabel: plainTextSchema(60).default("Enviar"),
-  successMessage: plainTextSchema(300).default("¡Gracias! Te responderemos pronto."),
+  formId: z.string().uuid().nullable().default(null),
 });
 
 export const serviceSchema = z.object({
@@ -196,7 +193,7 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
     schema: contactActionsSchema,
     richTextPaths: [],
   },
-  contact_form: { type: "contact_form", version: 1, schema: contactFormSchema, richTextPaths: [] },
+  contact_form: { type: "contact_form", version: 2, schema: contactFormSchema, richTextPaths: [] },
   service: { type: "service", version: 1, schema: serviceSchema, richTextPaths: ["description"] },
   divider: { type: "divider", version: 1, schema: dividerSchema, richTextPaths: [] },
   faq: { type: "faq", version: 1, schema: faqSchema, richTextPaths: ["items[].answer"] },

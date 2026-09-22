@@ -719,6 +719,58 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Formularios (F3.2): ningún acceso cruzado entre organizaciones", () => {
+    it("A no alcanza los formularios ni los envíos de B por ninguna combinación de ids", async () => {
+      const formOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/forms`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Formulario privado de B", fields: [{ type: "TEXT", label: "Nombre" }] })
+        .expect(201);
+
+      // Con la organización de B en la URL: frenado por el guard de membresía.
+      const crossOrgPath = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/forms`;
+      await orgA.ownerAgent.get(crossOrgPath).expect(403);
+      await orgA.ownerAgent
+        .patch(`${crossOrgPath}/${formOfB.body.id}`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Secuestrado" })
+        .expect(403);
+
+      // Organización PROPIA de A, pero sitio y formulario de B: lo único que frena esto es que el
+      // servicio verifique que el sitio sea de la organización del contexto (ADR-002).
+      const ownOrgCrossSitePath = `/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/forms`;
+      await orgA.ownerAgent.get(ownOrgCrossSitePath).expect(404);
+      await orgA.ownerAgent
+        .get(`${ownOrgCrossSitePath}/${formOfB.body.id}`)
+        .expect(404);
+      await orgA.ownerAgent
+        .patch(`${ownOrgCrossSitePath}/${formOfB.body.id}`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Secuestrado" })
+        .expect(404);
+      await orgA.ownerAgent.delete(`${ownOrgCrossSitePath}/${formOfB.body.id}`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent
+        .post(`${ownOrgCrossSitePath}/${formOfB.body.id}/fields`)
+        .set(CSRF_HEADERS)
+        .send({ type: "TEXT", label: "Inyectado" })
+        .expect(404);
+
+      // El formulario de B sigue intacto y sin campos ajenos.
+      const stillB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/forms/${formOfB.body.id}`)
+        .expect(200);
+      expect(stillB.body.name).toBe("Formulario privado de B");
+      expect(stillB.body.fields).toHaveLength(1);
+
+      // El envío público tampoco filtra entre sitios: el mismo formId bajo el slug de A (que no lo
+      // tiene) no resuelve nada.
+      const siteOfA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}`);
+      await request(httpServer)
+        .get(`/api/v1/public/sites/${siteOfA.body.slug}/forms/${formOfB.body.id}`)
+        .expect(404);
+    });
+  });
+
   describe("Ningún dato de una organización aparece en las respuestas de la otra", () => {
     it("GET /organizations no cruza organizaciones entre usuarios sin relación", async () => {
       const orgsOfA = await orgA.ownerAgent.get("/api/v1/organizations");

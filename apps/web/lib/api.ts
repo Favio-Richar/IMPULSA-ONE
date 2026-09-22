@@ -1,4 +1,11 @@
-import { publicPageResponse, publicSiteResponse, type PublicPageResponse, type PublicSiteResponse } from "@impulza/contracts";
+import {
+  publicFormResponse,
+  publicPageResponse,
+  publicSiteResponse,
+  type PublicFormResponse,
+  type PublicPageResponse,
+  type PublicSiteResponse,
+} from "@impulza/contracts";
 import { env } from "./env";
 
 /**
@@ -48,5 +55,16 @@ export function getPublicPage(siteSlug: string, pageSlug: string): Promise<Publi
     `/public/sites/${encodeURIComponent(siteSlug)}/pages/${encodeURIComponent(pageSlug)}`,
     siteSlug,
     publicPageResponse,
+  );
+}
+
+/** F3.2: la definición real de un formulario referenciado por un bloque `contact_form`. `null` si
+ *  el formulario ya no existe (se borró desde entonces) — el bloque lo trata como "sin configurar",
+ *  igual que un `formId` vacío (ver `ContactFormBlock`), nunca como un error de render. */
+export function getPublicForm(siteSlug: string, formId: string): Promise<PublicFormResponse | null> {
+  return fetchPublic(
+    `/public/sites/${encodeURIComponent(siteSlug)}/forms/${encodeURIComponent(formId)}`,
+    siteSlug,
+    publicFormResponse,
   );
 }

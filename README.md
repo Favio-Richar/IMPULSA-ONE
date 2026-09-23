@@ -3,7 +3,7 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.3 terminadas de F3.1–F3.8).** Fase 2
+**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.4 terminadas de F3.1–F3.8).** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
@@ -19,7 +19,7 @@ reglas de trabajo del repositorio.
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
 | 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
-| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.3 terminadas) |
+| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.4 terminadas) |
 
 ## Requisitos
 
@@ -1050,6 +1050,51 @@ central (33/33) — 206/206 en `@impulza/api`. `lint`/`typecheck`/`build` de tod
 limpios. Probado a mano en el navegador: filtros, ficha, notas y etiquetas funcionando sobre el
 contacto real creado por el envío de formulario de F3.2 — incluida la búsqueda por etiqueta
 inexistente mostrando el `EmptyState` correcto.
+
+## Identidad de marca (paleta de color)
+
+`packages/ui/src/styles/tokens.css` tenía un placeholder indigo neutro desde F1.1, documentado
+explícitamente como temporal hasta que existiera una decisión de marca (PM §21 #1). El propietario
+del producto la resolvió a nivel de color el 2026-09-23: verde azulado profundo (`#0f6f6b`) sobre
+fondo blanco, con superficie/bordes/texto reajustados para cohesionar. Contraste WCAG 2.2 AA
+verificado con el mismo calculador del repo (`packages/validation`, `contrast.test.ts` de
+`packages/ui`): primario/blanco 5.99:1, texto/fondo 16.84:1, foco/fondo 5.99:1. Los temas del
+catálogo de sitios públicos (`packages/validation/src/themes/catalog.ts`) son independientes de
+este color — es la identidad propia de Impulza One como producto, no la de los sitios que arma
+cada cliente.
+
+## Clic a WhatsApp con analítica (F3.4)
+
+Cuarta historia de Fase 3. El bloque WhatsApp ya generaba su enlace `wa.me` con número E.164 y
+mensaje prellenado desde F2.4; esta historia agrega el registro del clic como el primer
+`AnalyticsEvent` real del sistema.
+
+- **Minimización desde el primer evento, no cuando llegue F3.6**: `AnalyticsService`
+  (`apps/api/src/modules/analytics`) deriva el visitante anonimizado con
+  `sha256(sal + día + siteId + ip + user-agent)` calculado en memoria — la IP cruda nunca toca una
+  columna ni sobrevive la función que la lee (ADR-004 punto 1). La sal vive en `ANALYTICS_SALT_SECRET`
+  (nueva variable de entorno, validada al iniciar como el resto — ver `.env.example`).
+- **Endpoint público con allowlist corto**: `POST /public/sites/:siteSlug/events`
+  (`apps/api/src/modules/public-analytics`) solo acepta `whatsapp_click` por ahora — el resto de
+  los tipos de evento del ERD se generan del lado del servidor o llegan con F3.5/F3.6, no se abre
+  el allowlist antes de tener el caso real.
+- **El clic real nunca depende de la analítica**: `WhatsappBlock`
+  (`packages/blocks-renderer/src/blocks/whatsapp.tsx`) pasó a ser el primer bloque interactivo del
+  paquete además de `contact_form` — un `fetch(..., {keepalive:true})` en el propio `onClick` del
+  `<a href="wa.me/...">`, sin `preventDefault` ni redirección por JavaScript (`LinkButton` ahora
+  acepta un `onClick` opcional puramente de instrumentación). Pasa por la ruta propia de
+  `apps/web` (`app/api/analytics/[siteSlug]/events/route.ts`), mismo principio de "el navegador
+  nunca llama a `apps/api` directo" que F3.2. En la vista previa del constructor
+  (`mode="preview"`) no se registra nada.
+- El conteo visible en un dashboard de conversión es explícitamente criterio de F3.7, no de esta
+  historia — acá el evento queda bien registrado y consultable en la base.
+
+Verificado: 5 tests nuevos (`public-analytics.e2e.test.ts`) — 211/211 en `@impulza/api`.
+`lint`/`typecheck`/`build` de `@impulza/api`, `@impulza/blocks-renderer`, `@impulza/web` y
+`@impulza/dashboard` limpios. **Deuda declarada**: la verificación visual del clic real en el
+navegador quedó pendiente por un límite de uso de la herramienta de navegador en la sesión — el
+mecanismo está probado end-to-end a nivel de API y de build del cliente, no con un clic observado
+a mano todavía.
 
 ## Contrato de la API — OpenAPI
 

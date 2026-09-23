@@ -8,6 +8,9 @@ interface LinkButtonProps {
   children: ReactNode;
   /** Ensancha el botón al 100% del contenedor — el bloque `link` siempre lo usa así. */
   block?: boolean;
+  /** Instrumentación opcional (p. ej. registrar un clic de analítica, F3.4) — nunca controla la
+   *  navegación en sí: el `href`/`target` de abajo hacen todo el trabajo real, esto solo observa. */
+  onClick?: () => void;
 }
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
@@ -26,14 +29,16 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
  *
  * Siempre `<a>`, nunca `<button>`: todo lo que este bloque puede hacer es enlazar a algo (una URL,
  * un `mailto:`, un `tel:`, un `https://wa.me/...`) — no hay una acción del lado del cliente que
- * justifique JavaScript.
+ * decida la navegación. `onClick` (F3.4) es solo instrumentación opcional (analítica), nunca
+ * `preventDefault`: el enlace real sigue siendo `href`/`target`, no algo que arme JavaScript.
  */
-export function LinkButton({ href, variant = "primary", children, block = false }: LinkButtonProps) {
+export function LinkButton({ href, variant = "primary", children, block = false, onClick }: LinkButtonProps) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer nofollow"
+      onClick={onClick}
       className={`inline-flex items-center justify-center gap-2 rounded-[var(--site-radius)] px-5 py-2.5 text-sm font-medium shadow-[var(--site-shadow)] transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 ${block ? "w-full" : ""} ${VARIANT_CLASSES[variant]}`}
     >
       {children}

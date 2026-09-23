@@ -92,6 +92,7 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/sites/{siteSlug}/pages/{pageSlug}",
       "GET /api/v1/public/sites/{siteSlug}/forms/{formId}",
       "POST /api/v1/public/sites/{siteSlug}/forms/{formId}/submissions",
+      "POST /api/v1/public/sites/{siteSlug}/events",
     ]);
 
     const sinSeguridad: string[] = [];

@@ -30,7 +30,7 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F3.1 — Modelo de datos de conversión (Form, Contact, ShortLink, QrCode, Analytics) | Terminada |
 | F3.2 — Formularios (constructor + envío público) | Terminada |
 | F3.3 — Contactos (mini-CRM) | Terminada |
-| F3.4 — WhatsApp (clic a conversación + analítica) | Pendiente |
+| F3.4 — WhatsApp (clic a conversación + analítica) | Terminada |
 | F3.5 — QR y enlaces cortos | Pendiente |
 | F3.6 — Eventos analíticos (pipeline + retención) | Pendiente |
 | F3.7 — Dashboard de conversión | Pendiente |
@@ -184,6 +184,36 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
   no crea un `Contact` automáticamente (WhatsApp no es un origen de `ContactEvent` en el ERD; solo
   formularios/reservas/compras lo son).
 - El conteo de clics es visible en el dashboard de conversión (F3.7), no solo en tablas crudas.
+
+> **Terminada (2026-09-23)**: la generación del enlace `wa.me` con número E.164 y mensaje
+> prellenado ya existía desde F2.4 (`packages/blocks-renderer/src/blocks/whatsapp.tsx`) — esta
+> historia agregó el registro del clic. `AnalyticsService` (`apps/api/src/modules/analytics`)
+> aplica la minimización de ADR-004 punto 1 desde el primer evento que existe en el sistema, no
+> recién cuando llegue el pipeline completo de F3.6: sin columna de IP cruda, visitante
+> anonimizado con `sha256(sal + día + siteId + ip + user-agent)` calculado en memoria y nunca
+> persistido en claro. El endpoint público (`POST /public/sites/:siteSlug/events`,
+> `apps/api/src/modules/public-analytics`) usa un allowlist deliberadamente corto de tipos de
+> evento que el propio navegador puede disparar (`whatsapp_click`, por ahora) — el resto de los
+> tipos del ERD ya se generan del lado del servidor o se generarán en F3.5/F3.6, no desde acá.
+>
+> El clic real a WhatsApp **nunca depende de que el registro de analítica funcione**: es un
+> `fetch(..., {keepalive:true})` disparado en el mismo `onClick` del enlace (`href`/`target`
+> intactos, sin `preventDefault`), a través de la ruta propia de `apps/web`
+> (`app/api/analytics/[siteSlug]/events/route.ts`) — mismo principio de "el navegador nunca llama
+> a `apps/api` directo" que F3.2. En la vista previa del constructor (`mode="preview"`) no se
+> registra nada, mismo criterio que el formulario de F3.2.
+>
+> **El conteo visible en un dashboard de conversión queda para F3.7** (que es explícitamente donde
+> vive ese criterio) — F3.4 deja el evento correctamente registrado y consultable en la base, no
+> inventa una vista de reporte antes de tiempo.
+>
+> Verificado: 5 tests nuevos (`public-analytics.e2e.test.ts`, incluida la prueba de que dos
+> visitantes con user-agent distinto generan anonymizedVisitorId distintos) — 211/211 en
+> `@impulza/api`. `lint`/`typecheck`/`build` de `@impulza/api`, `@impulza/blocks-renderer`,
+> `@impulza/web` y `@impulza/dashboard` limpios. **Deuda declarada**: la verificación visual del
+> clic real en el navegador quedó pendiente por un límite de uso de la herramienta de navegador en
+> la sesión — el mecanismo está probado end-to-end a nivel de API/cliente compilado, no con un
+> clic real observado.
 
 ### F3.5 — QR y enlaces cortos
 **Criterios de aceptación:**

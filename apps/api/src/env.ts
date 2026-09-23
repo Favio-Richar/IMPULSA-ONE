@@ -23,6 +23,9 @@ export const env = loadEnv({
   AUTH_ENCRYPTION_KEY: encryptionKeySchema,
   // Base de las URLs de verificación/recuperación que se envían por email.
   APP_BASE_URL: urlSchema,
+  // Sal para el visitante anonimizado de analítica (F3.4, ADR-004 punto 1) — nunca se persiste la
+  // IP cruda del visitante, solo un hash derivado de esto y rotado por sitio/día.
+  ANALYTICS_SALT_SECRET: z.string().min(32),
   // Opcional a propósito: Sentry no es requerido para arrancar (F1.10). Sin DSN, initSentry() es
   // un no-op — así se puede desarrollar localmente sin cuenta de Sentry.
   SENTRY_DSN: urlSchema.optional(),

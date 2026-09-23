@@ -9535,6 +9535,49 @@
         ]
       }
     },
+    "/api/v1/public/sites/{siteSlug}/events": {
+      "post": {
+        "description": "Por ahora solo `whatsapp_click` (F3.4). Sin datos personales: el visitante se anonimiza con un hash rotado por sitio/día (ADR-004 punto 1), nunca se guarda su IP cruda.",
+        "operationId": "PublicAnalyticsController_record",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Evento registrado."
+          },
+          "404": {
+            "description": "Sitio no encontrado, o archivado."
+          },
+          "429": {
+            "description": "Límite de peticiones superado (60 por minuto y IP)."
+          }
+        },
+        "summary": "Registrar un evento de analítica disparado por el visitante",
+        "tags": [
+          "public-analytics"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "description": "Sin sesión ni CSRF: lo consume infraestructura. Fuera de `/api/v1` porque no es un endpoint de negocio. Una dependencia caída degrada el reporte, no tumba el endpoint.",

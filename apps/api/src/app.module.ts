@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AppController } from "./app.controller.js";
 import { PrismaModule } from "./database/prisma.module.js";
+import { AnalyticsModule } from "./modules/analytics/analytics.module.js";
 import { AuditModule } from "./modules/audit/audit.module.js";
 import { BlocksModule } from "./modules/blocks/blocks.module.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
@@ -9,6 +10,7 @@ import { FormsModule } from "./modules/forms/forms.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { OrganizationsModule } from "./modules/organizations/organizations.module.js";
 import { PagesModule } from "./modules/pages/pages.module.js";
+import { PublicAnalyticsModule } from "./modules/public-analytics/public-analytics.module.js";
 import { PublicFormsModule } from "./modules/public-forms/public-forms.module.js";
 import { PublicSitesModule } from "./modules/public-sites/public-sites.module.js";
 import { SitesModule } from "./modules/sites/sites.module.js";
@@ -30,8 +32,10 @@ import { RedisModule } from "./redis/redis.module.js";
     BlocksModule,
     ContactsModule,
     FormsModule,
+    AnalyticsModule,
     PublicSitesModule,
     PublicFormsModule,
+    PublicAnalyticsModule,
     HealthModule,
   ],
   controllers: [AppController],

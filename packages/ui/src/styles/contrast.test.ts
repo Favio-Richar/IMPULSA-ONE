@@ -11,10 +11,10 @@ import { AA_NORMAL_TEXT, AA_UI_COMPONENT, contrastRatio } from "@impulza/validat
 // darse cuenta de que rompe AA).
 const tokens = {
   background: "#ffffff",
-  surface: "#f8fafc",
-  foreground: "#0f172a",
+  surface: "#f7f9f8",
+  foreground: "#10201e",
   mutedForeground: "#475569",
-  primary: "#4338ca",
+  primary: "#0f6f6b",
   primaryForeground: "#ffffff",
   danger: "#b91c1c",
   dangerForeground: "#ffffff",
@@ -24,7 +24,7 @@ const tokens = {
   warningForeground: "#ffffff",
   info: "#0e7490",
   infoForeground: "#ffffff",
-  focusRing: "#4338ca",
+  focusRing: "#0f6f6b",
 };
 
 describe("contraste WCAG 2.2 AA — pares texto/fondo", () => {

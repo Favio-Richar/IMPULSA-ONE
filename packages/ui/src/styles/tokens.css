@@ -6,25 +6,26 @@
  * moderados, nada excesivamente redondo. Objetivo WCAG 2.2 AA — cada par texto/fondo definido
  * aquí se verifica en src/styles/contrast.test.ts, no a ojo.
  *
- * Color primario (indigo) es un placeholder neutro de sistema B2B hasta que exista marca
- * definitiva (PM §21, decisión #1 pendiente). Cambiar aquí propaga a todo el design system.
+ * Color primario: verde azulado profundo, elegido explícitamente por el propietario del producto
+ * (2026-09-23) como identidad de marca — reemplaza el placeholder indigo neutro que existía hasta
+ * acá (PM §21, decisión #1). Cambiar aquí propaga a todo el design system.
  */
 @theme {
   /* Fondo y superficies */
   --color-background: #ffffff;
-  --color-surface: #f8fafc;
-  --color-surface-hover: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
+  --color-surface: #f7f9f8;
+  --color-surface-hover: #eef2f1;
+  --color-border: #dde5e3;
+  --color-border-strong: #c3cfcc;
 
   /* Texto */
-  --color-foreground: #0f172a;
+  --color-foreground: #10201e;
   --color-muted-foreground: #475569;
   --color-disabled-foreground: #94a3b8;
 
   /* Marca / acción primaria */
-  --color-primary: #4338ca;
-  --color-primary-hover: #3730a3;
+  --color-primary: #0f6f6b;
+  --color-primary-hover: #0b5450;
   --color-primary-foreground: #ffffff;
 
   /* Estados semánticos */
@@ -42,7 +43,7 @@
   --color-info-foreground: #ffffff;
 
   /* Foco accesible — nunca quitar el outline, solo restylear (WCAG 2.4.11/2.4.13) */
-  --color-focus-ring: #4338ca;
+  --color-focus-ring: #0f6f6b;
 
   /* Tipografía — jerarquía clara, sin fuente custom todavía (evita dependencia sin decidir) */
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
@@ -53,8 +54,10 @@
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
 
-  /* Sombras discretas — nunca el "card shadow" pesado de plantillas genéricas */
-  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.05);
-  --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.08);
-  --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.08);
+  /* Sombras discretas — nunca el "card shadow" pesado de plantillas genéricas. Tinte tomado del
+     propio --color-foreground (rgb(16 32 30)) para que la sombra sea coherente con el resto de la
+     paleta en vez de un gris azulado suelto. */
+  --shadow-xs: 0 1px 2px 0 rgb(16 32 30 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(16 32 30 / 0.08), 0 1px 2px -1px rgb(16 32 30 / 0.08);
+  --shadow-md: 0 4px 6px -1px rgb(16 32 30 / 0.08), 0 2px 4px -2px rgb(16 32 30 / 0.08);
 }

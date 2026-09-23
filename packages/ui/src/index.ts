@@ -2,6 +2,7 @@ export { cn } from "./lib/cn.js";
 
 export { Button, buttonVariants, type ButtonProps } from "./components/Button.js";
 export { Input, type InputProps } from "./components/Input.js";
+export { Select, type SelectOption, type SelectProps } from "./components/Select.js";
 export {
   Card,
   CardContent,

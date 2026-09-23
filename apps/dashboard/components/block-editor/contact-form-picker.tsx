@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@impulza/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, ErrorState, LoadingState, Select } from "@impulza/ui";
 import type { CreateFormFieldBody } from "../../lib/api/forms";
 import { useCreateForm, useForms } from "../../lib/hooks/use-forms";
 import { useUpdateBlock } from "../../lib/hooks/use-blocks";
@@ -69,54 +69,47 @@ export function ContactFormPicker({
     }
   }
 
-  if (formsQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Cargando formularios…</p>;
-  }
-
-  if (formsQuery.isError) {
-    return (
-      <p className="text-sm text-danger" role="alert">
-        No se pudieron cargar los formularios del sitio.
-      </p>
-    );
-  }
-
-  const forms = formsQuery.data ?? [];
-
   return (
-    <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3">
-      <legend className="px-1 text-sm font-medium text-foreground">Formulario</legend>
+    <Card>
+      <CardHeader>
+        <CardTitle>Formulario</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {formsQuery.isPending ? (
+          <LoadingState label="Cargando formularios…" className="p-4" />
+        ) : formsQuery.isError ? (
+          <ErrorState
+            description="No se pudieron cargar los formularios del sitio."
+            onRetry={() => formsQuery.refetch()}
+            className="p-4"
+          />
+        ) : (
+          <>
+            {formsQuery.data.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Este sitio todavía no tiene formularios.</p>
+            ) : (
+              <Select
+                label="Elegir uno existente"
+                placeholder="— Sin elegir —"
+                options={formsQuery.data.map((form) => ({ value: form.id, label: form.name }))}
+                value={currentFormId ?? ""}
+                onChange={(event) => void applyFormId(event.target.value.length > 0 ? event.target.value : null)}
+              />
+            )}
 
-      {forms.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Este sitio todavía no tiene formularios.</p>
-      ) : (
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-muted-foreground">Elegir uno existente</span>
-          <select
-            className="h-10 rounded-md border border-border-strong bg-background px-3 text-sm text-foreground"
-            value={currentFormId ?? ""}
-            onChange={(event) => void applyFormId(event.target.value.length > 0 ? event.target.value : null)}
-          >
-            <option value="">— Sin elegir —</option>
-            {forms.map((form) => (
-              <option key={form.id} value={form.id}>
-                {form.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+            <Button type="button" variant="secondary" size="sm" onClick={() => void handleQuickCreate()}>
+              Crear formulario rápido (nombre, correo, mensaje y consentimiento)
+            </Button>
 
-      <Button type="button" variant="secondary" size="sm" onClick={() => void handleQuickCreate()}>
-        Crear formulario rápido (nombre, correo, mensaje y consentimiento)
-      </Button>
-
-      {status === "saving" ? <span className="text-sm text-muted-foreground">Guardando…</span> : null}
-      {status === "error" ? (
-        <span role="alert" className="text-sm text-danger">
-          No se pudo guardar. Intenta de nuevo.
-        </span>
-      ) : null}
-    </fieldset>
+            {status === "saving" ? <span className="text-sm text-muted-foreground">Guardando…</span> : null}
+            {status === "error" ? (
+              <span role="alert" className="text-sm text-danger">
+                No se pudo guardar. Intenta de nuevo.
+              </span>
+            ) : null}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

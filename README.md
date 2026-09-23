@@ -3,13 +3,14 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.2 terminadas de F3.1–F3.8).** Fase 2
+**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.3 terminadas de F3.1–F3.8).** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
 retencion-datos.md`, Ley 21.719). Un sitio puede publicar un formulario de contacto real: se crea
-desde el panel, el visitante lo llena en el sitio público y el envío queda en el mini-CRM con
-consentimiento auditado. Ver `docs/BACKLOG_FASE_3.md` para el backlog de la fase activa,
+desde el panel, el visitante lo llena en el sitio público, y el envío queda en el mini-CRM de
+contactos (`/contactos`) con consentimiento auditado, línea de tiempo, etiquetas y estado
+comercial editables. Ver `docs/BACKLOG_FASE_3.md` para el backlog de la fase activa,
 `docs/BACKLOG_FASE_2.md`/`docs/BACKLOG_FASE_0_1.md` para las anteriores y `CLAUDE.md` para las
 reglas de trabajo del repositorio.
 
@@ -18,7 +19,7 @@ reglas de trabajo del repositorio.
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
 | 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
-| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.2 terminadas) |
+| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.3 terminadas) |
 
 ## Requisitos
 
@@ -1012,6 +1013,43 @@ limpios. Probado en el navegador de punta a punta: formulario creado y publicado
 `apps/dashboard`, enviado desde `apps/web` real, y confirmado en Postgres que el `Contact` quedó
 con `consent_status=GRANTED`, `consent_source=form:<formId>`, su `ContactEvent` y el
 `FormSubmission` enlazado.
+
+## Mini-CRM de contactos (F3.3)
+
+Tercera historia de Fase 3: CRUD completo bajo `/organizations/:organizationId/contacts`
+(`apps/api/src/modules/contacts`) — la primera pantalla nueva del panel construida ya con el
+criterio de diseño real acordado (no mecánica primero, diseño después): usa
+`Table`/`Card`/`EmptyState`/`LoadingState`/`ErrorState` de `packages/ui`, el mismo nivel que
+`sitios/page.tsx` desde F2.9, no HTML crudo.
+
+- **Alta manual con consentimiento honesto**: crear un contacto a mano (sin pasar por un
+  formulario público) deja `consentStatus=UNKNOWN` — ADR-004 no permite declarar "otorgado" un
+  consentimiento que nadie dio explícitamente. El matching automático desde envíos de formulario
+  ya existía desde F3.2 (`ContactsService.findOrCreateFromSubmission`); F3.3 construye el CRUD
+  completo encima del mismo núcleo compartido, sin duplicar esa lógica.
+- **Portabilidad y cancelación reales (ADR-004 punto 5)**: `GET .../contacts/:id/export` devuelve
+  la ficha completa con su línea de tiempo y queda auditado como acceso sensible
+  (`contact.exported` en `AuditLog`) — el panel lo descarga como `.json` con un botón real, no una
+  promesa de que "algún día se puede exportar". `DELETE .../contacts/:id` es borrado real en
+  cascada (`ContactEvent`/`FormSubmission` vinculados) con el actor auditado — el mecanismo
+  operable para atender una solicitud de cancelación, no una tarea manual de soporte.
+- **Se agregó un componente `Select` nuevo a `packages/ui`** (no existía): ya hacían falta selects
+  de verdad en dos lugares — los filtros de esta historia y el selector de formulario de F3.2
+  (`ContactFormPicker.tsx`), que se corrigió en el mismo commit para dejar de usar un `<select>`
+  sin estilo y pasar a `Card`/`Select`/`LoadingState`/`ErrorState` reales. Mismo patrón que
+  `Input.tsx`: label accesible con `@radix-ui/react-label`, `aria-describedby`, estado de error.
+
+**Deudas declaradas**: import de contactos por CSV no implementado (el criterio decía "import/
+export"; el export quedó completo, el import es una tarea propia con su propio diseño de UX de
+errores de fila por fila). "Notas/tareas" del criterio original quedó en solo notas
+(`ContactEvent` tipo `NOTE`) — un sistema de tareas con fecha de vencimiento no está modelado en el
+ERD y hubiera sido inventar estructura de más para esta historia.
+
+Verificado: 8 tests nuevos (`contacts.e2e.test.ts`) más una prueba de aislamiento en la suite
+central (33/33) — 206/206 en `@impulza/api`. `lint`/`typecheck`/`build` de todo el monorepo
+limpios. Probado a mano en el navegador: filtros, ficha, notas y etiquetas funcionando sobre el
+contacto real creado por el envío de formulario de F3.2 — incluida la búsqueda por etiqueta
+inexistente mostrando el `EmptyState` correcto.
 
 ## Contrato de la API — OpenAPI
 

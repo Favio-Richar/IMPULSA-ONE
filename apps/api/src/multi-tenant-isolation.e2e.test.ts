@@ -771,6 +771,42 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Contactos (F3.3): ningún acceso cruzado entre organizaciones", () => {
+    it("A no alcanza los contactos de B por ninguna combinación de ids", async () => {
+      const contactOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/contacts`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Contacto privado de B" })
+        .expect(201);
+
+      // Con la organización de B en la URL: frenado por el guard de membresía.
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/contacts`).expect(403);
+      await orgA.ownerAgent
+        .patch(`/api/v1/organizations/${orgB.id}/contacts/${contactOfB.body.id}`)
+        .set(CSRF_HEADERS)
+        .send({ commercialStatus: "WON" })
+        .expect(403);
+
+      // Organización PROPIA de A, contacto de B: lo frena el `where: {organizationId}` del servicio.
+      const ownOrgPath = `/api/v1/organizations/${orgA.id}/contacts/${contactOfB.body.id}`;
+      await orgA.ownerAgent.get(ownOrgPath).expect(404);
+      await orgA.ownerAgent.patch(ownOrgPath).set(CSRF_HEADERS).send({ commercialStatus: "WON" }).expect(404);
+      await orgA.ownerAgent.post(`${ownOrgPath}/notes`).set(CSRF_HEADERS).send({ note: "x" }).expect(404);
+      await orgA.ownerAgent.get(`${ownOrgPath}/export`).expect(404);
+      await orgA.ownerAgent.delete(ownOrgPath).set(CSRF_HEADERS).expect(404);
+
+      // El contacto de B sigue intacto, con su nombre original.
+      const stillB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/contacts/${contactOfB.body.id}`)
+        .expect(200);
+      expect(stillB.body.name).toBe("Contacto privado de B");
+
+      // El listado de A no lo incluye.
+      const contactsOfA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/contacts`).expect(200);
+      expect(contactsOfA.body.map((c: { id: string }) => c.id)).not.toContain(contactOfB.body.id);
+    });
+  });
+
   describe("Ningún dato de una organización aparece en las respuestas de la otra", () => {
     it("GET /organizations no cruza organizaciones entre usuarios sin relación", async () => {
       const orgsOfA = await orgA.ownerAgent.get("/api/v1/organizations");

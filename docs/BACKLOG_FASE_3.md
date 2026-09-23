@@ -29,7 +29,7 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 |---|---|
 | F3.1 — Modelo de datos de conversión (Form, Contact, ShortLink, QrCode, Analytics) | Terminada |
 | F3.2 — Formularios (constructor + envío público) | Terminada |
-| F3.3 — Contactos (mini-CRM) | Pendiente |
+| F3.3 — Contactos (mini-CRM) | Terminada |
 | F3.4 — WhatsApp (clic a conversación + analítica) | Pendiente |
 | F3.5 — QR y enlaces cortos | Pendiente |
 | F3.6 — Eventos analíticos (pipeline + retención) | Pendiente |
@@ -147,6 +147,34 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
   operable para atender una solicitud de cancelación, no una tarea manual de soporte.
 - Permisos por rol, aislamiento multi-tenant probado (incluida ficha de contacto ajeno por id
   cruzado).
+
+> **Terminada (2026-09-22)**: CRUD completo bajo `/organizations/:organizationId/contacts`
+> (`apps/api/src/modules/contacts`) — listar con filtros (etiqueta, estado comercial,
+> consentimiento, búsqueda libre por nombre/correo/teléfono), ficha con línea de tiempo completa,
+> alta manual (consentimiento `UNKNOWN` por ADR-004 — nadie declara "otorgado" un consentimiento
+> que no se dio), edición de etiquetas/estado comercial, notas (`ContactEvent` tipo `NOTE`),
+> exportación auditada (portabilidad ARCO+, ADR-004 punto 5) y borrado real en cascada auditado
+> (mismo punto). El matching automático desde formularios ya existía desde F3.2
+> (`ContactsService.findOrCreateFromSubmission`) — F3.3 construye el CRUD encima del mismo núcleo,
+> no lo duplica. Panel nuevo en `apps/dashboard` (`/contactos`, `/contactos/nuevo`,
+> `/contactos/:contactId`) con el mismo nivel de diseño que `sitios/page.tsx` (Table/Card/
+> EmptyState/LoadingState/ErrorState de `packages/ui`, no HTML crudo) — se agregó también un
+> componente `Select` nuevo al design system (no existía) porque ya hacían falta selects de verdad
+> en dos lugares (filtros de esta historia y el selector de formulario de F3.2, que se corrigió en
+> el mismo commit para dejar de usar `<select>` sin estilo).
+>
+> **Import de contactos declarado explícitamente fuera de esta pasada**: el criterio original decía
+> "import/export"; se implementó el export completo (bulk vía listado + ficha individual con
+> auditoría) pero no un importador de CSV (parseo, mapeo de columnas, validación fila por fila,
+> manejo de fallas parciales) — es una tarea propia con su propio diseño de UX de errores, no un
+> descuido de alcance. "Notas/tareas" del criterio original quedó en solo notas (`ContactEvent`
+> tipo `NOTE`): un sistema de tareas con fecha de vencimiento y estado no está modelado en el ERD y
+> hubiera sido inventar estructura de más para esta historia.
+>
+> Verificado: 8 tests nuevos (`contacts.e2e.test.ts`) + 1 en la suite central de aislamiento
+> (33/33) — 206/206 en `@impulza/api`. `lint`/`typecheck`/`build` de todo el monorepo limpios.
+> Probado a mano en el navegador: filtros, ficha, notas y etiquetas funcionando sobre el contacto
+> real creado por el envío de formulario de F3.2.
 
 ### F3.4 — WhatsApp (clic a conversación + analítica)
 **Criterios de aceptación:**

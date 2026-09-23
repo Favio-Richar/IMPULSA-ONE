@@ -16,26 +16,33 @@ export class AnalyticsService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
   /**
-   * Visitante anonimizado: hash con sal rotada por sitio y por día — nunca la IP cruda, nunca un
-   * identificador estable entre días. La IP y el user-agent se leen de la petición y se descartan
-   * de inmediato; no quedan en ninguna variable que sobreviva esta función.
+   * Visitante anonimizado: hash con sal rotada por sitio (u organización, si el evento no es de
+   * un sitio en particular — enlaces cortos y QR viven a nivel de organización, F3.5) y por día —
+   * nunca la IP cruda, nunca un identificador estable entre días. La IP y el user-agent se leen de
+   * la petición y se descartan de inmediato; no quedan en ninguna variable que sobreviva esta
+   * función.
    */
-  private anonymizedVisitorId(siteId: string, request: Request): string {
+  private anonymizedVisitorId(rotationKey: string, request: Request): string {
     const ip = request.ip ?? request.socket.remoteAddress ?? "unknown";
     const userAgent = request.get("user-agent") ?? "unknown";
     const day = new Date().toISOString().slice(0, 10);
     return createHash("sha256")
-      .update(`${env.ANALYTICS_SALT_SECRET}:${day}:${siteId}:${ip}:${userAgent}`)
+      .update(`${env.ANALYTICS_SALT_SECRET}:${day}:${rotationKey}:${ip}:${userAgent}`)
       .digest("hex");
   }
 
-  async recordEvent(params: { organizationId: string; siteId: string; type: string; request: Request }): Promise<void> {
+  async recordEvent(params: {
+    organizationId: string;
+    siteId: string | null;
+    type: string;
+    request: Request;
+  }): Promise<void> {
     await this.prisma.analyticsEvent.create({
       data: {
         organizationId: params.organizationId,
         siteId: params.siteId,
         type: params.type,
-        anonymizedVisitorId: this.anonymizedVisitorId(params.siteId, params.request),
+        anonymizedVisitorId: this.anonymizedVisitorId(params.siteId ?? params.organizationId, params.request),
       },
     });
   }

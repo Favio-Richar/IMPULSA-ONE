@@ -16,3 +16,4 @@ export * from "./sites.js";
 export * from "./themes.js";
 export * from "./forms.js";
 export * from "./contacts.js";
+export * from "./short-links.js";

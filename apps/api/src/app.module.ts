@@ -12,7 +12,10 @@ import { OrganizationsModule } from "./modules/organizations/organizations.modul
 import { PagesModule } from "./modules/pages/pages.module.js";
 import { PublicAnalyticsModule } from "./modules/public-analytics/public-analytics.module.js";
 import { PublicFormsModule } from "./modules/public-forms/public-forms.module.js";
+import { PublicLinksModule } from "./modules/public-links/public-links.module.js";
 import { PublicSitesModule } from "./modules/public-sites/public-sites.module.js";
+import { QrCodesModule } from "./modules/qr-codes/qr-codes.module.js";
+import { ShortLinksModule } from "./modules/short-links/short-links.module.js";
 import { SitesModule } from "./modules/sites/sites.module.js";
 import { ThemesModule } from "./modules/themes/themes.module.js";
 import { RedisModule } from "./redis/redis.module.js";
@@ -33,9 +36,12 @@ import { RedisModule } from "./redis/redis.module.js";
     ContactsModule,
     FormsModule,
     AnalyticsModule,
+    ShortLinksModule,
+    QrCodesModule,
     PublicSitesModule,
     PublicFormsModule,
     PublicAnalyticsModule,
+    PublicLinksModule,
     HealthModule,
   ],
   controllers: [AppController],

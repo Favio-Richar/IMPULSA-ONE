@@ -3,7 +3,8 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.4 terminadas de F3.1–F3.8).** Fase 2
+**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.4 terminadas, F3.5 con la API
+completa y el panel pendiente — ver "PUNTO DE CORTE" en `docs/BACKLOG_FASE_3.md` — de F3.1–F3.8).** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
@@ -19,7 +20,7 @@ reglas de trabajo del repositorio.
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
 | 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
-| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.4 terminadas) |
+| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.4 terminadas, F3.5 API lista) |
 
 ## Requisitos
 

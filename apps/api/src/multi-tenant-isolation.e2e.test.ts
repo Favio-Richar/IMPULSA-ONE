@@ -807,6 +807,53 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Enlaces cortos y QR (F3.5): ningún acceso cruzado entre organizaciones", () => {
+    it("A no alcanza los enlaces cortos ni los QR de B por ninguna combinación de ids", async () => {
+      const linkOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/short-links`)
+        .set(CSRF_HEADERS)
+        .send({ slug: uniqueSlug(), destinationUrl: "https://ejemplo.cl/de-b" })
+        .expect(201);
+      const qrOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/qr-codes`)
+        .set(CSRF_HEADERS)
+        .send({ shortLinkId: linkOfB.body.id, styleKey: "clasico" })
+        .expect(201);
+
+      // Con la organización de B en la URL: frenado por el guard de membresía.
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/short-links`).expect(403);
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/qr-codes`).expect(403);
+
+      // Organización PROPIA de A, recurso de B: lo frena el `where: {organizationId}` del servicio.
+      const linkCrossPath = `/api/v1/organizations/${orgA.id}/short-links/${linkOfB.body.id}`;
+      await orgA.ownerAgent.get(linkCrossPath).expect(404);
+      await orgA.ownerAgent.patch(linkCrossPath).set(CSRF_HEADERS).send({ destinationUrl: "https://secuestro.cl" }).expect(404);
+      await orgA.ownerAgent.delete(linkCrossPath).set(CSRF_HEADERS).expect(404);
+
+      const qrCrossPath = `/api/v1/organizations/${orgA.id}/qr-codes/${qrOfB.body.id}`;
+      await orgA.ownerAgent.get(qrCrossPath).expect(404);
+      await orgA.ownerAgent.patch(qrCrossPath).set(CSRF_HEADERS).send({ styleKey: "marca" }).expect(404);
+      await orgA.ownerAgent.delete(qrCrossPath).set(CSRF_HEADERS).expect(404);
+
+      // A tampoco puede crear un QR propio apuntando al enlace corto de B.
+      await orgA.ownerAgent
+        .post(`/api/v1/organizations/${orgA.id}/qr-codes`)
+        .set(CSRF_HEADERS)
+        .send({ shortLinkId: linkOfB.body.id, styleKey: "clasico" })
+        .expect(404);
+
+      // El enlace y el QR de B siguen intactos.
+      const stillLink = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/short-links/${linkOfB.body.id}`)
+        .expect(200);
+      expect(stillLink.body.destinationUrl).toBe("https://ejemplo.cl/de-b");
+      const stillQr = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/qr-codes/${qrOfB.body.id}`)
+        .expect(200);
+      expect(stillQr.body.styleConfig).toMatchObject({ key: "clasico" });
+    });
+  });
+
   describe("Ningún dato de una organización aparece en las respuestas de la otra", () => {
     it("GET /organizations no cruza organizaciones entre usuarios sin relación", async () => {
       const orgsOfA = await orgA.ownerAgent.get("/api/v1/organizations");

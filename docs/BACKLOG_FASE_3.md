@@ -31,7 +31,7 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F3.2 — Formularios (constructor + envío público) | Terminada |
 | F3.3 — Contactos (mini-CRM) | Terminada |
 | F3.4 — WhatsApp (clic a conversación + analítica) | Terminada |
-| F3.5 — QR y enlaces cortos | Pendiente |
+| F3.5 — QR y enlaces cortos | En progreso (API terminada, panel pendiente) |
 | F3.6 — Eventos analíticos (pipeline + retención) | Pendiente |
 | F3.7 — Dashboard de conversión | Pendiente |
 | F3.8 — Aislamiento multi-tenant de Fase 3 | Pendiente |
@@ -227,6 +227,58 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
   propio (`scan_count_cached` + evento `qr_visit`).
 - Permisos por rol, auditoría de creación/edición, aislamiento multi-tenant probado (slug ajeno,
   `ShortLink`/`QrCode` de otra organización no editable ni visible).
+
+> **PUNTO DE CORTE (2026-09-22, para retomar mañana) — API terminada y verificada, panel
+> pendiente.** Lo que ya está hecho, probado y commiteado (no hay que rehacer nada de esto):
+>
+> - CRUD completo de `ShortLink` (`apps/api/src/modules/short-links`) bajo
+>   `/organizations/:organizationId/short-links`: slug con las mismas reglas de F2.2 (reutiliza
+>   `publicSlugSchema` — reservados `"s"` y `"qr"` agregados a la lista, ver
+>   `packages/validation/src/slug.ts`, para que el espacio de rutas de F3.5 nunca colisione con el
+>   de un sitio), `destinationUrl` validado contra `javascript:`/`data:`/esquemas no-http (mismo
+>   `safeUrlSchema` de los bloques), UTM opcional, borrado bloqueado (409) si tiene un `QrCode`
+>   propio dependiendo solo de él.
+> - CRUD completo de `QrCode` (`apps/api/src/modules/qr-codes`) bajo
+>   `/organizations/:organizationId/qr-codes`: apunta a un `ShortLink` propio o a una `directUrl`,
+>   estilo elegido de un catálogo cerrado con contraste verificado para escanear de forma confiable
+>   (`packages/validation/src/qr/index.ts`, umbral propio de 7:1 — más estricto que el AA de texto
+>   normal — con su test de contraste).
+> - Resolución pública (`apps/api/src/modules/public-links`, `GET /public/short-links/:slug` y
+>   `GET /public/qr/:qrCodeId`): cuenta el clic/escaneo (`clickCountCached`/`scanCountCached`) y
+>   registra `AnalyticsEvent` (`short_link_click`/`qr_visit`, tipos nuevos del catálogo abierto)
+>   **antes** de responder — `apps/web` (`app/s/[slug]/route.ts`, `app/qr/[qrCodeId]/route.ts`)
+>   hace el `fetch` server-to-server y recién ahí emite el redirect real; el visitante nunca ve
+>   `apps/api`. `AnalyticsService.recordEvent` (F3.4) se generalizó para aceptar `siteId: string |
+>   null` porque un enlace corto no pertenece a un sitio en particular.
+> - 17 tests nuevos (`short-links.e2e.test.ts`, `qr-codes.e2e.test.ts`,
+>   `public-links.e2e.test.ts`) + 1 bloque en la suite central de aislamiento (34/34) — 225/225 en
+>   `@impulza/api`. `lint`/`typecheck`/`build` de todo el monorepo limpios.
+> - Todo esto está commiteado en `master` (buscar el commit de F3.5 API).
+>
+> **Lo que falta — el panel de `apps/dashboard`, todavía sin commitear en el working tree:**
+> - `apps/dashboard/lib/api/short-links.ts` y `.../qr-codes.ts` (clientes HTTP) — **ya escritos**.
+> - `apps/dashboard/lib/hooks/use-short-links.ts` y `use-qr-codes.ts` (TanStack Query) — **ya
+>   escritos**.
+> - `apps/dashboard/components/qr-code-image.tsx` (renderiza el QR real en el navegador con la
+>   librería `qrcode`, agregada como dependencia nueva — no se genera ni se guarda como imagen en
+>   el servidor, no hay biblioteca multimedia todavía) — **ya escrito**.
+> - Nueva variable de entorno de cliente `NEXT_PUBLIC_WEB_BASE_URL` en
+>   `apps/dashboard/lib/env.ts` (para armar `{origen}/s/:slug` y `.../qr/:qrCodeId}` al mostrar el
+>   enlace/QR en el panel) — **ya agregada**, con su valor en `.env.local`/`.env.example`.
+> - **Falta crear la página `/enlaces`** (`apps/dashboard/app/(panel)/enlaces/page.tsx`): lista de
+>   enlaces cortos (Table/Card/EmptyState/LoadingState/ErrorState de `packages/ui`, mismo nivel
+>   que `/contactos`), formulario de creación, acción "generar QR" por enlace, y una sección con
+>   los QR existentes mostrando el `QrCodeImage` real + su contador de escaneos.
+> - **Falta agregar "Enlaces" a `apps/dashboard/components/sidebar-nav.tsx`** (icono `Link2` de
+>   `lucide-react` es razonable).
+> - Falta correr `lint`/`typecheck`/`build` de `@impulza/dashboard` con la página nueva, probar a
+>   mano en el navegador (crear enlace, generar QR, verificar que `/s/:slug` redirige y cuenta el
+>   clic), actualizar `docs/BACKLOG_FASE_3.md` (este archivo, marcar F3.5 terminada de verdad) y
+>   `README.md`, y commitear el panel como su propio commit (o junto con lo de arriba si se
+>   prefiere, pero el API ya quedó commiteado aparte).
+>
+> Al retomar: seguir literalmente desde "Falta crear la página `/enlaces`" — todo lo anterior en
+> esa lista ya existe en el árbol de archivos.
 
 ### F3.6 — Eventos analíticos (pipeline + retención)
 **Criterios de aceptación:**

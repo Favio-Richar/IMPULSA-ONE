@@ -26,6 +26,12 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "mx",
   "webmail",
   "autodiscover",
+  // Espacio de rutas de enlaces cortos y QR (F3.5, `apps/web/app/s/[slug]` y `app/qr/[qrCodeId]`).
+  // Ya bloqueado en la práctica por el mínimo de 3 caracteres de arriba ("s" y "qr" no lo pasan);
+  // acá igual por si ese mínimo cambia alguna vez — que un sitio no pueda colisionar con estas
+  // rutas nunca debería depender solo de un efecto colateral de otra regla.
+  "s",
+  "qr",
   // Superficies propias de la plataforma.
   "admin",
   "app",

@@ -1,4 +1,4 @@
-import { MessageCircle } from "lucide-react";
+import { NetworkIcon } from "../ui/network-icon.js";
 import type { WhatsappBlockConfig } from "@impulza/validation";
 import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
 
@@ -20,7 +20,7 @@ export function WhatsappBlock({ config, buttonVariant }: { config: WhatsappBlock
   // contra AA, F2.5), y el ícono hace el trabajo de reconocimiento.
   return (
     <LinkButton href={`https://wa.me/${digits}${query}`} variant={buttonVariant} block>
-      <MessageCircle className="h-5 w-5 shrink-0" aria-hidden="true" />
+      <NetworkIcon network="whatsapp" className="h-5 w-5 shrink-0" />
       {config.label}
     </LinkButton>
   );

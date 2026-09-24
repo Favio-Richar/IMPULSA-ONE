@@ -249,7 +249,7 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
         name: "priceAmount",
         label: "Precio",
         optional: true,
-        helperText: "En centavos, sin decimales — por ejemplo 1999 para $19.99.",
+        helperText: "Sin decimales, en la unidad mínima de la moneda: pesos en CLP (12900 = $12.900), centavos en USD (1999 = US$19,99).",
         control: { kind: "number", min: 0 },
       },
       { name: "priceCurrency", label: "Moneda (código de 3 letras, ej. USD)", optional: true, control: { kind: "text", maxLength: 3 } },

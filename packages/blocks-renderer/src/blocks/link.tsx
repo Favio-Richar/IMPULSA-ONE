@@ -1,11 +1,10 @@
 import { ExternalLink } from "lucide-react";
 import type { LinkBlockConfig } from "@impulza/validation";
+import { NetworkIcon } from "../ui/network-icon.js";
 
 /**
- * `icon` es un valor de la lista blanca de redes (F2.4) pero lucide-react 1.46 no trae logos de
- * marca (Instagram, TikTok, etc. — los retiró por marca registrada). En vez de inventar un ícono
- * que no es el correcto, se usa uno solo, genérico, para todo enlace: es honesto y consistente. Un
- * ícono de marca exacto es una mejora de una fase posterior con una librería de íconos aparte.
+ * `icon` (opcional) es una red de la lista blanca (F2.4): si viene, el enlace muestra el logo de
+ * esa red; si no, el ícono genérico de enlace externo.
  */
 export function LinkBlock({ config }: { config: LinkBlockConfig }) {
   const isOutline = config.style === "outline";
@@ -24,7 +23,11 @@ export function LinkBlock({ config }: { config: LinkBlockConfig }) {
             : "border border-transparent bg-[var(--site-color-primary)] text-[var(--site-color-primary-foreground)]"
       }`}
     >
-      <ExternalLink className="h-5 w-5 shrink-0" aria-hidden="true" />
+      {config.icon ? (
+        <NetworkIcon network={config.icon} className="h-5 w-5 shrink-0" />
+      ) : (
+        <ExternalLink className="h-5 w-5 shrink-0" aria-hidden="true" />
+      )}
       <span className="flex-1 text-left">
         <span className="block font-medium">{config.label}</span>
         {config.description ? (

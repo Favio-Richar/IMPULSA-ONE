@@ -23,7 +23,8 @@
     "@impulza/contracts": "workspace:*",
     "@impulza/validation": "workspace:*",
     "lucide-react": "1.46.0",
-    "sanitize-html": "2.17.7"
+    "sanitize-html": "2.17.7",
+    "simple-icons": "16.32.0"
   },
   "devDependencies": {
     "@impulza/eslint-config": "workspace:*",

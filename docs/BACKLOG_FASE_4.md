@@ -35,7 +35,7 @@ bloqueado explícitamente.
 | F4.1 — Catálogo de planes y plan por organización | Terminada |
 | F4.2 — Aplicación de límites en servidor | Terminada |
 | F4.3 — Plan y uso en el panel | Terminada |
-| F4.4 — Superadministración mínima (`apps/admin`) | Pendiente |
+| F4.4 — Superadministración mínima (`apps/admin`) | Terminada (local; ver deudas) |
 | F4.5 — Soporte mínimo | Pendiente |
 | F4.6 — Cobro recurrente con pasarela | Bloqueada (decisión #5) |
 | F4.7 — Dominios personalizados | Pendiente (parcialmente bloqueada por decisión #1) |
@@ -178,6 +178,56 @@ bloqueado explícitamente.
 - Toda acción de superadministración auditada con actor real; nunca acceso silencioso a datos
   comerciales de una organización.
 - Editar el catálogo de planes (resuelve la decisión #4 sin deploy).
+
+> **Estado (2026-09-24): terminada en local.** ADR-005 aprobado por Favio el mismo día.
+>
+> - **Quién es superadministrador:** `User.isSuperAdmin`, nunca una membresía. Solo se otorga o quita
+>   con el script de operación `pnpm --filter @impulza/api run superadmin -- grant|revoke <correo>`.
+>   No hay endpoint para eso. `grant` enrola el 2FA en el mismo paso e imprime la clave una sola vez,
+>   así que nunca existe un superadministrador sin 2FA. `revoke` cierra sus sesiones de administración
+>   en el acto. Ambos quedan auditados (`via: "cli"`).
+> - **Puerta propia:** `POST /api/v1/admin/auth/login` pide correo, contraseña y código TOTP en la
+>   misma petición y da el mismo error para cualquier fallo. Un código incorrecto cuenta para el
+>   bloqueo de 5 intentos de F1.4, un código ya usado no vale dos veces (Redis) y hay rate limit
+>   5/5 min. La sesión es `Session.scope = ADMIN`, con cookie `impulza_admin_session` (`HttpOnly`,
+>   `SameSite=Strict`, `path=/api/v1/admin`) y 8 h sin renovación. `AdminSessionGuard` revisa marca y
+>   2FA en cada petición, `SessionAuthGuard` rechaza sesiones `ADMIN` y viceversa.
+> - **Solo metadatos (ADR-005 §5):** el resumen muestra totales, altas por día de 30 días, distribución
+>   por plan efectivo y organizaciones recientes. Se puede buscar organizaciones (por nombre, slug o
+>   correo de un miembro) y usuarios. El detalle trae plan, uso, miembros (correo y rol) y sitios
+>   (en línea o no), sin contactos, envíos, contenido ni analítica. **Abrir el detalle queda auditado**
+>   (`admin.organization_viewed`).
+> - **Cambiar plan / bloquear / restaurar:** siempre con un motivo escrito y auditado con el actor
+>   real (`admin.organization_plan_changed`, `_blocked`, `_unblocked`). Bloquear hace que sitio,
+>   páginas, formularios, enlaces cortos, QR y eventos respondan 404 (una sola constante,
+>   `ACTIVE_ORGANIZATION`), sin decir por qué, e invalida la caché de `apps/web`. El panel queda en
+>   solo lectura (`OrganizationMembershipGuard`: `403 ORGANIZATION_BLOCKED` en toda escritura) con un
+>   aviso permanente que muestra el motivo.
+> - **Catálogo de planes editable:** `PATCH /admin/plans/:id` cambia nombre, precios, moneda y
+>   límites, valida con `planLimitsSchema` y audita el antes y el después. El seed ya no sobrescribe
+>   planes existentes.
+> - **`apps/admin`** (Next.js, puerto 3200): ingreso, Resumen, Organizaciones y su detalle, Usuarios,
+>   Planes y Auditoría. Todas las pantallas tienen estados de carga, vacío, error y éxito y son
+>   responsive. Migración `20260924225627_fase4_superadmin`, no destructiva.
+>
+> **Verificación:** 26 pruebas e2e nuevas en `admin.e2e.test.ts`. Se confirmó que fallan al quitar
+> cada protección: el scope de sesión, el solo lectura, el filtro público y el anti-repetición.
+> `@impulza/api` pasa 296/296. Playwright `admin.spec.ts` corre en móvil y escritorio y cubre: sin
+> sesión redirige a ingresar, la sesión del panel no abre la administración, resumen con vista de
+> tabla, buscar y abrir detalle, bloquear con motivo y ver el aviso en el panel del cliente,
+> restaurar, validación del editor de planes, y ninguna pantalla con desplazamiento horizontal. La
+> suite completa pasa 49/49 (1 omitida, ya existente). `lint`/`typecheck`/`test`/`build` pasan 58/58.
+> OpenAPI regenerado. Revisión visual con capturas reales de escritorio y móvil.
+>
+> **Deudas declaradas (no bloquean el cierre local):**
+> - **CI y staging:** el repositorio no tiene remoto, así que el CI nunca corrió. Tampoco hay staging
+>   (depende de la decisión de hosting, F4.8). Aplica a todas las fases, no solo a esta.
+> - **2FA en el login del panel:** una cuenta con 2FA activo todavía entra al panel solo con
+>   contraseña. Es deuda de F1.4, anterior a ADR-005, y queda propuesta para F4.9.
+> - **Bloqueo y derechos ARCO:** una organización bloqueada no puede borrar contactos desde su panel
+>   (es una escritura). Mientras dure el bloqueo, esas solicitudes pasan por soporte (F4.5).
+> - **Distribución por plan:** se calcula cargando los id de todas las organizaciones. Sirve hasta
+>   miles; a más escala conviene un agregado en SQL.
 
 ### F4.5 — Soporte mínimo
 **Criterios de aceptación:**

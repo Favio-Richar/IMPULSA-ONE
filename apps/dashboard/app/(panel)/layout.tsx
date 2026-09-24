@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BlockedOrganizationBanner } from "../../components/blocked-organization-banner";
 import { OrgSwitcher } from "../../components/org-switcher";
 import { SidebarNav } from "../../components/sidebar-nav";
 import { ApiError } from "../../lib/api-client";
@@ -119,6 +120,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             </Button>
           </div>
         </header>
+
+        {orgsQuery.data ? <BlockedOrganizationBanner organizations={orgsQuery.data} /> : null}
 
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>

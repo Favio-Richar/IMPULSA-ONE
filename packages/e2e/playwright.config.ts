@@ -14,6 +14,7 @@ export const API_BASE_URL = process.env.E2E_API_URL ?? "http://localhost:4000/ap
 // un balanceador o un contenedor puedan sondearlo sin conocer la versión de la API.
 const API_HEALTH_URL = new URL("/health", API_BASE_URL).toString();
 export const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL ?? "http://localhost:3100";
+export const ADMIN_URL = process.env.E2E_ADMIN_URL ?? "http://localhost:3200";
 
 export default defineConfig({
   testDir: "./tests",
@@ -52,6 +53,14 @@ export default defineConfig({
     {
       command: "pnpm --filter @impulza/dashboard dev",
       url: DASHBOARD_URL,
+      cwd: path.join(import.meta.dirname, "..", ".."),
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
+    },
+    {
+      // Superadministración (F4.4). Sus pruebas usan su propia sesión (`admin-session.json`).
+      command: "pnpm --filter @impulza/admin dev",
+      url: `${ADMIN_URL}/ingresar`,
       cwd: path.join(import.meta.dirname, "..", ".."),
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,

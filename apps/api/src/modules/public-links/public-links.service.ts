@@ -3,6 +3,7 @@ import type { PrismaClient } from "@impulza/database";
 import type { Request } from "express";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AnalyticsService } from "../analytics/analytics.service.js";
+import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
 
 @Injectable()
 export class PublicLinksService {
@@ -14,7 +15,7 @@ export class PublicLinksService {
   /** Enlace corto (F3.5): resuelve el destino, cuenta el clic y registra el evento — todo antes
    *  de que quien llama (la ruta de `apps/web`) emita el redirect real al visitante. */
   async resolveShortLink(slug: string, request: Request): Promise<{ destinationUrl: string }> {
-    const link = await this.prisma.shortLink.findUnique({ where: { slug } });
+    const link = await this.prisma.shortLink.findFirst({ where: { slug, ...ACTIVE_ORGANIZATION } });
     if (!link) {
       throw new NotFoundException("Enlace no encontrado.");
     }
@@ -44,8 +45,8 @@ export class PublicLinksService {
    *  y su propio tipo de evento (`qr_visit`) — un escaneo no es lo mismo que un clic al enlace
    *  corto, aunque terminen en el mismo destino. */
   async resolveQrCode(qrCodeId: string, request: Request): Promise<{ destinationUrl: string }> {
-    const qrCode = await this.prisma.qrCode.findUnique({
-      where: { id: qrCodeId },
+    const qrCode = await this.prisma.qrCode.findFirst({
+      where: { id: qrCodeId, ...ACTIVE_ORGANIZATION },
       include: { shortLink: { select: { destinationUrl: true } } },
     });
 

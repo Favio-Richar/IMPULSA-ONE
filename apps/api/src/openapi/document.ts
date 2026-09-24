@@ -1,10 +1,13 @@
 import type { INestApplication } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule, type OpenAPIObject } from "@nestjs/swagger";
 import helmet from "helmet";
+import { ADMIN_SESSION_COOKIE_NAME } from "../modules/admin/admin-session-cookie.js";
 import { SESSION_COOKIE_NAME } from "../modules/auth/session-cookie.js";
 
 /** Nombre del esquema de seguridad; lo referencian los controladores con `@ApiCookieAuth()`. */
 export const SESSION_AUTH = "sesion";
+/** Esquema de la sesión de superadministración (ADR-005): cookie y puerta propias. */
+export const ADMIN_SESSION_AUTH = "sesionAdmin";
 
 export const OPENAPI_VERSION = "1.0.0";
 
@@ -45,6 +48,7 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     )
     .setVersion(OPENAPI_VERSION)
     .addCookieAuth(SESSION_COOKIE_NAME, { type: "apiKey", in: "cookie" }, SESSION_AUTH)
+    .addCookieAuth(ADMIN_SESSION_COOKIE_NAME, { type: "apiKey", in: "cookie" }, ADMIN_SESSION_AUTH)
     .addGlobalParameters({
       name: "X-Requested-With",
       in: "header",
@@ -63,6 +67,10 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     .addTag(
       "public-sites",
       "Render público (F2.7): sitios y páginas publicadas, por slug. Sin autenticación.",
+    )
+    .addTag(
+      "admin",
+      "Superadministración de la plataforma (ADR-005): sesión propia con 2FA obligatorio. Solo metadatos, nunca datos comerciales de una organización.",
     )
     .addTag("health", "Estado de la API y sus dependencias. Sin autenticación.")
     .addTag("meta", "Raíz de la API. Sanity check, no monitoreo.")

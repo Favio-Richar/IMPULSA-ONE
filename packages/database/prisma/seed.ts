@@ -54,8 +54,9 @@ async function main(): Promise<void> {
   }
 
   // Catálogo de planes (F4.1) — valores PROVISORIOS hasta la decisión #4 del propietario (ver
-  // `packages/validation/src/plans`). Idempotente por `code`: ajustar un límite en el catálogo y
-  // volver a sembrar lo actualiza sin duplicar ni tocar las organizaciones que ya lo usan.
+  // `packages/validation/src/plans`). Desde F4.4 (ADR-005 §7) la tabla es la fuente de verdad y se
+  // edita desde la superadministración: el seed solo crea los planes que falten y **nunca**
+  // sobrescribe uno existente, o volver a sembrar borraría lo que se editó allá.
   for (const plan of PLAN_CATALOG) {
     const data = {
       name: plan.name,
@@ -65,7 +66,7 @@ async function main(): Promise<void> {
       limits: plan.limits,
       sortOrder: plan.sortOrder,
     };
-    await prisma.plan.upsert({ where: { code: plan.code }, update: data, create: { code: plan.code, ...data } });
+    await prisma.plan.upsert({ where: { code: plan.code }, update: {}, create: { code: plan.code, ...data } });
   }
 
   // Temas del catálogo global (F2.5): organizationId null. Idempotente por `code`, de modo que

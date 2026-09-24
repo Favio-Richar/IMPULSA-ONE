@@ -85,6 +85,61 @@ export class PlansService {
   }
 
   /**
+   * La misma regla que `resolveEffectivePlan`, para muchas organizaciones con tres consultas en vez
+   * de N (listados de superadministración, F4.4). Vive acá, junto a la versión individual, para que
+   * la regla no se escriba dos veces en dos módulos.
+   */
+  async resolveEffectivePlans(organizationIds: string[]): Promise<Map<string, EffectivePlan>> {
+    const result = new Map<string, EffectivePlan>();
+    if (organizationIds.length === 0) {
+      return result;
+    }
+
+    const [subscriptions, organizations, catalog] = await Promise.all([
+      this.prisma.subscription.findMany({
+        where: {
+          organizationId: { in: organizationIds },
+          status: { in: ENTITLED_STATUSES },
+          currentPeriodEnd: { gte: new Date() },
+        },
+        orderBy: { currentPeriodEnd: "desc" },
+        select: { organizationId: true, planId: true },
+      }),
+      this.prisma.organization.findMany({ where: { id: { in: organizationIds } }, select: { id: true, planId: true } }),
+      this.prisma.plan.findMany(),
+    ]);
+
+    const plansById = new Map(catalog.map((plan) => [plan.id, plan]));
+    const defaultPlan = catalog.find((plan) => plan.code === DEFAULT_PLAN_CODE);
+    if (!defaultPlan) {
+      logger.error("falta el plan por defecto en el catálogo (¿se corrió el seed?)", { code: DEFAULT_PLAN_CODE });
+      throw new InternalServerErrorException("Configuración de planes incompleta.");
+    }
+
+    // `orderBy desc`: la primera suscripción vista por organización es la de período más largo,
+    // igual que el `findFirst` de la versión individual.
+    for (const subscription of subscriptions) {
+      const plan = plansById.get(subscription.planId);
+      if (plan && !result.has(subscription.organizationId)) {
+        result.set(subscription.organizationId, { plan: this.toPlanResponse(plan), source: "subscription" });
+      }
+    }
+    for (const organization of organizations) {
+      if (result.has(organization.id)) {
+        continue;
+      }
+      const assigned = organization.planId ? plansById.get(organization.planId) : undefined;
+      result.set(
+        organization.id,
+        assigned
+          ? { plan: this.toPlanResponse(assigned), source: "assigned" }
+          : { plan: this.toPlanResponse(defaultPlan), source: "default" },
+      );
+    }
+    return result;
+  }
+
+  /**
    * Uso actual contra cada límite de nivel organización. Los sitios archivados no cuentan (archivar
    * libera el cupo); los miembros incluyen invitaciones pendientes (ocupan un lugar hasta que se
    * aceptan o se revocan).

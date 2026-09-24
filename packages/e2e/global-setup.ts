@@ -1,6 +1,8 @@
+import { execSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { PrismaClient } from "@impulza/database";
+import { generate } from "otplib";
 import { API_BASE_URL, DASHBOARD_URL } from "./playwright.config.js";
 
 // Cabecera CSRF que exige la API en todo método mutante (apps/api/src/common/csrf.guard.ts).
@@ -12,10 +14,14 @@ export interface SeededFixture {
   siteId: string;
   siteSlug: string;
   pageId: string;
+  /** Dueño de la organización sembrada: la administración la busca por este correo (F4.4). */
+  ownerEmail: string;
+  adminEmail: string;
 }
 
 export const FIXTURE_PATH = path.join(import.meta.dirname, ".playwright", "fixture.json");
 const SESSION_PATH = path.join(import.meta.dirname, ".playwright", "session.json");
+export const ADMIN_SESSION_PATH = path.join(import.meta.dirname, ".playwright", "admin-session.json");
 
 function unique(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -129,7 +135,9 @@ export default async function globalSetup(): Promise<void> {
     await seedPrisma.$disconnect();
   }
 
-  const fixture: SeededFixture = { organizationId: organization.id, siteId: site.id, siteSlug, pageId };
+  const { adminEmail } = await seedSuperAdmin();
+
+  const fixture: SeededFixture = { organizationId: organization.id, siteId: site.id, siteSlug, pageId, ownerEmail: email, adminEmail };
   await mkdir(path.dirname(FIXTURE_PATH), { recursive: true });
   await writeFile(FIXTURE_PATH, JSON.stringify(fixture, null, 2));
 
@@ -164,4 +172,66 @@ export default async function globalSetup(): Promise<void> {
       ],
     }),
   );
+}
+
+/**
+ * Superadministrador de prueba (F4.4). Se otorga con el **script real** de operación (ADR-005 §2),
+ * que es la única vía que existe — así esta preparación también prueba el script — y se lee de su
+ * salida la clave TOTP que imprime una sola vez, para iniciar sesión con correo, contraseña y código.
+ */
+async function seedSuperAdmin(): Promise<{ adminEmail: string; adminSessionValue: string }> {
+  const adminEmail = `${unique("admin")}@e2e.test`;
+  await api("/auth/register", { method: "POST", body: JSON.stringify({ email: adminEmail, password: PASSWORD }) });
+  const prisma = new PrismaClient();
+  try {
+    await prisma.user.update({ where: { email: adminEmail }, data: { emailVerifiedAt: new Date() } });
+  } finally {
+    await prisma.$disconnect();
+  }
+
+  // El correo lo genera esta misma función (letras, dígitos y guiones): seguro de pasar en la línea.
+  const output = execSync(`pnpm --filter @impulza/api run superadmin -- grant ${adminEmail}`, {
+    cwd: path.join(import.meta.dirname, "..", ".."),
+    encoding: "utf8",
+  });
+  const secret = /Clave:\s+([A-Z2-7]+)/.exec(output)?.[1];
+  if (!secret) {
+    throw new Error(`El script superadmin no imprimió la clave TOTP:\n${output}`);
+  }
+
+  const response = await fetch(`${API_BASE_URL}/admin/auth/login`, {
+    method: "POST",
+    headers: CSRF_HEADERS,
+    body: JSON.stringify({ email: adminEmail, password: PASSWORD, code: await generate({ secret }) }),
+  });
+  if (!response.ok) {
+    throw new Error(`login de administración → ${response.status}: ${await response.text()}`);
+  }
+  const adminSessionValue = /impulza_admin_session=([^;]+)/.exec(response.headers.getSetCookie().join("; "))?.[1];
+  if (!adminSessionValue) {
+    throw new Error("El login de administración no devolvió la cookie impulza_admin_session.");
+  }
+
+  // Misma forma que la cookie real: HttpOnly, SameSite=Strict y acotada a /api/v1/admin.
+  await mkdir(path.dirname(ADMIN_SESSION_PATH), { recursive: true });
+  await writeFile(
+    ADMIN_SESSION_PATH,
+    JSON.stringify({
+      cookies: [
+        {
+          name: "impulza_admin_session",
+          value: adminSessionValue,
+          domain: "localhost",
+          path: "/api/v1/admin",
+          expires: -1,
+          httpOnly: true,
+          secure: false,
+          sameSite: "Strict",
+        },
+      ],
+      origins: [],
+    }),
+  );
+
+  return { adminEmail, adminSessionValue };
 }

@@ -19,3 +19,4 @@ export * from "./contacts.js";
 export * from "./short-links.js";
 export * from "./analytics.js";
 export * from "./plans.js";
+export * from "./admin.js";

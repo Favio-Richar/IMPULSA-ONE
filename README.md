@@ -4,7 +4,7 @@ Plataforma SaaS multiusuario y multiempresa para construir un centro digital de 
 captación, reservas, ventas y analítica) desde una sola URL.
 
 **Estado actual: Fase 4 — SaaS comercial — en progreso (backlog en `docs/BACKLOG_FASE_4.md`;
-F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.** Fase 2
+F4.1–F4.4 terminadas; F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
@@ -45,6 +45,7 @@ reglas de trabajo del repositorio.
 corepack enable
 cp .env.example .env                      # raíz — lo lee apps/api, packages/database
 cp .env.example apps/dashboard/.env.local  # Next.js no lee el .env de la raíz (solo NEXT_PUBLIC_API_URL importa aquí)
+echo "NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1" > apps/admin/.env.local  # superadministración (F4.4)
 pnpm install
 pnpm docker:up           # Postgres + Redis locales (ver "Entorno local" abajo)
 pnpm --filter @impulza/database run db:migrate:dev   # crea las tablas
@@ -1117,6 +1118,26 @@ cada alta y visibles en el panel.
 
 Verificado: 270/270 en `@impulza/api` (incluida la carrera de altas simultáneas), Playwright 35/35.
 Detalle en `docs/BACKLOG_FASE_4.md`.
+
+## Superadministración (F4.4, `apps/admin`)
+
+Panel de la plataforma en `http://localhost:3200` (`pnpm --filter @impulza/admin dev`, con
+`NEXT_PUBLIC_API_URL` en `apps/admin/.env.local`). Modelo decidido en
+`docs/decisions/ADR-005-superadministracion.md`.
+
+- **Dar acceso** (solo desde el servidor, nunca desde la API): la cuenta debe estar registrada y con
+  el correo verificado. Luego
+  `pnpm --filter @impulza/api run superadmin -- grant correo@ejemplo.cl`, que activa el 2FA e
+  imprime **una vez** la clave para la app autenticadora. Para quitarlo: `... -- revoke correo@...`.
+- **Entrar:** correo, contraseña y código de 6 dígitos. Sesión propia de 8 h que no sirve en el panel,
+  y la del panel tampoco sirve acá.
+- **Qué hace:** resumen global, buscar organizaciones y usuarios, ver plan y uso, cambiar plan a mano,
+  bloquear o restaurar (el sitio queda fuera de línea y el panel en solo lectura, con el motivo
+  visible para el cliente), editar el catálogo de planes y revisar la auditoría. Nunca muestra
+  contactos ni contenido de un cliente, y abrir una organización queda auditado.
+
+Verificado: 26 pruebas e2e nuevas de API (296/296 en total), Playwright 49/49. Detalle y deudas en
+`docs/BACKLOG_FASE_4.md`.
 
 ## Revisión de retención de contactos y cierre de Fase 3
 

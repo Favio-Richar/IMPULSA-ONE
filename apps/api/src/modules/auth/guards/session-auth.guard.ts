@@ -1,5 +1,5 @@
 import { type CanActivate, type ExecutionContext, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
-import type { PrismaClient } from "@impulza/database";
+import { type PrismaClient, SessionScope } from "@impulza/database";
 import type { Request } from "express";
 import { PRISMA } from "../../../database/prisma.module.js";
 import type { RequestWithUser } from "../../../common/request-with-user.js";
@@ -22,7 +22,9 @@ export class SessionAuthGuard implements CanActivate {
       include: { user: true },
     });
 
-    if (!session || session.expiresAt.getTime() < Date.now()) {
+    // Una sesión de superadministración (ADR-005 §4) no vale como sesión del panel, aunque alguien
+    // copie su identificador a esta cookie.
+    if (!session || session.scope !== SessionScope.USER || session.expiresAt.getTime() < Date.now()) {
       throw new UnauthorizedException("Sesión inválida o expirada.");
     }
 

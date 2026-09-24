@@ -3,11 +3,18 @@ import { isoDateTime, uuid } from "./primitives.js";
 
 export const membershipStatus = z.enum(["INVITED", "ACTIVE", "SUSPENDED", "REMOVED"]);
 
+/** ADR-005 §6: una organización bloqueada por superadministración queda en solo lectura. */
+export const organizationStatus = z.enum(["ACTIVE", "BLOCKED"]);
+
 export const organizationResponse = z.object({
   id: uuid,
   name: z.string(),
   slug: z.string(),
   planId: uuid.nullable(),
+  status: organizationStatus,
+  blockedAt: isoDateTime.nullable(),
+  /** Se muestra a la propia organización en el aviso del panel: sabe por qué está bloqueada. */
+  blockedReason: z.string().nullable(),
   createdAt: isoDateTime,
   updatedAt: isoDateTime,
 });

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AppController } from "./app.controller.js";
+import { AdminModule } from "./modules/admin/admin.module.js";
 import { PrismaModule } from "./database/prisma.module.js";
 import { AnalyticsModule } from "./modules/analytics/analytics.module.js";
 import { PlansModule } from "./modules/plans/plans.module.js";
@@ -44,6 +45,7 @@ import { RedisModule } from "./redis/redis.module.js";
     PublicFormsModule,
     PublicAnalyticsModule,
     PublicLinksModule,
+    AdminModule,
     HealthModule,
   ],
   controllers: [AppController],

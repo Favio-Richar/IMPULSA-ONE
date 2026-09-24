@@ -16,7 +16,7 @@ import {
   verifyTwoFactorCode,
   type EmailAdapter,
 } from "@impulza/auth";
-import { type PrismaClient, type Session, type User, VerificationTokenType } from "@impulza/database";
+import { type PrismaClient, type Session, SessionScope, type User, VerificationTokenType } from "@impulza/database";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
 import { AuditService } from "../audit/audit.service.js";
@@ -90,7 +90,12 @@ export class AuthService {
     });
   }
 
-  async login(email: string, password: string, context: SessionContext): Promise<{ session: Session; user: User }> {
+  /**
+   * Correo + contraseña, con el bloqueo por intentos fallidos (F1.4). Compartido por el login del
+   * panel y el de superadministración (ADR-005): los dos caminos cuentan los mismos intentos, así
+   * que probar contraseñas en la puerta de administración también bloquea la cuenta.
+   */
+  async verifyCredentials(email: string, password: string): Promise<User> {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
@@ -108,16 +113,27 @@ export class AuthService {
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
 
+    return user;
+  }
+
+  /** Limpia el contador de intentos una vez que el login completo (con 2FA, si aplica) salió bien. */
+  async clearFailedLogins(user: User): Promise<void> {
     if (user.failedLoginAttempts > 0 || user.lockedUntil) {
       await this.prisma.user.update({
         where: { id: user.id },
         data: { failedLoginAttempts: 0, lockedUntil: null },
       });
     }
+  }
+
+  async login(email: string, password: string, context: SessionContext): Promise<{ session: Session; user: User }> {
+    const user = await this.verifyCredentials(email, password);
+    await this.clearFailedLogins(user);
 
     const session = await this.prisma.session.create({
       data: {
         userId: user.id,
+        scope: SessionScope.USER,
         expiresAt: new Date(Date.now() + SESSION_TTL_MS),
         userAgent: context.userAgent,
         ipHash: context.ip ? hashToken(context.ip) : undefined,
@@ -127,7 +143,7 @@ export class AuthService {
     return { session, user };
   }
 
-  private async registerFailedLogin(user: User): Promise<void> {
+  async registerFailedLogin(user: User): Promise<void> {
     const attempts = user.failedLoginAttempts + 1;
     const shouldLock = attempts >= MAX_FAILED_LOGIN_ATTEMPTS;
 
@@ -238,7 +254,7 @@ export class AuthService {
 
   async listSessions(userId: string): Promise<Session[]> {
     return this.prisma.session.findMany({
-      where: { userId },
+      where: { userId, scope: SessionScope.USER },
       orderBy: { createdAt: "desc" },
     });
   }
@@ -247,7 +263,7 @@ export class AuthService {
     // Nunca confiar en sessionId sin verificar propiedad — mismo principio que organization_id
     // en ADR-002, aplicado a nivel de usuario.
     const result = await this.prisma.session.deleteMany({
-      where: { id: sessionId, userId },
+      where: { id: sessionId, userId, scope: SessionScope.USER },
     });
 
     if (result.count === 0) {

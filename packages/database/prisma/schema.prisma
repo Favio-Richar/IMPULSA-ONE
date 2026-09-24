@@ -11,6 +11,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Sesión del panel (`USER`) o de superadministración (`ADMIN`, ADR-005): cada guard acepta solo la
+// suya, así una cookie no vale en la otra puerta aunque alguien copie el identificador.
+enum SessionScope {
+  USER
+  ADMIN
+}
+
+// ADR-005 §6: una organización bloqueada no sirve sus superficies públicas y su panel queda en solo
+// lectura.
+enum OrganizationStatus {
+  ACTIVE
+  BLOCKED
+}
+
 enum MembershipStatus {
   INVITED
   ACTIVE
@@ -46,6 +60,10 @@ model User {
   twoFactorEnabled         Boolean @default(false) @map("two_factor_enabled")
   twoFactorSecretEncrypted String? @map("two_factor_secret_encrypted")
 
+  // Superadministración de la plataforma (ADR-005). Nunca se otorga desde la API: solo el script
+  // de operación `superadmin` del servidor, que además exige 2FA activo.
+  isSuperAdmin Boolean @default(false) @map("is_super_admin")
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -65,6 +83,7 @@ model Session {
   userId    String   @map("user_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  scope     SessionScope @default(USER)
   userAgent String?  @map("user_agent")
   // Nunca la IP completa en texto plano — hash/truncada (ST §8, no negociable de privacidad).
   ipHash    String?  @map("ip_hash")
@@ -94,6 +113,10 @@ model Organization {
   name      String
   slug      String   @unique
   planId    String?  @map("plan_id") @db.Uuid
+  // Bloqueo manual desde superadministración (ADR-005 §6). Motivo obligatorio y auditado.
+  status        OrganizationStatus @default(ACTIVE)
+  blockedAt     DateTime?          @map("blocked_at") @db.Timestamptz(6)
+  blockedReason String?            @map("blocked_reason")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

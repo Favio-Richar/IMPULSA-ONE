@@ -17,15 +17,21 @@ Organization (1) ──< Site
 Membership (N) ──1 Role ──< Permission   (RBAC explícito)
 ```
 
-- **User**: id, email, password_hash, email_verified_at, created_at, updated_at.
-- **Session**: id, user_id, created_at, expires_at, device/user_agent, ip (truncada/hasheada).
+- **User**: id, email, password_hash, email_verified_at, is_super_admin (ADR-005: solo lo otorga el
+  script de operación del servidor, siempre con 2FA), created_at, updated_at.
+- **Session**: id, user_id, scope (`USER` panel | `ADMIN` superadministración, ADR-005 — cada guard
+  acepta solo la suya), created_at, expires_at, device/user_agent, ip (truncada/hasheada).
 - **Account**: id, user_id, provider, provider_account_id (login social).
-- **Organization**: id, name, slug, plan_id, created_at.
+- **Organization**: id, name, slug, plan_id, status (`ACTIVE` | `BLOCKED`), blocked_at,
+  blocked_reason, created_at. Bloqueada (F4.4, ADR-005 §6) = superficies públicas en 404 y panel en
+  solo lectura; el motivo lo ve la propia organización.
 - **Membership**: id, user_id, organization_id, role_id, status, invited_at, accepted_at.
   - Un `User` puede tener muchas `Membership` (N orgs). Una `Organization` tiene muchas
     `Membership` (N usuarios).
 - **Role** / **Permission**: catálogo de roles (OWNER, ADMIN, EDITOR, ANALYST, SUPPORT,
-  AGENCY_MANAGER, SUPER_ADMIN) y permisos explícitos asociados.
+  AGENCY_MANAGER, SUPER_ADMIN) y permisos explícitos asociados. `SUPER_ADMIN` existe en el
+  catálogo pero **no** se asigna por membresía: la superadministración es `User.is_super_admin`
+  (ADR-005 §1).
 
 ## 2. Planes y suscripción del propietario
 
@@ -38,7 +44,8 @@ Plan (1) ──< UsageCounter >── (1) Organization
   currency, limits (JSON validado con `planLimitsSchema` de `@impulza/validation`: sites,
   pagesPerSite, forms, contacts, shortLinks, qrCodes, members, analyticsHistoryDays, storageMb —
   `null` = sin límite), sort_order. Catálogo sembrado desde `PLAN_CATALOG` (valores provisorios
-  hasta la decisión #4, F4.1).
+  hasta la decisión #4, F4.1). Desde F4.4 la tabla es la fuente de verdad y se edita desde
+  `apps/admin`: el seed solo crea los planes que falten, nunca sobrescribe (ADR-005 §7).
 - **Organization.plan_id**: plan asignado a mano por superadministración (F4.4). El plan
   **efectivo** lo resuelve el servidor en un solo lugar (`PlansService`): suscripción vigente →
   plan asignado → Gratis. Por eso una organización sin `plan_id` ni suscripción ya está en Gratis

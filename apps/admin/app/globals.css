@@ -1,0 +1,5 @@
+@import "@impulza/ui/styles.css";
+
+/* Tailwind v4 no detecta solo las clases usadas en un paquete del workspace fuera de esta app
+   (mismo criterio que apps/dashboard). */
+@source "../../../packages/ui/src";

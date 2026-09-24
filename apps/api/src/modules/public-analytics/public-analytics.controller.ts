@@ -13,6 +13,7 @@ import { ApiZodBody } from "../../openapi/zod-openapi.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AnalyticsService } from "../analytics/analytics.service.js";
 import { pageContentSnapshotSchema } from "../pages/page-content-snapshot.js";
+import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
 
 // Solo los tipos que el propio navegador del visitante puede disparar. "form_submit",
 // "lead_created", "short_link_click" y "qr_visit" nacen del lado del servidor (F3.2/F3.5/F3.6) y no
@@ -63,7 +64,7 @@ export class PublicAnalyticsController {
     @Req() request: Request,
   ): Promise<void> {
     const site = await this.prisma.site.findFirst({
-      where: { slug: siteSlug, status: { not: "ARCHIVED" } },
+      where: { slug: siteSlug, status: { not: "ARCHIVED" }, ...ACTIVE_ORGANIZATION },
       select: { id: true, organizationId: true },
     });
 

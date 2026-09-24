@@ -91,7 +91,10 @@ Uptime Kuma (disponibilidad).
   enviado por el cliente sin verificar.
 - Cada query protegida en `apps/api` filtra por `organization_id` derivado del contexto de
   autenticación/autorización, no de parámetros de request.
-- Superadministración usa rutas, guards y auditoría independientes del resto de la API.
+- Superadministración usa rutas, guards y auditoría independientes del resto de la API (F4.4,
+  ADR-005): `/api/v1/admin/*` detrás de `AdminSessionGuard`, con su propia cookie
+  (`impulza_admin_session`, `SameSite=Strict`, `path=/api/v1/admin`, 8 h), sesión `ADMIN` y 2FA
+  obligatorio. Expone metadatos de la plataforma, nunca datos comerciales de una organización.
 - Se requieren tests de aislamiento (una organización no puede leer/escribir datos de otra) como
   parte de la definición de terminado de cualquier módulo con datos comerciales.
 

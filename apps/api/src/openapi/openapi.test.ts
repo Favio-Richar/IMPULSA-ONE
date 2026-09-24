@@ -97,6 +97,8 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/qr/{qrCodeId}",
       // Catálogo de planes (F4.1): los precios de un SaaS son públicos (página de precios).
       "GET /api/v1/plans",
+      // Login de superadministración (F4.4): abre la sesión, no puede exigirla. Contraseña + 2FA.
+      "POST /api/v1/admin/auth/login",
     ]);
 
     const sinSeguridad: string[] = [];

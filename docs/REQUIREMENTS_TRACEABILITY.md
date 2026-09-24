@@ -118,6 +118,12 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Dashboard global (usuarios, orgs, sitios, conversión, MRR/ARR, bajas, uso, estado técnico) | PM §12.1 | Fase 4 (mínima) → Fase 6 (completa) |
 | Gestión de usuarios/organizaciones, planes/facturación, moderación, CMS/plantillas, operación (integraciones, colas, feature flags, incidentes) | PM §12.2–12.6 | Fase 4 en adelante |
 
+**Estado (F4.4, 2026-09-24):** hecha la versión mínima en `apps/admin` (ADR-005): resumen global
+(usuarios, organizaciones, sitios publicados, bloqueadas, altas de 30 días y distribución por plan),
+buscar organizaciones y usuarios, ver plan y uso, cambiar plan a mano, bloquear y restaurar, editar
+el catálogo de planes y ver la auditoría. Pendiente para Fase 6: MRR/ARR y bajas (dependen del cobro,
+F4.6), estado técnico, moderación con reportes de abuso (decisión #9), CMS/plantillas y operación.
+
 ## 14. Requisitos técnicos transversales (ST)
 
 | Requisito | Fuente | Aplica desde |

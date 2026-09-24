@@ -5,6 +5,10 @@ export interface Organization {
   name: string;
   slug: string;
   planId: string | null;
+  /** `BLOCKED` = bloqueada por superadministración: solo lectura (F4.4, ADR-005 §6). */
+  status: "ACTIVE" | "BLOCKED";
+  blockedAt: string | null;
+  blockedReason: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -96,7 +96,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         </div>
       ) : null}
 
-      <div className="flex min-h-screen flex-1 flex-col">
+      {/* `min-w-0`: sin esto el ítem flex crece al ancho de su contenido más ancho (una tabla) y
+          toda la página se desplaza de lado en un teléfono, en vez de desplazarse solo la tabla. */}
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="flex h-14 items-center justify-between gap-3 border-b border-border px-4">
           <Button
             variant="ghost"

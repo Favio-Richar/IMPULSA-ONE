@@ -3,15 +3,16 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.4 terminadas, F3.5 con la API
-completa y el panel pendiente — ver "PUNTO DE CORTE" en `docs/BACKLOG_FASE_3.md` — de F3.1–F3.8).** Fase 2
+**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.5 terminadas de F3.1–F3.8; sigue
+F3.6, eventos analíticos).** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
 retencion-datos.md`, Ley 21.719). Un sitio puede publicar un formulario de contacto real: se crea
 desde el panel, el visitante lo llena en el sitio público, y el envío queda en el mini-CRM de
 contactos (`/contactos`) con consentimiento auditado, línea de tiempo, etiquetas y estado
-comercial editables. Ver `docs/BACKLOG_FASE_3.md` para el backlog de la fase activa,
+comercial editables. Desde `/enlaces` se crean enlaces cortos (`/s/:slug`) y códigos QR
+descargables que cuentan cada clic y escaneo. Ver `docs/BACKLOG_FASE_3.md` para el backlog de la fase activa,
 `docs/BACKLOG_FASE_2.md`/`docs/BACKLOG_FASE_0_1.md` para las anteriores y `CLAUDE.md` para las
 reglas de trabajo del repositorio.
 
@@ -20,7 +21,7 @@ reglas de trabajo del repositorio.
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
 | 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
-| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.4 terminadas, F3.5 API lista) |
+| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.5 terminadas) |
 
 ## Requisitos
 
@@ -1096,6 +1097,31 @@ Verificado: 5 tests nuevos (`public-analytics.e2e.test.ts`) — 211/211 en `@imp
 navegador quedó pendiente por un límite de uso de la herramienta de navegador en la sesión — el
 mecanismo está probado end-to-end a nivel de API y de build del cliente, no con un clic observado
 a mano todavía.
+
+## Enlaces cortos y códigos QR (F3.5)
+
+Quinta historia de Fase 3. Un negocio crea una URL corta propia (`{web}/s/promo-septiembre`) y
+un QR para imprimir, y ve cuántas veces se abrió cada uno.
+
+- **API** (`apps/api/src/modules/short-links`, `.../qr-codes`, `.../public-links`): CRUD
+  multi-tenant, slug con las reglas de F2.2 (reservados `s` y `qr` agregados), destino validado
+  contra `javascript:`/`data:`/esquemas no-http, estilos de QR de un catálogo cerrado con contraste
+  ≥ 7:1 para que siempre escanee.
+- **Conteo antes del redirect**: `apps/web` (`app/s/[slug]`, `app/qr/[qrCodeId]`) consulta la API
+  server-to-server, la API cuenta y registra `short_link_click`/`qr_visit`, y recién entonces se
+  redirige con **307** — temporal a propósito: un 301 quedaría cacheado y dejaría de contar los
+  clics repetidos y de respetar un cambio de destino.
+- **Panel `/enlaces`** (`apps/dashboard/app/(panel)/enlaces/page.tsx`): crear, copiar, editar
+  destino, eliminar, generar QR desde la fila o para una URL directa, ver el QR real con su
+  contador y descargarlo en PNG de 1024px. El QR codifica siempre `{web}/qr/:id`, nunca el destino.
+  Nueva variable de cliente `NEXT_PUBLIC_WEB_BASE_URL` (ver `.env.example`).
+- **Arreglo de layout compartido**: la columna de contenido del panel ganó `min-w-0`; antes una
+  tabla ancha desbordaba toda la página en un teléfono. Lo encontró la prueba e2e nueva.
+
+Verificado: 225/225 en `@impulza/api`, Playwright `enlaces.spec.ts` en móvil y escritorio (15/15
+de la suite e2e), recorrido real de clic y escaneo contado a mano, `lint`/`typecheck`/`build`
+limpios. Deuda declarada (UTM en el panel, editar estilo de un QR existente) en
+`docs/BACKLOG_FASE_3.md`.
 
 ## Contrato de la API — OpenAPI
 

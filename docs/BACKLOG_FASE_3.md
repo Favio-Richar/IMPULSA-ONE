@@ -466,3 +466,41 @@ su sitio publicado, recibir el envío como un contacto en su mini-CRM con consen
 compartir su WhatsApp y enlaces/QR con clics medidos, y ver todo eso reflejado en un dashboard de
 conversión con datos de retención acotada y aislamiento multi-tenant probado. Recién entonces se
 inicia Fase 4 (SaaS comercial).
+
+> **Fase 3 cerrada (2026-09-23).** Cada condición de salida, con su evidencia:
+>
+> | Condición | Dónde se cumple |
+> |---|---|
+> | Formulario de contacto real en el sitio publicado | F3.2 (constructor + envío público) |
+> | El envío llega como contacto con consentimiento auditado | F3.2/F3.3 (ADR-004 punto 3) |
+> | WhatsApp y enlaces/QR con clics medidos | F3.4, F3.5, pipeline de F3.6 |
+> | Dashboard de conversión | F3.7 (`/analitica`) |
+> | Retención acotada | Eventos crudos: purga a 14 meses (F3.6). Contactos: revisión a 36 meses (abajo) |
+> | Aislamiento multi-tenant probado | F3.8 + un bloque por historia en la suite central |
+>
+> **Hueco encontrado y cerrado al revisar la salida — revisión de retención de contactos (ADR-004
+> punto 4):** F3.1 listaba "36 meses de inactividad de contacto en config" como criterio y la
+> historia se marcó terminada, pero ni la configuración ni el job existían. Se implementó:
+>
+> - `Contact.retentionReviewAt` (migración `20260924010000_fase3_contact_retention_review`, no
+>   destructiva) y `flagContactsForRetentionReview` en `packages/database/src/retention.ts`: marca
+>   los contactos sin interacción (edición, nota, envío) en `CONTACT_RETENTION_REVIEW_MONTHS` (36 por
+>   defecto, configurable) y desmarca a los que volvieron a tener actividad. **Nunca borra.** SQL
+>   directo a propósito: con el cliente de Prisma, `@updatedAt` contaría la propia marca como
+>   interacción.
+> - Job diario en `apps/worker` (03:45 America/Santiago, cola `analytics-maintenance`).
+> - API: filtro `?retentionReview=pending` y `POST .../contacts/:id/retention-review/keep`
+>   (`contact.manage`, auditado como `contact.retention_kept`); la alternativa es el borrado de
+>   siempre (ARCO+, F3.3).
+> - Panel: filtro "Retención" y etiqueta "Revisar retención" en la lista; aviso en la ficha que
+>   explica la situación con "Conservar contacto".
+> - Verificado: 3 pruebas contra Postgres real en `@impulza/database` (marca solo al inactivo, un
+>   evento reciente cuenta como interacción, marcar no cuenta como interacción, idempotente,
+>   desmarca al que vuelve), prueba e2e de API (filtro, conservar auditado, SUPPORT puede y ANALYST
+>   no), id cruzado en la suite central, y Playwright `retencion-contactos.spec.ts` (móvil y
+>   escritorio: ver, filtrar, conservar). 255/255 en `@impulza/api`, 29/29 en Playwright.
+>
+> **Deuda que pasa a Fase 4 (no bloquea el cierre):** métricas de worker en un backend de métricas
+> y panel de reintento de la dead-letter; días del dashboard en la zona horaria de la organización;
+> comparación contra el período anterior y exportación del resumen; UTM y cambio de estilo de QR en
+> el panel; staging (no existe todavía). Ver cada historia para el detalle.

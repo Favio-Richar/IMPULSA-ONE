@@ -1,12 +1,13 @@
 import {
   ANALYTICS_EVENTS_QUEUE,
+  CONTACT_RETENTION_REVIEW_JOB,
   ANALYTICS_MAINTENANCE_QUEUE,
   type AnalyticsEventJob,
   processAnalyticsEvent,
   purgeExpiredAnalyticsEvents,
   RETENTION_PURGE_JOB,
 } from "@impulza/analytics";
-import type { PrismaClient } from "@impulza/database";
+import { flagContactsForRetentionReview, type PrismaClient } from "@impulza/database";
 import { type ConnectionOptions, Queue, Worker } from "bullmq";
 import { logger } from "./observability/logger.js";
 
@@ -22,8 +23,9 @@ export async function startAnalyticsWorkers(options: {
   prisma: PrismaClient;
   connection: ConnectionOptions;
   retentionMonths: number;
+  contactReviewMonths: number;
 }): Promise<AnalyticsWorkers> {
-  const { prisma, connection, retentionMonths } = options;
+  const { prisma, connection, retentionMonths, contactReviewMonths } = options;
 
   const eventsWorker = new Worker<AnalyticsEventJob>(
     ANALYTICS_EVENTS_QUEUE,
@@ -54,16 +56,26 @@ export async function startAnalyticsWorkers(options: {
     { pattern: "0 30 3 * * *", tz: "America/Santiago" },
     { name: RETENTION_PURGE_JOB },
   );
+  await maintenanceQueue.upsertJobScheduler(
+    "contact-retention-review-daily",
+    { pattern: "0 45 3 * * *", tz: "America/Santiago" },
+    { name: CONTACT_RETENTION_REVIEW_JOB },
+  );
 
   const maintenanceWorker = new Worker(
     ANALYTICS_MAINTENANCE_QUEUE,
     async (job) => {
-      if (job.name !== RETENTION_PURGE_JOB) {
-        return { skipped: job.name };
+      if (job.name === RETENTION_PURGE_JOB) {
+        const purged = await purgeExpiredAnalyticsEvents(prisma, { retentionMonths });
+        logger.info("analytics.retention.purged", { purged, retentionMonths });
+        return { purged };
       }
-      const purged = await purgeExpiredAnalyticsEvents(prisma, { retentionMonths });
-      logger.info("analytics.retention.purged", { purged, retentionMonths });
-      return { purged };
+      if (job.name === CONTACT_RETENTION_REVIEW_JOB) {
+        const result = await flagContactsForRetentionReview(prisma, { months: contactReviewMonths });
+        logger.info("contacts.retention_review.flagged", { ...result, months: contactReviewMonths });
+        return result;
+      }
+      return { skipped: job.name };
     },
     { connection, concurrency: 1 },
   );

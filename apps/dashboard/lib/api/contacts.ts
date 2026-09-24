@@ -6,6 +6,7 @@ export interface ContactFilters {
   commercialStatus?: string;
   consentStatus?: string;
   search?: string;
+  retentionReview?: string;
 }
 
 function contactsPath(organizationId: string): string {
@@ -60,6 +61,13 @@ export function addContactNote(
   return apiFetch<ContactDetailResponse>(`${contactsPath(organizationId)}/${contactId}/notes`, {
     method: "POST",
     body: { note },
+  });
+}
+
+/** Revisión de retención (ADR-004 punto 4): conservar un contacto marcado por inactividad. */
+export function keepContactAfterRetentionReview(organizationId: string, contactId: string): Promise<ContactDetailResponse> {
+  return apiFetch<ContactDetailResponse>(`${contactsPath(organizationId)}/${contactId}/retention-review/keep`, {
+    method: "POST",
   });
 }
 

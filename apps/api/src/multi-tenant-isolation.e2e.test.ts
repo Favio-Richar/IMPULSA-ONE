@@ -806,6 +806,7 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       await orgA.ownerAgent.patch(ownOrgPath).set(CSRF_HEADERS).send({ commercialStatus: "WON" }).expect(404);
       await orgA.ownerAgent.post(`${ownOrgPath}/notes`).set(CSRF_HEADERS).send({ note: "x" }).expect(404);
       await orgA.ownerAgent.get(`${ownOrgPath}/export`).expect(404);
+      await orgA.ownerAgent.post(`${ownOrgPath}/retention-review/keep`).set(CSRF_HEADERS).expect(404);
       await orgA.ownerAgent.delete(ownOrgPath).set(CSRF_HEADERS).expect(404);
 
       // El contacto de B sigue intacto, con su nombre original.

@@ -5,6 +5,7 @@ import {
   deleteContact,
   exportContact,
   getContact,
+  keepContactAfterRetentionReview,
   listContacts,
   updateContact,
   type ContactFilters,
@@ -42,6 +43,16 @@ export function useUpdateContact(organizationId: string, contactId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (changes: Parameters<typeof updateContact>[2]) => updateContact(organizationId, contactId, changes),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["contacts", organizationId] });
+    },
+  });
+}
+
+export function useKeepContactAfterRetentionReview(organizationId: string, contactId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => keepContactAfterRetentionReview(organizationId, contactId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["contacts", organizationId] });
     },

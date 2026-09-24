@@ -84,6 +84,7 @@ export class ContactsService {
         ...(filters.tag ? { tags: { has: filters.tag } } : {}),
         ...(filters.commercialStatus ? { commercialStatus: filters.commercialStatus } : {}),
         ...(filters.consentStatus ? { consentStatus: filters.consentStatus } : {}),
+        ...(filters.retentionReview === "pending" ? { retentionReviewAt: { not: null } } : {}),
         ...(filters.search
           ? {
               OR: [
@@ -196,6 +197,32 @@ export class ContactsService {
       targetType: "Contact",
       targetId: contact.id,
       metadata: {},
+    });
+
+    return this.getContactOrThrow(organizationId, contactId);
+  }
+
+  /**
+   * Revisión de retención (ADR-004 punto 4): el dueño decide conservar un contacto que el job
+   * marcó por inactividad. Quita la marca y, al tocar `updatedAt`, cuenta como interacción — no
+   * vuelve a marcarse hasta otros 36 meses sin actividad. Auditado: queda quién lo decidió y cuándo.
+   * La alternativa (borrarlo) es el `DELETE` de siempre.
+   */
+  async keepAfterRetentionReview(organizationId: string, actorId: string, contactId: string): Promise<ContactWithEvents> {
+    const contact = await this.getContactOrThrow(organizationId, contactId);
+
+    await this.prisma.contact.update({
+      where: { id: contact.id },
+      data: { retentionReviewAt: null },
+    });
+
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "contact.retention_kept",
+      targetType: "Contact",
+      targetId: contact.id,
+      metadata: { flaggedAt: contact.retentionReviewAt?.toISOString() ?? null },
     });
 
     return this.getContactOrThrow(organizationId, contactId);

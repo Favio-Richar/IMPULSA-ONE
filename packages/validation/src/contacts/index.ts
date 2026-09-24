@@ -55,6 +55,8 @@ export const listContactsQuerySchema = z.object({
   commercialStatus: contactCommercialStatusSchema.optional(),
   consentStatus: consentStatusSchema.optional(),
   search: plainTextSchema(160).optional(),
+  // Solo los marcados para revisión de retención (ADR-004 punto 4).
+  retentionReview: z.enum(["pending"]).optional(),
 });
 
 export type ListContactsQuery = z.infer<typeof listContactsQuerySchema>;

@@ -14,6 +14,9 @@ export const env = loadEnv({
   // que el propietario la ajuste al publicar su política de privacidad sin migración ni deploy de
   // código. Nunca "indefinida": hay mínimo y máximo.
   ANALYTICS_RETENTION_MONTHS: z.coerce.number().int().min(1).max(120).default(14),
+  // Meses sin interacción tras los que un contacto se marca para que el dueño revise si lo
+  // conserva (ADR-004 punto 4). Solo marca: nunca borra un contacto.
+  CONTACT_RETENTION_REVIEW_MONTHS: z.coerce.number().int().min(1).max(240).default(36),
   // Opcional a propósito: Sentry no es requerido para arrancar (F1.10).
   SENTRY_DSN: urlSchema.optional(),
   SENTRY_RELEASE: z.string().optional(),

@@ -592,6 +592,11 @@ model Contact {
   consentAt          DateTime?               @map("consent_at") @db.Timestamptz(6)
   commercialStatus   ContactCommercialStatus @default(NEW) @map("commercial_status")
   assignedToId       String?                 @map("assigned_to") @db.Uuid
+  // ADR-004 punto 4: el job diario del worker lo marca cuando el contacto lleva
+  // CONTACT_RETENTION_REVIEW_MONTHS (36 por defecto) sin ninguna interacción (edición, nota, envío).
+  // Solo una marca para que el dueño decida — un dato de contacto de negocio nunca se purga solo.
+  // Nulo = no requiere revisión. Se limpia al conservarlo o al volver a interactuar.
+  retentionReviewAt  DateTime?               @map("retention_review_at") @db.Timestamptz(6)
   createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -601,6 +606,7 @@ model Contact {
   events       ContactEvent[]
 
   @@index([organizationId])
+  @@index([organizationId, retentionReviewAt])
   @@map("contacts")
 }
 

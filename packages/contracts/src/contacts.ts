@@ -35,6 +35,9 @@ export const contactResponse = z.object({
   consentAt: isoDateTime.nullable(),
   commercialStatus: contactCommercialStatus,
   assignedToId: uuid.nullable(),
+  /** Marcado por el job diario tras 36 meses sin interacción (ADR-004 punto 4): el dueño decide
+   *  si lo conserva o lo borra. Nulo = no requiere revisión. */
+  retentionReviewAt: isoDateTime.nullable(),
   createdAt: isoDateTime,
   updatedAt: isoDateTime,
 });

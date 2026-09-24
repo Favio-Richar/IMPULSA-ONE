@@ -22,6 +22,7 @@ const workers = await startAnalyticsWorkers({
   prisma,
   connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
   retentionMonths: env.ANALYTICS_RETENTION_MONTHS,
+  contactReviewMonths: env.CONTACT_RETENTION_REVIEW_MONTHS,
 });
 
 const healthServer = createHealthServer([

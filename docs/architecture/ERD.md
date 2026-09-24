@@ -91,7 +91,9 @@ Organization (1) ──< Contact (1) ──< ContactEvent
 - **FormSubmission**: id, form_id, contact_id (nullable si no matchea contacto existente), payload,
   source, utm, created_at.
 - **Contact**: id, organization_id, name, email, phone, source, tags, consent_status,
-  commercial_status, assigned_to, created_at.
+  consent_source, consent_text_version, consent_at (ADR-004 p.3), commercial_status, assigned_to,
+  retention_review_at (ADR-004 p.4: marcado por el job diario tras 36 meses sin interacción; nulo =
+  no requiere revisión — nunca se borra solo), created_at, updated_at.
 - **ContactEvent**: id, contact_id, type (form_submission/booking/purchase/note), payload,
   created_at — construye la línea de tiempo del mini-CRM.
 

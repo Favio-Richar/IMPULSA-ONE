@@ -51,6 +51,7 @@ export class ContactsController {
   @ApiQuery({ name: "commercialStatus", required: false, enum: ["NEW", "CONTACTED", "QUALIFIED", "WON", "LOST"] })
   @ApiQuery({ name: "consentStatus", required: false, enum: ["GRANTED", "WITHDRAWN", "UNKNOWN"] })
   @ApiQuery({ name: "search", required: false })
+  @ApiQuery({ name: "retentionReview", required: false, enum: ["pending"], description: "Solo los marcados para revisión de retención (ADR-004)." })
   @ApiZodArrayResponse(200, contactResponse, "Contactos de la organización, del más reciente al más antiguo.")
   async list(
     @Param("organizationId") organizationId: string,
@@ -136,6 +137,26 @@ export class ContactsController {
     @Body(new ZodValidationPipe(createContactNoteSchema)) body: CreateContactNoteDto,
   ) {
     return this.contactsService.addNote(organizationId, user.id, contactId, body);
+  }
+
+  @Post(":contactId/retention-review/keep")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.CONTACT_MANAGE)
+  @ApiOperation({
+    summary: "Conservar un contacto marcado para revisión de retención",
+    description:
+      "Requiere `contact.manage`. Quita la marca que pone el job diario tras 36 meses sin interacción (ADR-004 punto 4) y cuenta como interacción. Auditado. Para no conservarlo, se usa el borrado de siempre.",
+  })
+  @ApiUuidParam("contactId", "Contacto a conservar.")
+  @ApiZodResponse(200, contactDetailResponse, "Contacto sin la marca de revisión.")
+  @ApiResponse({ status: 404, description: CONTACT_NOT_FOUND })
+  async keepAfterRetentionReview(
+    @Param("organizationId") organizationId: string,
+    @Param("contactId") contactId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.contactsService.keepAfterRetentionReview(organizationId, user.id, contactId);
   }
 
   @Delete(":contactId")

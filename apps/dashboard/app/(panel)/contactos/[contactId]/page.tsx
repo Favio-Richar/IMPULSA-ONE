@@ -12,6 +12,7 @@ import {
   LoadingState,
   Select,
 } from "@impulza/ui";
+import { Clock } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmButton } from "../../../../components/confirm-button";
@@ -20,6 +21,7 @@ import {
   useAddContactNote,
   useContact,
   useDeleteContact,
+  useKeepContactAfterRetentionReview,
   useExportContact,
   useUpdateContact,
 } from "../../../../lib/hooks/use-contacts";
@@ -74,6 +76,7 @@ function ContactDetail({ organizationId, contactId }: { organizationId: string; 
   const updateMutation = useUpdateContact(organizationId, contactId);
   const noteMutation = useAddContactNote(organizationId, contactId);
   const deleteMutation = useDeleteContact(organizationId);
+  const keepMutation = useKeepContactAfterRetentionReview(organizationId, contactId);
   const exportMutation = useExportContact(organizationId);
   const [tagsInput, setTagsInput] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
@@ -137,6 +140,34 @@ function ContactDetail({ organizationId, contactId }: { organizationId: string; 
           </ConfirmButton>
         </div>
       </div>
+
+      {contact.retentionReviewAt ? (
+        // ADR-004 punto 4: el sistema no borra contactos por su cuenta; avisa y deja decidir.
+        <div
+          role="status"
+          className="flex flex-col gap-3 rounded-lg border border-warning/40 bg-warning/5 p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex gap-3">
+            <Clock className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Revisión de retención pendiente</p>
+              <p className="text-sm text-muted-foreground">
+                Este contacto no tiene actividad hace más de 36 meses. Por la política de privacidad,
+                decide si lo conservas (sigue la relación comercial) o lo eliminas. Nada se borra
+                solo.
+              </p>
+              {keepMutation.isError ? (
+                <p role="alert" className="mt-1 text-sm text-danger">
+                  No se pudo guardar la decisión. Intenta de nuevo.
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <Button size="sm" className="shrink-0" loading={keepMutation.isPending} onClick={() => keepMutation.mutate()}>
+            Conservar contacto
+          </Button>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">

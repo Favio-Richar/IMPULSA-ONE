@@ -8,6 +8,8 @@ export const ANALYTICS_EVENTS_QUEUE = "analytics-events";
  *  de eventos para que un borrado masivo nunca frene la ingesta. */
 export const ANALYTICS_MAINTENANCE_QUEUE = "analytics-maintenance";
 export const RETENTION_PURGE_JOB = "retention-purge";
+/** Revisión de retención de contactos (ADR-004 punto 4): marca, no borra. */
+export const CONTACT_RETENTION_REVIEW_JOB = "contact-retention-review";
 
 /**
  * Lo que viaja por la cola. Ya viene minimizado desde la API: el visitante es un hash rotado por

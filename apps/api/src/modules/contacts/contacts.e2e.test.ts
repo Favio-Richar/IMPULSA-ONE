@@ -196,6 +196,30 @@ describe("Contacts (e2e) — F3.3", () => {
     expect(auditEntry).not.toBeNull();
   });
 
+  it("revisión de retención (ADR-004 punto 4): filtro de marcados y 'Conservar' auditado", async () => {
+    const { agent, basePath, organizationId } = await createOrgWithOwner();
+    const flagged = await agent.post(basePath).set(CSRF_HEADERS).send({ name: "Inactivo" }).expect(201);
+    const active = await agent.post(basePath).set(CSRF_HEADERS).send({ name: "Activo" }).expect(201);
+    // La marca la pone el job diario del worker; acá se simula su resultado.
+    await prisma.contact.update({ where: { id: flagged.body.id }, data: { retentionReviewAt: new Date() } });
+
+    const pending = await agent.get(`${basePath}?retentionReview=pending`).expect(200);
+    expect(pending.body.map((c: { id: string }) => c.id)).toEqual([flagged.body.id]);
+    expect(pending.body.map((c: { id: string }) => c.id)).not.toContain(active.body.id);
+
+    const kept = await agent.post(`${basePath}/${flagged.body.id}/retention-review/keep`).set(CSRF_HEADERS).expect(200);
+    const detail = contactDetailResponse.parse(kept.body);
+    expect(detail.retentionReviewAt).toBeNull();
+    // Conservar no borra nada ni toca los datos del contacto.
+    expect(detail.name).toBe("Inactivo");
+
+    const auditEntry = await prisma.auditLog.findFirst({
+      where: { organizationId, action: "contact.retention_kept", targetId: flagged.body.id },
+    });
+    expect(auditEntry).not.toBeNull();
+    expect((await agent.get(`${basePath}?retentionReview=pending`).expect(200)).body).toEqual([]);
+  });
+
   describe("permisos", () => {
     it("SUPPORT administra contactos pero no puede borrarlos; ANALYST solo lee", async () => {
       const { agent: owner, organizationId, basePath } = await createOrgWithOwner();
@@ -224,6 +248,9 @@ describe("Contacts (e2e) — F3.3", () => {
         .send({ commercialStatus: "CONTACTED" })
         .expect(200);
       await support.agent.delete(`${basePath}/${contact.body.id}`).set(CSRF_HEADERS).expect(403);
+
+      await support.agent.post(`${basePath}/${contact.body.id}/retention-review/keep`).set(CSRF_HEADERS).expect(200);
+      await analyst.agent.post(`${basePath}/${contact.body.id}/retention-review/keep`).set(CSRF_HEADERS).expect(403);
 
       await analyst.agent.get(basePath).expect(200);
       await analyst.agent

@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@impulza/ui";
+import { Clock } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useActiveOrgStore } from "../../../lib/active-org-store";
@@ -53,8 +54,9 @@ function ContactsList({ organizationId }: { organizationId: string }): React.JSX
   const [tag, setTag] = useState("");
   const [commercialStatus, setCommercialStatus] = useState("");
   const [consentStatus, setConsentStatus] = useState("");
+  const [retentionReview, setRetentionReview] = useState("");
 
-  const contactsQuery = useContacts(organizationId, { search, tag, commercialStatus, consentStatus });
+  const contactsQuery = useContacts(organizationId, { search, tag, commercialStatus, consentStatus, retentionReview });
 
   return (
     <div className="flex flex-col gap-4">
@@ -65,7 +67,7 @@ function ContactsList({ organizationId }: { organizationId: string }): React.JSX
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Input
           label="Buscar"
           placeholder="Nombre, correo o teléfono"
@@ -86,6 +88,13 @@ function ContactsList({ organizationId }: { organizationId: string }): React.JSX
           options={Object.entries(CONSENT_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
           value={consentStatus}
           onChange={(event) => setConsentStatus(event.target.value)}
+        />
+        <Select
+          label="Retención"
+          placeholder="Todos"
+          options={[{ value: "pending", label: "Por revisar (36 meses sin actividad)" }]}
+          value={retentionReview}
+          onChange={(event) => setRetentionReview(event.target.value)}
         />
       </div>
 
@@ -121,6 +130,13 @@ function ContactsList({ organizationId }: { organizationId: string }): React.JSX
                   <Link href={`/contactos/${contact.id}`} className="font-medium text-primary hover:underline">
                     {contact.name ?? "(sin nombre)"}
                   </Link>
+                  {contact.retentionReviewAt ? (
+                    // Texto además del color: el estado nunca depende solo del color (WCAG).
+                    <span className="ml-2 inline-flex items-center gap-1 rounded-sm border border-warning/40 px-1.5 py-0.5 text-xs text-foreground">
+                      <Clock className="size-3 text-warning" aria-hidden="true" />
+                      Revisar retención
+                    </span>
+                  ) : null}
                 </TableCell>
                 <TableCell className="text-muted-foreground">{contact.email ?? contact.phone ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">

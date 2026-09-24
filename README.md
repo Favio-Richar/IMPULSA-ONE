@@ -3,8 +3,8 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.7 terminadas de F3.1–F3.8; sigue
-F3.8, aislamiento multi-tenant de Fase 3).** Fase 2
+**Estado actual: Fase 3 — Conversión — cerrada (F3.1–F3.8). Sigue Fase 4 (SaaS comercial),
+cuyo backlog todavía no existe.** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
@@ -21,7 +21,7 @@ reglas de trabajo del repositorio.
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
 | 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
-| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.7 terminadas) |
+| 3 — Conversión | F3.1–F3.8 | Terminada |
 
 ## Requisitos
 
@@ -1097,6 +1097,15 @@ Verificado: 5 tests nuevos (`public-analytics.e2e.test.ts`) — 211/211 en `@imp
 navegador quedó pendiente por un límite de uso de la herramienta de navegador en la sesión — el
 mecanismo está probado end-to-end a nivel de API y de build del cliente, no con un clic observado
 a mano todavía.
+
+## Revisión de retención de contactos y cierre de Fase 3
+
+ADR-004 (punto 4) pide que un contacto sin interacción durante 36 meses quede marcado para que el
+dueño decida si lo conserva — nunca borrado automáticamente. El job diario de `apps/worker` lo
+marca (`CONTACT_RETENTION_REVIEW_MONTHS`, 36 por defecto); en `/contactos` aparece la etiqueta
+"Revisar retención" y un filtro, y la ficha ofrece "Conservar contacto" (auditado) o el borrado de
+siempre. Con esto se cumplen todas las condiciones de salida de la Fase 3 — tabla con la evidencia
+de cada una en `docs/BACKLOG_FASE_3.md` ("Salida de Fase 3").
 
 ## Dashboard de conversión (F3.7)
 

@@ -1,4 +1,5 @@
 import { env } from "../../../../../lib/env";
+import { visitorProxyHeaders } from "../../../../../lib/visitor-headers";
 
 /**
  * F3.4: mismo principio que `app/api/forms/.../submissions/route.ts` — el navegador del visitante
@@ -19,7 +20,12 @@ export async function POST(
 
   const upstream = await fetch(`${env.API_BASE_URL}/public/sites/${encodeURIComponent(siteSlug)}/events`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Requested-With": "impulza-one" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "impulza-one",
+      // F3.6: sin esto la API vería a todos los visitantes como uno solo (este servidor).
+      ...visitorProxyHeaders(request.headers),
+    },
     body: JSON.stringify(body),
   });
 

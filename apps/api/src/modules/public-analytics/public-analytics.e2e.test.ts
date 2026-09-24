@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
+import { BROWSER_USER_AGENT, startAnalyticsTestWorker } from "../../test-support/analytics-pipeline.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 
 // F3.4 — clic a WhatsApp: registro de evento público sin PII (ADR-004).
@@ -37,6 +38,7 @@ describe("Public analytics events (e2e) — F3.4", () => {
   let redis: Redis;
   let emailAdapter: FakeEmailAdapter;
   let httpServer: Parameters<typeof request>[0];
+  let pipeline: ReturnType<typeof startAnalyticsTestWorker>;
 
   beforeAll(async () => {
     emailAdapter = new FakeEmailAdapter();
@@ -54,9 +56,12 @@ describe("Public analytics events (e2e) — F3.4", () => {
     httpServer = app.getHttpServer();
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
+    pipeline = startAnalyticsTestWorker(prisma);
   });
 
   afterAll(async () => {
+    await pipeline.drain();
+    await pipeline.close();
     await prisma.organization.deleteMany({
       where: { memberships: { some: { user: { email: { endsWith: TEST_EMAIL_DOMAIN } } } } },
     });
@@ -108,8 +113,11 @@ describe("Public analytics events (e2e) — F3.4", () => {
     await request(httpServer)
       .post(`/api/v1/public/sites/${siteSlug}/events`)
       .set(CSRF_HEADERS)
+      .set("User-Agent", BROWSER_USER_AGENT)
       .send({ type: "whatsapp_click" })
       .expect(204);
+
+    await pipeline.drain();
 
     const events = await prisma.analyticsEvent.findMany({ where: { organizationId, type: "whatsapp_click" } });
     expect(events).toHaveLength(1);
@@ -165,6 +173,8 @@ describe("Public analytics events (e2e) — F3.4", () => {
       .set("User-Agent", "agente-dos")
       .send({ type: "whatsapp_click" })
       .expect(204);
+
+    await pipeline.drain();
 
     const events = await prisma.analyticsEvent.findMany({ where: { organizationId, type: "whatsapp_click" } });
     expect(events).toHaveLength(2);

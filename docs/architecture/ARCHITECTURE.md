@@ -75,7 +75,9 @@ Uptime Kuma (disponibilidad).
 - **apps/api** (NestJS): toda la lógica de negocio, permisos, validación y orquestación. Organizada
   por módulo de dominio; dentro de cada módulo: `controller → application service/use case →
   domain → repository/adapter`. Ningún control de negocio vive en el frontend.
-- **apps/worker**: procesamiento asíncrono vía BullMQ — eventos de analítica, envío de emails,
+- **apps/worker**: procesamiento asíncrono vía BullMQ — eventos de analítica (real desde F3.6: cola
+  `analytics-events` + purga diaria por retención en `analytics-maintenance`; la lógica vive en
+  `packages/analytics` para que las pruebas de la API ejerciten el mismo código), envío de emails,
   procesamiento de media, webhooks salientes, jobs de facturación.
 - **packages/***: código compartido sin lógica de infraestructura propia — `ui` (design system),
   `database` (Prisma schema/migraciones/seeds), `auth`, `validation` (Zod compartido), `contracts`

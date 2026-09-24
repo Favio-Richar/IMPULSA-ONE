@@ -4,6 +4,7 @@ import type { Request } from "express";
 import type { Redis } from "ioredis";
 import { REDIS } from "../redis/redis.module.js";
 import { RATE_LIMIT_KEY, type RateLimitOptions } from "./rate-limit.decorator.js";
+import { resolveVisitorContext } from "./visitor-context.js";
 
 // Rate limiting por IP respaldado en Redis (ST §3.3/§15) — ventana fija vía INCR + EXPIRE.
 // Deliberadamente no se usa @nestjs/throttler: su última versión estable (6.5.0) declara
@@ -29,7 +30,9 @@ export class RateLimitGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<Request>();
-    const ip = request.ip ?? request.socket.remoteAddress ?? "unknown";
+    // IP del visitante real cuando la petición llega vía apps/web (F3.6). Antes era siempre la IP
+    // del servidor de apps/web, así que todo el tráfico público compartía un único balde.
+    const { ip } = resolveVisitorContext(request);
     const key = `ratelimit:${options.keyPrefix}:${ip}`;
 
     const count = await this.redis.incr(key);

@@ -1,4 +1,5 @@
 import { env } from "../../../../../../lib/env";
+import { visitorProxyHeaders } from "../../../../../../lib/visitor-headers";
 
 /**
  * Único punto por el que un envío de formulario del visitante llega a `apps/api` (F3.2): el
@@ -7,11 +8,9 @@ import { env } from "../../../../../../lib/env";
  * llama a la API directamente"). Reenvía el cuerpo tal cual; la validación real (contra los campos
  * del formulario, antispam, límite de tasa) vive en `apps/api` — acá no se duplica esa lógica.
  *
- * Deuda declarada: el límite de tasa de `apps/api` cuenta por IP de quien llama — que acá es
- * siempre este proceso de `apps/web`, no la IP del visitante, porque este servidor no reenvía
- * `X-Forwarded-For` ni `apps/api` lo consulta (no hay `trust proxy` configurado, ST §15). El límite
- * sigue activo pero deja de distinguir visitantes entre sí; corresponde a la misma tarea pendiente
- * de "rate limiting parcial" ya declarada en `docs/BACKLOG_FASE_2.md`, no a algo nuevo de F3.2.
+ * Reenvía también los datos del visitante real con el secreto compartido (F3.6,
+ * `lib/visitor-headers.ts`): así el límite de tasa de `apps/api` cuenta por visitante y no por
+ * este servidor (cierra la deuda de "rate limiting parcial" de F2/F3.2).
  */
 export async function POST(
   request: Request,
@@ -28,7 +27,11 @@ export async function POST(
     `${env.API_BASE_URL}/public/sites/${encodeURIComponent(siteSlug)}/forms/${encodeURIComponent(formId)}/submissions`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Requested-With": "impulza-one" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "impulza-one",
+        ...visitorProxyHeaders(request.headers),
+      },
       body: JSON.stringify(body),
     },
   );

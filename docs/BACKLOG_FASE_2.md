@@ -57,6 +57,12 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 > devolver). Necesita su propia tarea, con la decisión de si el límite es por IP, por usuario o por
 > organización en cada familia de endpoints autenticados.
 >
+> *Actualización F3.6 (2026-09-23):* la parte de esta deuda que afectaba a los endpoints
+> públicos quedó corregida — detrás de `apps/web`, el límite contaba por la IP del servidor de
+> `apps/web` (un solo balde para todos los visitantes de la plataforma). Ahora `apps/web` reenvía la
+> IP del visitante con un secreto compartido y `RateLimitGuard` cuenta por visitante real (ver
+> `docs/BACKLOG_FASE_3.md`, F3.6). Lo de los endpoints **autenticados** sigue pendiente tal cual.
+>
 > **Deuda declarada nueva — apagado de `RedisModule`**: el cliente de ioredis se provee con una
 > factoría suelta, sin gancho de apagado, así que su socket mantiene vivo el bucle de eventos:
 > `app.close()` no termina. El generador de OpenAPI lo sortea con un `process.exit(0)` explícito y

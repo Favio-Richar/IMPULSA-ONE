@@ -666,10 +666,18 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       expect(publicPage.body).not.toHaveProperty("id");
       expect(publicPage.body).not.toHaveProperty("organizationId");
       for (const block of publicPage.body.blocks) {
-        expect(Object.keys(block).sort()).toEqual(["config", "type"]);
+        // `position` (F3.6) no es un identificador: es el orden del bloque en la versión publicada,
+        // lo que el sitio público informa para atribuir un clic sin conocer el id interno.
+        expect(Object.keys(block).sort()).toEqual(["config", "position", "type"]);
+        expect(typeof block.position).toBe("number");
       }
       expect(JSON.stringify(publicPage.body)).not.toContain(orgB.id);
       expect(JSON.stringify(publicPage.body)).not.toContain(orgA.id);
+      // Ni el id del bloque recién creado, que desde F3.6 sí vive dentro de la versión publicada.
+      const blocksOfB = await prisma.block.findMany({ where: { pageId: homeOfB }, select: { id: true } });
+      for (const { id } of blocksOfB) {
+        expect(JSON.stringify(publicPage.body)).not.toContain(id);
+      }
     });
 
     it("una página de B que nunca se publicó no es alcanzable públicamente, ni adivinando el slug exacto", async () => {

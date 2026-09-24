@@ -35,7 +35,7 @@ export class ContactsService {
    * Matchea por email dentro de la organización (único criterio confiable, F3.1); sin email no hay
    * forma de deduplicar, así que siempre crea un contacto nuevo.
    */
-  async findOrCreateFromSubmission(input: ContactFromSubmissionInput): Promise<Contact> {
+  async findOrCreateFromSubmission(input: ContactFromSubmissionInput): Promise<{ contact: Contact; created: boolean }> {
     const now = new Date();
 
     if (input.email) {
@@ -44,7 +44,7 @@ export class ContactsService {
       });
 
       if (existing) {
-        return this.prisma.contact.update({
+        const contact = await this.prisma.contact.update({
           where: { id: existing.id },
           data: {
             ...(existing.name || !input.name ? {} : { name: input.name }),
@@ -55,10 +55,13 @@ export class ContactsService {
             consentAt: now,
           },
         });
+        return { contact, created: false };
       }
     }
 
-    return this.prisma.contact.create({
+    // `created` distingue un lead nuevo (evento `lead_created`, F3.6) de un contacto que ya
+    // existía y solo volvió a escribir.
+    const contact = await this.prisma.contact.create({
       data: {
         organizationId: input.organizationId,
         name: input.name ?? null,
@@ -71,6 +74,7 @@ export class ContactsService {
         consentAt: now,
       },
     });
+    return { contact, created: true };
   }
 
   async listContacts(organizationId: string, filters: ListContactsQuery): Promise<Contact[]> {

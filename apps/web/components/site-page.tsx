@@ -3,6 +3,7 @@ import { PageBlocks } from "@impulza/blocks-renderer";
 import type { PublicFormResponse } from "@impulza/contracts";
 import { themeTokensSchema } from "@impulza/validation";
 import { getPublicForm, getPublicPage, getPublicSite } from "../lib/api";
+import { AnalyticsTracker } from "./analytics-tracker";
 
 /** Todo bloque `contact_form` con un `formId` real, sin duplicados: varios bloques pueden apuntar
  *  al mismo formulario en la misma página. */
@@ -48,12 +49,15 @@ export async function SitePage({ siteSlug, pageSlug }: { siteSlug: string; pageS
   );
 
   return (
-    <PageBlocks
-      blocks={page.blocks}
-      buttonStyle={tokens.buttonStyle}
-      siteSlug={siteSlug}
-      forms={forms}
-      mode="public"
-    />
+    <>
+      <AnalyticsTracker siteSlug={siteSlug} pageSlug={page.slug} />
+      <PageBlocks
+        blocks={page.blocks}
+        buttonStyle={tokens.buttonStyle}
+        siteSlug={siteSlug}
+        forms={forms}
+        mode="public"
+      />
+    </>
   );
 }

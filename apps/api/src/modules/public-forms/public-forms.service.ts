@@ -6,7 +6,9 @@ import {
   HONEYPOT_FIELD_KEY,
   type SubmittableFormField,
 } from "@impulza/validation";
+import type { Request } from "express";
 import { PRISMA } from "../../database/prisma.module.js";
+import { AnalyticsService } from "../analytics/analytics.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
 
 type FormWithFields = Form & { fields: FormField[]; site: { organizationId: string } };
@@ -34,6 +36,7 @@ export class PublicFormsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly contactsService: ContactsService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   private toSubmittableFields(form: FormWithFields): SubmittableFormField[] {
@@ -89,6 +92,7 @@ export class PublicFormsService {
     siteSlug: string,
     formId: string,
     rawPayload: Record<string, unknown>,
+    request: Request,
   ): Promise<SubmissionAckShape> {
     const form = await this.getFormOrThrow(siteSlug, formId);
     const successAction = form.successAction as unknown as SubmissionAckShape;
@@ -122,19 +126,18 @@ export class PublicFormsService {
     // Se resuelve *antes* de la transacción de abajo: `ContactsService` usa el cliente de Prisma
     // compartido, no uno transaccional, así que anidarlo dentro de `$transaction` no lo cubriría
     // de todos modos (ADR-004 punto 3: sin CONSENT marcado, no hay Contact en absoluto).
-    const contactId = signals.consentGranted
-      ? (
-          await this.contactsService.findOrCreateFromSubmission({
-            organizationId: form.site.organizationId,
-            name: signals.name,
-            email: signals.email,
-            phone: signals.phone,
-            consentSource: `form:${form.id}`,
-          })
-        ).id
+    const contactResult = signals.consentGranted
+      ? await this.contactsService.findOrCreateFromSubmission({
+          organizationId: form.site.organizationId,
+          name: signals.name,
+          email: signals.email,
+          phone: signals.phone,
+          consentSource: `form:${form.id}`,
+        })
       : null;
+    const contactId = contactResult?.contact.id ?? null;
 
-    await this.prisma.$transaction(async (tx) => {
+    const submissionId = await this.prisma.$transaction(async (tx) => {
       const submission = await tx.formSubmission.create({
         data: {
           formId: form.id,
@@ -152,7 +155,31 @@ export class PublicFormsService {
           },
         });
       }
+
+      return submission.id;
     });
+
+    // Después de confirmar la transacción, nunca dentro: un evento de analítica no puede quedar
+    // registrado por un envío que terminó revertido. Claves de idempotencia atadas al envío y al
+    // contacto, así un reintento del job jamás cuenta dos veces el mismo lead (F3.6).
+    await this.analyticsService.recordEvent({
+      organizationId: form.site.organizationId,
+      siteId: form.siteId,
+      type: "form_submit",
+      request,
+      subjectId: form.id,
+      idempotencyKey: `form_submit:${submissionId}`,
+    });
+    if (contactResult?.created) {
+      await this.analyticsService.recordEvent({
+        organizationId: form.site.organizationId,
+        siteId: form.siteId,
+        type: "lead_created",
+        request,
+        subjectId: form.id,
+        idempotencyKey: `lead_created:${contactResult.contact.id}`,
+      });
+    }
 
     return successAction;
   }

@@ -23,6 +23,11 @@ export const pageContentSnapshotSchema = z.object({
   seoMeta: seoMetaSchema.nullable(),
   blocks: z.array(
     z.object({
+      // Desde F3.6: el id del bloque vivo al publicar. Nunca sale al visitante (contrato público
+      // de F2.7): el navegador informa slug de página + `position`, y la API resuelve acá a qué
+      // bloque corresponde el clic (`block_click`). Opcional: las versiones publicadas antes no lo
+      // tienen y siguen siendo válidas, solo sin medición por bloque hasta volver a publicar.
+      id: z.uuid().optional(),
       type: z.string(),
       position: z.number().int(),
       configSchemaVersion: z.number().int(),

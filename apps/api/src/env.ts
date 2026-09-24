@@ -26,6 +26,11 @@ export const env = loadEnv({
   // Sal para el visitante anonimizado de analítica (F3.4, ADR-004 punto 1) — nunca se persiste la
   // IP cruda del visitante, solo un hash derivado de esto y rotado por sitio/día.
   ANALYTICS_SALT_SECRET: z.string().min(32),
+  // Secreto compartido con apps/web (F3.6): solo cuando una petición lo trae, la API cree las
+  // cabeceras con la IP/user-agent/país del visitante real que reenvía apps/web (ver
+  // packages/analytics/src/proxy-headers.ts). Sin él, esas cabeceras se ignoran — si se aceptaran
+  // de cualquiera, bastaría inventarse una IP para saltarse el rate limit.
+  INTERNAL_PROXY_SECRET: z.string().min(32),
   // Opcional a propósito: Sentry no es requerido para arrancar (F1.10). Sin DSN, initSentry() es
   // un no-op — así se puede desarrollar localmente sin cuenta de Sentry.
   SENTRY_DSN: urlSchema.optional(),

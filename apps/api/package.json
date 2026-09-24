@@ -13,6 +13,7 @@
     "openapi:generate": "vite-node src/openapi/generate.ts"
   },
   "dependencies": {
+    "@impulza/analytics": "workspace:*",
     "@impulza/auth": "workspace:*",
     "@impulza/config": "workspace:*",
     "@impulza/contracts": "workspace:*",
@@ -23,6 +24,7 @@
     "@nestjs/core": "12.0.2",
     "@nestjs/platform-express": "12.0.2",
     "@nestjs/swagger": "12.0.1",
+    "bullmq": "6.3.8",
     "cookie-parser": "1.4.7",
     "helmet": "8.3.0",
     "ioredis": "6.0.0",

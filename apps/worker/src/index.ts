@@ -1,12 +1,12 @@
+import "./load-dotenv.js";
+import { prisma } from "@impulza/database";
 import { initSentry } from "@impulza/observability";
+import { Redis } from "ioredis";
+import { startAnalyticsWorkers } from "./analytics-workers.js";
 import { env } from "./env.js";
 import { createHealthServer } from "./health-server.js";
 import { logger } from "./observability/logger.js";
 
-// Placeholder del worker — el procesamiento asíncrono real (BullMQ: analítica, emails, media,
-// webhooks) se agrega cuando exista el primer job concreto, para no depender de una cola vacía
-// sin uso (ver ARCHITECTURE.md §3 y docs/BACKLOG_FASE_0_1.md). F1.10 agrega lo mínimo exigible
-// mientras tanto: logs JSON estructurados, /health y Sentry conectado.
 initSentry({
   dsn: env.SENTRY_DSN,
   environment: env.NODE_ENV,
@@ -14,8 +14,48 @@ initSentry({
   service: "impulza-worker",
 });
 
-createHealthServer().listen(env.WORKER_PORT, () => {
-  logger.info("worker iniciado — en construcción (Fase 0), sin colas configuradas todavía", {
+// Cliente aparte solo para el chequeo de salud: las conexiones de BullMQ son suyas y no se
+// comparten (BullMQ exige `maxRetriesPerRequest: null`, que no sirve para un ping con timeout).
+const healthRedis = new Redis(env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1 });
+
+const workers = await startAnalyticsWorkers({
+  prisma,
+  connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+  retentionMonths: env.ANALYTICS_RETENTION_MONTHS,
+});
+
+const healthServer = createHealthServer([
+  {
+    name: "database",
+    check: async () => {
+      await prisma.$queryRaw`SELECT 1`;
+    },
+  },
+  {
+    name: "redis",
+    check: async () => {
+      await healthRedis.ping();
+    },
+  },
+]);
+
+healthServer.listen(env.WORKER_PORT, () => {
+  logger.info("worker iniciado — procesando la cola de analítica", {
     port: env.WORKER_PORT,
+    retentionMonths: env.ANALYTICS_RETENTION_MONTHS,
   });
 });
+
+// Apagado ordenado: BullMQ termina el job en curso antes de cerrar, así un deploy no deja un
+// evento a medio procesar (igual se reintentaría, pero sin ruido en la dead-letter).
+async function shutdown(signal: string): Promise<void> {
+  logger.info("worker deteniéndose", { signal });
+  healthServer.close();
+  await workers.close();
+  healthRedis.disconnect();
+  await prisma.$disconnect();
+  process.exit(0);
+}
+
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+process.once("SIGINT", () => void shutdown("SIGINT"));

@@ -99,7 +99,7 @@ export function RenderBlock({
     case "whatsapp": {
       const parsed = whatsappSchema.safeParse(block.config);
       return parsed.success ? (
-        <WhatsappBlock config={parsed.data} buttonVariant={buttonVariant} siteSlug={siteSlug} mode={mode} />
+        <WhatsappBlock config={parsed.data} buttonVariant={buttonVariant} />
       ) : null;
     }
     case "contact_actions": {

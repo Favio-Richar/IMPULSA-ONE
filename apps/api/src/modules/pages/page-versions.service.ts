@@ -145,6 +145,7 @@ export class PageVersionsService {
       visibility: page.visibility,
       seoMeta: page.seoMeta,
       blocks: blocks.map((block, index) => ({
+        id: block.id,
         type: block.type,
         position: index,
         configSchemaVersion: block.configSchemaVersion,

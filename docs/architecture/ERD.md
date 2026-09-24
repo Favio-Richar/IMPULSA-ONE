@@ -116,17 +116,24 @@ Organization (1) ──< QrCode >── (0..1) ShortLink
 AnalyticsEvent (N) ──1 Organization
 AnalyticsEvent (N) ──1 Site (nullable)
 AnalyticsAggregate (N) ──1 Organization
-AnalyticsAggregate (N) ──1 Site
+AnalyticsAggregate (N) ──1 Site (nullable, F3.6)
 ```
 
 - **AnalyticsEvent**: id, organization_id, site_id, type (page_view/block_click/whatsapp_click/
   form_submit/lead_created/qr_visit/...), anonymized_visitor_id, utm, device, geo_country/city,
   created_at. Sin PII innecesaria; idempotency_key para eventos críticos. Sin columna de IP cruda
   (ADR-004): el visitante anonimizado se deriva con sal rotada por sitio/día.
-- **AnalyticsAggregate**: id, organization_id, site_id (obligatorio — cada agregado está
-  pre-calculado por sitio; un rollup a nivel de organización se suma en la consulta del dashboard,
-  no se persiste aparte), period, metric, value — pre-agregado para el dashboard, generado por el
-  worker.
+- **AnalyticsAggregate**: id, organization_id, site_id, period, metric, value — pre-agregado para
+  el dashboard, generado por el worker (`apps/worker`, F3.6). `site_id` es por sitio siempre que el
+  evento sea de un sitio; un rollup de organización se suma en la consulta del dashboard, no se
+  persiste aparte. **Cambio de F3.6:** `site_id` pasó a admitir nulos solo para métricas que no
+  pertenecen a ningún sitio (enlaces cortos y QR, que desde F3.5 viven a nivel de organización) —
+  sin eso esos eventos no podían tener agregado. Único `(organization_id, site_id, period, metric)`
+  con `NULLS NOT DISTINCT` (Postgres 15+), para que el upsert también sume sobre la fila existente
+  cuando `site_id` es nulo. `period` es el día UTC (`YYYY-MM-DD`). `metric` sigue la convención de
+  `packages/analytics/src/metrics.ts`: `<tipo>`, `<tipo>:visitors`, `<tipo>:device:<d>`,
+  `<tipo>:country:<CC>`, `<tipo>:utm_source|utm_medium|utm_campaign:<valor>`,
+  `<tipo>:subject:<uuid>` (página, bloque, formulario, enlace o QR).
 
 ## 8. Notificaciones, auditoría y flags
 

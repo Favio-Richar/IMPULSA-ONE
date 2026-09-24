@@ -34,14 +34,19 @@ export function PageBlocks({
   return (
     <Container className="flex flex-col py-10" style={{ gap: "var(--site-gap)" }}>
       {blocks.map((block, index) => (
-        <RenderBlock
-          key={index}
-          block={block}
-          buttonVariant={buttonVariant}
-          siteSlug={siteSlug}
-          forms={forms}
-          mode={mode}
-        />
+        // `data-block-*` es lo único que necesita el rastreador de analítica del sitio público
+        // (F3.6, `apps/web/components/analytics-tracker.tsx`) para atribuir un clic a su bloque
+        // sin que cada bloque tenga que ser un componente de cliente ni conocer la analítica.
+        // `position` y no un id: el contrato público no expone ids internos (F2.7).
+        <div key={index} data-block-position={block.position} data-block-type={block.type}>
+          <RenderBlock
+            block={block}
+            buttonVariant={buttonVariant}
+            siteSlug={siteSlug}
+            forms={forms}
+            mode={mode}
+          />
+        </div>
       ))}
     </Container>
   );

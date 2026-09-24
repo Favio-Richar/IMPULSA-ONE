@@ -22,6 +22,10 @@ allowBuilds:
   # esbuild: binario nativo requerido por tsx (dev runner de apps/api y apps/worker). Paquete
   # ampliamente usado y auditado; se aprueba explícitamente en vez de bloquear el script.
   esbuild: true
+  # msgpackr-extract: acelerador nativo opcional de msgpackr (dependencia de bullmq, F3.6). No se
+  # aprueba: msgpackr funciona igual con su implementación en JS puro, y así no se ejecuta un script
+  # de instalación de terceros que no hace falta.
+  msgpackr-extract: false
   prisma: true
   # unrs-resolver: resolutor nativo usado transitivamente por el tooling de ESLint/Next.js.
   unrs-resolver: true

@@ -692,8 +692,11 @@ model AnalyticsEvent {
 model AnalyticsAggregate {
   id             String   @id @default(uuid()) @db.Uuid
   organizationId String   @map("organization_id") @db.Uuid
-  // Obligatorio (a diferencia de AnalyticsEvent.siteId) — ver nota de nomenclatura arriba.
-  siteId         String   @map("site_id") @db.Uuid
+  // Nulo para métricas de nivel organización (enlaces cortos y QR, F3.5/F3.6), que no pertenecen
+  // a ningún sitio. El índice único de abajo es NULLS NOT DISTINCT en la migración (Postgres 15+):
+  // sin eso, dos filas con site_id nulo nunca "chocarían" y el upsert del pipeline duplicaría la
+  // métrica en vez de sumarla. Prisma no sabe expresar NULLS NOT DISTINCT, por eso vive en SQL.
+  siteId         String?  @map("site_id") @db.Uuid
   // Granularidad diaria en formato "YYYY-MM-DD" (F3.6): suficiente para el dashboard de
   // conversión (PM §9.12) sin la cardinalidad de guardar por hora.
   period         String
@@ -703,8 +706,10 @@ model AnalyticsAggregate {
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  site         Site?        @relation(fields: [siteId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, siteId, period, metric])
+  // Lectura del dashboard de conversión (F3.7): "esta organización, este rango de días".
+  @@index([organizationId, period])
   @@map("analytics_aggregates")
 }

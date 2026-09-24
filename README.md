@@ -3,8 +3,8 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.5 terminadas de F3.1–F3.8; sigue
-F3.6, eventos analíticos).** Fase 2
+**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.6 terminadas de F3.1–F3.8; sigue
+F3.7, dashboard de conversión).** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
@@ -21,7 +21,7 @@ reglas de trabajo del repositorio.
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
 | 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
-| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.5 terminadas) |
+| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.6 terminadas) |
 
 ## Requisitos
 
@@ -1097,6 +1097,31 @@ Verificado: 5 tests nuevos (`public-analytics.e2e.test.ts`) — 211/211 en `@imp
 navegador quedó pendiente por un límite de uso de la herramienta de navegador en la sesión — el
 mecanismo está probado end-to-end a nivel de API y de build del cliente, no con un clic observado
 a mano todavía.
+
+## Pipeline de analítica (F3.6)
+
+Sexta historia de Fase 3. Cada visita, clic, envío de formulario, lead, escaneo de QR y clic a
+enlace corto pasa por un pipeline real: endpoint → rate limit → cola BullMQ → `apps/worker` →
+evento crudo + agregados diarios en Postgres (lo que va a leer el dashboard de F3.7).
+
+- **`packages/analytics`**: catálogo de eventos, detección de bots y de tipo de dispositivo,
+  convención de métricas y el procesador transaccional e idempotente — compartido por la API, el
+  worker y las pruebas.
+- **`apps/worker`** deja de ser un esqueleto: consume `analytics-events`, purga cada día el evento
+  crudo vencido (`ANALYTICS_RETENTION_MONTHS`, 14 por defecto) y su `/health` ya verifica Postgres y
+  Redis. En desarrollo hay que levantarlo (`pnpm --filter @impulza/worker dev`) para que los eventos
+  lleguen a la base; sin él quedan esperando en Redis.
+- **Sitio público**: un rastreador único (`apps/web/components/analytics-tracker.tsx`) mide vistas
+  y clics por bloque sin exponer ids internos (slug + posición; la API resuelve el resto).
+- **Privacidad (ADR-004)**: sin IP cruda, visitante con hash rotado por día, bots y vistas previas
+  de chats descartados antes de persistir.
+- **Arreglo de fondo**: `apps/web` ahora reenvía a la API la IP/user-agent/país del visitante real
+  con un secreto compartido (`INTERNAL_PROXY_SECRET`, nueva variable en API y web — ver
+  `.env.example`). Antes el rate limit público era un solo balde para toda la plataforma.
+
+Verificado: 238/238 en `@impulza/api` (13 pruebas nuevas del pipeline contra Postgres/Redis reales),
+22 unitarias en `@impulza/analytics`, Playwright 15/15, recorrido real con los cuatro procesos.
+Detalle y deuda declarada en `docs/BACKLOG_FASE_3.md`.
 
 ## Enlaces cortos y códigos QR (F3.5)
 

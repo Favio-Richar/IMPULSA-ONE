@@ -19,17 +19,23 @@ export class PublicLinksService {
       throw new NotFoundException("Enlace no encontrado.");
     }
 
-    await this.prisma.shortLink.update({
-      where: { id: link.id },
-      data: { clickCountCached: { increment: 1 } },
-    });
+    // Un bot igual recibe el redirect (no hay por qué romperle la vista previa del enlace a quien
+    // lo pegó en un chat), pero no cuenta: esa visita automática no la hizo ninguna persona
+    // (ADR-004 punto 2, F3.6).
+    if (!this.analyticsService.isBot(request)) {
+      await this.prisma.shortLink.update({
+        where: { id: link.id },
+        data: { clickCountCached: { increment: 1 } },
+      });
 
-    await this.analyticsService.recordEvent({
-      organizationId: link.organizationId,
-      siteId: null,
-      type: "short_link_click",
-      request,
-    });
+      await this.analyticsService.recordEvent({
+        organizationId: link.organizationId,
+        siteId: null,
+        type: "short_link_click",
+        request,
+        subjectId: link.id,
+      });
+    }
 
     return { destinationUrl: link.destinationUrl };
   }
@@ -48,17 +54,20 @@ export class PublicLinksService {
       throw new NotFoundException("Código QR no encontrado.");
     }
 
-    await this.prisma.qrCode.update({
-      where: { id: qrCode.id },
-      data: { scanCountCached: { increment: 1 } },
-    });
+    if (!this.analyticsService.isBot(request)) {
+      await this.prisma.qrCode.update({
+        where: { id: qrCode.id },
+        data: { scanCountCached: { increment: 1 } },
+      });
 
-    await this.analyticsService.recordEvent({
-      organizationId: qrCode.organizationId,
-      siteId: null,
-      type: "qr_visit",
-      request,
-    });
+      await this.analyticsService.recordEvent({
+        organizationId: qrCode.organizationId,
+        siteId: null,
+        type: "qr_visit",
+        request,
+        subjectId: qrCode.id,
+      });
+    }
 
     return { destinationUrl };
   }

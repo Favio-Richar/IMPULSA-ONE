@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
+import { BROWSER_USER_AGENT, startAnalyticsTestWorker } from "../../test-support/analytics-pipeline.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 
 // F3.5 — resolución pública: enlace corto y QR cuentan su propio contador y su propio evento.
@@ -37,6 +38,7 @@ describe("Public links resolution (e2e) — F3.5", () => {
   let redis: Redis;
   let emailAdapter: FakeEmailAdapter;
   let httpServer: Parameters<typeof request>[0];
+  let pipeline: ReturnType<typeof startAnalyticsTestWorker>;
 
   beforeAll(async () => {
     emailAdapter = new FakeEmailAdapter();
@@ -54,9 +56,12 @@ describe("Public links resolution (e2e) — F3.5", () => {
     httpServer = app.getHttpServer();
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
+    pipeline = startAnalyticsTestWorker(prisma);
   });
 
   afterAll(async () => {
+    await pipeline.drain();
+    await pipeline.close();
     await prisma.organization.deleteMany({
       where: { memberships: { some: { user: { email: { endsWith: TEST_EMAIL_DOMAIN } } } } },
     });
@@ -103,11 +108,13 @@ describe("Public links resolution (e2e) — F3.5", () => {
       .send({ slug, destinationUrl: "https://ejemplo.cl/destino" })
       .expect(201);
 
-    const resolved = await request(httpServer).get(`/api/v1/public/short-links/${slug}`).expect(200);
+    const resolved = await request(httpServer).get(`/api/v1/public/short-links/${slug}`).set("User-Agent", BROWSER_USER_AGENT).expect(200);
     expect(resolved.body).toEqual({ destinationUrl: "https://ejemplo.cl/destino" });
 
     const link = await prisma.shortLink.findUnique({ where: { slug } });
     expect(link?.clickCountCached).toBe(1);
+
+    await pipeline.drain();
 
     const events = await prisma.analyticsEvent.findMany({ where: { organizationId, type: "short_link_click" } });
     expect(events).toHaveLength(1);
@@ -126,11 +133,13 @@ describe("Public links resolution (e2e) — F3.5", () => {
       .send({ directUrl: "https://ejemplo.cl/folleto", styleKey: "clasico" })
       .expect(201);
 
-    const resolved = await request(httpServer).get(`/api/v1/public/qr/${qr.body.id}`).expect(200);
+    const resolved = await request(httpServer).get(`/api/v1/public/qr/${qr.body.id}`).set("User-Agent", BROWSER_USER_AGENT).expect(200);
     expect(resolved.body).toEqual({ destinationUrl: "https://ejemplo.cl/folleto" });
 
     const stored = await prisma.qrCode.findUnique({ where: { id: qr.body.id } });
     expect(stored?.scanCountCached).toBe(1);
+
+    await pipeline.drain();
 
     const events = await prisma.analyticsEvent.findMany({ where: { organizationId, type: "qr_visit" } });
     expect(events).toHaveLength(1);
@@ -149,7 +158,7 @@ describe("Public links resolution (e2e) — F3.5", () => {
       .send({ shortLinkId: link.body.id, styleKey: "clasico" })
       .expect(201);
 
-    const resolved = await request(httpServer).get(`/api/v1/public/qr/${qr.body.id}`).expect(200);
+    const resolved = await request(httpServer).get(`/api/v1/public/qr/${qr.body.id}`).set("User-Agent", BROWSER_USER_AGENT).expect(200);
     expect(resolved.body).toEqual({ destinationUrl: "https://ejemplo.cl/via-enlace" });
 
     // El escaneo cuenta para el QR, no para el enlace corto — son canales distintos.

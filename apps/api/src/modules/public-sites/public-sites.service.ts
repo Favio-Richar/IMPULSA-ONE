@@ -17,7 +17,7 @@ export interface PublicPageView {
   slug: string;
   isHome: boolean;
   seo: ResolvedSeo;
-  blocks: Array<{ type: string; config: unknown }>;
+  blocks: Array<{ position: number; type: string; config: unknown }>;
 }
 
 const SITE_NOT_FOUND = "Sitio no encontrado.";
@@ -141,9 +141,9 @@ export class PublicSitesService {
       // — la página pública nunca muestra un hueco roto, solo un bloque de menos.
       .map((block) => {
         const parsed = parseStoredBlock(block.type, block.configSchemaVersion, block.config);
-        return parsed.renderable ? { type: block.type, config: parsed.config } : null;
+        return parsed.renderable ? { position: block.position, type: block.type, config: parsed.config } : null;
       })
-      .filter((block): block is { type: string; config: unknown } => block !== null);
+      .filter((block): block is { position: number; type: string; config: unknown } => block !== null);
 
     const canonicalOverridePath = await this.resolveCanonicalOverride(site.id, site.slug, snapshot.seoMeta);
 

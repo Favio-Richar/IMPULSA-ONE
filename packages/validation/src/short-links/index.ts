@@ -7,7 +7,8 @@ import { qrStyleKeySchema } from "../qr/index.js";
 // misma lista de reservados — el slug de un enlace corto vive en su propio espacio de rutas
 // públicas (`/s/:slug`, ver ERD.md §6), pero comparte la misma disciplina de validación.
 
-const utmSchema = z.object({
+// Compartido con el endpoint público de eventos (F3.6): mismo límite por campo en ambos lados.
+export const utmSchema = z.object({
   source: z.string().trim().max(120).optional(),
   medium: z.string().trim().max(120).optional(),
   campaign: z.string().trim().max(120).optional(),

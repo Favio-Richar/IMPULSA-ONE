@@ -36,6 +36,9 @@ export const publicSiteResponse = z.object({
 });
 
 export const publicBlockResponse = z.object({
+  /** Posición del bloque en la versión publicada (F3.6): con esto y el slug de la página, la API
+   *  atribuye un clic a su bloque sin que el visitante reciba el id interno (ver arriba). */
+  position: z.number().int(),
   type: z.string(),
   /** Forma según `type`, catálogo en `@impulza/validation` — mismo criterio que `BlockResponse`. */
   config: z.unknown(),

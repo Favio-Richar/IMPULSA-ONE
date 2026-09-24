@@ -32,7 +32,7 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F3.3 — Contactos (mini-CRM) | Terminada |
 | F3.4 — WhatsApp (clic a conversación + analítica) | Terminada |
 | F3.5 — QR y enlaces cortos | Terminada |
-| F3.6 — Eventos analíticos (pipeline + retención) | Pendiente |
+| F3.6 — Eventos analíticos (pipeline + retención) | Terminada |
 | F3.7 — Dashboard de conversión | Pendiente |
 | F3.8 — Aislamiento multi-tenant de Fase 3 | Pendiente |
 
@@ -297,6 +297,85 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
   `lead_created`, `qr_visit` — cada uno del resto de historias de esta fase dispara el suyo.
 - Aislamiento multi-tenant probado (un evento de la organización B no aparece en agregados de la
   organización A).
+
+> **Estado (2026-09-23): terminada.** Lo que se construyó:
+>
+> - **Pipeline real (ST §10):** endpoint → `RateLimitGuard` → cola BullMQ `analytics-events` →
+>   `apps/worker` → `AnalyticsEvent` + `AnalyticsAggregate`. La API ya no escribe eventos directo:
+>   `AnalyticsService` (`apps/api/src/modules/analytics`) clasifica, minimiza y encola; nunca lanza
+>   (si Redis cae, el visitante igual llega a destino y el formulario igual se guarda — queda el
+>   error en el log). La lógica de procesamiento vive en `packages/analytics` (`processor.ts`) para
+>   que las pruebas de la API ejerciten exactamente el código del worker.
+> - **Procesamiento transaccional:** evento crudo + todos sus agregados en una transacción; upsert
+>   atómico en SQL (`INSERT ... ON CONFLICT DO UPDATE value = value + 1`) para que dos workers en
+>   paralelo nunca pierdan una suma. Visitantes únicos por día con lock consultivo por visitante.
+>   Reintentos con backoff exponencial (5 intentos); los fallidos definitivos quedan en la cola como
+>   dead-letter inspeccionable.
+> - **Idempotencia:** `idempotency_key` en `form_submit` (por envío), `lead_created` (por contacto)
+>   y en los eventos del navegador (`eventId` generado por clic). Probado en el endpoint y en el
+>   procesador (reintentar el mismo job devuelve `duplicate` y no toca agregados).
+> - **Minimización (ADR-004 punto 1):** sin IP cruda; visitante = hash con sal rotada por sitio/día;
+>   dispositivo como categoría gruesa (móvil/tablet/escritorio); país/ciudad desde las cabeceras que
+>   ya pone la plataforma de hosting delante de `apps/web` (sin base GeoIP propia). Nada de eso
+>   entra a Redis sin minimizar.
+> - **Exclusión de bots (ADR-004 punto 2):** `isBotUserAgent` (`packages/analytics`) descarta
+>   crawlers, herramientas HTTP, navegadores headless y las vistas previas automáticas de chats
+>   (WhatsApp, Telegram, Slack...) antes de encolar. Un enlace corto pegado en un chat ya no suma
+>   un clic que nadie hizo. Responde 204 igual (no se le avisa al bot).
+> - **Retención (ADR-004 punto 4):** job programado diario (03:30 America/Santiago) en la cola
+>   `analytics-maintenance`, purga por lotes el `AnalyticsEvent` con más de
+>   `ANALYTICS_RETENTION_MONTHS` (14 por defecto, configurable sin tocar código). Los agregados no
+>   se tocan.
+> - **Tipos de evento:** `page_view` y `block_click` los emite el rastreador nuevo del sitio público
+>   (`apps/web/components/analytics-tracker.tsx`, por delegación sobre `data-block-*` — ningún
+>   bloque tuvo que volverse componente de cliente); `whatsapp_click` pasó a ese mismo rastreador;
+>   `form_submit`/`lead_created` nacen en `PublicFormsService` después de confirmar la transacción;
+>   `qr_visit`/`short_link_click` en la resolución pública (F3.5). El cliente no puede fabricar
+>   eventos de servidor (400).
+> - **Atribución sin exponer ids (respeta el contrato público de F2.7):** el navegador informa slug
+>   de página y `position` del bloque; la API resuelve el id real contra la versión publicada (que
+>   desde F3.6 guarda el id de cada bloque). Lo que no se puede resolver cuenta en el total, sin
+>   atribución — así nadie crea filas de agregado con valores inventados.
+> - **Defecto de fondo corregido — visitante real detrás de `apps/web`:** las rutas proxy de
+>   `apps/web` no reenviaban nada del visitante, así que para la API todo el tráfico público era el
+>   servidor de `apps/web`: el rate limit era **un solo balde para toda la plataforma**, todos los
+>   visitantes tenían el mismo hash y la exclusión de bots no podía funcionar. Ahora `apps/web`
+>   (`lib/visitor-headers.ts`) reenvía IP/user-agent/país con un secreto compartido
+>   (`INTERNAL_PROXY_SECRET`, comparado en tiempo constante); sin el secreto, la API ignora esas
+>   cabeceras. La IP se toma de cabeceras que fija la plataforma (`cf-connecting-ip`, `x-real-ip`) o
+>   del último salto de `x-forwarded-for`, nunca del primero (falsificable).
+> - **Modelo:** `AnalyticsAggregate.site_id` pasó a admitir nulos para métricas de enlaces/QR
+>   (migración `20260923230000_fase3_analytics_pipeline`, no destructiva, índice único `NULLS NOT
+>   DISTINCT`) — ver ERD §7.
+> - **CI:** faltaban `ANALYTICS_SALT_SECRET` (requerida desde F3.4) y `NEXT_PUBLIC_WEB_BASE_URL`
+>   (desde F3.5) en los jobs de pruebas/e2e/build; se agregaron junto con `INTERNAL_PROXY_SECRET`.
+>
+> **Verificación:** 13 pruebas nuevas contra Postgres/Redis reales
+> (`analytics-pipeline.e2e.test.ts`: recorrido completo, bots, idempotencia en endpoint y en
+> procesador, visitantes únicos, atribución por bloque, form_submit/lead_created, eventos de
+> servidor rechazados desde el cliente, agregados de organización sin sitio, aislamiento A/B,
+> retención, rate limit por visitante con y sin secreto) + 22 unitarias en `@impulza/analytics`.
+> Las de bots y del secreto fallan contra el código roto a propósito y pasan con el correcto.
+> 238/238 en `@impulza/api` (una corrida intermedia tuvo 2 fallos en `pages.e2e` que pasan
+> aisladas 21/21 dos veces y en la corrida completa siguiente — la intermitencia de Prisma bajo
+> carga ya conocida, no una regresión). Playwright 15/15. Recorrido real con los cuatro procesos
+> (web → API → cola → worker → Postgres): dos visitantes distintos detrás de `apps/web` con hashes
+> distintos, Googlebot descartado, clic a enlace y a WhatsApp atribuidos a su bloque, país y UTM
+> agregados, vista previa de WhatsApp de un enlace corto sin sumar clic; el worker procesó 5/5 sin
+> fallos. `lint`/`typecheck` 24/24, build de web/worker, OpenAPI regenerado (el cuerpo del
+> endpoint de eventos no estaba documentado desde F3.4; ahora sí).
+>
+> **Deuda declarada (no bloquea):**
+> - Métricas del worker (completados/fallidos/reintentados) salen como logs estructurados, no como
+>   métricas agregadas en un backend de métricas: no existe todavía ese backend en el proyecto (ST
+>   §16). Tampoco hay panel de reintento controlado de la dead-letter: hoy se inspecciona/reintenta
+>   con las herramientas de BullMQ.
+> - `AnalyticsEvent` no guarda el `subject` (página/bloque): la atribución vive solo en los
+>   agregados, que es lo que lee el dashboard (F3.7). Si alguna vista necesitara recalcularla desde
+>   el crudo, haría falta una columna nueva.
+> - Las páginas publicadas antes de F3.6 no tienen ids de bloque en su versión: cuentan clics en el
+>   total, pero sin atribución por bloque hasta que se vuelvan a publicar.
+> - Staging no existe todavía; se prueba ahí cuando exista.
 
 ### F3.7 — Dashboard de conversión
 **Criterios de aceptación:**

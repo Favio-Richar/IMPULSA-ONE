@@ -26,7 +26,7 @@ export function PreviewPane({ blocks, themeTokens }: { blocks: BlockResponse[]; 
   const cssVariables = themeTokensToCssVariables(tokens) as CSSProperties;
   const visibleBlocks = blocks
     .filter((block) => block.visible && !block.degraded)
-    .map((block) => ({ type: block.type, config: block.config }));
+    .map((block) => ({ position: block.position, type: block.type, config: block.config }));
 
   return (
     <div className="flex h-full flex-col gap-3">

@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { formSubmissionAckResponse, publicFormResponse } from "@impulza/contracts";
+import type { Request } from "express";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { RateLimit } from "../../common/rate-limit.decorator.js";
 import { RateLimitGuard } from "../../common/rate-limit.guard.js";
@@ -52,7 +53,8 @@ export class PublicFormsController {
     @Param("siteSlug") siteSlug: string,
     @Param("formId") formId: string,
     @Body() body: Record<string, unknown>,
+    @Req() request: Request,
   ) {
-    return this.publicFormsService.submit(siteSlug, formId, body ?? {});
+    return this.publicFormsService.submit(siteSlug, formId, body ?? {}, request);
   }
 }

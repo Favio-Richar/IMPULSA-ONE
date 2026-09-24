@@ -1,3 +1,7 @@
-// Taxonomía y utilidades de eventos de analítica — implementación real en Fase 3.
-// Placeholder de la fundación del monorepo (F0.2) — ver docs/BACKLOG_FASE_0_1.md.
-export {};
+// Taxonomía, clasificación y procesamiento de eventos de analítica (F3.6, ST §10, ADR-004).
+export * from "./taxonomy.js";
+export * from "./user-agent.js";
+export * from "./metrics.js";
+export * from "./job.js";
+export * from "./processor.js";
+export * from "./proxy-headers.js";

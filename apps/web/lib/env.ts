@@ -19,10 +19,15 @@ const envSchema = z.object({
   // header lo controla quien lo manda, y una URL de SEO mal armada es una vía de manipulación, no
   // solo un bug cosmético.
   PUBLIC_WEB_BASE_URL: z.url(),
+  // Secreto compartido con apps/api (F3.6): acompaña a las cabeceras con la IP/user-agent/país del
+  // visitante real (lib/visitor-headers.ts) para que la API les crea. Server-only, igual que
+  // REVALIDATE_SECRET: nunca llega al navegador.
+  INTERNAL_PROXY_SECRET: z.string().min(32),
 });
 
 export const env = envSchema.parse({
   API_BASE_URL: process.env.API_BASE_URL,
   REVALIDATE_SECRET: process.env.REVALIDATE_SECRET,
   PUBLIC_WEB_BASE_URL: process.env.PUBLIC_WEB_BASE_URL,
+  INTERNAL_PROXY_SECRET: process.env.INTERNAL_PROXY_SECRET,
 });

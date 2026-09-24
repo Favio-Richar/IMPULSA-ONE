@@ -34,7 +34,7 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F3.5 — QR y enlaces cortos | Terminada |
 | F3.6 — Eventos analíticos (pipeline + retención) | Terminada |
 | F3.7 — Dashboard de conversión | Terminada |
-| F3.8 — Aislamiento multi-tenant de Fase 3 | Pendiente |
+| F3.8 — Aislamiento multi-tenant de Fase 3 | Terminada |
 
 ### F3.1 — Modelo de datos de conversión
 **Criterios de aceptación:**
@@ -441,6 +441,23 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
   cada entidad nueva.
 - El envío público de formularios y la resolución pública de enlaces cortos no filtran datos de
   otra organización ni de otro sitio.
+
+> **Estado (2026-09-23): terminada.** `apps/api/src/multi-tenant-isolation.e2e.test.ts` ya tenía
+> (desde cada historia) el ataque de id cruzado del panel para formularios (F3.2), contactos (F3.3)
+> y enlaces cortos/QR (F3.5). F3.8 suma las superficies que faltaban — las públicas y la analítica:
+>
+> - **Envío público de formularios:** el formulario de B enviado bajo el sitio de A → 404, sin
+>   `FormSubmission` ni `Contact` creados en ninguna de las dos; un envío legítimo a A crea el
+>   contacto solo en A (B no lo ve por listado ni por id) y la respuesta pública no trae ids.
+> - **Resolución pública de enlaces cortos y QR:** la respuesta es exactamente `{destinationUrl}` —
+>   ni organización, ni id del enlace, ni contadores; lo inexistente es 404 uniforme.
+> - **Eventos analíticos:** el slug de una página de B enviado al sitio de A cuenta en A (el sitio al
+>   que llegó) y nunca se atribuye a la página de B; B no recibe ninguna vista.
+> - **Dashboard (F3.7):** organización ajena en la ruta → 403 (también para un ADMIN de A); sitio
+>   ajeno en la query del resumen propio → 404; el resumen de A no nombra ningún id de B.
+>
+> **Verificación:** 42/42 en la suite central (8 casos nuevos). La prueba de atribución de eventos
+> falla contra el código sin el filtro por sitio al resolver el slug de página y pasa con él.
 
 ## Salida de Fase 3
 

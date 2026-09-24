@@ -10,6 +10,7 @@ import { AppModule } from "./app.module.js";
 import { PRISMA } from "./database/prisma.module.js";
 import { EMAIL_ADAPTER } from "./modules/auth/email-adapter.token.js";
 import { REDIS } from "./redis/redis.module.js";
+import { BROWSER_USER_AGENT, startAnalyticsTestWorker } from "./test-support/analytics-pipeline.js";
 
 // F1.9 — prueba transversal de aislamiento multi-tenant (ADR-002). Dos organizaciones reales,
 // exactamente lo que exige el backlog: "verificar que ningún endpoint de Fase 1 permite leer o
@@ -40,6 +41,7 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
   let redis: Redis;
   let emailAdapter: FakeEmailAdapter;
   let httpServer: Parameters<typeof request>[0];
+  let pipeline: ReturnType<typeof startAnalyticsTestWorker>;
 
   // Dos organizaciones completas, cada una con OWNER y un miembro con permisos (ADMIN) — para
   // probar que ni siquiera un ADMIN de la organización A puede tocar la B.
@@ -75,6 +77,7 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
 
     httpServer = app.getHttpServer();
     prisma = app.get(PRISMA);
+    pipeline = startAnalyticsTestWorker(prisma);
     redis = app.get(REDIS);
 
     // El limitador de peticiones es real y cuenta por IP: los archivos e2e corren en serie
@@ -180,6 +183,8 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
   });
 
   afterAll(async () => {
+    await pipeline.drain();
+    await pipeline.close();
     await prisma.organization.deleteMany({
       where: { memberships: { some: { user: { email: { endsWith: TEST_EMAIL_DOMAIN } } } } },
     });
@@ -859,6 +864,161 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         .get(`/api/v1/organizations/${orgB.id}/qr-codes/${qrOfB.body.id}`)
         .expect(200);
       expect(stillQr.body.styleConfig).toMatchObject({ key: "clasico" });
+    });
+  });
+
+  // ------------------------------------------------------------------------------------------
+  // F3.8 — superficies públicas y analítica de Fase 3. Las pruebas de arriba cubren el panel
+  // (id cruzado con la organización propia en la URL); estas cubren lo que un visitante anónimo
+  // puede tocar sin sesión, y el dashboard (F3.7).
+  // ------------------------------------------------------------------------------------------
+
+  async function siteSlugOf(org: { id: string; ownerAgent: ReturnType<typeof request.agent>; siteId: string }) {
+    const site = await org.ownerAgent.get(`/api/v1/organizations/${org.id}/sites/${org.siteId}`).expect(200);
+    return site.body.slug as string;
+  }
+
+  async function consentFormOf(org: { id: string; ownerAgent: ReturnType<typeof request.agent>; siteId: string }) {
+    const form = await org.ownerAgent
+      .post(`/api/v1/organizations/${org.id}/sites/${org.siteId}/forms`)
+      .set(CSRF_HEADERS)
+      .send({
+        name: "Contacto",
+        fields: [
+          { type: "EMAIL", label: "Correo", required: true },
+          { type: "CONSENT", label: "Acepto ser contactado" },
+        ],
+      })
+      .expect(201);
+    const [emailField, consentField] = form.body.fields as Array<{ id: string }>;
+    return { formId: form.body.id as string, emailFieldId: emailField!.id, consentFieldId: consentField!.id };
+  }
+
+  describe("Envío público de formularios (F3.2/F3.8): no cruza organizaciones ni sitios", () => {
+    it("el formulario de B enviado bajo el sitio de A no crea nada en ninguna de las dos", async () => {
+      const slugOfA = await siteSlugOf(orgA);
+      const formOfB = await consentFormOf(orgB);
+      const email = `cruzado-${Date.now()}${TEST_EMAIL_DOMAIN}`;
+
+      await request(httpServer)
+        .post(`/api/v1/public/sites/${slugOfA}/forms/${formOfB.formId}/submissions`)
+        .set(CSRF_HEADERS)
+        .set("User-Agent", BROWSER_USER_AGENT)
+        .send({ [formOfB.emailFieldId]: email, [formOfB.consentFieldId]: true })
+        .expect(404);
+
+      expect(await prisma.formSubmission.count({ where: { formId: formOfB.formId } })).toBe(0);
+      expect(await prisma.contact.count({ where: { email } })).toBe(0);
+    });
+
+    it("un envío al sitio de A crea el contacto solo en A: B no lo ve ni por listado ni por id", async () => {
+      const slugOfA = await siteSlugOf(orgA);
+      const formOfA = await consentFormOf(orgA);
+      const email = `lead-a-${Date.now()}${TEST_EMAIL_DOMAIN}`;
+
+      const ack = await request(httpServer)
+        .post(`/api/v1/public/sites/${slugOfA}/forms/${formOfA.formId}/submissions`)
+        .set(CSRF_HEADERS)
+        .set("User-Agent", BROWSER_USER_AGENT)
+        .send({ [formOfA.emailFieldId]: email, [formOfA.consentFieldId]: true })
+        .expect(201);
+      // La respuesta pública es solo el mensaje de éxito: ni ids del contacto ni de la organización.
+      expect(JSON.stringify(ack.body)).not.toContain(orgA.id);
+
+      const contact = await prisma.contact.findFirst({ where: { email } });
+      expect(contact?.organizationId).toBe(orgA.id);
+
+      const contactsOfB = await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/contacts`).expect(200);
+      expect(contactsOfB.body.map((c: { id: string }) => c.id)).not.toContain(contact?.id);
+      await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/contacts/${contact?.id}`).expect(404);
+    });
+  });
+
+  describe("Resolución pública de enlaces cortos y QR (F3.5/F3.8): solo el destino", () => {
+    it("la respuesta pública no expone la organización, el enlace ni sus contadores", async () => {
+      const slug = uniqueSlug();
+      const link = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/short-links`)
+        .set(CSRF_HEADERS)
+        .send({ slug, destinationUrl: "https://ejemplo.cl/destino-b" })
+        .expect(201);
+      const qr = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/qr-codes`)
+        .set(CSRF_HEADERS)
+        .send({ shortLinkId: link.body.id, styleKey: "clasico" })
+        .expect(201);
+
+      for (const path of [`/api/v1/public/short-links/${slug}`, `/api/v1/public/qr/${qr.body.id}`]) {
+        const response = await request(httpServer).get(path).set("User-Agent", BROWSER_USER_AGENT).expect(200);
+        expect(Object.keys(response.body)).toEqual(["destinationUrl"]);
+        expect(JSON.stringify(response.body)).not.toContain(orgB.id);
+        expect(JSON.stringify(response.body)).not.toContain(link.body.id);
+      }
+    });
+
+    it("un slug o QR inexistente responde 404 igual para todos, sin pistas", async () => {
+      await request(httpServer).get(`/api/v1/public/short-links/${uniqueSlug()}`).expect(404);
+      await request(httpServer).get(`/api/v1/public/qr/00000000-0000-4000-8000-000000000000`).expect(404);
+    });
+  });
+
+  describe("Eventos analíticos (F3.6/F3.8): cada evento queda en la organización del sitio", () => {
+    it("un slug de página de B enviado al sitio de A no se atribuye a la página de B", async () => {
+      const slugOfA = await siteSlugOf(orgA);
+      const pagesOfB = await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`).expect(200);
+      const extraPageOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`)
+        .set(CSRF_HEADERS)
+        .send({ slug: uniqueSlug() })
+        .expect(201);
+      const pageIdsOfB = [...pagesOfB.body.map((p: { id: string }) => p.id), extraPageOfB.body.id as string];
+
+      await request(httpServer)
+        .post(`/api/v1/public/sites/${slugOfA}/events`)
+        .set(CSRF_HEADERS)
+        .set("User-Agent", BROWSER_USER_AGENT)
+        .send({ type: "page_view", pageSlug: extraPageOfB.body.slug })
+        .expect(204);
+      await pipeline.drain();
+
+      const aggregates = await prisma.analyticsAggregate.findMany({
+        where: { OR: [{ organizationId: orgA.id }, { organizationId: orgB.id }] },
+        select: { organizationId: true, metric: true },
+      });
+      // El evento contó en A (el sitio al que llegó), y en ninguna métrica aparece una página de B.
+      expect(aggregates.some((row) => row.organizationId === orgA.id && row.metric === "page_view")).toBe(true);
+      // B puede tener agregados propios de otras pruebas (el clic a su enlace corto), pero ninguna
+      // vista de página: la única que se envió fue al sitio de A.
+      expect(aggregates.filter((row) => row.organizationId === orgB.id && row.metric.startsWith("page_view"))).toEqual([]);
+      for (const pageId of pageIdsOfB) {
+        expect(aggregates.map((row) => row.metric)).not.toContain(`page_view:subject:${pageId}`);
+      }
+    });
+  });
+
+  describe("Dashboard de conversión (F3.7/F3.8): ningún acceso cruzado", () => {
+    const range = () => {
+      const today = new Date().toISOString().slice(0, 10);
+      return `from=${today}&to=${today}`;
+    };
+
+    it("A no lee el resumen de B cambiando la organización de la ruta", async () => {
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/analytics/overview?${range()}`).expect(403);
+      await orgA.adminAgent.get(`/api/v1/organizations/${orgB.id}/analytics/overview?${range()}`).expect(403);
+    });
+
+    it("A no lee datos de B poniendo el sitio de B en la query de su propio resumen", async () => {
+      const response = await orgA.ownerAgent
+        .get(`/api/v1/organizations/${orgA.id}/analytics/overview?${range()}&siteId=${orgB.siteId}`)
+        .expect(404);
+      expect(JSON.stringify(response.body)).not.toContain(orgB.siteId);
+    });
+
+    it("el resumen de A nunca nombra objetos de B", async () => {
+      const overview = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/analytics/overview?${range()}`).expect(200);
+      const serialized = JSON.stringify(overview.body);
+      expect(serialized).not.toContain(orgB.id);
+      expect(serialized).not.toContain(orgB.siteId);
     });
   });
 

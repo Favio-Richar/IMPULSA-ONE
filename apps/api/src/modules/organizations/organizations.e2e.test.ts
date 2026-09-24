@@ -11,6 +11,7 @@ import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
+import { assignRoomyPlan } from "../../test-support/plans.js";
 
 // Pruebas de integración reales — NestJS completo + Postgres/Redis reales (docker-compose.yml).
 // Cubre F1.5 (CRUD de organizaciones/membresías) y sienta las bases de F1.9 (aislamiento
@@ -110,6 +111,9 @@ describe("Organizations (e2e)", () => {
     // El contrato publicado en OpenAPI se ejecuta contra la respuesta real: un contrato que nadie
     // corre es documentación, no contrato.
     organizationResponse.parse(response.body);
+    // Plan con cupo (F4.2): estas pruebas invitan miembros para verificar roles y membresías, no
+    // los límites de Gratis (esos tienen su propia suite, plan-limits.e2e.test.ts).
+    await assignRoomyPlan(prisma, response.body.id);
     return { id: response.body.id, slug };
   }
 

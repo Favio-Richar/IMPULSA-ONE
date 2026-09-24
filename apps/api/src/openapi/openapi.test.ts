@@ -95,6 +95,8 @@ describe("Documento OpenAPI", () => {
       "POST /api/v1/public/sites/{siteSlug}/events",
       "GET /api/v1/public/short-links/{slug}",
       "GET /api/v1/public/qr/{qrCodeId}",
+      // Catálogo de planes (F4.1): los precios de un SaaS son públicos (página de precios).
+      "GET /api/v1/plans",
     ]);
 
     const sinSeguridad: string[] = [];

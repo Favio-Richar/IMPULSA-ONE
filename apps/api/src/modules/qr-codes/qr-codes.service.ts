@@ -3,12 +3,14 @@ import type { Prisma as PrismaTypes, PrismaClient, QrCode } from "@impulza/datab
 import { getQrStylePreset, type CreateQrCodeInput, type UpdateQrCodeInput } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
+import { PlansService } from "../plans/plans.service.js";
 
 @Injectable()
 export class QrCodesService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
+    private readonly plansService: PlansService,
   ) {}
 
   async list(organizationId: string): Promise<QrCode[]> {
@@ -43,13 +45,16 @@ export class QrCodesService {
       throw new BadRequestException("Estilo de QR no reconocido.");
     }
 
-    const created = await this.prisma.qrCode.create({
-      data: {
-        organizationId,
-        shortLinkId: input.shortLinkId ?? null,
-        directUrl: input.directUrl ?? null,
-        styleConfig: preset as unknown as PrismaTypes.InputJsonValue,
-      },
+    const created = await this.prisma.$transaction(async (tx) => {
+      await this.plansService.assertWithinLimit(tx, organizationId, "qrCodes");
+      return tx.qrCode.create({
+        data: {
+          organizationId,
+          shortLinkId: input.shortLinkId ?? null,
+          directUrl: input.directUrl ?? null,
+          styleConfig: preset as unknown as PrismaTypes.InputJsonValue,
+        },
+      });
     });
 
     await this.auditService.record({

@@ -18,6 +18,7 @@ import { AuditService } from "../audit/audit.service.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import type { AssignableRole } from "./assignable-roles.js";
 import type { MembershipWithRole } from "./request-with-membership.js";
+import { PlansService } from "../plans/plans.service.js";
 
 @Injectable()
 export class OrganizationsService {
@@ -25,6 +26,7 @@ export class OrganizationsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(EMAIL_ADAPTER) private readonly emailAdapter: EmailAdapter,
     private readonly auditService: AuditService,
+    private readonly plansService: PlansService,
   ) {}
 
   async createOrganization(owner: User, name: string, slug: string): Promise<Organization> {
@@ -116,14 +118,19 @@ export class OrganizationsService {
 
     const role = await this.prisma.role.findUniqueOrThrow({ where: { name: roleName } });
 
-    const membership = existingMembership
-      ? await this.prisma.membership.update({
-          where: { id: existingMembership.id },
-          data: { status: MembershipStatus.INVITED, roleId: role.id, invitedAt: new Date(), acceptedAt: null },
-        })
-      : await this.prisma.membership.create({
-          data: { userId: invitee.id, organizationId, roleId: role.id, status: MembershipStatus.INVITED },
-        });
+    // Una invitación pendiente ya ocupa un lugar del plan (F4.2): por eso se verifica al invitar y
+    // no al aceptar.
+    const membership = await this.prisma.$transaction(async (tx) => {
+      await this.plansService.assertWithinLimit(tx, organizationId, "members");
+      return existingMembership
+        ? tx.membership.update({
+            where: { id: existingMembership.id },
+            data: { status: MembershipStatus.INVITED, roleId: role.id, invitedAt: new Date(), acceptedAt: null },
+          })
+        : tx.membership.create({
+            data: { userId: invitee.id, organizationId, roleId: role.id, status: MembershipStatus.INVITED },
+          });
+    });
 
     const organization = await this.prisma.organization.findUniqueOrThrow({
       where: { id: organizationId },

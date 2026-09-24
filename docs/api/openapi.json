@@ -1341,6 +1341,9 @@
           "401": {
             "description": "Sin sesión válida."
           },
+          "402": {
+            "description": "Límite de plan alcanzado (`members`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
+          },
           "403": {
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
@@ -2397,6 +2400,9 @@
           },
           "401": {
             "description": "Sin sesión válida."
+          },
+          "402": {
+            "description": "Límite de plan alcanzado (`sites`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
           },
           "403": {
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
@@ -3496,6 +3502,9 @@
           "401": {
             "description": "Sin sesión válida."
           },
+          "402": {
+            "description": "Límite de plan alcanzado (`pagesPerSite`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
+          },
           "403": {
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
@@ -4355,6 +4364,9 @@
           },
           "401": {
             "description": "Sin sesión válida."
+          },
+          "402": {
+            "description": "Límite de plan alcanzado (`pagesPerSite`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
           },
           "403": {
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
@@ -6572,6 +6584,9 @@
           "401": {
             "description": "Sin sesión válida."
           },
+          "402": {
+            "description": "Límite de plan alcanzado (`contacts`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
+          },
           "403": {
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           }
@@ -8302,6 +8317,9 @@
           },
           "401": {
             "description": "Sin sesión válida."
+          },
+          "402": {
+            "description": "Límite de plan alcanzado (`forms`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
           },
           "403": {
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
@@ -10902,6 +10920,9 @@
           "401": {
             "description": "Sin sesión válida."
           },
+          "402": {
+            "description": "Límite de plan alcanzado (`shortLinks`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
+          },
           "403": {
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
@@ -11566,6 +11587,9 @@
           },
           "401": {
             "description": "Sin sesión válida."
+          },
+          "402": {
+            "description": "Límite de plan alcanzado (`qrCodes`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
           },
           "403": {
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."

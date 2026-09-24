@@ -12,6 +12,7 @@ import {
   ApiZodArrayResponse,
   ApiZodBody,
   ApiZodResponse,
+  ApiPlanLimited,
 } from "../../openapi/zod-openapi.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
@@ -75,6 +76,7 @@ export class PagesController {
   }
 
   @Post()
+  @ApiPlanLimited("pagesPerSite")
   @UseGuards(PermissionGuard)
   @RequirePermission(PERMISSIONS.PAGE_MANAGE)
   @ApiOperation({
@@ -175,6 +177,7 @@ export class PagesController {
   }
 
   @Post(":pageId/restore")
+  @ApiPlanLimited("pagesPerSite")
   @UseGuards(PermissionGuard)
   @RequirePermission(PERMISSIONS.PAGE_DELETE)
   @ApiOperation({

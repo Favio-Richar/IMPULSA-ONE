@@ -8,6 +8,7 @@ import type {
 } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
+import { PlansService } from "../plans/plans.service.js";
 
 export interface ContactFromSubmissionInput {
   organizationId: string;
@@ -27,6 +28,7 @@ export class ContactsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
+    private readonly plansService: PlansService,
   ) {}
 
   /**
@@ -119,15 +121,21 @@ export class ContactsService {
   /** Alta manual (ADR-004: sin formulario público de por medio, el consentimiento queda
    *  `UNKNOWN` por defecto — nadie puede declarar "otorgado" un consentimiento que no se dio). */
   async createContact(organizationId: string, actorId: string, input: CreateContactInput): Promise<Contact> {
-    const contact = await this.prisma.contact.create({
-      data: {
-        organizationId,
-        name: input.name ?? null,
-        email: input.email ?? null,
-        phone: input.phone ?? null,
-        source: input.source ?? "manual",
-        tags: input.tags ?? [],
-      },
+    // Solo el alta manual respeta el límite de contactos (F4.2). Un contacto que llega por
+    // formulario público (`findOrCreateFromSubmission`) se guarda siempre: el visitante no tiene la
+    // culpa del plan del negocio, y perder un lead real sería peor que exceder el cupo.
+    const contact = await this.prisma.$transaction(async (tx) => {
+      await this.plansService.assertWithinLimit(tx, organizationId, "contacts");
+      return tx.contact.create({
+        data: {
+          organizationId,
+          name: input.name ?? null,
+          email: input.email ?? null,
+          phone: input.phone ?? null,
+          source: input.source ?? "manual",
+          tags: input.tags ?? [],
+        },
+      });
     });
 
     await this.auditService.record({

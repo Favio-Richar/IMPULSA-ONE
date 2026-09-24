@@ -11,6 +11,7 @@ import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
+import { assignRoomyPlan } from "../../test-support/plans.js";
 
 // F3.3 — mini-CRM de contactos: CRUD, filtros, notas, borrado en cascada auditado (ADR-004).
 
@@ -97,6 +98,8 @@ describe("Contacts (e2e) — F3.3", () => {
       .set(CSRF_HEADERS)
       .send({ name: "Org Contactos", slug: uniqueSlug("org") })
       .expect(201);
+    // Plan con cupo (F4.2): estas pruebas verifican otra cosa, no los límites de Gratis.
+    await assignRoomyPlan(prisma, org.body.id);
 
     return {
       organizationId: org.body.id,

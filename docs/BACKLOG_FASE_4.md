@@ -33,7 +33,7 @@ bloqueado explícitamente.
 | Historia | Estado |
 |---|---|
 | F4.1 — Catálogo de planes y plan por organización | Terminada |
-| F4.2 — Aplicación de límites en servidor | Pendiente |
+| F4.2 — Aplicación de límites en servidor | Terminada |
 | F4.3 — Plan y uso en el panel | Pendiente |
 | F4.4 — Superadministración mínima (`apps/admin`) | Pendiente |
 | F4.5 — Soporte mínimo | Pendiente |
@@ -92,6 +92,45 @@ bloqueado explícitamente.
   (el visitante no tiene la culpa) y la organización ve el exceso — decisión de producto, documentada.
 - Bajar de plan nunca borra datos: lo que excede queda en solo lectura para crear más, no se elimina.
 - Pruebas por cada límite, incluida la carrera de dos creaciones simultáneas.
+
+> **Estado (2026-09-24): terminada.**
+>
+> - `PlansService.assertWithinLimit` (`apps/api/src/modules/plans/plans.service.ts`) se llama **dentro
+>   de la transacción que crea** en los 8 puntos de alta: sitio, página, restaurar página (vuelve a
+>   ocupar lugar), formulario, contacto manual, enlace corto, QR e invitación de miembro. Toma un lock
+>   consultivo por organización y tipo de límite, resuelve el plan efectivo y cuenta — así las altas
+>   simultáneas se serializan. Aceptar una invitación no se verifica: la invitación pendiente ya
+>   ocupaba su lugar.
+> - Error propio **402 Payment Required** (`PlanLimitExceededException`): `code: "PLAN_LIMIT_REACHED"`
+>   estable, mensaje en español, `limit: { key, max, used }` y `plan: { code, name }`. 402 y no 403:
+>   el usuario sí tiene permiso, le falta cupo — el panel ofrece subir de plan en vez de "no tienes
+>   permiso". Documentado en OpenAPI en cada alta (`@ApiPlanLimited`).
+> - Decisiones de producto: archivar un sitio libera su cupo; los miembros cuentan activos +
+>   invitaciones pendientes; los contactos que llegan por formulario público **nunca** se rechazan
+>   (se guardan y el exceso se ve en el uso); bajar de plan no borra nada — lo existente queda y solo
+>   se bloquea crear más.
+> - Pruebas de otras áreas que invitan miembros o crean varios recursos para verificar **otra** cosa
+>   (roles, aislamiento, auditoría) usan un helper explícito (`test-support/plans.ts`) que pone su
+>   organización en un plan con cupo — nunca un interruptor global que apague los límites.
+> - Defecto encontrado al correr la suite completa y corregido: un evento de analítica de una
+>   organización borrada mientras esperaba en la cola chocaba contra la clave foránea y BullMQ lo
+>   reintentaba 5 veces (terminando en la dead-letter). Ahora el procesador lo descarta como
+>   `orphaned`, sin reintentos (probado). Las suites que envían formularios públicos levantan su
+>   propio worker de prueba para no dejar eventos en la cola de otro archivo.
+>
+> **Verificación:** `plan-limits.e2e.test.ts` (8 pruebas contra Postgres real: 402 con su cuerpo,
+> archivar libera, páginas crear/restaurar, enlaces/QR/contactos/miembros, "sin límite" nunca bloquea,
+> contacto por formulario nunca se pierde, **carrera de 5 altas simultáneas → exactamente 1**, bajar
+> de plan no borra). La prueba de la carrera falla contra el código sin el lock (4 y 5 sitios creados
+> con límite 1) y pasa con él. 268/269 en `@impulza/api` en dos corridas completas: el único fallo de
+> cada una fue una prueba distinta por `ENOBUFS` (Windows sin puertos efímeros, ~2.400 sockets en
+> `TIME_WAIT`) y ambas pasan aisladas 31/31 — ver deuda. OpenAPI regenerado.
+>
+> **Deuda declarada:** las pruebas e2e de `apps/api` abren una conexión nueva por petición
+> (supertest sobre el `httpServer`); con más de 260 pruebas, Windows agota los puertos efímeros en la
+> corrida completa. Mitigación: levantar el servidor una vez (`app.listen(0)`) y reusar conexiones
+> keep-alive. No afecta a CI en Linux de la misma forma, pero conviene hacerlo antes de que la suite
+> siga creciendo.
 
 ### F4.3 — Plan y uso en el panel
 **Criterios de aceptación:**

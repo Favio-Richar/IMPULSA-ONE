@@ -5,6 +5,7 @@ import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
 import { ThemesService, type ThemeView } from "../themes/themes.service.js";
+import { PlansService } from "../plans/plans.service.js";
 
 @Injectable()
 export class SitesService {
@@ -12,6 +13,7 @@ export class SitesService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
     private readonly themesService: ThemesService,
+    private readonly plansService: PlansService,
   ) {}
 
   /**
@@ -58,6 +60,8 @@ export class SitesService {
       // estado válido del que el usuario pueda salir solo — no existe endpoint para crear *la*
       // home, precisamente porque siempre debe existir.
       site = await this.prisma.$transaction(async (tx) => {
+        // Límite de plan (F4.2) dentro de la misma transacción que crea: ver `assertWithinLimit`.
+        await this.plansService.assertWithinLimit(tx, organizationId, "sites");
         const created = await tx.site.create({
           data: { organizationId, name, slug, status: SiteStatus.DRAFT },
         });

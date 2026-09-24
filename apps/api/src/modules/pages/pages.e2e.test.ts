@@ -11,6 +11,7 @@ import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
+import { assignRoomyPlan } from "../../test-support/plans.js";
 
 // F2.3 — páginas: home automática, slug por sitio, orden, visibilidad y borrado lógico.
 
@@ -99,6 +100,8 @@ describe("Pages (e2e) — F2.3", () => {
       .set(CSRF_HEADERS)
       .send({ name: "Org Páginas", slug: uniqueSlug("org") })
       .expect(201);
+    // Plan con cupo (F4.2): estas pruebas verifican otra cosa, no los límites de Gratis.
+    await assignRoomyPlan(prisma, org.body.id);
     const site = await agent
       .post(`/api/v1/organizations/${org.body.id}/sites`)
       .set(CSRF_HEADERS)

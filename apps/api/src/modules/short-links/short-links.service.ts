@@ -4,6 +4,7 @@ import type { CreateShortLinkInput, UpdateShortLinkInput } from "@impulza/valida
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
+import { PlansService } from "../plans/plans.service.js";
 
 const SLUG_TAKEN = "Ya existe un enlace corto con ese slug.";
 
@@ -12,6 +13,7 @@ export class ShortLinksService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
+    private readonly plansService: PlansService,
   ) {}
 
   async list(organizationId: string): Promise<ShortLink[]> {
@@ -33,13 +35,16 @@ export class ShortLinksService {
   async create(organizationId: string, actorId: string, input: CreateShortLinkInput): Promise<ShortLink> {
     let created: ShortLink;
     try {
-      created = await this.prisma.shortLink.create({
-        data: {
-          organizationId,
-          slug: input.slug,
-          destinationUrl: input.destinationUrl,
-          utm: (input.utm ?? null) as PrismaTypes.InputJsonValue,
-        },
+      created = await this.prisma.$transaction(async (tx) => {
+        await this.plansService.assertWithinLimit(tx, organizationId, "shortLinks");
+        return tx.shortLink.create({
+          data: {
+            organizationId,
+            slug: input.slug,
+            destinationUrl: input.destinationUrl,
+            utm: (input.utm ?? null) as PrismaTypes.InputJsonValue,
+          },
+        });
       });
     } catch (error) {
       if (isUniqueViolation(error)) {

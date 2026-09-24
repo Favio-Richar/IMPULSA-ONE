@@ -1,9 +1,10 @@
 import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
 import type { OrganizationPlanResponse, PlanResponse, PlanUsageResponse } from "@impulza/contracts";
 import { MembershipStatus, type Plan, type Prisma, type PrismaClient, SiteStatus, SubscriptionStatus } from "@impulza/database";
-import { DEFAULT_PLAN_CODE, planLimitsSchema } from "@impulza/validation";
+import { DEFAULT_PLAN_CODE, type EnforcedLimitKey, planLimitsSchema } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
+import { PlanLimitExceededException } from "./plan-limit.exception.js";
 
 /** Cualquier cliente que sirva para leer: el normal o el de una transacción en curso (F4.2 cuenta
  *  el uso dentro de la misma transacción que crea el recurso). */
@@ -100,6 +101,59 @@ export class PlansService {
       }),
     ]);
     return { sites, forms, contacts, shortLinks, qrCodes, members };
+  }
+
+  /** Conteo de un solo límite (el mismo criterio que `usage`), para no contar todo en cada alta. */
+  private async countFor(key: EnforcedLimitKey, organizationId: string, db: Db): Promise<number> {
+    switch (key) {
+      case "sites":
+        return db.site.count({ where: { organizationId, status: { not: SiteStatus.ARCHIVED } } });
+      case "forms":
+        return db.form.count({ where: { site: { organizationId } } });
+      case "contacts":
+        return db.contact.count({ where: { organizationId } });
+      case "shortLinks":
+        return db.shortLink.count({ where: { organizationId } });
+      case "qrCodes":
+        return db.qrCode.count({ where: { organizationId } });
+      case "members":
+        return db.membership.count({
+          where: { organizationId, status: { in: [MembershipStatus.ACTIVE, MembershipStatus.INVITED] } },
+        });
+    }
+  }
+
+  /**
+   * Verifica un límite antes de crear (F4.2). **Tiene que llamarse dentro de la misma transacción
+   * que crea el recurso**: toma un lock consultivo por organización y tipo de límite, así dos altas
+   * simultáneas se serializan — la segunda cuenta después de que la primera ya creó — y ninguna
+   * puede pasar el límite. El lock se libera solo al terminar la transacción.
+   *
+   * `pagesPerSite` se cuenta por sitio (`siteId` obligatorio); el resto, por organización.
+   */
+  async assertWithinLimit(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    key: EnforcedLimitKey | "pagesPerSite",
+    siteId?: string,
+  ): Promise<void> {
+    const lockKey = key === "pagesPerSite" ? `plan-limit:${organizationId}:pages:${siteId}` : `plan-limit:${organizationId}:${key}`;
+    await tx.$queryRaw`SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext(${lockKey}))) AS acquired`;
+
+    const { plan } = await this.resolveEffectivePlan(organizationId, tx);
+    const max = plan.limits[key];
+    if (max === null) {
+      return;
+    }
+
+    const used =
+      key === "pagesPerSite"
+        ? await tx.page.count({ where: { siteId, deletedAt: null } })
+        : await this.countFor(key, organizationId, tx);
+
+    if (used >= max) {
+      throw new PlanLimitExceededException(key, max, used, { code: plan.code, name: plan.name });
+    }
   }
 
   async organizationPlan(organizationId: string): Promise<OrganizationPlanResponse> {

@@ -6,10 +6,21 @@ import { metricsForEvent, periodFor, visitorsMetric } from "./metrics.js";
 // que las pruebas de `apps/api` ejerciten exactamente el mismo código que corre en producción,
 // sin copiarlo ni simularlo.
 
-export type ProcessAnalyticsEventResult = "recorded" | "duplicate";
+/** `orphaned`: la organización (o el sitio) del evento se borró mientras el evento esperaba en la
+ *  cola. No hay dónde registrarlo y reintentar no lo va a arreglar: se descarta sin reintentos, en
+ *  vez de ensuciar la dead-letter con fallos que no son fallos. */
+export type ProcessAnalyticsEventResult = "recorded" | "duplicate" | "orphaned";
+
+function prismaErrorCode(error: unknown): unknown {
+  return typeof error === "object" && error !== null ? (error as { code?: unknown }).code : undefined;
+}
 
 function isUniqueViolation(error: unknown): boolean {
-  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
+  return prismaErrorCode(error) === "P2002";
+}
+
+function isForeignKeyViolation(error: unknown): boolean {
+  return prismaErrorCode(error) === "P2003";
 }
 
 /**
@@ -82,6 +93,9 @@ export async function processAnalyticsEvent(
   } catch (error) {
     if (job.idempotencyKey && isUniqueViolation(error)) {
       return "duplicate";
+    }
+    if (isForeignKeyViolation(error)) {
+      return "orphaned";
     }
     throw error;
   }

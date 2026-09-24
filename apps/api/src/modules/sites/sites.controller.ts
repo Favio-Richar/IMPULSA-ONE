@@ -12,6 +12,7 @@ import {
   ApiZodArrayResponse,
   ApiZodBody,
   ApiZodResponse,
+  ApiPlanLimited,
 } from "../../openapi/zod-openapi.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
@@ -40,6 +41,7 @@ export class SitesController {
   constructor(private readonly sitesService: SitesService) {}
 
   @Post()
+  @ApiPlanLimited("sites")
   @UseGuards(PermissionGuard)
   @RequirePermission(PERMISSIONS.SITE_CREATE)
   @ApiOperation({

@@ -11,6 +11,7 @@ import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
+import { assignRoomyPlan } from "../../test-support/plans.js";
 
 // Verifica que las acciones sensibles listadas en F1.7 (cambios de rol, invitaciones, remociones,
 // login fallido repetido, cambios de 2FA) dejan de verdad una fila en audit_logs — con actor,
@@ -116,6 +117,8 @@ describe("Audit log (e2e) — F1.7", () => {
       .send({ name: "Audit Org", slug: uniqueSlug() })
       .expect(201);
     const orgId: string = orgResponse.body.id;
+    // Plan con cupo (F4.2): esta prueba verifica otra cosa, no los límites de Gratis.
+    await assignRoomyPlan(prisma, orgId);
 
     const createdLog = await prisma.auditLog.findFirst({
       where: { action: "organization.created", targetId: orgId },

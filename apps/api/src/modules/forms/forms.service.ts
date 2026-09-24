@@ -8,6 +8,7 @@ import type {
 } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
+import { PlansService } from "../plans/plans.service.js";
 
 type FormWithFields = Form & { fields: FormField[] };
 
@@ -39,6 +40,7 @@ export class FormsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
+    private readonly plansService: PlansService,
   ) {}
 
   /** Igual patrón que `PagesService`/`BlocksService`: 404 y no 403 ante un id cruzado (ADR-002). */
@@ -118,6 +120,7 @@ export class FormsService {
     await this.assertSiteInOrganization(organizationId, siteId);
 
     const created = await this.prisma.$transaction(async (tx) => {
+      await this.plansService.assertWithinLimit(tx, organizationId, "forms");
       const form = await tx.form.create({
         data: {
           siteId,

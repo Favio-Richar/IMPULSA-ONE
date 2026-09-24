@@ -211,6 +211,24 @@ describe("Pipeline de analítica (e2e) — F3.6", () => {
     expect((await aggregates(organizationId)).form_submit).toBe(1);
   });
 
+  it("un evento de una organización ya borrada se descarta sin reintentos (orphaned)", async () => {
+    const orphan = {
+      // Una organización que no existe: igual que una borrada mientras su evento esperaba en cola.
+      organizationId: crypto.randomUUID(),
+      siteId: null,
+      type: "short_link_click" as const,
+      anonymizedVisitorId: null,
+      device: null,
+      geoCountry: null,
+      geoCity: null,
+      utm: null,
+      subjectId: null,
+      idempotencyKey: null,
+      occurredAt: new Date().toISOString(),
+    };
+    expect(await processAnalyticsEvent(prisma, orphan)).toBe("orphaned");
+  });
+
   it("visitantes únicos: el mismo visitante dos veces suma vistas pero no visitantes", async () => {
     const { siteSlug, organizationId, home } = await createPublishedSite();
 

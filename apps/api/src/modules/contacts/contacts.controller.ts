@@ -12,6 +12,7 @@ import {
   ApiZodArrayResponse,
   ApiZodBody,
   ApiZodResponse,
+  ApiPlanLimited,
 } from "../../openapi/zod-openapi.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
@@ -86,6 +87,7 @@ export class ContactsController {
   }
 
   @Post()
+  @ApiPlanLimited("contacts")
   @UseGuards(PermissionGuard)
   @RequirePermission(PERMISSIONS.CONTACT_MANAGE)
   @ApiOperation({

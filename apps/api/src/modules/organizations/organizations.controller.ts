@@ -17,6 +17,7 @@ import {
   ApiZodArrayResponse,
   ApiZodBody,
   ApiZodResponse,
+  ApiPlanLimited,
 } from "../../openapi/zod-openapi.js";
 import { changeRoleSchema, type ChangeRoleDto } from "./dto/change-role.dto.js";
 import { createOrganizationSchema, type CreateOrganizationDto } from "./dto/create-organization.dto.js";
@@ -93,6 +94,7 @@ export class OrganizationsController {
   }
 
   @Post(":organizationId/members")
+  @ApiPlanLimited("members")
   @UseGuards(OrganizationMembershipGuard, PermissionGuard)
   @RequirePermission(PERMISSIONS.ORGANIZATION_MEMBERS_INVITE)
   @ApiOperation({

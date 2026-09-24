@@ -11,6 +11,7 @@ import { PRISMA } from "./database/prisma.module.js";
 import { EMAIL_ADAPTER } from "./modules/auth/email-adapter.token.js";
 import { REDIS } from "./redis/redis.module.js";
 import { BROWSER_USER_AGENT, startAnalyticsTestWorker } from "./test-support/analytics-pipeline.js";
+import { assignRoomyPlan } from "./test-support/plans.js";
 
 // F1.9 — prueba transversal de aislamiento multi-tenant (ADR-002). Dos organizaciones reales,
 // exactamente lo que exige el backlog: "verificar que ningún endpoint de Fase 1 permite leer o
@@ -120,6 +121,8 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       .set(CSRF_HEADERS)
       .send({ name: "Org A", slug: uniqueSlug() })
       .expect(201);
+    // Plan con cupo (F4.2): esta suite verifica aislamiento, no los límites de Gratis.
+    await assignRoomyPlan(prisma, orgAResponse.body.id);
     const inviteAdminA = await ownerA.agent
       .post(`/api/v1/organizations/${orgAResponse.body.id}/members`)
       .set(CSRF_HEADERS)
@@ -152,6 +155,7 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       .set(CSRF_HEADERS)
       .send({ name: "Org B", slug: uniqueSlug() })
       .expect(201);
+    await assignRoomyPlan(prisma, orgBResponse.body.id);
     const inviteMemberB = await ownerB.agent
       .post(`/api/v1/organizations/${orgBResponse.body.id}/members`)
       .set(CSRF_HEADERS)

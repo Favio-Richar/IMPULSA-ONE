@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
+import { startAnalyticsTestWorker } from "../../test-support/analytics-pipeline.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 
 // F3.2 — envío público: antispam, validación contra los campos reales, y el efecto en Contact/
@@ -38,6 +39,8 @@ describe("Public form submission (e2e) — F3.2", () => {
   let redis: Redis;
   let emailAdapter: FakeEmailAdapter;
   let httpServer: Parameters<typeof request>[0];
+  // Desde F3.6 cada envío encola form_submit/lead_created: se procesan acá, no quedan para otro archivo.
+  let pipeline: ReturnType<typeof startAnalyticsTestWorker>;
 
   beforeAll(async () => {
     emailAdapter = new FakeEmailAdapter();
@@ -54,10 +57,13 @@ describe("Public form submission (e2e) — F3.2", () => {
 
     httpServer = app.getHttpServer();
     prisma = app.get(PRISMA);
+    pipeline = startAnalyticsTestWorker(prisma);
     redis = app.get(REDIS);
   });
 
   afterAll(async () => {
+    await pipeline.drain();
+    await pipeline.close();
     await prisma.organization.deleteMany({
       where: { memberships: { some: { user: { email: { endsWith: TEST_EMAIL_DOMAIN } } } } },
     });

@@ -10,12 +10,14 @@ import type { SeoMeta } from "@impulza/validation";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
+import { PlansService } from "../plans/plans.service.js";
 
 @Injectable()
 export class PagesService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
+    private readonly plansService: PlansService,
   ) {}
 
   /**
@@ -83,6 +85,7 @@ export class PagesService {
     let page: Page;
     try {
       page = await this.prisma.$transaction(async (tx) => {
+        await this.plansService.assertWithinLimit(tx, organizationId, "pagesPerSite", siteId);
         // La posición se calcula dentro de la transacción para que dos creaciones simultáneas no
         // lean el mismo máximo. Compartir posición no rompe nada (no hay UNIQUE), solo desordena.
         const last = await tx.page.findFirst({
@@ -254,9 +257,13 @@ export class PagesService {
     // informa en vez de fallar con un 500, porque es una situación real y esperable.
     let restored: Page;
     try {
-      restored = await this.prisma.page.update({
-        where: { id: page.id },
-        data: { deletedAt: null },
+      // Restaurar vuelve a ocupar un lugar: respeta el límite de páginas por sitio igual que crear.
+      restored = await this.prisma.$transaction(async (tx) => {
+        await this.plansService.assertWithinLimit(tx, organizationId, "pagesPerSite", siteId);
+        return tx.page.update({
+          where: { id: page.id },
+          data: { deletedAt: null },
+        });
       });
     } catch (error) {
       if (isUniqueViolation(error)) {

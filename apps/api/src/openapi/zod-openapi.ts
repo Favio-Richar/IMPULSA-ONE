@@ -105,6 +105,17 @@ export function ApiRateLimited(limit: number, windowSeconds: number): MethodDeco
   });
 }
 
+/**
+ * 402 documentado en cada alta sujeta a límite de plan (F4.2): `code: "PLAN_LIMIT_REACHED"` es
+ * estable; `limit` trae la clave, el máximo y el uso actual, y `plan` el plan efectivo.
+ */
+export function ApiPlanLimited(limitKey: string): MethodDecorator {
+  return ApiResponse({
+    status: 402,
+    description: `Límite de plan alcanzado (\`${limitKey}\`). Cuerpo: \`{ code: "PLAN_LIMIT_REACHED", message, limit: { key, max, used }, plan: { code, name } }\`.`,
+  });
+}
+
 /** Parámetro de ruta con el mismo texto en todos los controladores que lo usan. */
 export function ApiOrganizationIdParam(): MethodDecorator & ClassDecorator {
   return ApiParam({

@@ -1,0 +1,134 @@
+# Backlog — Fase 4 (SaaS comercial)
+
+Fuente: `02_STACK_ARQUITECTURA_E_INSTRUCCIONES_CLAUDE.md` §19 (lista de Fase 4: planes, límites,
+suscripción, administración global, soporte mínimo, dominios personalizados, producción y
+monitoreo) y §12 (pagos: MVP vs. después del MVP), `PLAN_MAESTRO_PLATAFORMA_IDENTIDAD_DIGITAL.md`
+§7.5 (precios), §9.14 (dominios) y §12 (superadministración), y `docs/architecture/ERD.md` §2
+(`Plan`, `Subscription`, `UsageCounter` — modelados desde F1.2, sin uso hasta ahora). Cada historia
+usa la Definición de Terminado general (`CLAUDE.md`) **más** los criterios específicos de abajo.
+
+Precondición cumplida: Fase 3 cerrada (F3.1–F3.8, ver `BACKLOG_FASE_3.md` "Salida de Fase 3").
+
+## Decisiones de negocio que rozan esta fase
+
+De `REQUIREMENTS_TRACEABILITY.md` §15. Son del propietario, no de ingeniería. El backlog está
+ordenado para que **nada se construya en la dirección contraria** mientras no estén resueltas: lo
+que depende de una decisión se construye configurable (en base de datos, no en código) o queda
+bloqueado explícitamente.
+
+| # | Decisión | Qué bloquea en esta fase | Cómo se avanza mientras tanto |
+|---|---|---|---|
+| 2 | Mercado de lanzamiento | Moneda de los precios | Precios guardados como `(monto en unidad mínima, moneda ISO)` — cambiar de moneda es un dato, no código |
+| 4 | Límites exactos de cada plan | Los números de F4.1 | Catálogo editable desde superadministración (F4.4); valores iniciales **provisorios** y rotulados así |
+| 5 | Pasarela de suscripción | F4.6 completa | F4.1–F4.5 no cobran: el MVP de pagos (ST §12) es plan gratuito + límites + asignación manual / enlace externo |
+| 1 | Nombre y dominio definitivos | F4.7 (dominio de la plataforma para CNAME) | El dominio base es configuración de entorno |
+| 7 | Cuotas de almacenamiento/tráfico | Límite de storage en F4.1 | No hay subida de archivos todavía: el límite existe en el catálogo pero no se aplica hasta que exista media |
+| 9 | Política de moderación | Moderación en F4.4 | F4.4 solo incluye bloqueo/restauración manual auditado; reportes de abuso quedan para cuando exista la política |
+| — | Hosting de producción | F4.8 | No se elige proveedor sin decisión explícita; F4.8 queda bloqueada |
+
+## Fase 4 — SaaS comercial
+
+**Estado de la fase** (se actualiza al cerrar cada historia contra la Definición de Terminado):
+
+| Historia | Estado |
+|---|---|
+| F4.1 — Catálogo de planes y plan por organización | Pendiente |
+| F4.2 — Aplicación de límites en servidor | Pendiente |
+| F4.3 — Plan y uso en el panel | Pendiente |
+| F4.4 — Superadministración mínima (`apps/admin`) | Pendiente |
+| F4.5 — Soporte mínimo | Pendiente |
+| F4.6 — Cobro recurrente con pasarela | Bloqueada (decisión #5) |
+| F4.7 — Dominios personalizados | Pendiente (parcialmente bloqueada por decisión #1) |
+| F4.8 — Producción y monitoreo | Bloqueada (decisión de hosting) |
+| F4.9 — Aislamiento y seguridad de Fase 4 | Pendiente |
+
+### F4.1 — Catálogo de planes y plan por organización
+**Criterios de aceptación:**
+- Catálogo `Plan` sembrado con Gratis, Profesional, Negocio y Agencia (PM §7.5), precio mensual y
+  anual en unidad mínima de moneda + código ISO (nunca float), y límites tipados (Zod en
+  `packages/validation`, no JSON libre): sitios, páginas por sitio, formularios, contactos, enlaces
+  cortos, QR, miembros, meses de historial de analítica visibles. Valores iniciales **provisorios**
+  hasta la decisión #4, marcados como tales en el seed y en la documentación.
+- Toda organización tiene un plan efectivo: las nuevas nacen en Gratis; las existentes se asignan a
+  Gratis con una migración de datos no destructiva.
+- El plan efectivo se resuelve en un solo lugar del servidor (suscripción activa → su plan; si no,
+  Gratis) — nunca se confía en un plan enviado por el cliente.
+- Endpoint de lectura del plan y el catálogo; OpenAPI actualizado; migración si cambia el modelo.
+
+### F4.2 — Aplicación de límites en servidor
+**Criterios de aceptación:**
+- Cada creación sujeta a límite (sitio, página, formulario, contacto manual, enlace corto, QR,
+  invitación de miembro) verifica el límite del plan efectivo **en el servidor**, dentro de la misma
+  transacción o con un conteo consistente — dos peticiones simultáneas no pueden pasar el límite.
+- Al superar el límite: error propio y documentado (código estable, mensaje en español, límite y uso
+  actual en el cuerpo) — no un 500 ni un 400 genérico.
+- Los contactos que llegan por formulario público **no** se pierden por límite: se guardan igual
+  (el visitante no tiene la culpa) y la organización ve el exceso — decisión de producto, documentada.
+- Bajar de plan nunca borra datos: lo que excede queda en solo lectura para crear más, no se elimina.
+- Pruebas por cada límite, incluida la carrera de dos creaciones simultáneas.
+
+### F4.3 — Plan y uso en el panel
+**Criterios de aceptación:**
+- Página de plan en el panel: plan actual, medidores de uso por límite, comparador de planes.
+- Cada pantalla de creación muestra el estado "límite alcanzado" con el motivo y el camino para
+  subir de plan (sin cobro todavía: solicitud o enlace externo según ST §12 MVP), nunca un error
+  genérico.
+- Estados de carga/vacío/error/éxito, responsive (Playwright), accesible.
+
+### F4.4 — Superadministración mínima (`apps/admin`)
+**Criterios de aceptación:**
+- ADR nuevo: modelo de superadministrador (quién lo es, cómo se otorga, cómo se separa de los roles
+  de organización — ADR-002 §4 ya prevé acciones sin organización en `AuditLog`).
+- `apps/admin` con autenticación propia de superadministrador y 2FA obligatorio.
+- Dashboard global mínimo (PM §12.1): usuarios, organizaciones, sitios publicados, altas recientes,
+  distribución por plan.
+- Buscar organización/usuario; ver plan y uso; cambiar plan manualmente; bloquear y restaurar una
+  organización (bloqueada = su sitio público no se sirve y su panel queda en solo lectura).
+- Toda acción de superadministración auditada con actor real; nunca acceso silencioso a datos
+  comerciales de una organización.
+- Editar el catálogo de planes (resuelve la decisión #4 sin deploy).
+
+### F4.5 — Soporte mínimo
+**Criterios de aceptación:**
+- Desde el panel, un usuario abre una solicitud de soporte (asunto, detalle, organización) y ve su
+  estado; en `apps/admin` se listan, responden y cierran.
+- Sin adjuntos hasta que exista almacenamiento de media (decisión #7).
+- Notificación por email al abrir y al responder, por el adaptador de email existente.
+
+### F4.6 — Cobro recurrente con pasarela *(bloqueada por la decisión #5)*
+**Criterios de aceptación:**
+- Contrato `PaymentProvider` con adaptador del proveedor elegido (ARCHITECTURE.md §5).
+- Webhooks firmados e idempotentes; solo referencias del proveedor, nunca datos de tarjeta.
+- Estados de suscripción (prueba, activa, morosa, cancelada), período de gracia y reintentos.
+
+### F4.7 — Dominios personalizados
+**Criterios de aceptación:**
+- `SiteDomain` (ERD §4): alta de dominio propio para un sitio, verificación de propiedad por registro
+  DNS TXT, instrucciones de CNAME, estado de verificación y de SSL.
+- `apps/web` resuelve el sitio por dominio verificado además de por slug.
+- Prevención de toma de dominio ajeno (un dominio verificado por otra organización no se puede
+  reclamar) y de SSRF en la verificación.
+- La emisión de SSL depende del hosting (F4.8): hasta entonces, la verificación y el ruteo quedan
+  listos y la emisión, documentada como paso de despliegue.
+
+### F4.8 — Producción y monitoreo *(bloqueada por decisión de hosting)*
+**Criterios de aceptación:**
+- Entornos staging y producción con datos y claves propios (ST §17), despliegue con migración,
+  smoke test, health check y rollback (ST §18).
+- Backups cifrados con prueba de restauración documentada (no negociable de `CLAUDE.md`).
+- Alertas sobre errores (Sentry) y sobre la dead-letter de las colas (F3.6).
+
+### F4.9 — Aislamiento y seguridad de Fase 4
+**Criterios de aceptación:**
+- Suite central de aislamiento extendida: el plan, el uso, las solicitudes de soporte y los dominios
+  de otra organización no son legibles ni modificables por id cruzado.
+- Un usuario de organización nunca alcanza `apps/admin` ni sus endpoints.
+- Un límite no se puede evadir cambiando el plan desde el cliente ni creando en paralelo.
+
+## Salida de Fase 4
+
+Fase 4 se considera terminada cuando: cada organización tiene un plan con límites aplicados en el
+servidor y visibles en el panel; la superadministración puede ver la plataforma, asignar planes y
+bloquear con auditoría; existe un canal de soporte; un sitio puede servirse en un dominio propio
+verificado; y la plataforma corre en producción con monitoreo y backups probados. F4.6 y F4.8
+requieren antes las decisiones del propietario indicadas arriba.

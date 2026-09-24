@@ -8,6 +8,8 @@ import { z } from "zod";
 import { useActiveOrgStore } from "../../../lib/active-org-store";
 import { ApiError } from "../../../lib/api-client";
 import { inviteMember } from "../../../lib/api/organizations";
+import { PlanLimitNotice } from "../../../components/plan-limit-notice";
+import { getPlanLimitInfo } from "../../../lib/plan-limit";
 
 const ASSIGNABLE_ROLES = ["ADMIN", "EDITOR", "ANALYST", "SUPPORT", "AGENCY_MANAGER"] as const;
 
@@ -82,7 +84,9 @@ function InviteMemberForm({
             </select>
           </label>
 
-          {mutation.isError ? (
+          {mutation.isError && getPlanLimitInfo(mutation.error) ? (
+            <PlanLimitNotice error={mutation.error} />
+          ) : mutation.isError ? (
             <p role="alert" className="text-sm text-danger">
               {mutation.error instanceof ApiError && mutation.error.status === 404
                 ? "No existe una cuenta registrada con ese correo todavía."

@@ -1,12 +1,12 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { ChartColumn, Globe, Home, Link2, Settings, Users } from "lucide-react";
+import { ChartColumn, Gauge, Globe, Home, Link2, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // Solo los módulos que ya existen de verdad (auth + organizations F1.4/F1.5, sitios F2.9,
-// contactos F3.3, enlaces cortos y QR F3.5, analítica F3.7) — el resto de la navegación de PM §13 (Herramientas, Agenda...) llega con sus
+// contactos F3.3, enlaces cortos y QR F3.5, analítica F3.7, plan y uso F4.3) — el resto de la navegación de PM §13 (Herramientas, Agenda...) llega con sus
 // fases y se agrega aquí recién cuando haya algo real detrás. "El menú mostrará solo módulos
 // habilitados."
 const NAV_ITEMS = [
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/analitica", label: "Analítica", icon: ChartColumn },
   { href: "/contactos", label: "Contactos", icon: Users },
   { href: "/enlaces", label: "Enlaces y QR", icon: Link2 },
+  { href: "/plan", label: "Plan y uso", icon: Gauge },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];
 

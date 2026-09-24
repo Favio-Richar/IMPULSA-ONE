@@ -9,6 +9,8 @@ import { z } from "zod";
 import { useActiveOrgStore } from "../../../../lib/active-org-store";
 import { ApiError } from "../../../../lib/api-client";
 import { useCreateSite } from "../../../../lib/hooks/use-sites";
+import { PlanLimitNotice } from "../../../../components/plan-limit-notice";
+import { getPlanLimitInfo } from "../../../../lib/plan-limit";
 
 const createSiteFormSchema = z.object({
   name: z.string().min(2, "Mínimo 2 caracteres.").max(120),
@@ -47,6 +49,10 @@ function CreateSiteForm({ organizationId }: { organizationId: string }): React.J
       const site = await createMutation.mutateAsync(values);
       router.push(`/sitios/${site.id}`);
     } catch (error) {
+      // Límite de plan (F4.3): lo muestra <PlanLimitNotice>, no el error genérico.
+      if (getPlanLimitInfo(error)) {
+        return;
+      }
       if (error instanceof ApiError && error.status === 409) {
         setError("slug", { message: "Ese slug ya está tomado. Elige otro." });
         return;
@@ -74,6 +80,7 @@ function CreateSiteForm({ organizationId }: { organizationId: string }): React.J
               {errors.root.message}
             </p>
           ) : null}
+          <PlanLimitNotice error={createMutation.error} />
           <Button type="submit" loading={createMutation.isPending} className="mt-2">
             Crear sitio
           </Button>

@@ -34,7 +34,7 @@ bloqueado explícitamente.
 |---|---|
 | F4.1 — Catálogo de planes y plan por organización | Terminada |
 | F4.2 — Aplicación de límites en servidor | Terminada |
-| F4.3 — Plan y uso en el panel | Pendiente |
+| F4.3 — Plan y uso en el panel | Terminada |
 | F4.4 — Superadministración mínima (`apps/admin`) | Pendiente |
 | F4.5 — Soporte mínimo | Pendiente |
 | F4.6 — Cobro recurrente con pasarela | Bloqueada (decisión #5) |
@@ -139,6 +139,32 @@ bloqueado explícitamente.
   subir de plan (sin cobro todavía: solicitud o enlace externo según ST §12 MVP), nunca un error
   genérico.
 - Estados de carga/vacío/error/éxito, responsive (Playwright), accesible.
+
+> **Estado (2026-09-24): terminada.**
+>
+> - **`/plan` ("Plan y uso", en la navegación):** plan efectivo y de dónde sale, medidores de uso
+>   por límite (el estado — cerca del límite, alcanzado, por encima — va con ícono y texto además
+>   del color; `role="meter"` con valor legible), y comparador de los 4 planes con precios en CLP
+>   mensual/anual, el plan actual resaltado y la primera columna fija para que en un teléfono no se
+>   pierda qué fila es cuál al desplazar la tabla.
+> - **Cambio de plan sin cobro todavía (ST §12 MVP):** `NEXT_PUBLIC_PLAN_UPGRADE_URL` opcional
+>   (`https://` o `mailto:`, validado al iniciar) — el botón "Solicitar" lleva ahí con el plan
+>   elegido; sin la variable, la pantalla lo explica en vez de mostrar un botón que no lleva a nada.
+> - **Aviso de límite en cada alta:** `PlanLimitNotice` reconoce el 402 por su `code` (nunca por el
+>   mensaje) y reemplaza al error genérico en crear sitio, página, contacto, enlace, QR, formulario
+>   rápido del constructor e invitación de miembro: qué límite, cuánto se usa y enlace a Planes.
+> - **Historial de analítica por plan (hueco cerrado):** el catálogo declaraba
+>   `analyticsHistoryDays` pero el dashboard de F3.7 no lo aplicaba — mostrarlo en el comparador
+>   sin aplicarlo habría sido engañoso. Ahora `GET .../analytics/overview` responde 402 si el rango
+>   empieza antes de lo que permite el plan (Gratis: 30 días), y `/analitica` muestra el aviso en vez
+>   de un error. Los datos más viejos no se borran (eso es la retención, ADR-004): solo no se muestran.
+>
+> **Verificación:** prueba e2e de API del límite de historial (30 días OK, 90 días → 402 con su
+> cuerpo, con plan mayor → 200). Playwright `plan.spec.ts` (móvil y escritorio: plan y uso reales,
+> cambio mensual/anual, sin desplazamiento horizontal, aviso de límite con enlace a Planes) — la del
+> aviso falla contra el panel sin el reconocimiento del 402 y pasa con él; 35/35 de la suite e2e.
+> 270/270 en `@impulza/api`. Revisión visual con capturas reales (escritorio y móvil). OpenAPI
+> regenerado; `lint`/`typecheck` 24/24; build del panel.
 
 ### F4.4 — Superadministración mínima (`apps/admin`)
 **Criterios de aceptación:**

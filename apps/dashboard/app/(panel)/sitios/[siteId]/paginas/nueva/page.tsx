@@ -9,6 +9,8 @@ import { z } from "zod";
 import { useActiveOrgStore } from "../../../../../../lib/active-org-store";
 import { ApiError } from "../../../../../../lib/api-client";
 import { useCreatePage } from "../../../../../../lib/hooks/use-pages";
+import { PlanLimitNotice } from "../../../../../../components/plan-limit-notice";
+import { getPlanLimitInfo } from "../../../../../../lib/plan-limit";
 
 const createPageFormSchema = z.object({
   slug: pageSlugSchema,
@@ -51,6 +53,10 @@ function CreatePageForm({ organizationId, siteId }: { organizationId: string; si
       const page = await createMutation.mutateAsync(values);
       router.push(`/sitios/${siteId}/paginas/${page.id}`);
     } catch (error) {
+      // Límite de plan (F4.3): lo muestra <PlanLimitNotice>, no el error genérico.
+      if (getPlanLimitInfo(error)) {
+        return;
+      }
       if (error instanceof ApiError && error.status === 409) {
         setError("slug", { message: "Ya existe una página con ese slug en este sitio." });
         return;
@@ -90,6 +96,7 @@ function CreatePageForm({ organizationId, siteId }: { organizationId: string; si
             </p>
           ) : null}
 
+          <PlanLimitNotice error={createMutation.error} />
           <Button type="submit" loading={createMutation.isPending} className="mt-2">
             Crear página
           </Button>

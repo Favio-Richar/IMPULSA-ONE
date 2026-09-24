@@ -7,6 +7,8 @@ import type {
 } from "@impulza/contracts";
 import type { PrismaClient } from "@impulza/database";
 import { PRISMA } from "../../database/prisma.module.js";
+import { PlanLimitExceededException } from "../plans/plan-limit.exception.js";
+import { PlansService } from "../plans/plans.service.js";
 import type { AnalyticsOverviewQuery } from "./dto/analytics-overview.dto.js";
 
 const TOP_N = 10;
@@ -91,9 +93,34 @@ function blockOwnLabel(config: unknown): string | null {
  */
 @Injectable()
 export class AnalyticsReportsService {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    private readonly plansService: PlansService,
+  ) {}
+
+  /**
+   * Límite de historial del plan (F4.3, `analyticsHistoryDays`): el rango no puede empezar antes de
+   * "hoy menos N días". Mismo 402 que el resto de los límites, así el panel ofrece subir de plan.
+   * Los datos viejos no se borran por esto (eso es la retención, ADR-004): solo no se muestran.
+   */
+  private async assertWithinHistoryLimit(organizationId: string, from: string): Promise<void> {
+    const { plan } = await this.plansService.resolveEffectivePlan(organizationId);
+    const maxDays = plan.limits.analyticsHistoryDays;
+    if (maxDays === null) {
+      return;
+    }
+    const today = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+    const requestedDays = Math.floor((today - Date.parse(`${from}T00:00:00.000Z`)) / DAY_MS) + 1;
+    if (requestedDays > maxDays) {
+      throw new PlanLimitExceededException("analyticsHistoryDays", maxDays, requestedDays, {
+        code: plan.code,
+        name: plan.name,
+      });
+    }
+  }
 
   async overview(organizationId: string, query: AnalyticsOverviewQuery): Promise<AnalyticsOverviewResponse> {
+    await this.assertWithinHistoryLimit(organizationId, query.from);
     if (query.siteId) {
       const site = await this.prisma.site.findFirst({
         where: { id: query.siteId, organizationId },

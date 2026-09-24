@@ -5,6 +5,8 @@ import { Button, Card, CardContent, CardHeader, CardTitle, ErrorState, LoadingSt
 import type { CreateFormFieldBody } from "../../lib/api/forms";
 import { useCreateForm, useForms } from "../../lib/hooks/use-forms";
 import { useUpdateBlock } from "../../lib/hooks/use-blocks";
+import { getPlanLimitInfo } from "../../lib/plan-limit";
+import { PlanLimitNotice } from "../plan-limit-notice";
 
 const DEFAULT_FIELDS: CreateFormFieldBody[] = [
   { type: "TEXT", label: "Nombre", required: true },
@@ -102,7 +104,10 @@ export function ContactFormPicker({
             </Button>
 
             {status === "saving" ? <span className="text-sm text-muted-foreground">Guardando…</span> : null}
-            {status === "error" ? (
+            {status === "error" && getPlanLimitInfo(createFormMutation.error) ? (
+              // Límite de formularios del plan (F4.3): aviso con camino a Planes, no "reintenta".
+              <PlanLimitNotice error={createFormMutation.error} />
+            ) : status === "error" ? (
               <span role="alert" className="text-sm text-danger">
                 No se pudo guardar. Intenta de nuevo.
               </span>

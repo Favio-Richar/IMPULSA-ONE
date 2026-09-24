@@ -7,6 +7,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useActiveOrgStore } from "../../../../lib/active-org-store";
 import { useCreateContact } from "../../../../lib/hooks/use-contacts";
+import { PlanLimitNotice } from "../../../../components/plan-limit-notice";
+import { getPlanLimitInfo } from "../../../../lib/plan-limit";
 
 const createContactFormSchema = z.object({
   name: z.string().max(160).optional().or(z.literal("")),
@@ -57,7 +59,11 @@ function CreateContactForm({ organizationId }: { organizationId: string }): Reac
           : undefined,
       });
       router.push(`/contactos/${contact.id}`);
-    } catch {
+    } catch (error) {
+      // Límite de plan (F4.3): lo muestra <PlanLimitNotice>, no el error genérico.
+      if (getPlanLimitInfo(error)) {
+        return;
+      }
       setError("root", { message: "Ocurrió un error inesperado. Intenta de nuevo." });
     }
   }
@@ -94,6 +100,7 @@ function CreateContactForm({ organizationId }: { organizationId: string }): Reac
               {errors.root.message}
             </p>
           ) : null}
+          <PlanLimitNotice error={createMutation.error} />
           <Button type="submit" loading={createMutation.isPending} className="mt-2">
             Agregar contacto
           </Button>

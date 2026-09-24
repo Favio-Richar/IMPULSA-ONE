@@ -4,7 +4,7 @@ import { analyticsOverviewResponse } from "@impulza/contracts";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
 import { SESSION_AUTH } from "../../openapi/document.js";
-import { ApiOrganizationIdParam, ApiOrganizationScopedErrors, ApiZodResponse } from "../../openapi/zod-openapi.js";
+import { ApiOrganizationIdParam, ApiOrganizationScopedErrors, ApiPlanLimited, ApiZodResponse } from "../../openapi/zod-openapi.js";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
 import { OrganizationMembershipGuard } from "../organizations/guards/organization-membership.guard.js";
 import { AnalyticsReportsService } from "./analytics-reports.service.js";
@@ -40,6 +40,7 @@ export class AnalyticsReportsController {
   @ApiZodResponse(200, analyticsOverviewResponse, "El resumen del rango pedido.")
   @ApiResponse({ status: 400, description: "Fechas inválidas, invertidas o rango mayor al máximo." })
   @ApiResponse({ status: 404, description: "El sitio no existe o pertenece a otra organización (ADR-002)." })
+  @ApiPlanLimited("analyticsHistoryDays")
   async overview(
     @Param("organizationId") organizationId: string,
     @Query(new ZodValidationPipe(analyticsOverviewQuerySchema)) query: AnalyticsOverviewQuery,

@@ -11,6 +11,7 @@ import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { BROWSER_USER_AGENT, startAnalyticsTestWorker } from "../../test-support/analytics-pipeline.js";
+import { assignRoomyPlan } from "../../test-support/plans.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 
 class FakeEmailAdapter implements EmailAdapter {
@@ -154,12 +155,28 @@ describe("Dashboard de conversión (e2e) — F3.7", () => {
 
   it("sin actividad en el rango, todo en cero y la tasa de conversión nula (no 0 %)", async () => {
     const { agent, organizationId } = await organizationWithActivity(0);
+    // Plan con cupo: enero de 2025 queda fuera de los 30 días de historial de Gratis.
+    await assignRoomyPlan(prisma, organizationId);
 
     const response = await agent.get(overviewPath(organizationId, { from: "2025-01-01", to: "2025-01-31" })).expect(200);
     const body = analyticsOverviewResponse.parse(response.body);
     expect(body.totals.pageViews).toBe(0);
     expect(body.conversionRate).toBeNull();
     expect(body.series).toHaveLength(31);
+  });
+
+  it("el historial visible depende del plan (F4.3): Gratis ve 30 días, más atrás es 402", async () => {
+    const { agent, organizationId } = await organizationWithActivity(0);
+
+    await agent.get(overviewPath(organizationId, { from: today(-29), to: today() })).expect(200);
+    const response = await agent.get(overviewPath(organizationId, { from: today(-89), to: today() })).expect(402);
+    expect(response.body).toMatchObject({
+      code: "PLAN_LIMIT_REACHED",
+      limit: { key: "analyticsHistoryDays", max: 30, used: 90 },
+    });
+
+    await assignRoomyPlan(prisma, organizationId);
+    await agent.get(overviewPath(organizationId, { from: today(-89), to: today() })).expect(200);
   });
 
   it("valida el rango de fechas en el servidor", async () => {

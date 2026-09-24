@@ -1099,6 +1099,25 @@ navegador quedó pendiente por un límite de uso de la herramienta de navegador 
 mecanismo está probado end-to-end a nivel de API y de build del cliente, no con un clic observado
 a mano todavía.
 
+## Planes, límites y uso (F4.1–F4.3)
+
+Primeras historias de Fase 4. Cada organización tiene un plan efectivo que decide el servidor
+(suscripción vigente → plan asignado por superadministración → Gratis), con límites aplicados en
+cada alta y visibles en el panel.
+
+- **Catálogo** (`packages/validation/src/plans`): Gratis, Profesional, Negocio y Agencia, precios
+  mensual/anual en CLP y límites de sitios, páginas por sitio, formularios, contactos, enlaces, QR,
+  miembros e historial de analítica. **Valores provisorios** hasta la decisión #4 del propietario.
+- **Límites en el servidor**: dentro de la transacción que crea, con un lock que impide pasarse con
+  altas simultáneas; 402 `PLAN_LIMIT_REACHED` con límite, uso y plan. Los contactos que llegan por
+  formulario público nunca se pierden; bajar de plan no borra nada.
+- **Panel**: `/plan` con medidores de uso y comparador; cada formulario de creación avisa el límite
+  alcanzado con el camino a Planes. Sin cobro todavía (F4.6 bloqueada por la decisión #5): el cambio
+  de plan se solicita por `NEXT_PUBLIC_PLAN_UPGRADE_URL`.
+
+Verificado: 270/270 en `@impulza/api` (incluida la carrera de altas simultáneas), Playwright 35/35.
+Detalle en `docs/BACKLOG_FASE_4.md`.
+
 ## Revisión de retención de contactos y cierre de Fase 3
 
 ADR-004 (punto 4) pide que un contacto sin interacción durante 36 meses quede marcado para que el

@@ -28,6 +28,8 @@ import { useActiveOrgStore } from "../../../lib/active-org-store";
 import { BLOCK_LABELS } from "../../../lib/block-fields/labels";
 import { useAnalyticsOverview } from "../../../lib/hooks/use-analytics";
 import { useSites } from "../../../lib/hooks/use-sites";
+import { PlanLimitNotice } from "../../../components/plan-limit-notice";
+import { getPlanLimitInfo } from "../../../lib/plan-limit";
 
 const RANGE_PRESETS = [
   { key: "7", label: "7 días", days: 7 },
@@ -179,6 +181,9 @@ function AnalyticsDashboard({ organizationId }: { organizationId: string }): Rea
 
       {overviewQuery.isPending ? (
         <LoadingState label="Cargando analítica…" />
+      ) : overviewQuery.isError && getPlanLimitInfo(overviewQuery.error) ? (
+        // Rango más largo que el historial del plan (F4.3): no es un error a reintentar.
+        <PlanLimitNotice error={overviewQuery.error} />
       ) : overviewQuery.isError ? (
         <ErrorState onRetry={() => overviewQuery.refetch()} />
       ) : (

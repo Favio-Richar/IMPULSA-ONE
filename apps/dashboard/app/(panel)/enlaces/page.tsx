@@ -34,6 +34,8 @@ import {
   useShortLinks,
   useUpdateShortLink,
 } from "../../../lib/hooks/use-short-links";
+import { getPlanLimitInfo } from "../../../lib/plan-limit";
+import { PlanLimitNotice } from "../../../components/plan-limit-notice";
 
 // Enlaces cortos y QR (F3.5). Las URL que se muestran/codifican siempre apuntan a apps/web
 // (`/s/:slug`, `/qr/:qrCodeId`), nunca al destino final: es la única forma de que el clic o el
@@ -163,6 +165,10 @@ function CreateShortLinkForm({ organizationId }: { organizationId: string }): Re
       await createMutation.mutateAsync(values);
       reset({ slug: "", destinationUrl: "" });
     } catch (error) {
+      // Límite de plan (F4.3): lo muestra <PlanLimitNotice>, no el error genérico.
+      if (getPlanLimitInfo(error)) {
+        return;
+      }
       if (error instanceof ApiError && error.status === 409) {
         setError("slug", { message: "Ese nombre ya está en uso. Elige otro." });
         return;
@@ -203,6 +209,9 @@ function CreateShortLinkForm({ organizationId }: { organizationId: string }): Re
           {errors.root.message}
         </p>
       ) : null}
+      <div className="md:col-span-3 empty:hidden">
+        <PlanLimitNotice error={createMutation.error} />
+      </div>
     </form>
   );
 }
@@ -405,8 +414,9 @@ function CreateQrCodeForm({
       );
       onSourceLinkIdChange("");
       setDirectUrl("");
-    } catch {
-      setErrors({ root: "No se pudo crear el código QR. Intenta de nuevo." });
+    } catch (error) {
+      // Límite de plan (F4.3): lo muestra <PlanLimitNotice>, no el error genérico.
+      setErrors(getPlanLimitInfo(error) ? {} : { root: "No se pudo crear el código QR. Intenta de nuevo." });
     }
   }
 
@@ -456,6 +466,9 @@ function CreateQrCodeForm({
           {errors.root}
         </p>
       ) : null}
+      <div className="md:col-span-3 empty:hidden">
+        <PlanLimitNotice error={createMutation.error} />
+      </div>
     </form>
   );
 }

@@ -170,11 +170,17 @@ model Plan {
   id        String   @id @default(uuid()) @db.Uuid
   code      String   @unique
   name      String
-  // Precio en unidad mínima de moneda (centavos) + código ISO — nunca float (ST §8).
-  price     Int
-  currency  String
-  limits    Json
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  // Precio en unidad mínima de moneda + código ISO — nunca float (ST §8). CLP no tiene decimales:
+  // la unidad mínima es el peso. Mensual y anual (PM §7.5, F4.1).
+  priceMonthly Int      @map("price_monthly")
+  priceYearly  Int      @default(0) @map("price_yearly")
+  currency     String
+  // Validado con `planLimitsSchema` (`@impulza/validation`) en cada lectura — nunca JSON libre.
+  limits       Json
+  // Orden del comparador (Gratis primero).
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   organizations Organization[]
   subscriptions Subscription[]

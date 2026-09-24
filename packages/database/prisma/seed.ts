@@ -1,6 +1,6 @@
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
-import { THEME_CATALOG } from "@impulza/validation";
+import { PLAN_CATALOG, THEME_CATALOG } from "@impulza/validation";
 import { PERMISSION_CATALOG, ROLE_PERMISSIONS } from "../src/permissions.js";
 
 try {
@@ -21,21 +21,6 @@ const ROLES = [
   { name: "AGENCY_MANAGER", description: "Gestiona múltiples cuentas de cliente en modo agencia." },
   { name: "SUPER_ADMIN", description: "Superadministración de la plataforma — rutas y guards aparte (ADR-002)." },
 ];
-
-// Moneda/mercado de lanzamiento son decisiones pendientes explícitas (PM §21 #1-2) — CLP es un
-// valor provisional de desarrollo, no una decisión comercial tomada.
-const FREE_PLAN = {
-  code: "free",
-  name: "Gratis",
-  price: 0,
-  currency: "CLP",
-  limits: {
-    sites: 1,
-    pagesPerSite: 3,
-    contacts: 100,
-    storageMb: 200,
-  },
-};
 
 async function main(): Promise<void> {
   for (const role of ROLES) {
@@ -68,16 +53,20 @@ async function main(): Promise<void> {
     }
   }
 
-  await prisma.plan.upsert({
-    where: { code: FREE_PLAN.code },
-    update: {
-      name: FREE_PLAN.name,
-      price: FREE_PLAN.price,
-      currency: FREE_PLAN.currency,
-      limits: FREE_PLAN.limits,
-    },
-    create: FREE_PLAN,
-  });
+  // Catálogo de planes (F4.1) — valores PROVISORIOS hasta la decisión #4 del propietario (ver
+  // `packages/validation/src/plans`). Idempotente por `code`: ajustar un límite en el catálogo y
+  // volver a sembrar lo actualiza sin duplicar ni tocar las organizaciones que ya lo usan.
+  for (const plan of PLAN_CATALOG) {
+    const data = {
+      name: plan.name,
+      priceMonthly: plan.priceMonthly,
+      priceYearly: plan.priceYearly,
+      currency: plan.currency,
+      limits: plan.limits,
+      sortOrder: plan.sortOrder,
+    };
+    await prisma.plan.upsert({ where: { code: plan.code }, update: data, create: { code: plan.code, ...data } });
+  }
 
   // Temas del catálogo global (F2.5): organizationId null. Idempotente por `code`, de modo que
   // ajustar una paleta acá se propaga al volver a sembrar sin duplicar filas ni tocar los temas
@@ -92,7 +81,7 @@ async function main(): Promise<void> {
 
   console.log(
     `Seed OK: ${ROLES.length} roles, ${PERMISSION_CATALOG.length} permisos, ` +
-      `${rolePermissionCount} asignaciones rol-permiso, 1 plan (${FREE_PLAN.code}), ` +
+      `${rolePermissionCount} asignaciones rol-permiso, ${PLAN_CATALOG.length} planes, ` +
       `${THEME_CATALOG.length} temas de catálogo.`,
   );
 }

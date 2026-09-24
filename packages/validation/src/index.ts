@@ -37,3 +37,4 @@ export * from "./forms/index.js";
 export * from "./contacts/index.js";
 export * from "./qr/index.js";
 export * from "./short-links/index.js";
+export * from "./plans/index.js";

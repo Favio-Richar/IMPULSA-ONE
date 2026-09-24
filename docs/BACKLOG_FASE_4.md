@@ -32,7 +32,7 @@ bloqueado explícitamente.
 
 | Historia | Estado |
 |---|---|
-| F4.1 — Catálogo de planes y plan por organización | Pendiente |
+| F4.1 — Catálogo de planes y plan por organización | Terminada |
 | F4.2 — Aplicación de límites en servidor | Pendiente |
 | F4.3 — Plan y uso en el panel | Pendiente |
 | F4.4 — Superadministración mínima (`apps/admin`) | Pendiente |
@@ -54,6 +54,32 @@ bloqueado explícitamente.
 - El plan efectivo se resuelve en un solo lugar del servidor (suscripción activa → su plan; si no,
   Gratis) — nunca se confía en un plan enviado por el cliente.
 - Endpoint de lectura del plan y el catálogo; OpenAPI actualizado; migración si cambia el modelo.
+
+> **Estado (2026-09-23): terminada.**
+>
+> - Catálogo tipado en `packages/validation/src/plans` (`PLAN_CATALOG`, `planLimitsSchema`), mismo
+>   patrón que los temas: el seed lo aplica de forma idempotente por `code`. 4 planes con precio
+>   mensual/anual en CLP (enteros, la unidad mínima es el peso) y límites **provisorios** — rotulados
+>   así en el código, se corrigen en un solo lugar cuando se decida #4.
+> - `Plan` ganó `price_monthly` (renombrado desde `price`, sin perder datos), `price_yearly`,
+>   `sort_order` y `updated_at` (migración `20260924020000_fase4_plan_catalog`, no destructiva).
+> - **Plan efectivo en un solo lugar** (`apps/api/src/modules/plans/plans.service.ts`): suscripción
+>   vigente con derecho (activa, en prueba o morosa dentro de su período) → plan asignado por
+>   superadministración (`Organization.plan_id`) → Gratis. Ajuste respecto del criterio original
+>   ("las nuevas nacen en Gratis; las existentes con migración de datos"): con el Gratis por defecto
+>   en el resolvedor, ninguna organización necesita que se le escriba el plan — ni las nuevas ni las
+>   existentes —, y `plan_id` queda reservado para una asignación manual explícita, que es un dato con
+>   significado y auditable. El resultado para el usuario es el mismo; la base queda más honesta.
+> - Límites leídos siempre a través de `planLimitsSchema`: una fila con límites inválidos es un error
+>   de configuración (se registra y responde 500), nunca se "adivina".
+> - `GET /plans` (público, para la página de precios y el comparador) y
+>   `GET /organizations/:id/plan` (plan efectivo, de dónde sale y uso real: sitios no archivados,
+>   formularios, contactos, enlaces, QR, miembros activos + invitaciones pendientes).
+>
+> **Verificación:** 4 pruebas del catálogo (esquema, precios enteros, un único Gratis, subir de plan
+> nunca reduce un límite) + 5 e2e contra Postgres real (catálogo público contra el contrato, Gratis
+> por defecto con uso real, asignación manual, suscripción vigente vs. vencida, aislamiento y 401).
+> OpenAPI regenerado; sin diferencias entre schema y migraciones.
 
 ### F4.2 — Aplicación de límites en servidor
 **Criterios de aceptación:**

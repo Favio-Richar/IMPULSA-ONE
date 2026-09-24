@@ -34,7 +34,15 @@ Plan (1) ──< Subscription >── (1) Organization
 Plan (1) ──< UsageCounter >── (1) Organization
 ```
 
-- **Plan**: id, code, name, price, currency, límites (sitios, páginas, contactos, storage, etc.).
+- **Plan**: id, code, name, price_monthly, price_yearly (unidad mínima de moneda, nunca float),
+  currency, limits (JSON validado con `planLimitsSchema` de `@impulza/validation`: sites,
+  pagesPerSite, forms, contacts, shortLinks, qrCodes, members, analyticsHistoryDays, storageMb —
+  `null` = sin límite), sort_order. Catálogo sembrado desde `PLAN_CATALOG` (valores provisorios
+  hasta la decisión #4, F4.1).
+- **Organization.plan_id**: plan asignado a mano por superadministración (F4.4). El plan
+  **efectivo** lo resuelve el servidor en un solo lugar (`PlansService`): suscripción vigente →
+  plan asignado → Gratis. Por eso una organización sin `plan_id` ni suscripción ya está en Gratis
+  sin necesidad de reescribir filas.
 - **Subscription**: id, organization_id, plan_id, status, current_period_start/end,
   external_provider_ref (referencia del proveedor de pago, nunca datos de tarjeta).
 - **UsageCounter**: id, organization_id, metric, period, value — para aplicar límites de plan.

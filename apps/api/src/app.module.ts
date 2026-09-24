@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AppController } from "./app.controller.js";
 import { PrismaModule } from "./database/prisma.module.js";
 import { AnalyticsModule } from "./modules/analytics/analytics.module.js";
+import { PlansModule } from "./modules/plans/plans.module.js";
 import { AuditModule } from "./modules/audit/audit.module.js";
 import { BlocksModule } from "./modules/blocks/blocks.module.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
@@ -36,6 +37,7 @@ import { RedisModule } from "./redis/redis.module.js";
     ContactsModule,
     FormsModule,
     AnalyticsModule,
+    PlansModule,
     ShortLinksModule,
     QrCodesModule,
     PublicSitesModule,

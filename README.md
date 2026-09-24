@@ -3,8 +3,8 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.6 terminadas de F3.1–F3.8; sigue
-F3.7, dashboard de conversión).** Fase 2
+**Estado actual: Fase 3 — Conversión — en progreso (F3.1–F3.7 terminadas de F3.1–F3.8; sigue
+F3.8, aislamiento multi-tenant de Fase 3).** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
@@ -21,7 +21,7 @@ reglas de trabajo del repositorio.
 | 0 — Preparación | F0.1–F0.5 | Terminada |
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
 | 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
-| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.6 terminadas) |
+| 3 — Conversión | F3.1–F3.8 | En progreso (F3.1–F3.7 terminadas) |
 
 ## Requisitos
 
@@ -1097,6 +1097,24 @@ Verificado: 5 tests nuevos (`public-analytics.e2e.test.ts`) — 211/211 en `@imp
 navegador quedó pendiente por un límite de uso de la herramienta de navegador en la sesión — el
 mecanismo está probado end-to-end a nivel de API y de build del cliente, no con un clic observado
 a mano todavía.
+
+## Dashboard de conversión (F3.7)
+
+Séptima historia de Fase 3. `/analitica` en el panel muestra cómo llegan las personas a los sitios
+y cuántas terminan en contacto: visitas, visitantes, clics, leads, tasa de conversión y contactos
+nuevos; gráfico diario (con vista de tabla), embudo, dispositivo, país, campañas UTM y rankings de
+páginas, bloques, formularios, enlaces cortos y QR. Filtro por sitio y por período (7/30/90 días o
+personalizado).
+
+- **API**: `GET /organizations/:organizationId/analytics/overview` lee solo los agregados diarios
+  del pipeline (F3.6), nunca el evento crudo; rango validado en servidor (máx. 366 días), `siteId`
+  ajeno → 404.
+- **Panel**: Recharts para la serie (una métrica a la vez, sin dos escalas en un eje), barras HTML
+  de un solo tono para embudo y desgloses, estados de carga/vacío/error y responsive real.
+
+Verificado: 246/246 en `@impulza/api` (8 pruebas nuevas, incluido el aislamiento por query param y
+por ruta), Playwright 27/27 (móvil y escritorio), revisión visual con capturas reales. Detalle y
+deuda declarada en `docs/BACKLOG_FASE_3.md`.
 
 ## Pipeline de analítica (F3.6)
 

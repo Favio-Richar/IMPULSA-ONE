@@ -33,7 +33,7 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
 | F3.4 — WhatsApp (clic a conversación + analítica) | Terminada |
 | F3.5 — QR y enlaces cortos | Terminada |
 | F3.6 — Eventos analíticos (pipeline + retención) | Terminada |
-| F3.7 — Dashboard de conversión | Pendiente |
+| F3.7 — Dashboard de conversión | Terminada |
 | F3.8 — Aislamiento multi-tenant de Fase 3 | Pendiente |
 
 ### F3.1 — Modelo de datos de conversión
@@ -384,6 +384,54 @@ historia solo pasa a "Terminada" si cumple *todos* los criterios, no solo los vi
   para una vista de uso frecuente).
 - Filtro por sitio y por rango de fecha; estados de carga/vacío/error/éxito; responsive real.
 - Ningún dato de otra organización visible ni por manipulación de query params (probado).
+
+> **Estado (2026-09-23): terminada.** Lo que se construyó:
+>
+> - **API** `GET /organizations/:organizationId/analytics/overview?from&to&siteId`
+>   (`apps/api/src/modules/analytics/analytics-reports.*`): lee **solo** `AnalyticsAggregate` (más
+>   un conteo de contactos nuevos), nunca `AnalyticsEvent` crudo. Devuelve totales, tasa de
+>   conversión (nula sin visitantes, no "0 %"), serie diaria **sin huecos** (un punto por día aunque
+>   valga cero), embudo (visitantes → clics → envíos → leads), dispositivo, país (nombre en español
+>   con `Intl.DisplayNames`), fuentes y campañas UTM, y rankings de páginas, bloques, formularios
+>   (envíos + leads), enlaces cortos y QR con el nombre de cada uno resuelto — siempre acotado a la
+>   organización; lo que ya no existe se muestra como "Elemento eliminado" con su conteo real.
+>   Validación en servidor del rango (fechas válidas, no invertidas, máximo 366 días). Contrato en
+>   `packages/contracts/src/analytics.ts`; OpenAPI regenerado. Solo lectura: basta membresía activa
+>   (mismo criterio que listar contactos/enlaces), sin permiso nuevo.
+> - **Panel `/analitica`** (ítem "Analítica" en la navegación): filtros en una fila (sitio, 7/30/90
+>   días o rango personalizado con validación en cliente espejo de la del servidor), seis cifras,
+>   gráfico diario con Recharts (una sola serie a la vez elegida con un selector — nunca dos escalas
+>   en un eje —, línea recta de 2px, relleno al ~10 %, cruz + tooltip, también con toque en
+>   teléfono), vista de tabla de la misma serie, embudo y desgloses como barras horizontales en un
+>   solo tono de marca con el valor escrito en cada fila, y tablas de rankings. Estados de carga,
+>   vacío (con acción sugerida), error (con reintento) y "actualizando" (se mantiene el resumen
+>   anterior semitransparente mientras llega el nuevo, en vez de vaciar la pantalla). Enlaces y QR
+>   rotulados "de toda la organización" (no pertenecen a un sitio).
+> - Revisado a mano con capturas reales (escritorio 1440px y móvil 412px) contra la guía de
+>   visualización: se cambió la curva suavizada por recta (la suavizada inventaba valores entre
+>   días y sobrepasaba en los saltos desde cero), se separaron íconos repetidos y se alinearon los
+>   filtros.
+>
+> **Verificación:** 8 pruebas e2e nuevas de API contra Postgres/Redis reales con actividad pasada
+> por el pipeline completo (`analytics-reports.e2e.test.ts`: totales/serie/embudo/rankings contra
+> el contrato, rango sin actividad, validación de fechas, aislamiento A/B, `siteId` ajeno en la
+> query → 404, id de organización ajeno en la ruta → sin datos, sin sesión → 401, enlaces de
+> organización conservados al filtrar por sitio). La prueba del `siteId` ajeno falla contra el
+> código sin la verificación y pasa con ella. Playwright `analitica.spec.ts` (6 pruebas × móvil y
+> escritorio: datos reales, vista de tabla, cambio de período, tooltip por hover y por toque, sin
+> desplazamiento horizontal, filtros dentro de pantalla) — 27/27 de la suite e2e. 246/246 en
+> `@impulza/api` (una corrida con los cuatro servidores de desarrollo levantados tuvo 1 fallo en
+> `pages.e2e` que pasa aislado 3/3 y en la corrida completa siguiente: el timeout de transacción de
+> Prisma bajo carga ya conocido). `lint`/`typecheck` 24/24, build del panel.
+>
+> **Deuda declarada (no bloquea):**
+> - Los días son UTC (como los agregados): en Chile, lo ocurrido después de las 21:00/20:00 cae en
+>   el día siguiente. Pasar a días en la zona de la organización exige agregar por zona en el
+>   worker; se hará cuando la organización tenga zona horaria configurable.
+> - "Visitantes" es la suma de únicos **por día** (el visitante anonimizado rota a diario por
+>   ADR-004): quien vuelve otro día cuenta de nuevo. Está rotulado así en la pantalla.
+> - Sin comparación contra el período anterior (deltas) ni exportación CSV del resumen.
+> - Filtros no persistidos en la URL (recargar vuelve a 30 días / todos los sitios).
 
 ### F3.8 — Aislamiento multi-tenant de Fase 3
 **Criterios de aceptación:**

@@ -96,6 +96,39 @@ export default async function globalSetup(): Promise<void> {
     await api(blocksPath, { method: "POST", cookie: sessionCookie, body: JSON.stringify(block) });
   }
 
+  // Agregados de analítica (F3.7) para que el dashboard tenga una serie, un embudo y rankings
+  // reales que mostrar. Directo en la base y no vía el pipeline: Playwright no levanta el worker, y
+  // lo que estas pruebas miden es la pantalla, no el pipeline (ese tiene sus propias pruebas e2e en
+  // apps/api, F3.6).
+  const seedPrisma = new PrismaClient();
+  try {
+    const rows: Array<{ organizationId: string; siteId: string; period: string; metric: string; value: number }> = [];
+    for (let daysAgo = 0; daysAgo < 14; daysAgo++) {
+      const period = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const views = 20 + ((daysAgo * 7) % 13);
+      const metrics: Record<string, number> = {
+        page_view: views,
+        "page_view:visitors": Math.round(views * 0.7),
+        "page_view:device:mobile": Math.round(views * 0.6),
+        "page_view:device:desktop": views - Math.round(views * 0.6),
+        "page_view:country:CL": views,
+        "page_view:utm_source:instagram": Math.round(views * 0.4),
+        [`page_view:subject:${pageId}`]: views,
+        block_click: Math.round(views * 0.3),
+        lead_created: daysAgo % 3 === 0 ? 1 : 0,
+        form_submit: daysAgo % 3 === 0 ? 2 : 0,
+      };
+      for (const [metric, value] of Object.entries(metrics)) {
+        if (value > 0) {
+          rows.push({ organizationId: organization.id, siteId: site.id, period, metric, value });
+        }
+      }
+    }
+    await seedPrisma.analyticsAggregate.createMany({ data: rows });
+  } finally {
+    await seedPrisma.$disconnect();
+  }
+
   const fixture: SeededFixture = { organizationId: organization.id, siteId: site.id, siteSlug, pageId };
   await mkdir(path.dirname(FIXTURE_PATH), { recursive: true });
   await writeFile(FIXTURE_PATH, JSON.stringify(fixture, null, 2));

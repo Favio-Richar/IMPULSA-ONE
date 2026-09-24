@@ -2,11 +2,17 @@ import { Inject, Module, type OnApplicationShutdown } from "@nestjs/common";
 import { ANALYTICS_EVENTS_QUEUE, type AnalyticsEventJob } from "@impulza/analytics";
 import { Queue } from "bullmq";
 import { env } from "../../env.js";
+import { AnalyticsReportsController } from "./analytics-reports.controller.js";
+import { AnalyticsReportsService } from "./analytics-reports.service.js";
 import { AnalyticsService } from "./analytics.service.js";
 import { ANALYTICS_QUEUE } from "./analytics.tokens.js";
 
 @Module({
+  // Lectura del dashboard de conversión (F3.7). El módulo lo importan varios módulos públicos, pero
+  // Nest lo instancia una sola vez: el controlador queda registrado una vez.
+  controllers: [AnalyticsReportsController],
   providers: [
+    AnalyticsReportsService,
     {
       provide: ANALYTICS_QUEUE,
       // Conexión propia de BullMQ (no el cliente REDIS compartido del rate limit): BullMQ exige

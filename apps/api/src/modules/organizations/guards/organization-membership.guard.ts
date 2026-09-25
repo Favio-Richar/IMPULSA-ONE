@@ -1,7 +1,9 @@
 import { type CanActivate, type ExecutionContext, ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { MembershipStatus, OrganizationStatus, type PrismaClient } from "@impulza/database";
 import type { Request } from "express";
+import { Reflector } from "@nestjs/core";
 import { PRISMA } from "../../../database/prisma.module.js";
+import { ALLOW_WHEN_BLOCKED_KEY } from "../allow-when-blocked.decorator.js";
 import type { RequestWithMembership } from "../request-with-membership.js";
 
 // Aplica el principio central de ADR-002: el organization_id nunca se confía "porque viene en la
@@ -15,7 +17,11 @@ export const ORGANIZATION_BLOCKED = "ORGANIZATION_BLOCKED";
 const READ_ONLY_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 @Injectable()
 export class OrganizationMembershipGuard implements CanActivate {
-  constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
+  constructor(
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+    // @Inject explícito: ver el mismo comentario en apps/api/src/common/rate-limit.guard.ts.
+    @Inject(Reflector) private readonly reflector: Reflector,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -44,7 +50,8 @@ export class OrganizationMembershipGuard implements CanActivate {
 
     if (
       membership.organization.status === OrganizationStatus.BLOCKED &&
-      !READ_ONLY_METHODS.has(request.method.toUpperCase())
+      !READ_ONLY_METHODS.has(request.method.toUpperCase()) &&
+      !this.reflector.get<boolean | undefined>(ALLOW_WHEN_BLOCKED_KEY, context.getHandler())
     ) {
       throw new ForbiddenException({
         statusCode: 403,

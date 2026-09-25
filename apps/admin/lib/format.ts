@@ -60,4 +60,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "admin.organization_blocked": "Bloqueó la organización",
   "admin.organization_unblocked": "Restauró la organización",
   "admin.plan_updated": "Editó un plan del catálogo",
+  "admin.support_replied": "Respondió una solicitud de soporte",
+  "admin.support_closed": "Cerró una solicitud de soporte",
+  "support.ticket_opened": "Abrió una solicitud de soporte",
 };

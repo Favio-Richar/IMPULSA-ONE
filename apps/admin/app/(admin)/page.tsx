@@ -2,7 +2,7 @@
 
 import { EmptyState, ErrorState, LoadingState } from "@impulza/ui";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, Globe, ShieldOff, Users, type LucideIcon } from "lucide-react";
+import { Building2, Globe, LifeBuoy, ShieldOff, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { SignupsChart } from "../../components/signups-chart";
 import { PageHeader, Section, StatusBadge } from "../../components/ui-bits";
@@ -39,11 +39,14 @@ export default function OverviewPage(): React.JSX.Element {
     <div className="flex flex-col gap-6">
       <PageHeader title="Resumen" description="Estado global de la plataforma. Solo metadatos: nunca contactos ni contenido de un cliente." />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatTile label="Usuarios" value={totals.users} icon={Users} />
         <StatTile label="Organizaciones" value={totals.organizations} icon={Building2} />
         <StatTile label="Sitios publicados" value={totals.publishedSites} note="Con al menos una página publicada." icon={Globe} />
-        <StatTile label="Organizaciones bloqueadas" value={totals.blockedOrganizations} icon={ShieldOff} />
+        <StatTile label="Bloqueadas" value={totals.blockedOrganizations} icon={ShieldOff} />
+        <Link href="/soporte" className="rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 [&>div]:h-full [&>div]:transition-colors [&>div]:hover:border-border-strong">
+          <StatTile label="Soporte pendiente" value={totals.openSupportTickets} note="Ver bandeja" icon={LifeBuoy} />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">

@@ -1,6 +1,7 @@
 "use client";
 
 import { ShieldAlert } from "lucide-react";
+import Link from "next/link";
 import { useActiveOrgStore } from "../lib/active-org-store";
 import type { Organization } from "../lib/api/organizations";
 
@@ -25,7 +26,11 @@ export function BlockedOrganizationBanner({ organizations }: { organizations: Or
         <p className="font-medium text-foreground">{active.name} está bloqueada: tu sitio no está visible y el panel está en solo lectura.</p>
         <p className="text-muted-foreground">
           {active.blockedReason ? <>Motivo: {active.blockedReason}. </> : null}
-          Puedes seguir viendo y exportando tus datos. Para resolverlo, contacta a soporte de Impulza One.
+          Puedes seguir viendo y exportando tus datos.{" "}
+          <Link href="/soporte/nueva" className="font-medium text-primary underline-offset-2 hover:underline">
+            Escribir a soporte
+          </Link>{" "}
+          para resolverlo.
         </p>
       </div>
     </div>

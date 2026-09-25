@@ -24,6 +24,8 @@ export const adminOverviewResponse = z.object({
     organizations: z.number().int(),
     blockedOrganizations: z.number().int(),
     publishedSites: z.number().int(),
+    /** Solicitudes de soporte que esperan respuesta del equipo (F4.5). */
+    openSupportTickets: z.number().int(),
   }),
   /** Altas por día de los últimos 30 días (usuarios y organizaciones), del más antiguo al más nuevo. */
   signups: z.array(z.object({ day: z.string(), users: z.number().int(), organizations: z.number().int() })),

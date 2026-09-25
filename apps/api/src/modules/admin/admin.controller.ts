@@ -2,6 +2,8 @@ import { applyDecorators, Body, Controller, Get, HttpCode, HttpStatus, Param, Pa
 import { ApiCookieAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import {
   adminAuditListResponse,
+  adminSupportTicketDetailResponse,
+  adminSupportTicketListResponse,
   adminIdentityResponse,
   adminLoginResponse,
   adminOrganizationDetailResponse,
@@ -48,6 +50,13 @@ import {
   type ListAdminUsersQueryDto,
 } from "./dto/admin-queries.dto.js";
 import { AdminSessionGuard } from "./guards/admin-session.guard.js";
+import {
+  listAdminSupportTicketsQuerySchema,
+  supportMessageSchema,
+  type ListAdminSupportTicketsQueryDto,
+  type SupportMessageDto,
+} from "../support/dto/support.dto.js";
+import { SupportService } from "../support/support.service.js";
 
 /** Errores que puede devolver cualquier ruta protegida por `AdminSessionGuard`. */
 function ApiAdminErrors(): ClassDecorator & MethodDecorator {
@@ -255,5 +264,66 @@ export class AdminController {
   @ApiResponse({ status: 400, description: "Parámetros inválidos (detalle en `issues`)." })
   listAudit(@Query(new ZodValidationPipe(listAdminAuditQuerySchema)) query: ListAdminAuditQueryDto) {
     return this.adminService.listAudit(query);
+  }
+}
+
+/** Bandeja de soporte del equipo (F4.5). Responder y cerrar quedan auditados con el actor real. */
+@ApiTags("admin")
+@ApiCookieAuth(ADMIN_SESSION_AUTH)
+@ApiAdminErrors()
+@Controller("admin/support-tickets")
+@UseGuards(CsrfGuard, AdminSessionGuard)
+export class AdminSupportController {
+  constructor(private readonly supportService: SupportService) {}
+
+  @Get()
+  @ApiOperation({
+    summary: "Bandeja de soporte",
+    description: "Filtrable por estado y organización. Con `status=OPEN` ordena de la más antigua a la más nueva (se atiende por antigüedad).",
+  })
+  @ApiQuery({ name: "status", required: false, enum: ["OPEN", "ANSWERED", "CLOSED"] })
+  @ApiQuery({ name: "organizationId", required: false })
+  @ApiQuery({ name: "page", required: false, type: Number })
+  @ApiQuery({ name: "pageSize", required: false, type: Number })
+  @ApiZodResponse(200, adminSupportTicketListResponse, "Una página de solicitudes y los conteos por estado.")
+  @ApiResponse({ status: 400, description: "Parámetros inválidos (detalle en `issues`)." })
+  list(@Query(new ZodValidationPipe(listAdminSupportTicketsQuerySchema)) query: ListAdminSupportTicketsQueryDto) {
+    return this.supportService.listForStaff(query);
+  }
+
+  @Get(":ticketId")
+  @ApiOperation({ summary: "Ver una solicitud y su conversación" })
+  @ApiUuidParam("ticketId", "Solicitud a leer.")
+  @ApiZodResponse(200, adminSupportTicketDetailResponse, "La solicitud con todos sus mensajes.")
+  @ApiResponse({ status: 404, description: "Solicitud no encontrada." })
+  get(@Param("ticketId", new ZodValidationPipe(uuidParamSchema)) ticketId: string) {
+    return this.supportService.getForStaff(ticketId);
+  }
+
+  @Post(":ticketId/messages")
+  @ApiOperation({ summary: "Responder al cliente", description: "Pasa la solicitud a `ANSWERED` y avisa por correo a quien la abrió." })
+  @ApiUuidParam("ticketId", "Solicitud a responder.")
+  @ApiZodBody(supportMessageSchema)
+  @ApiZodResponse(201, adminSupportTicketDetailResponse, "La solicitud con la respuesta agregada.")
+  @ApiResponse({ status: 400, description: "Entrada inválida (detalle en `issues`)." })
+  @ApiResponse({ status: 404, description: "Solicitud no encontrada." })
+  @ApiResponse({ status: 409, description: "La solicitud está cerrada." })
+  reply(
+    @Req() req: RequestWithUser,
+    @Param("ticketId", new ZodValidationPipe(uuidParamSchema)) ticketId: string,
+    @Body(new ZodValidationPipe(supportMessageSchema)) body: SupportMessageDto,
+  ) {
+    return this.supportService.replyAsStaff(req.user.id, ticketId, body.body);
+  }
+
+  @Post(":ticketId/close")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Cerrar una solicitud", description: "El cliente ya no puede responder en ella; si necesita algo más, abre una nueva." })
+  @ApiUuidParam("ticketId", "Solicitud a cerrar.")
+  @ApiZodResponse(200, adminSupportTicketDetailResponse, "La solicitud cerrada.")
+  @ApiResponse({ status: 404, description: "Solicitud no encontrada." })
+  @ApiResponse({ status: 409, description: "Ya estaba cerrada." })
+  close(@Req() req: RequestWithUser, @Param("ticketId", new ZodValidationPipe(uuidParamSchema)) ticketId: string) {
+    return this.supportService.closeAsStaff(req.user.id, ticketId);
   }
 }

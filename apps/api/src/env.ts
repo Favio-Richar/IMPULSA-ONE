@@ -41,4 +41,10 @@ export const env = loadEnv({
   // requisito para que la API arranque o para que publicar tenga éxito.
   WEB_APP_URL: urlSchema.optional(),
   WEB_REVALIDATE_SECRET: z.string().min(32).optional(),
+  // Soporte (F4.5): bandeja del equipo que recibe el aviso de cada solicitud nueva o respuesta del
+  // cliente, y URL de apps/admin para el enlace del aviso. Opcionales por el mismo criterio que
+  // Sentry: sin ellos, el cliente igual recibe su confirmación y el aviso al equipo se omite con un
+  // warning en el log — nunca falla abrir una solicitud por eso.
+  SUPPORT_NOTIFICATION_EMAIL: z.email().optional(),
+  ADMIN_BASE_URL: urlSchema.optional(),
 });

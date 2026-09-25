@@ -83,7 +83,14 @@ export default function OrganizationDetailPage(): React.JSX.Element {
       <PageHeader
         title={org.name}
         description={`${org.slug} · alta el ${formatDate(org.createdAt)}`}
-        actions={<StatusBadge status={org.status} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="secondary" size="sm">
+              <Link href={`/soporte?organizationId=${org.id}`}>Solicitudes de soporte</Link>
+            </Button>
+            <StatusBadge status={org.status} />
+          </div>
+        }
       />
 
       {org.status === "BLOCKED" ? (

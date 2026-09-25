@@ -39,7 +39,8 @@ test("la sesión del panel no abre la administración", async ({ browser }) => {
 test("el resumen muestra totales, altas por día (con vista de tabla) y la distribución por plan", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Resumen", exact: true })).toBeVisible();
-  await expect(page.getByText("Organizaciones bloqueadas")).toBeVisible();
+  await expect(page.getByText("Bloqueadas", { exact: true })).toBeVisible();
+  await expect(page.getByText("Soporte pendiente")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Distribución por plan" })).toBeVisible();
   await expect(page.locator(".recharts-bar-rectangle").first()).toBeAttached();
 

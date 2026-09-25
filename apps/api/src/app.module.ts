@@ -19,6 +19,7 @@ import { PublicSitesModule } from "./modules/public-sites/public-sites.module.js
 import { QrCodesModule } from "./modules/qr-codes/qr-codes.module.js";
 import { ShortLinksModule } from "./modules/short-links/short-links.module.js";
 import { SitesModule } from "./modules/sites/sites.module.js";
+import { SupportModule } from "./modules/support/support.module.js";
 import { ThemesModule } from "./modules/themes/themes.module.js";
 import { RedisModule } from "./redis/redis.module.js";
 
@@ -45,6 +46,7 @@ import { RedisModule } from "./redis/redis.module.js";
     PublicFormsModule,
     PublicAnalyticsModule,
     PublicLinksModule,
+    SupportModule,
     AdminModule,
     HealthModule,
   ],

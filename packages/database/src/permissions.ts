@@ -16,6 +16,7 @@ export const PERMISSIONS = {
   CONTACT_MANAGE: "contact.manage",
   CONTACT_DELETE: "contact.delete",
   SHORTLINK_MANAGE: "shortlink.manage",
+  SUPPORT_VIEW_ALL: "support.view_all",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -76,6 +77,11 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.SHORTLINK_MANAGE,
     description: "Crear y editar enlaces cortos y códigos QR de la organización (F3.5).",
   },
+  {
+    key: PERMISSIONS.SUPPORT_VIEW_ALL,
+    description:
+      "Ver todas las solicitudes de soporte de la organización, no solo las propias (F4.5). Cualquier miembro activo puede abrir una.",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -100,6 +106,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.CONTACT_MANAGE,
     PERMISSIONS.CONTACT_DELETE,
     PERMISSIONS.SHORTLINK_MANAGE,
+    PERMISSIONS.SUPPORT_VIEW_ALL,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -115,6 +122,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.CONTACT_MANAGE,
     PERMISSIONS.CONTACT_DELETE,
     PERMISSIONS.SHORTLINK_MANAGE,
+    PERMISSIONS.SUPPORT_VIEW_ALL,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y

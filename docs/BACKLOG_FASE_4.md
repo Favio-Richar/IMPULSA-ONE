@@ -36,7 +36,7 @@ bloqueado explícitamente.
 | F4.2 — Aplicación de límites en servidor | Terminada |
 | F4.3 — Plan y uso en el panel | Terminada |
 | F4.4 — Superadministración mínima (`apps/admin`) | Terminada (local; ver deudas) |
-| F4.5 — Soporte mínimo | Pendiente |
+| F4.5 — Soporte mínimo | Terminada (local; ver deudas) |
 | F4.6 — Cobro recurrente con pasarela | Bloqueada (decisión #5) |
 | F4.7 — Dominios personalizados | Pendiente (parcialmente bloqueada por decisión #1) |
 | F4.8 — Producción y monitoreo | Bloqueada (decisión de hosting) |
@@ -235,6 +235,56 @@ bloqueado explícitamente.
   estado; en `apps/admin` se listan, responden y cierran.
 - Sin adjuntos hasta que exista almacenamiento de media (decisión #7).
 - Notificación por email al abrir y al responder, por el adaptador de email existente.
+
+> **Estado (2026-09-24): terminada en local.**
+>
+> - **Modelo:** `SupportTicket` + `SupportMessage` (migración `20260924233858_fase4_support`, no
+>   destructiva). Estados: `OPEN` (espera al equipo), `ANSWERED` (espera al cliente) y `CLOSED`.
+>   Cuando el cliente responde, la solicitud vuelve a `OPEN`; cuando responde el equipo, pasa a
+>   `ANSWERED`.
+> - **Panel (`/soporte`):** lista con estado y última actividad, formulario de nueva solicitud
+>   (asunto y detalle, validados igual que en el servidor), y la conversación con respuesta. Una
+>   solicitud cerrada ya no se responde e invita a abrir otra. "Soporte" está en la navegación, y el
+>   aviso de organización bloqueada enlaza a "Escribir a soporte".
+> - **Quién ve qué:** cualquier miembro activo puede abrir una solicitud. Con el permiso nuevo
+>   `support.view_all` (propietario y administrador) se ven todas las de la organización; el resto
+>   ve solo las suyas. Una solicitud ajena responde 404. Al cliente nunca se le muestra el correo de
+>   quien respondió del equipo: le llega firmado "Equipo de Impulza One".
+> - **Organización bloqueada:** soporte sigue funcionando con el decorador explícito
+>   `@AllowWhenOrganizationBlocked()`, la única excepción al solo lectura, porque pedir ayuda es el
+>   camino para resolver un bloqueo.
+> - **Administración (`/soporte` en `apps/admin`):** bandeja con conteos por estado ("Sin
+>   responder", "Respondidas", "Cerradas"). Las sin responder se ordenan de la más antigua a la más
+>   nueva. Se puede filtrar por organización y cada solicitud trae su conversación, la respuesta y un
+>   cierre con confirmación. Responder y cerrar quedan auditados (`admin.support_replied`,
+>   `admin.support_closed`). El resumen suma la tarjeta "Soporte pendiente".
+> - **Correo:** al abrir, confirmación a quien la abre y aviso a `SUPPORT_NOTIFICATION_EMAIL`; cuando
+>   responde el equipo, aviso al cliente; cuando responde el cliente, aviso al equipo. Los correos
+>   llevan el asunto y el enlace, nunca el detalle. El asunto no admite saltos de línea (inyección de
+>   cabeceras). Un aviso que falla no deshace la acción. Las variables nuevas (opcionales):
+>   `SUPPORT_NOTIFICATION_EMAIL` y `ADMIN_BASE_URL`.
+> - **Abuso:** rate limit por IP al abrir (10/h) y al responder (30/h). Sin adjuntos (decisión #7).
+> - **Design system:** nuevo `Textarea` en `@impulza/ui` (con story). Lo usan el panel y la
+>   administración (el campo de motivo pasó a usarlo).
+>
+> **Verificación:** 9 pruebas e2e nuevas en `support.e2e.test.ts` (contrato, correos sin el detalle,
+> validación, CSRF, visibilidad por rol, aislamiento entre organizaciones, conversación completa,
+> estados, bandeja con orden y conteos, puerta de administración y funcionamiento con la
+> organización bloqueada). Se confirmó que fallan al quitar la excepción del bloqueo, el filtro de
+> visibilidad y el ocultamiento del correo del equipo. `@impulza/api` pasa 305/305. Playwright
+> `soporte.spec.ts` recorre en móvil y escritorio la validación y el flujo completo cliente → equipo →
+> cliente; la suite pasa 53/53 (1 omitida, ya existente). `lint`/`typecheck`/`test`/`build` pasan
+> 58/58. OpenAPI regenerado. Revisión visual con capturas (se corrigieron la insignia estirada en
+> móvil y la grilla del resumen).
+>
+> **Deudas declaradas:**
+> - **Suite e2e de la API inestable en corridas completas (prioridad alta).** Con 305 pruebas, una
+>   corrida completa a veces falla 1–2 pruebas por tiempo (5 s) con ~1.500 sockets en `TIME_WAIT`, y
+>   en cada corrida falla una distinta. Aisladas pasan, y la misma suite completa repetida pasó
+>   305/305. La causa es que supertest abre una conexión por petición. La solución, `app.listen(0)` +
+>   keep-alive en los helpers de prueba, conviene hacerla antes de que la suite crezca más.
+>   Propuesta como primera tarea de F4.9.
+> - **CI y staging:** lo mismo que en F4.4.
 
 ### F4.6 — Cobro recurrente con pasarela *(bloqueada por la decisión #5)*
 **Criterios de aceptación:**

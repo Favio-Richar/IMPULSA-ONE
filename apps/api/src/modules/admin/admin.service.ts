@@ -13,6 +13,7 @@ import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { PlansService } from "../plans/plans.service.js";
 import { RevalidateWebService } from "../public-sites/revalidate-web.service.js";
+import { SupportService } from "../support/support.service.js";
 import type { ListAdminAuditQueryDto, ListAdminOrganizationsQueryDto, ListAdminUsersQueryDto } from "./dto/admin-queries.dto.js";
 import type { UpdatePlanDto } from "./dto/admin-actions.dto.js";
 
@@ -42,13 +43,14 @@ export class AdminService {
     @Inject(PlansService) private readonly plansService: PlansService,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(RevalidateWebService) private readonly revalidateWeb: RevalidateWebService,
+    @Inject(SupportService) private readonly supportService: SupportService,
   ) {}
 
   async overview(): Promise<AdminOverviewResponse> {
     const since = new Date(Date.now() - (SIGNUP_WINDOW_DAYS - 1) * 24 * 60 * 60 * 1000);
     since.setUTCHours(0, 0, 0, 0);
 
-    const [users, organizations, blockedOrganizations, publishedSites, userSignups, orgSignups, recent, allOrganizationIds] =
+    const [users, organizations, blockedOrganizations, publishedSites, userSignups, orgSignups, recent, allOrganizationIds, openSupportTickets] =
       await Promise.all([
         this.prisma.user.count(),
         this.prisma.organization.count(),
@@ -66,6 +68,7 @@ export class AdminService {
           select: { id: true, name: true, slug: true, status: true, createdAt: true },
         }),
         this.prisma.organization.findMany({ select: { id: true } }),
+        this.supportService.countAwaitingStaff(),
       ]);
 
     const usersByDay = new Map(userSignups.map((row) => [row.day, row.n]));
@@ -92,7 +95,7 @@ export class AdminService {
     }));
 
     return {
-      totals: { users, organizations, blockedOrganizations, publishedSites },
+      totals: { users, organizations, blockedOrganizations, publishedSites, openSupportTickets },
       signups,
       planDistribution,
       recentOrganizations: recent.map((org) => ({ ...org, createdAt: org.createdAt.toISOString() })),

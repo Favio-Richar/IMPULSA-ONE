@@ -25,6 +25,19 @@ enum OrganizationStatus {
   BLOCKED
 }
 
+// Soporte mínimo (F4.5). OPEN = espera respuesta del equipo; ANSWERED = el equipo respondió y
+// espera al cliente; CLOSED = cerrada por el equipo (el cliente abre una nueva si hace falta).
+enum SupportTicketStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
+enum SupportAuthorRole {
+  CUSTOMER
+  STAFF
+}
+
 enum MembershipStatus {
   INVITED
   ACTIVE
@@ -74,6 +87,8 @@ model User {
   auditLogsAsActor    AuditLog[]          @relation("AuditLogActor")
   pageVersionsCreated PageVersion[]       @relation("PageVersionAuthor")
   contactsAssigned    Contact[]           @relation("ContactAssignee")
+  supportTicketsOpened SupportTicket[]    @relation("SupportTicketOpener")
+  supportMessages      SupportMessage[]   @relation("SupportMessageAuthor")
 
   @@map("users")
 }
@@ -132,6 +147,7 @@ model Organization {
   qrCodes             QrCode[]
   analyticsEvents     AnalyticsEvent[]
   analyticsAggregates AnalyticsAggregate[]
+  supportTickets      SupportTicket[]
 
   @@map("organizations")
 }
@@ -747,4 +763,43 @@ model AnalyticsAggregate {
   // Lectura del dashboard de conversión (F3.7): "esta organización, este rango de días".
   @@index([organizationId, period])
   @@map("analytics_aggregates")
+}
+
+// --- Soporte mínimo (F4.5) ---------------------------------------------------------------------
+// Sin adjuntos hasta que exista almacenamiento de media (decisión #7). Una solicitud pertenece a una
+// organización (ADR-002): se lee por membresía, nunca por un id suelto.
+model SupportTicket {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  // SetNull: si la cuenta se elimina, la solicitud queda como historial de la organización.
+  openedById     String?             @map("opened_by_id") @db.Uuid
+  subject        String
+  status         SupportTicketStatus @default(OPEN)
+  closedAt       DateTime?           @map("closed_at") @db.Timestamptz(6)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  // Última actividad (mensaje o cambio de estado): ordena las bandejas.
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  openedBy     User?            @relation("SupportTicketOpener", fields: [openedById], references: [id], onDelete: SetNull)
+  messages     SupportMessage[]
+
+  @@index([organizationId, updatedAt])
+  @@index([status, updatedAt])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id         String            @id @default(uuid()) @db.Uuid
+  ticketId   String            @map("ticket_id") @db.Uuid
+  authorId   String?           @map("author_id") @db.Uuid
+  authorRole SupportAuthorRole @map("author_role")
+  body       String
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User?         @relation("SupportMessageAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
 }

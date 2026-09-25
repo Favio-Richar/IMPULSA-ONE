@@ -5,6 +5,8 @@ import type {
   AdminOrganizationDetailResponse,
   AdminOrganizationListResponse,
   AdminOverviewResponse,
+  AdminSupportTicketDetailResponse,
+  AdminSupportTicketListResponse,
   AdminUserListResponse,
   PlanLimitsResponse,
   PlanResponse,
@@ -51,6 +53,13 @@ export const adminApi = {
     id: string,
     body: { name?: string; priceMonthly?: number; priceYearly?: number; currency?: string; limits?: PlanLimitsResponse; reason: string },
   ) => apiFetch<PlanResponse>(`/admin/plans/${id}`, { method: "PATCH", body }),
+
+  supportTickets: (params: { status?: "OPEN" | "ANSWERED" | "CLOSED"; organizationId?: string; page: number; pageSize: number }) =>
+    apiFetch<AdminSupportTicketListResponse>(`/admin/support-tickets${query(params)}`),
+  supportTicket: (id: string) => apiFetch<AdminSupportTicketDetailResponse>(`/admin/support-tickets/${id}`),
+  replySupportTicket: (id: string, body: string) =>
+    apiFetch<AdminSupportTicketDetailResponse>(`/admin/support-tickets/${id}/messages`, { method: "POST", body: { body } }),
+  closeSupportTicket: (id: string) => apiFetch<AdminSupportTicketDetailResponse>(`/admin/support-tickets/${id}/close`, { method: "POST" }),
 
   audit: (params: { scope: "admin" | "all"; organizationId?: string; page: number; pageSize: number }) =>
     apiFetch<AdminAuditListResponse>(`/admin/audit-logs${query(params)}`),

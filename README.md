@@ -4,7 +4,7 @@ Plataforma SaaS multiusuario y multiempresa para construir un centro digital de 
 captación, reservas, ventas y analítica) desde una sola URL.
 
 **Estado actual: Fase 4 — SaaS comercial — en progreso (backlog en `docs/BACKLOG_FASE_4.md`;
-F4.1–F4.4 terminadas; F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.** Fase 2
+F4.1–F4.5 terminadas; F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
@@ -1138,6 +1138,17 @@ Panel de la plataforma en `http://localhost:3200` (`pnpm --filter @impulza/admin
 
 Verificado: 26 pruebas e2e nuevas de API (296/296 en total), Playwright 49/49. Detalle y deudas en
 `docs/BACKLOG_FASE_4.md`.
+
+## Soporte (F4.5)
+
+- **Cliente:** en el panel, `/soporte` para abrir una solicitud (asunto y detalle, sin adjuntos), ver
+  su estado y conversar con el equipo. Funciona aunque la organización esté bloqueada. El propietario
+  y el administrador ven todas las solicitudes de la organización; el resto de los miembros, solo
+  las suyas.
+- **Equipo:** en `apps/admin`, `/soporte` es una bandeja por estado, con las más antiguas primero,
+  para responder y cerrar. Todo queda auditado.
+- **Correo:** avisos al abrir y al responder, sin copiar el detalle. Para el aviso al equipo,
+  configurar `SUPPORT_NOTIFICATION_EMAIL` (y `ADMIN_BASE_URL` para el enlace).
 
 ## Revisión de retención de contactos y cierre de Fase 3
 

@@ -165,6 +165,21 @@ FeatureFlag independiente (global u organization_id nullable)
   target_type, target_id, metadata, created_at.
 - **FeatureFlag**: id, key, scope (global/organization), enabled, rules.
 
+### Soporte (F4.5)
+
+```text
+Organization (1) ──< SupportTicket (1) ──< SupportMessage
+User (1) ──< SupportTicket (quién la abrió, SetNull)
+```
+
+- **SupportTicket**: id, organization_id, opened_by_id (nullable), subject, status (`OPEN` espera
+  al equipo | `ANSWERED` espera al cliente | `CLOSED`), closed_at, created_at, updated_at (última
+  actividad, ordena las bandejas). Sin adjuntos hasta la decisión #7.
+- **SupportMessage**: id, ticket_id, author_id (nullable), author_role (`CUSTOMER` | `STAFF`), body
+  (texto plano, nunca HTML), created_at.
+- Visibilidad: un miembro ve las solicitudes que abrió; con el permiso `support.view_all`
+  (propietario y administrador) ve todas las de su organización. El equipo las ve en `apps/admin`.
+
 ## 9. Cardinalidades clave (resumen)
 
 | Relación | Cardinalidad | Nota |

@@ -72,6 +72,7 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
       "admin",
       "Superadministración de la plataforma (ADR-005): sesión propia con 2FA obligatorio. Solo metadatos, nunca datos comerciales de una organización.",
     )
+    .addTag("media", "Biblioteca de medios: subida directa al almacenamiento, verificación y procesamiento (ADR-006).")
     .addTag("support", "Solicitudes de soporte desde el panel (F4.5).")
     .addTag("health", "Estado de la API y sus dependencias. Sin autenticación.")
     .addTag("meta", "Raíz de la API. Sanity check, no monitoreo.")

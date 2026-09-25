@@ -22,6 +22,8 @@ import { SitesModule } from "./modules/sites/sites.module.js";
 import { SupportModule } from "./modules/support/support.module.js";
 import { ThemesModule } from "./modules/themes/themes.module.js";
 import { RedisModule } from "./redis/redis.module.js";
+import { StorageModule } from "./storage/storage.module.js";
+import { MediaModule } from "./modules/media/media.module.js";
 
 // Módulo raíz — los módulos de dominio (sites, forms, ...) se agregan a partir de Fase 2, uno
 // por historia del backlog. Ver docs/BACKLOG_FASE_0_1.md.
@@ -29,6 +31,7 @@ import { RedisModule } from "./redis/redis.module.js";
   imports: [
     PrismaModule,
     RedisModule,
+    StorageModule,
     AuditModule,
     AuthModule,
     OrganizationsModule,
@@ -47,6 +50,7 @@ import { RedisModule } from "./redis/redis.module.js";
     PublicAnalyticsModule,
     PublicLinksModule,
     SupportModule,
+    MediaModule,
     AdminModule,
     HealthModule,
   ],

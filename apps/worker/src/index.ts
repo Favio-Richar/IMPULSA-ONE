@@ -2,9 +2,11 @@ import "./load-dotenv.js";
 import { prisma } from "@impulza/database";
 import { initSentry } from "@impulza/observability";
 import { Redis } from "ioredis";
+import { parseStorageConfig, S3StorageAdapter } from "@impulza/storage";
 import { startAnalyticsWorkers } from "./analytics-workers.js";
 import { env } from "./env.js";
 import { createHealthServer } from "./health-server.js";
+import { startMediaWorkers } from "./media-workers.js";
 import { logger } from "./observability/logger.js";
 
 initSentry({
@@ -24,6 +26,20 @@ const workers = await startAnalyticsWorkers({
   retentionMonths: env.ANALYTICS_RETENTION_MONTHS,
   contactReviewMonths: env.CONTACT_RETENTION_REVIEW_MONTHS,
 });
+
+// Medios (ADR-006): solo si hay almacenamiento configurado. Una configuración a medias lanza acá y el
+// worker no arranca, igual que la API.
+const storageConfig = parseStorageConfig(process.env);
+const mediaWorkers = storageConfig
+  ? await startMediaWorkers({
+      prisma,
+      storage: new S3StorageAdapter(storageConfig),
+      connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+    })
+  : null;
+if (!mediaWorkers) {
+  logger.warn("almacenamiento no configurado: el procesamiento de medios no se inicia");
+}
 
 const healthServer = createHealthServer([
   {
@@ -53,6 +69,7 @@ async function shutdown(signal: string): Promise<void> {
   logger.info("worker deteniéndose", { signal });
   healthServer.close();
   await workers.close();
+  await mediaWorkers?.close();
   healthRedis.disconnect();
   await prisma.$disconnect();
   process.exit(0);

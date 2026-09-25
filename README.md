@@ -1139,6 +1139,24 @@ Panel de la plataforma en `http://localhost:3200` (`pnpm --filter @impulza/admin
 Verificado: 26 pruebas e2e nuevas de API (296/296 en total), Playwright 49/49. Detalle y deudas en
 `docs/BACKLOG_FASE_4.md`.
 
+## Biblioteca de medios (PP1, ADR-006)
+
+Imágenes propias para perfil, portadas y galerías, en **Cloudflare R2** en producción y **MinIO** en
+desarrollo (el mismo protocolo S3).
+
+```bash
+docker compose --profile storage up -d minio          # MinIO local en :9010
+pnpm --filter @impulza/storage run setup:local         # crea el bucket con lectura pública
+```
+
+- El navegador sube **directo al bucket** con una URL prefirmada (tipo y tamaño firmados, 10 min). La
+  API verifica el archivo real (bytes mágicos) y el worker genera versiones WebP livianas **sin
+  metadatos**, así que la ubicación GPS de las fotos no se publica.
+- Solo JPG, PNG, WebP y AVIF de hasta 8 MB (nunca SVG). La cuota de almacenamiento del plan se aplica.
+- **Producción:** poner en el `.env` los valores `STORAGE_*` de R2 (ver `.env.example`). En R2, dar
+  lectura pública al bucket por un dominio propio y un CORS que permita `PUT` desde el origen del
+  panel. Sin esas variables, todo lo demás funciona y la subida avisa que no está configurada.
+
 ## Soporte (F4.5)
 
 - **Cliente:** en el panel, `/soporte` para abrir una solicitud (asunto y detalle, sin adjuntos), ver

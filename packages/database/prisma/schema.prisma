@@ -89,6 +89,7 @@ model User {
   contactsAssigned    Contact[]           @relation("ContactAssignee")
   supportTicketsOpened SupportTicket[]    @relation("SupportTicketOpener")
   supportMessages      SupportMessage[]   @relation("SupportMessageAuthor")
+  mediaUploaded        MediaAsset[]       @relation("MediaUploader")
 
   @@map("users")
 }
@@ -148,6 +149,7 @@ model Organization {
   analyticsEvents     AnalyticsEvent[]
   analyticsAggregates AnalyticsAggregate[]
   supportTickets      SupportTicket[]
+  mediaAssets         MediaAsset[]
 
   @@map("organizations")
 }
@@ -802,4 +804,52 @@ model SupportMessage {
 
   @@index([ticketId, createdAt])
   @@map("support_messages")
+}
+
+// --- Medios (PP1, ADR-006) ----------------------------------------------------------------------
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+// PENDING_UPLOAD: URL de subida emitida, el archivo aún no se confirma. PROCESSING: verificado y en
+// cola del worker. READY: variantes listas (solo estos se pueden usar en un bloque). FAILED: no
+// era lo que decía ser o no se pudo procesar; no ocupa cuota.
+enum MediaStatus {
+  PENDING_UPLOAD
+  PROCESSING
+  READY
+  FAILED
+}
+
+model MediaAsset {
+  id             String      @id @default(uuid()) @db.Uuid
+  organizationId String      @map("organization_id") @db.Uuid
+  uploadedById   String?     @map("uploaded_by_id") @db.Uuid
+  kind           MediaKind
+  status         MediaStatus @default(PENDING_UPLOAD)
+  // Nombre que tenía el archivo, solo para mostrarlo en la biblioteca (texto plano, acotado).
+  fileName       String      @map("file_name")
+  // Tipo verificado por bytes mágicos al confirmar (no el que declaró el navegador).
+  mimeType       String      @map("mime_type")
+  // Tamaño declarado del original (cuenta para la cuota mientras está pendiente o en proceso).
+  sizeBytes      Int         @map("size_bytes")
+  // Lo que queda guardado de verdad tras procesar: la suma de las variantes. El original se borra
+  // al terminar (trae EXIF, a veces con la ubicación GPS, ADR-006 §4).
+  storedBytes    Int         @default(0) @map("stored_bytes")
+  width          Int?
+  height         Int?
+  // [{ width, key, sizeBytes }] validado con `mediaVariantsSchema` al leer.
+  variants       Json        @default("[]")
+  failureReason  String?     @map("failure_reason")
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy   User?        @relation("MediaUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([status, createdAt])
+  @@map("media_assets")
 }

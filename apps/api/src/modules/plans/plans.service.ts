@@ -1,6 +1,6 @@
 import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
 import type { OrganizationPlanResponse, PlanResponse, PlanUsageResponse } from "@impulza/contracts";
-import { MembershipStatus, type Plan, type Prisma, type PrismaClient, SiteStatus, SubscriptionStatus } from "@impulza/database";
+import { MediaStatus, MembershipStatus, type Plan, type Prisma, type PrismaClient, SiteStatus, SubscriptionStatus } from "@impulza/database";
 import { DEFAULT_PLAN_CODE, type EnforcedLimitKey, planLimitsSchema } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
@@ -12,6 +12,10 @@ type Db = PrismaClient | Prisma.TransactionClient;
 
 /** Estados que dan derecho al plan de la suscripción mientras dure su período. `PAST_DUE` incluido
  *  a propósito: es el período de gracia (la política exacta de morosidad es de F4.6). */
+const BYTES_PER_MB = 1024 * 1024;
+/** Una subida pedida reserva cuota durante una hora (su URL vence a los 10 minutos). */
+const PENDING_UPLOAD_RESERVATION_MS = 60 * 60 * 1000;
+
 const ENTITLED_STATUSES = [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING, SubscriptionStatus.PAST_DUE];
 
 export interface EffectivePlan {
@@ -155,7 +159,52 @@ export class PlansService {
         where: { organizationId, status: { in: [MembershipStatus.ACTIVE, MembershipStatus.INVITED] } },
       }),
     ]);
-    return { sites, forms, contacts, shortLinks, qrCodes, members };
+    const storageBytes = await this.storageBytesUsed(organizationId, db);
+    return { sites, forms, contacts, shortLinks, qrCodes, members, storageMb: Math.ceil(storageBytes / BYTES_PER_MB) };
+  }
+
+  /**
+   * Bytes de medios que cuentan para la cuota (ADR-006 §6): lo guardado de los assets listos, lo
+   * declarado de los que están en proceso, y lo declarado de las subidas pedidas en la última hora
+   * (una URL prefirmada vence a los 10 minutos: pasada una hora, esa reserva ya no puede usarse).
+   * Los `FAILED` no cuentan.
+   */
+  async storageBytesUsed(organizationId: string, db: Db = this.prisma): Promise<number> {
+    const pendingSince = new Date(Date.now() - PENDING_UPLOAD_RESERVATION_MS);
+    const [ready, reserved] = await Promise.all([
+      db.mediaAsset.aggregate({ where: { organizationId, status: MediaStatus.READY }, _sum: { storedBytes: true } }),
+      db.mediaAsset.aggregate({
+        where: {
+          organizationId,
+          OR: [
+            { status: MediaStatus.PROCESSING },
+            { status: MediaStatus.PENDING_UPLOAD, createdAt: { gte: pendingSince } },
+          ],
+        },
+        _sum: { sizeBytes: true },
+      }),
+    ]);
+    return (ready._sum.storedBytes ?? 0) + (reserved._sum.sizeBytes ?? 0);
+  }
+
+  /**
+   * Verifica que caben `additionalBytes` más en el almacenamiento del plan. Mismo patrón que
+   * `assertWithinLimit` (F4.2): dentro de la transacción que reserva la subida y con un lock por
+   * organización, así dos subidas simultáneas no pueden pasar juntas el límite.
+   */
+  async assertStorageAvailable(tx: Prisma.TransactionClient, organizationId: string, additionalBytes: number): Promise<void> {
+    const lockKey = `plan-limit:${organizationId}:storage`;
+    await tx.$queryRaw`SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext(${lockKey}))) AS acquired`;
+
+    const { plan } = await this.resolveEffectivePlan(organizationId, tx);
+    const maxMb = plan.limits.storageMb;
+    if (maxMb === null) {
+      return;
+    }
+    const used = await this.storageBytesUsed(organizationId, tx);
+    if (used + additionalBytes > maxMb * BYTES_PER_MB) {
+      throw new PlanLimitExceededException("storageMb", maxMb, Math.ceil(used / BYTES_PER_MB), { code: plan.code, name: plan.name });
+    }
   }
 
   /** Conteo de un solo límite (el mismo criterio que `usage`), para no contar todo en cada alta. */

@@ -39,6 +39,8 @@ export const planUsageResponse = z.object({
   shortLinks: z.number().int(),
   qrCodes: z.number().int(),
   members: z.number().int(),
+  /** Almacenamiento de medios usado, en MB redondeados hacia arriba (PP1, ADR-006 §6). */
+  storageMb: z.number().int(),
 });
 
 export const organizationPlanResponse = z.object({

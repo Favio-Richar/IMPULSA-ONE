@@ -21,3 +21,4 @@ export * from "./analytics.js";
 export * from "./plans.js";
 export * from "./admin.js";
 export * from "./support.js";
+export * from "./media.js";

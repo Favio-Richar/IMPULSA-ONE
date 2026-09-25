@@ -1,32 +1,29 @@
 {
-  "name": "@impulza/worker",
+  "name": "@impulza/storage",
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/index.js",
-    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests",
+    "setup:local": "tsx src/setup-local.ts"
   },
   "dependencies": {
-    "@impulza/analytics": "workspace:*",
-    "@impulza/config": "workspace:*",
+    "@aws-sdk/client-s3": "3.1140.0",
+    "@aws-sdk/s3-request-presigner": "3.1140.0",
     "@impulza/database": "workspace:*",
-    "@impulza/observability": "workspace:*",
-    "@impulza/storage": "workspace:*",
     "@impulza/validation": "workspace:*",
-    "bullmq": "6.3.8",
-    "ioredis": "6.0.0",
+    "sharp": "0.35.4",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@impulza/eslint-config": "workspace:*",
     "@impulza/tsconfig": "workspace:*",
     "@types/node": "26.5.1",
-    "eslint": "9.39.5",
     "tsx": "4.23.13",
     "typescript": "6.0.3",
     "vite": "8.3.0",

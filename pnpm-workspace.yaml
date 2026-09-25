@@ -42,3 +42,5 @@ minimumReleaseAgeExclude:
   - turbo@2.10.13
   - lucide-react@1.46.0
   - '@nestjs/testing@12.0.2'
+  - '@aws-sdk/client-s3@3.1140.0'
+  - '@aws-sdk/s3-request-presigner@3.1140.0'

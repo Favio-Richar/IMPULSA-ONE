@@ -24,7 +24,7 @@ Y todas comparten estas **reglas de la página pública**:
 
 | Historia | Estado |
 |---|---|
-| PP1 — Almacenamiento y subida de imágenes | Pendiente |
+| PP1 — Almacenamiento y subida de imágenes | Terminada (local; falta que Favio cargue las credenciales de R2) |
 | PP2 — Biblioteca de medios y selector en los bloques | Pendiente |
 | PP3 — Fondo premium de la página (color, degradado, imagen, video de biblioteca) | Pendiente |
 | PP4 — Familias de temas "Ejecutivo" y "Vibrante" y encabezado de perfil | Pendiente |
@@ -45,6 +45,37 @@ Y todas comparten estas **reglas de la página pública**:
 - `GET`/`DELETE` de assets; el borrado se rechaza si el asset está en uso.
 - Pruebas: contrato, tipos rechazados (SVG y archivos disfrazados con extensión falsa), cuota,
   aislamiento entre organizaciones, borrado en uso y procesamiento completo contra MinIO.
+
+> **Estado (2026-09-25): terminada en local.**
+>
+> - **`packages/storage`:** `StorageAdapter`, adaptador S3 (R2 en producción, MinIO en desarrollo)
+>   y adaptador en memoria para pruebas; detección del tipo real por bytes mágicos; claves que decide
+>   el servidor; `processMediaAsset` (endereza según EXIF, genera WebP de 400/800/1600 sin agrandar,
+>   **sin metadatos** y con caché inmutable, borra el original); `cleanupAbandonedMedia`; y el script
+>   `setup:local`, que crea el bucket local con lectura pública.
+> - **Configuración:** variables `STORAGE_*` con regla todo o nada. Sin ninguna, la API y el worker
+>   arrancan y la subida responde `503 STORAGE_NOT_CONFIGURED`; con algunas faltando, no arrancan y
+>   dicen cuáles faltan. **Para producción solo hay que poner los valores de R2 en el `.env`.**
+> - **API `/organizations/:id/media`:** biblioteca con uso de cuota, pedir URL de subida (permiso
+>   nuevo `media.manage` para propietario, administrador y editor; rate limit 60/h), confirmar
+>   (verifica tamaño exacto y tipo real, e idempotente), ver y borrar. El borrado se rechaza con
+>   `409 MEDIA_IN_USE` si un bloque vigente o la versión publicada vigente usa el archivo, y queda
+>   auditado.
+> - **Cuota:** `storageMb` del plan **se aplica desde ahora**, con lock por organización. El uso
+>   aparece en el plan (`usage.storageMb`), en el panel y en la administración.
+> - **Worker:** cola `media-process` (concurrencia 2, 3 intentos) y limpieza cada hora de las subidas
+>   abandonadas (> 1 h) y de las fallidas viejas (> 7 días).
+> - **CI:** el job de pruebas levanta MinIO y prepara el bucket, así las pruebas del adaptador real no
+>   se omiten.
+>
+> **Verificación:** 13 pruebas e2e de medios. Entre otras cubren: una foto de celular girada y con
+> EXIF sale enderezada y sin metadatos, un HTML disfrazado de JPEG se rechaza y se borra, cuota con
+> 402, permisos por rol, aislamiento, borrado en uso, limpieza y la instalación sin almacenamiento.
+> Se confirmó que fallan al quitar los bytes mágicos, la cuota, el chequeo de uso y la eliminación de
+> EXIF. 4 pruebas de integración del adaptador contra MinIO real, incluido que el bucket rechaza una
+> subida con otro tipo o tamaño que el firmado. Recorrido manual real: API → subida directa a MinIO →
+> confirmación → worker → variantes servidas públicamente (22,9 KB → 3,1 KB). `@impulza/api` pasa
+> 318/318 y `lint`/`typecheck`/`test`/`build` pasan 62/62. OpenAPI regenerado.
 
 ### PP2 — Biblioteca de medios y selector en los bloques
 **Criterios de aceptación:**

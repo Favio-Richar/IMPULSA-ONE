@@ -17,6 +17,7 @@ export const PERMISSIONS = {
   CONTACT_DELETE: "contact.delete",
   SHORTLINK_MANAGE: "shortlink.manage",
   SUPPORT_VIEW_ALL: "support.view_all",
+  MEDIA_MANAGE: "media.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -82,6 +83,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     description:
       "Ver todas las solicitudes de soporte de la organización, no solo las propias (F4.5). Cualquier miembro activo puede abrir una.",
   },
+  {
+    key: PERMISSIONS.MEDIA_MANAGE,
+    description: "Subir y borrar imágenes y videos de la biblioteca de medios (PP1). Consume la cuota de almacenamiento del plan.",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -107,6 +112,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.CONTACT_DELETE,
     PERMISSIONS.SHORTLINK_MANAGE,
     PERMISSIONS.SUPPORT_VIEW_ALL,
+    PERMISSIONS.MEDIA_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -123,6 +129,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.CONTACT_DELETE,
     PERMISSIONS.SHORTLINK_MANAGE,
     PERMISSIONS.SUPPORT_VIEW_ALL,
+    PERMISSIONS.MEDIA_MANAGE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y
@@ -135,6 +142,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.FORM_MANAGE,
     PERMISSIONS.CONTACT_MANAGE,
     PERMISSIONS.SHORTLINK_MANAGE,
+    // Subir fotos es parte del trabajo de contenido (PP1).
+    PERMISSIONS.MEDIA_MANAGE,
   ],
   ANALYST: [],
   // SUPPORT es "soporte al cliente con acceso limitado y auditado" (seed.ts) — administrar el

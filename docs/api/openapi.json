@@ -10650,6 +10650,11 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "storageMb": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
@@ -10658,7 +10663,8 @@
                         "contacts",
                         "shortLinks",
                         "qrCodes",
-                        "members"
+                        "members",
+                        "storageMb"
                       ],
                       "additionalProperties": false
                     }
@@ -13111,6 +13117,851 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/media": {
+      "get": {
+        "description": "Archivos de la organización, uso de almacenamiento y si el proveedor está configurado.",
+        "operationId": "MediaController_library",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivos (más nuevos primero) y uso de la cuota.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "IMAGE",
+                              "VIDEO"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "PENDING_UPLOAD",
+                              "PROCESSING",
+                              "READY",
+                              "FAILED"
+                            ]
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "mimeType": {
+                            "type": "string"
+                          },
+                          "sizeBytes": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "width": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "height": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "url": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "variants": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "width": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "url": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "width",
+                                "url"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "failureReason": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "status",
+                          "fileName",
+                          "mimeType",
+                          "sizeBytes",
+                          "width",
+                          "height",
+                          "url",
+                          "variants",
+                          "failureReason",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "usage": {
+                      "type": "object",
+                      "properties": {
+                        "usedBytes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "limitBytes": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "usedBytes",
+                        "limitBytes"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "storageConfigured": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "usage",
+                    "storageConfigured"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Biblioteca de medios",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/media/uploads": {
+      "post": {
+        "description": "Requiere `media.manage`. Solo JPG, PNG, WebP o AVIF de hasta 8 MB (nunca SVG). Reserva la cuota de almacenamiento del plan y devuelve una URL prefirmada de 10 minutos con el tipo y el tamaño firmados.",
+        "operationId": "MediaController_requestUpload",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[^\\u0000-\\u001f\\u007f/\\\\]+$"
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "enum": [
+                      "image/jpeg",
+                      "image/png",
+                      "image/webp",
+                      "image/avif"
+                    ]
+                  },
+                  "sizeBytes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8388608
+                  }
+                },
+                "required": [
+                  "fileName",
+                  "contentType",
+                  "sizeBytes"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "El archivo reservado y cómo subirlo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "IMAGE",
+                            "VIDEO"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING_UPLOAD",
+                            "PROCESSING",
+                            "READY",
+                            "FAILED"
+                          ]
+                        },
+                        "fileName": {
+                          "type": "string"
+                        },
+                        "mimeType": {
+                          "type": "string"
+                        },
+                        "sizeBytes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "width": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "height": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "url": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "variants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "width": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "url": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "width",
+                              "url"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "failureReason": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "status",
+                        "fileName",
+                        "mimeType",
+                        "sizeBytes",
+                        "width",
+                        "height",
+                        "url",
+                        "variants",
+                        "failureReason",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "upload": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "method": {
+                          "type": "string",
+                          "enum": [
+                            "PUT"
+                          ]
+                        },
+                        "headers": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "method",
+                        "headers",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "upload"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Formato, tamaño o nombre inválido (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "402": {
+            "description": "Límite de plan alcanzado (`storageMb`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 3600 s desde la misma IP. Reintentar después de la ventana."
+          },
+          "503": {
+            "description": "`STORAGE_NOT_CONFIGURED`: la instalación todavía no tiene proveedor de almacenamiento."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Pedir una URL de subida",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/media/{assetId}/confirm": {
+      "post": {
+        "description": "Verifica en el bucket el tamaño exacto y el tipo real (bytes mágicos) y encola el procesamiento. Confirmar dos veces devuelve el estado actual.",
+        "operationId": "MediaController_confirm",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetId",
+            "required": true,
+            "in": "path",
+            "description": "Archivo a confirmar.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El archivo, ahora en proceso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "IMAGE",
+                        "VIDEO"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "PENDING_UPLOAD",
+                        "PROCESSING",
+                        "READY",
+                        "FAILED"
+                      ]
+                    },
+                    "fileName": {
+                      "type": "string"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    },
+                    "sizeBytes": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "width": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "height": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "url": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "variants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "width": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "url": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "width",
+                          "url"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "failureReason": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "status",
+                    "fileName",
+                    "mimeType",
+                    "sizeBytes",
+                    "width",
+                    "height",
+                    "url",
+                    "variants",
+                    "failureReason",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Archivo no encontrado."
+          },
+          "409": {
+            "description": "El archivo todavía no terminó de subirse."
+          },
+          "422": {
+            "description": "Lo subido no es lo declarado (tamaño o tipo). Se borra y queda `FAILED`."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Confirmar una subida",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/media/{assetId}": {
+      "get": {
+        "description": "Útil para seguir el procesamiento hasta `READY`.",
+        "operationId": "MediaController_get",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetId",
+            "required": true,
+            "in": "path",
+            "description": "Archivo a leer.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El archivo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "IMAGE",
+                        "VIDEO"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "PENDING_UPLOAD",
+                        "PROCESSING",
+                        "READY",
+                        "FAILED"
+                      ]
+                    },
+                    "fileName": {
+                      "type": "string"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    },
+                    "sizeBytes": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "width": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "height": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "url": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "variants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "width": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "url": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "width",
+                          "url"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "failureReason": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "status",
+                    "fileName",
+                    "mimeType",
+                    "sizeBytes",
+                    "width",
+                    "height",
+                    "url",
+                    "variants",
+                    "failureReason",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Archivo no encontrado."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Ver un archivo",
+        "tags": [
+          "media"
+        ]
+      },
+      "delete": {
+        "description": "Se rechaza si una página lo usa (en su borrador o en lo publicado). Queda auditado.",
+        "operationId": "MediaController_remove",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetId",
+            "required": true,
+            "in": "path",
+            "description": "Archivo a borrar.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Borrado, con todas sus variantes."
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Archivo no encontrado."
+          },
+          "409": {
+            "description": "`MEDIA_IN_USE`: `usages` lista las páginas que lo usan."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Borrar un archivo",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/v1/admin/auth/login": {
       "post": {
         "description": "Correo, contraseña y código 2FA en la misma petición. Emite la cookie `impulza_admin_session` (`HttpOnly`, `SameSite=Strict`, `path=/api/v1/admin`, 8 h). El mensaje de error es el mismo para cualquier fallo, y un código incorrecto cuenta como intento fallido.",
@@ -13882,6 +14733,11 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "storageMb": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
@@ -13890,7 +14746,8 @@
                         "contacts",
                         "shortLinks",
                         "qrCodes",
-                        "members"
+                        "members",
+                        "storageMb"
                       ],
                       "additionalProperties": false
                     },
@@ -14262,6 +15119,11 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "storageMb": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
@@ -14270,7 +15132,8 @@
                         "contacts",
                         "shortLinks",
                         "qrCodes",
-                        "members"
+                        "members",
+                        "storageMb"
                       ],
                       "additionalProperties": false
                     },
@@ -14638,6 +15501,11 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "storageMb": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
@@ -14646,7 +15514,8 @@
                         "contacts",
                         "shortLinks",
                         "qrCodes",
-                        "members"
+                        "members",
+                        "storageMb"
                       ],
                       "additionalProperties": false
                     },
@@ -15016,6 +15885,11 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "storageMb": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
@@ -15024,7 +15898,8 @@
                         "contacts",
                         "shortLinks",
                         "qrCodes",
-                        "members"
+                        "members",
+                        "storageMb"
                       ],
                       "additionalProperties": false
                     },
@@ -16757,6 +17632,10 @@
     {
       "name": "admin",
       "description": "Superadministración de la plataforma (ADR-005): sesión propia con 2FA obligatorio. Solo metadatos, nunca datos comerciales de una organización."
+    },
+    {
+      "name": "media",
+      "description": "Biblioteca de medios: subida directa al almacenamiento, verificación y procesamiento (ADR-006)."
     },
     {
       "name": "support",

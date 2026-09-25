@@ -29,6 +29,7 @@ const USAGE_ROWS: Array<{ key: UsageKey; label: string; hint?: string }> = [
   { key: "shortLinks", label: "Enlaces cortos" },
   { key: "qrCodes", label: "Códigos QR" },
   { key: "members", label: "Miembros", hint: "Incluye invitaciones pendientes." },
+  { key: "storageMb", label: "Almacenamiento (MB)", hint: "Fotos de tu biblioteca de medios, ya optimizadas." },
 ];
 
 const COMPARATOR_ROWS: Array<{ key: keyof PlanLimitsResponse; label: string; unit?: string }> = [
@@ -40,6 +41,7 @@ const COMPARATOR_ROWS: Array<{ key: keyof PlanLimitsResponse; label: string; uni
   { key: "qrCodes", label: "Códigos QR" },
   { key: "members", label: "Miembros" },
   { key: "analyticsHistoryDays", label: "Historial de analítica", unit: "días" },
+  { key: "storageMb", label: "Almacenamiento de medios", unit: "MB" },
 ];
 
 const SOURCE_LABELS: Record<OrganizationPlanResponse["source"], string> = {

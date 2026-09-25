@@ -85,6 +85,12 @@ Site/Page (N) ──1 Template (opcional, origen de la página)
 
 ## 4. Media
 
+> **Implementado en PP1 (ADR-006) como `MediaAsset`:** id, organization_id, uploaded_by_id,
+> kind (`IMAGE` | `VIDEO`), status (`PENDING_UPLOAD` → `PROCESSING` → `READY` | `FAILED`), file_name,
+> mime_type (verificado por bytes mágicos), size_bytes (declarado), stored_bytes (variantes), width,
+> height, variants (`[{width, key, sizeBytes}]`), failure_reason. El original se borra al procesar. Lo
+> que sigue en esta sección es el diseño previo, que se conserva como referencia.
+
 ```text
 Organization (1) ──< MediaAsset
 MediaAsset (N) ──1 uploaded_by User

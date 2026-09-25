@@ -35,6 +35,7 @@ const USAGE_ROWS: Array<{ key: keyof Detail["usage"]; label: string }> = [
   { key: "shortLinks", label: "Enlaces cortos" },
   { key: "qrCodes", label: "Códigos QR" },
   { key: "members", label: "Miembros" },
+  { key: "storageMb", label: "Almacenamiento (MB)" },
 ];
 
 const MEMBERSHIP_STATUS: Record<string, string> = { ACTIVE: "Activo", INVITED: "Invitado", SUSPENDED: "Suspendido", REMOVED: "Removido" };

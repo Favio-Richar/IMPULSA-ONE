@@ -1,3 +1,4 @@
+import { findImagesWithoutAlt, IMAGE_ALT_REQUIRED_MESSAGE } from "@impulza/validation";
 import type { z } from "zod";
 import type { FieldErrors, FieldValues, Resolver } from "react-hook-form";
 import { normalizeBlockConfig } from "./normalize";
@@ -20,7 +21,17 @@ export function createBlockConfigResolver(
     const result = schema.safeParse(normalized);
 
     if (result.success) {
-      return { values: result.data as FieldValues, errors: {} };
+      // Misma regla de escritura que aplica la API (PP2): sin texto alternativo, la imagen tiene
+      // que estar marcada como decorativa.
+      const missingAlt = findImagesWithoutAlt(result.data);
+      if (missingAlt.length === 0) {
+        return { values: result.data as FieldValues, errors: {} };
+      }
+      const altErrors: Record<string, unknown> = {};
+      for (const path of missingAlt) {
+        setNestedError(altErrors, path, { type: "custom", message: IMAGE_ALT_REQUIRED_MESSAGE });
+      }
+      return { values: {}, errors: altErrors as FieldErrors<FieldValues> };
     }
 
     const errors: Record<string, unknown> = {};

@@ -38,7 +38,7 @@ export function TestimonialsBlock({ config }: { config: TestimonialsBlockConfig 
             </blockquote>
             <figcaption className="flex items-center gap-3">
               {item.avatar ? (
-                <SiteImage image={item.avatar} className="h-9 w-9 rounded-full object-cover" />
+                <SiteImage image={item.avatar} sizes="36px" className="h-9 w-9 rounded-full object-cover" />
               ) : null}
               <div className="text-sm">
                 <div className="font-medium text-[var(--site-color-foreground)]">{item.author}</div>

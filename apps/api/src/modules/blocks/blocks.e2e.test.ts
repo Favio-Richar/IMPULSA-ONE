@@ -167,6 +167,26 @@ describe("Blocks (e2e) — F2.4", () => {
       expect(response.body.issues.map((i: { path: string }) => i.path)).toContain("url");
     });
 
+    it("una imagen sin texto alternativo se rechaza al guardar, salvo que sea decorativa (PP2)", async () => {
+      const { agent, basePath } = await createPageWithOwner();
+      const photo = "https://ejemplo.com/foto.jpg";
+
+      const rejected = await agent
+        .post(basePath)
+        .set(CSRF_HEADERS)
+        .send({ type: "gallery", config: { layout: "grid", images: [{ url: photo, alt: "Local" }, { url: photo, alt: "  " }] } })
+        .expect(422);
+      expect(rejected.body.issues).toEqual([{ path: "images.1.alt", message: expect.stringMatching(/decorativa/) }]);
+
+      await agent.post(basePath).set(CSRF_HEADERS).send({ type: "image", config: { image: { url: photo, alt: "", decorative: true } } }).expect(201);
+      const described = await agent.post(basePath).set(CSRF_HEADERS).send({ type: "image", config: { image: { url: photo, alt: "Local" } } }).expect(201);
+      await agent
+        .patch(`${basePath}/${described.body.id}`)
+        .set(CSRF_HEADERS)
+        .send({ config: { image: { url: photo, alt: "" } } })
+        .expect(422);
+    });
+
     it("rechaza enlaces javascript: y data: en cualquier bloque", async () => {
       const { agent, basePath } = await createPageWithOwner();
 

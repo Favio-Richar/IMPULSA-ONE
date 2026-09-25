@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { ChartColumn, Gauge, Globe, Home, LifeBuoy, Link2, Settings, Users } from "lucide-react";
+import { ChartColumn, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/analitica", label: "Analítica", icon: ChartColumn },
   { href: "/contactos", label: "Contactos", icon: Users },
   { href: "/enlaces", label: "Enlaces y QR", icon: Link2 },
+  { href: "/medios", label: "Medios", icon: ImageIcon },
   { href: "/plan", label: "Plan y uso", icon: Gauge },
   { href: "/soporte", label: "Soporte", icon: LifeBuoy },
   { href: "/configuracion", label: "Configuración", icon: Settings },

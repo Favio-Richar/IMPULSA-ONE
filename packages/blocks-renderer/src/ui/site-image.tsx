@@ -1,24 +1,40 @@
+import { mediaSrcSet } from "@impulza/validation";
 import type { ImgHTMLAttributes } from "react";
 
-interface SiteImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt"> {
+/** Ancho del contenido de la página pública (`Container`, max-w-3xl = 768 px menos el relleno). */
+const CONTENT_SIZES = "(min-width: 768px) 720px, calc(100vw - 32px)";
+
+interface SiteImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt" | "srcSet"> {
   image: { url: string; alt: string; decorative?: boolean };
+  /** Imagen que se ve al abrir la página (perfil, portada): se pide primero y sin espera. */
+  priority?: boolean;
 }
 
 /**
- * Una sola regla para las cinco imágenes del catálogo (perfil, hero, image, gallery,
- * testimonios): `decorative: true` no oculta la imagen, pide `alt=""` para que un lector de
- * pantalla la omita (WCAG 1.1.1) en vez de anunciar un texto irrelevante. `alt` es obligatorio en
- * el esquema (F2.4) justo para que esta decisión nunca dependa de que alguien se acuerde de
- * ponerlo.
+ * Una sola regla para todas las imágenes del catálogo (perfil, hero, image, gallery, servicio,
+ * testimonios):
  *
- * `<img>` y no `next/image` a propósito: cada bloque de imagen trae una URL que eligió el dueño
- * del sitio (F2.4, `safeUrlSchema` solo exige http/https, no un dominio conocido de antemano).
- * `next/image` necesita declarar cada host permitido en `images.remotePatterns` — admitir
- * cualquiera anularía esa protección. Optimizar estas imágenes queda para una fase posterior,
- * probablemente junto a la biblioteca multimedia propia (PM §9.6). Este paquete tampoco depende de
- * Next.js: lo consumen tanto el render público (apps/web) como la vista previa del constructor
- * (apps/dashboard, F2.9).
+ * - `decorative: true` no oculta la imagen: pide `alt=""` para que un lector de pantalla la omita
+ *   (WCAG 1.1.1) en vez de anunciar un texto irrelevante.
+ * - Una imagen de la biblioteca propia (PP2, ADR-006) se sirve con `srcset`: el teléfono baja la
+ *   variante de 400 u 800 px, no la de 1600. Una URL externa se usa tal cual.
+ * - Perezosa por defecto; `priority` para la que se ve al abrir la página (presupuesto LCP < 2,5 s).
+ *
+ * `<img>` y no `next/image` a propósito: este paquete no depende de Next.js (lo usan el render
+ * público y la vista previa del constructor), y las variantes ya vienen optimizadas desde el worker.
  */
-export function SiteImage({ image, ...rest }: SiteImageProps) {
-  return <img src={image.url} alt={image.decorative ? "" : image.alt} {...rest} />;
+export function SiteImage({ image, priority = false, sizes = CONTENT_SIZES, ...rest }: SiteImageProps) {
+  const srcSet = mediaSrcSet(image.url);
+  return (
+    <img
+      src={image.url}
+      srcSet={srcSet ?? undefined}
+      sizes={srcSet ? sizes : undefined}
+      alt={image.decorative ? "" : image.alt}
+      loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : undefined}
+      decoding="async"
+      {...rest}
+    />
+  );
 }

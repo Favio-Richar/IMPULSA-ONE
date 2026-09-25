@@ -4,6 +4,7 @@ import { Button } from "@impulza/ui";
 import { Plus, X } from "lucide-react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import type { FieldError } from "react-hook-form";
+import { ImageField } from "../../components/block-editor/image-field";
 import { RichTextEditor } from "../../components/block-editor/rich-text-editor";
 import { defaultArrayItem } from "./defaults";
 import type { FieldControl, FieldDescriptor } from "./types.js";
@@ -104,7 +105,7 @@ function FieldControlView({ field, namePrefix }: { field: FieldDescriptor; nameP
     }
 
     case "image":
-      return <ImageFieldView name={name} label={field.label} optional={field.optional} />;
+      return <ImageField name={name} label={field.label} optional={field.optional} aspect={field.control.aspect} />;
 
     case "video":
       return (
@@ -169,30 +170,6 @@ function FieldControlView({ field, namePrefix }: { field: FieldDescriptor; nameP
       );
     }
   }
-}
-
-function ImageFieldView({ name, label, optional }: { name: string; label: string; optional?: boolean }) {
-  const { register } = useFormContext();
-  return (
-    <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3">
-      <legend className="px-1 text-sm font-medium text-foreground">
-        {label}
-        {optional ? " (opcional)" : ""}
-      </legend>
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-muted-foreground">URL de la imagen</span>
-        <input type="url" placeholder="https://…" className={inputClass} {...register(`${name}.url`)} />
-      </label>
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-muted-foreground">Texto alternativo</span>
-        <input type="text" maxLength={300} className={inputClass} {...register(`${name}.alt`)} />
-      </label>
-      <label className="flex items-center gap-2 text-sm text-foreground">
-        <input type="checkbox" className="size-4 rounded border-border-strong" {...register(`${name}.decorative`)} />
-        Es decorativa (sin información propia)
-      </label>
-    </fieldset>
-  );
 }
 
 function MultiSelectFieldView({
@@ -290,7 +267,11 @@ function ArrayFieldView({
               <X className="size-4" />
             </Button>
           </div>
-          <FieldGroup fields={arrayControl.fields} namePrefix={`${name}.${index}`} />
+          {arrayControl.itemKind === "image" ? (
+            <ImageField name={`${name}.${index}`} label={`${arrayControl.itemLabel} ${index + 1}`} embedded />
+          ) : (
+            <FieldGroup fields={arrayControl.fields} namePrefix={`${name}.${index}`} />
+          )}
         </div>
       ))}
     </div>

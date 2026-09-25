@@ -5,7 +5,7 @@ import { Button, EmptyState, Input, Textarea } from "@impulza/ui";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { ApiError } from "../../../../lib/api-client";
 import { useActiveOrgStore } from "../../../../lib/active-org-store";
@@ -37,10 +37,10 @@ function NewTicketForm({ organizationId }: { organizationId: string }): React.JS
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<NewTicketValues>({ resolver: zodResolver(newTicketSchema) });
-  const bodyLength = watch("body")?.length ?? 0;
+  const bodyLength = useWatch({ control, name: "body" })?.length ?? 0;
 
   async function onSubmit(values: NewTicketValues): Promise<void> {
     const ticket = await openMutation.mutateAsync(values).catch(() => null);

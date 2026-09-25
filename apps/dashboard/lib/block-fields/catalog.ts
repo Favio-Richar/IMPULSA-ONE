@@ -9,11 +9,11 @@ const ALIGNMENT_OPTIONS = [
   { value: "right", label: "Derecha" },
 ] as const;
 
-const imageField = (name: string, label: string, optional = true): FieldDescriptor => ({
+const imageField = (name: string, label: string, optional = true, aspect?: "square" | "wide"): FieldDescriptor => ({
   name,
   label,
   optional,
-  control: { kind: "image" },
+  control: { kind: "image", aspect },
 });
 
 const ctaField: FieldDescriptor = {
@@ -42,7 +42,7 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
       { name: "name", label: "Nombre", control: { kind: "text", maxLength: 120 } },
       { name: "headline", label: "Frase corta", optional: true, control: { kind: "text", maxLength: 160 } },
       { name: "bio", label: "Biografía", optional: true, control: { kind: "richtext" } },
-      imageField("avatar", "Foto de perfil"),
+      imageField("avatar", "Foto de perfil", true, "square"),
       { name: "verified", label: "Cuenta verificada", control: { kind: "boolean" } },
     ],
     seedConfig: () => ({ name: "Tu nombre", verified: false }),
@@ -52,7 +52,7 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
     fields: [
       { name: "title", label: "Título", control: { kind: "text", maxLength: 160 } },
       { name: "subtitle", label: "Subtítulo", optional: true, control: { kind: "text", maxLength: 300 } },
-      imageField("background", "Imagen de fondo"),
+      imageField("background", "Imagen de fondo", true, "wide"),
       { name: "alignment", label: "Alineación", control: { kind: "select", options: ALIGNMENT_OPTIONS } },
       ctaField,
     ],
@@ -195,6 +195,7 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
           min: 1,
           max: 24,
           itemLabel: "Imagen",
+          itemKind: "image",
           fields: [
             { name: "url", label: "URL de la imagen", control: { kind: "url" } },
             { name: "alt", label: "Texto alternativo", control: { kind: "text", maxLength: 300 } },
@@ -296,7 +297,7 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
             { name: "quote", label: "Cita", control: { kind: "text", maxLength: 800 } },
             { name: "author", label: "Autor", control: { kind: "text", maxLength: 120 } },
             { name: "role", label: "Cargo", optional: true, control: { kind: "text", maxLength: 120 } },
-            imageField("avatar", "Foto"),
+            imageField("avatar", "Foto", true, "square"),
             { name: "rating", label: "Calificación (1 a 5)", optional: true, control: { kind: "number", min: 1, max: 5 } },
           ],
         },

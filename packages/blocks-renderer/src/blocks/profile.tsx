@@ -9,6 +9,8 @@ export function ProfileBlock({ config }: { config: ProfileBlockConfig }) {
       {config.avatar ? (
         <SiteImage
           image={config.avatar}
+          priority
+          sizes="112px"
           width={112}
           height={112}
           className="h-28 w-28 rounded-full border border-[var(--site-color-border)] object-cover shadow-[var(--site-shadow)]"

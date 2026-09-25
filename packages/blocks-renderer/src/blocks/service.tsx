@@ -16,6 +16,7 @@ export function ServiceBlock({
       {config.image ? (
         <SiteImage
           image={config.image}
+          sizes="(min-width: 640px) 160px, calc(100vw - 72px)"
           className="h-40 w-full shrink-0 rounded-[var(--site-radius)] border border-[var(--site-color-border)] object-cover sm:h-auto sm:w-40"
         />
       ) : null}

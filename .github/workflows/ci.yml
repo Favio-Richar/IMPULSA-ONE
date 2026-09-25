@@ -188,6 +188,14 @@ jobs:
       INTERNAL_PROXY_SECRET: ci-test-placeholder-proxy-secret-not-real-value
       NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
       NEXT_PUBLIC_WEB_BASE_URL: http://localhost:3000
+      # Medios (PP2): la subida real pasa por MinIO y el worker genera las variantes.
+      STORAGE_ENDPOINT: http://localhost:9000
+      STORAGE_REGION: auto
+      STORAGE_BUCKET: impulza-media
+      STORAGE_ACCESS_KEY_ID: ci-minio
+      STORAGE_SECRET_ACCESS_KEY: ci-minio-secret-not-real
+      STORAGE_PUBLIC_BASE_URL: http://localhost:9000/impulza-media
+      STORAGE_FORCE_PATH_STYLE: "true"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -195,6 +203,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: corepack enable && corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
       - run: pnpm install --frozen-lockfile
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 -e MINIO_ROOT_USER=ci-minio -e MINIO_ROOT_PASSWORD=ci-minio-secret-not-real minio/minio:latest server /data
+          for i in $(seq 1 30); do curl -sf http://localhost:9000/minio/health/live && break; sleep 1; done
+      - name: Prepare media bucket
+        run: pnpm --filter @impulza/storage run setup:local
       - name: Apply database migrations
         run: pnpm --filter @impulza/database run db:migrate:deploy
       - name: Seed roles and permissions

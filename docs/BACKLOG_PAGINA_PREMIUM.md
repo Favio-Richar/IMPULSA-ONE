@@ -25,7 +25,7 @@ Y todas comparten estas **reglas de la página pública**:
 | Historia | Estado |
 |---|---|
 | PP1 — Almacenamiento y subida de imágenes | Terminada (local; falta que Favio cargue las credenciales de R2) |
-| PP2 — Biblioteca de medios y selector en los bloques | Pendiente |
+| PP2 — Biblioteca de medios y selector en los bloques | Terminada (local) |
 | PP3 — Fondo premium de la página (color, degradado, imagen, video de biblioteca) | Pendiente |
 | PP4 — Familias de temas "Ejecutivo" y "Vibrante" y encabezado de perfil | Pendiente |
 | PP5 — Botón principal fijo en móvil y animaciones de entrada | Pendiente |
@@ -86,6 +86,39 @@ Y todas comparten estas **reglas de la página pública**:
   decorativa) y guía de proporción (avatar cuadrado, portada 16:9).
 - El render público usa `srcset` con las variantes (el teléfono baja 400/800, no el original).
 - Una URL de medios de otra organización se rechaza al guardar el bloque.
+
+> **Estado (2026-09-25): terminada en local.**
+>
+> - **`/medios` en el panel:** grilla con miniaturas (variante de 400 px), subida con arrastrar y
+>   soltar **y** botón (el arrastre no existe en el teléfono ni por teclado), progreso real de la
+>   subida directa al bucket y luego cada paso del servidor (verificando, optimizando, lista, error),
+>   uso de cuota con aviso al 90 % y enlace al plan, aviso de "no configurado", y borrado con
+>   confirmación que, si la imagen está en uso, dice en qué página.
+> - **Selector de imagen** (`ImageField` + `MediaPicker` sobre el nuevo `Dialog` de `@impulza/ui`,
+>   Radix) en perfil, portada, imagen, galería, servicio y testimonios: elegir de la biblioteca o
+>   subir en el momento (queda elegida sola), guía de proporción (avatar cuadrado, portada 16:9),
+>   vista previa, y la opción de enlace externo para no romper bloques existentes.
+> - **Texto alternativo obligatorio al guardar** (o marcar como decorativa): regla de escritura
+>   `findImagesWithoutAlt` en `@impulza/validation`, aplicada por la API (422 con la ruta del campo)
+>   y por el formulario del panel (aviso junto al campo). No se agregó al esquema `imageSchema` a
+>   propósito: ese esquema también valida lo ya guardado, y endurecerlo dejaría de mostrar bloques
+>   antiguos con `alt` vacío en la página pública.
+> - **Render público con `srcset`** (`mediaSrcSet`): el teléfono baja la variante de 400 u 800 px;
+>   carga perezosa por defecto y `fetchpriority="high"` en perfil y portada (presupuesto LCP).
+> - **Aislamiento:** una URL de medios de otra organización, o de un archivo que aún se procesa, se
+>   rechaza al guardar el bloque (ADR-006 §9). Las URLs externas siguen permitidas.
+> - **Corrección encontrada en el camino:** el panel de configuración comparaba la respuesta del
+>   servidor con `JSON.stringify`, sensible al orden de las claves; PostgreSQL (JSONB) las reordena,
+>   así que el eco del propio autoguardado se tomaba por un cambio externo, reiniciaba el formulario y
+>   volvía a "Sin cambios". Ahora compara por valor (`sameConfig`).
+>
+> **Verificación:** e2e de API (imagen de otra organización, imagen en proceso, texto alternativo
+> vacío en galería y al editar, decorativa aceptada), pruebas unitarias de `mediaSrcSet`,
+> `SiteImage`, `findImagesWithoutAlt` y `sameConfig`, y Playwright en móvil y escritorio contra la
+> API, MinIO y el worker reales: subir desde `/medios` y ver la miniatura WebP de 400 px, rechazar un
+> SVG antes de subir, y en el constructor subir una imagen desde el selector, ver el aviso de texto
+> alternativo, guardarla, recargar y conservarla, sin desplazamiento horizontal. La prueba del
+> constructor fallaba con la comparación anterior (confirmado en ambos viewports).
 
 ### PP3 — Fondo premium de la página
 **Criterios de aceptación:**

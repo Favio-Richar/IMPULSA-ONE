@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planVariantWidths, requestImageUploadSchema } from "./index.js";
+import { mediaSrcSet, planVariantWidths, requestImageUploadSchema } from "./index.js";
 
 describe("planVariantWidths", () => {
   it("una imagen grande recibe los tres anchos fijos", () => {
@@ -26,5 +26,19 @@ describe("requestImageUploadSchema", () => {
     expect(requestImageUploadSchema.safeParse({ ...valid, sizeBytes: 8 * 1024 * 1024 + 1 }).success).toBe(false);
     expect(requestImageUploadSchema.safeParse({ ...valid, fileName: "../../etc/passwd" }).success).toBe(false);
     expect(requestImageUploadSchema.safeParse({ ...valid, fileName: "a\nb.jpg" }).success).toBe(false);
+  });
+});
+
+describe("mediaSrcSet", () => {
+  const base = "https://media.impulza.cl/org/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222";
+  it("una imagen grande ofrece sus tres anchos", () => {
+    expect(mediaSrcSet(`${base}/w1600.webp`)).toBe(`${base}/w400.webp 400w, ${base}/w800.webp 800w, ${base}/w1600.webp 1600w`);
+  });
+  it("una imagen de 1000 px ofrece 400, 800 y 1000", () => {
+    expect(mediaSrcSet(`${base}/w1000.webp`)).toBe(`${base}/w400.webp 400w, ${base}/w800.webp 800w, ${base}/w1000.webp 1000w`);
+  });
+  it("una URL externa no tiene srcset", () => {
+    expect(mediaSrcSet("https://ejemplo.com/foto.webp")).toBeNull();
+    expect(mediaSrcSet("https://ejemplo.com/org/x/y/w400.webp")).toBeNull();
   });
 });

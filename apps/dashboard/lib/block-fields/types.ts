@@ -13,8 +13,9 @@ export type FieldControl =
   | { kind: "url" }
   | { kind: "email" }
   | { kind: "phone" }
-  /** Objeto `{ url, alt, decorative }` — mismo `imageSchema` en todo el catálogo (F2.4). */
-  | { kind: "image" }
+  /** Objeto `{ url, alt, decorative }` — mismo `imageSchema` en todo el catálogo (F2.4). `aspect`
+   *  solo guía al elegir la imagen (PP2): cuadrada para avatares, horizontal para portadas. */
+  | { kind: "image"; aspect?: "square" | "wide" }
   /** `videoEmbedSchema` (`@impulza/validation`): en el servidor es `{provider, videoId}`, pero
    *  acepta indistintamente esa forma o una URL de YouTube/Vimeo — el campo siempre edita una URL
    *  de texto; `toFormConfig` reconstruye una URL de ida y vuelta al cargar un bloque guardado. */
@@ -25,7 +26,15 @@ export type FieldControl =
   /** Objeto anidado opcional con sus propios campos (p. ej. `cta: { label, url }`). */
   | { kind: "group"; fields: readonly FieldDescriptor[] }
   /** Arreglo repetible de objetos (p. ej. `social.links`, `faq.items`). */
-  | { kind: "array"; min: number; max: number; itemLabel: string; fields: readonly FieldDescriptor[] };
+  | {
+      kind: "array";
+      min: number;
+      max: number;
+      itemLabel: string;
+      fields: readonly FieldDescriptor[];
+      /** Cada ítem es una imagen completa (`gallery.images`): se edita con el selector de imágenes. */
+      itemKind?: "image";
+    };
 
 export interface FieldDescriptor {
   /** Nombre del campo dentro de su objeto contenedor — no el path completo dentro del form. */

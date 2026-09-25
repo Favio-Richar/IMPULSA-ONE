@@ -28,6 +28,26 @@ export function planVariantWidths(originalWidth: number): number[] {
   return widths;
 }
 
+const MEDIA_VARIANT_URL =
+  /\/org\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/w(\d+)\.webp$/i;
+
+/**
+ * `srcset` de una imagen de la biblioteca a partir de la URL de su variante más grande (la que
+ * guardan los bloques). No hace falta guardar la lista: dado el ancho mayor `N`, las variantes son
+ * exactamente `planVariantWidths(N)` (si `N` es 1600, el original era igual o más ancho y se
+ * generaron las tres fijas). Una URL externa devuelve `null` y se usa tal cual.
+ */
+export function mediaSrcSet(url: string): string | null {
+  const match = MEDIA_VARIANT_URL.exec(url);
+  if (!match) {
+    return null;
+  }
+  const largest = Number(match[1]);
+  return planVariantWidths(largest)
+    .map((width) => `${url.replace(/w\d+\.webp$/i, `w${width}.webp`)} ${width}w`)
+    .join(", ");
+}
+
 export const requestImageUploadSchema = z.object({
   // Solo para mostrarlo en la biblioteca; nunca forma parte de la clave en el bucket.
   fileName: z

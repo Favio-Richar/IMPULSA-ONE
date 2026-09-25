@@ -4,7 +4,9 @@ Plataforma SaaS multiusuario y multiempresa para construir un centro digital de 
 captación, reservas, ventas y analítica) desde una sola URL.
 
 **Estado actual: Fase 4 — SaaS comercial — en progreso (backlog en `docs/BACKLOG_FASE_4.md`;
-F4.1–F4.5 terminadas; F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.** Fase 2
+F4.1–F4.5 terminadas; F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.
+Por delante de F4.9 va la página pública premium (`docs/BACKLOG_PAGINA_PREMIUM.md`): PP1 y PP2
+(medios propios y selector de imágenes) terminadas en local; sigue PP3.** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
@@ -1139,7 +1141,7 @@ Panel de la plataforma en `http://localhost:3200` (`pnpm --filter @impulza/admin
 Verificado: 26 pruebas e2e nuevas de API (296/296 en total), Playwright 49/49. Detalle y deudas en
 `docs/BACKLOG_FASE_4.md`.
 
-## Biblioteca de medios (PP1, ADR-006)
+## Biblioteca de medios (PP1–PP2, ADR-006)
 
 Imágenes propias para perfil, portadas y galerías, en **Cloudflare R2** en producción y **MinIO** en
 desarrollo (el mismo protocolo S3).
@@ -1153,6 +1155,11 @@ pnpm --filter @impulza/storage run setup:local         # crea el bucket con lect
   API verifica el archivo real (bytes mágicos) y el worker genera versiones WebP livianas **sin
   metadatos**, así que la ubicación GPS de las fotos no se publica.
 - Solo JPG, PNG, WebP y AVIF de hasta 8 MB (nunca SVG). La cuota de almacenamiento del plan se aplica.
+- **En el panel (PP2):** `/medios` muestra la biblioteca, sube con progreso y muestra el uso de
+  cuota. En el constructor, cada imagen (perfil, portada, imagen, galería, servicio, testimonios) se
+  elige de la biblioteca o se sube en el momento, con guía de proporción y texto alternativo
+  obligatorio (o marcarla como decorativa). La página pública sirve esas imágenes con `srcset`.
+  Un bloque no puede usar imágenes de otra organización.
 - **Producción:** poner en el `.env` los valores `STORAGE_*` de R2 (ver `.env.example`). En R2, dar
   lectura pública al bucket por un dominio propio y un CORS que permita `PUT` desde el origen del
   panel. Sin esas variables, todo lo demás funciona y la subida avisa que no está configurada.

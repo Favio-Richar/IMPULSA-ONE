@@ -47,6 +47,8 @@ export {
   RICH_TEXT_ALLOWED_SCHEMES,
 } from "./rich-text-policy.js";
 export {
+  IMAGE_ALT_REQUIRED_MESSAGE,
+  findImagesWithoutAlt,
   SOCIAL_NETWORKS,
   VIDEO_PROVIDERS,
   parseVideoUrl,

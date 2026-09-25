@@ -67,6 +67,33 @@ export const imageSchema = z.object({
   decorative: z.boolean().optional(),
 });
 
+export const IMAGE_ALT_REQUIRED_MESSAGE = "Describe la imagen o márcala como decorativa.";
+
+/**
+ * Rutas (`["background", "alt"]`, `["images", "2", "alt"]`) de las imágenes de una configuración de
+ * bloque que no tienen texto alternativo ni están marcadas como decorativas (PP2).
+ *
+ * Es una regla **de escritura**, no parte de `imageSchema`: ese esquema también valida lo ya
+ * guardado al renderizar (`parseStoredBlock`), y endurecerlo ahí dejaría de mostrar en la página
+ * pública cualquier bloque antiguo con `alt` vacío. Al guardar, en cambio, se exige siempre — la API
+ * lo rechaza y el panel lo marca junto al campo, con el mismo mensaje.
+ */
+export function findImagesWithoutAlt(config: unknown, path: string[] = []): string[][] {
+  if (Array.isArray(config)) {
+    return config.flatMap((item, index) => findImagesWithoutAlt(item, [...path, String(index)]));
+  }
+  if (!config || typeof config !== "object") {
+    return [];
+  }
+  const obj = config as Record<string, unknown>;
+  const isImage = typeof obj.url === "string" && obj.url.trim() !== "" && "alt" in obj;
+  if (isImage) {
+    const alt = typeof obj.alt === "string" ? obj.alt.trim() : "";
+    return alt === "" && obj.decorative !== true ? [[...path, "alt"]] : [];
+  }
+  return Object.entries(obj).flatMap(([key, value]) => findImagesWithoutAlt(value, [...path, key]));
+}
+
 // --- Video embebido -------------------------------------------------------------------------
 
 /**

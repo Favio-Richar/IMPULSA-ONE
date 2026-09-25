@@ -19,7 +19,7 @@ export function HeroBlock({
     <div className="relative overflow-hidden rounded-[var(--site-radius)]">
       {config.background ? (
         <>
-          <SiteImage image={config.background} className="absolute inset-0 h-full w-full object-cover" />
+          <SiteImage image={config.background} priority sizes="100vw" className="absolute inset-0 h-full w-full object-cover" />
           {/* Velo oscuro fijo: el texto tiene que seguir cumpliendo contraste AA sin importar qué
               tan clara sea la imagen que suba cada sitio — no se puede confiar en el contenido. */}
           <div className="absolute inset-0 bg-black/45" />

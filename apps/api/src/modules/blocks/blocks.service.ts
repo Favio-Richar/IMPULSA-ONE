@@ -5,9 +5,11 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
-import type { Block, Prisma as PrismaTypes, PrismaClient } from "@impulza/database";
-import { getBlockDefinition, parseStoredBlock } from "@impulza/validation";
+import { type Block, MediaStatus, type Prisma as PrismaTypes, type PrismaClient } from "@impulza/database";
+import { parseMediaUrl, type StorageAdapter } from "@impulza/storage";
+import { findImagesWithoutAlt, getBlockDefinition, IMAGE_ALT_REQUIRED_MESSAGE, parseStoredBlock } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
+import { STORAGE } from "../../storage/storage.module.js";
 import { AuditService } from "../audit/audit.service.js";
 import { sanitizeBlockConfig } from "./sanitize.js";
 
@@ -31,7 +33,47 @@ export class BlocksService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
+    @Inject(STORAGE) private readonly storage: StorageAdapter | null,
   ) {}
+
+  /**
+   * Toda URL de medios propia dentro de la configuración tiene que ser de **esta** organización y de
+   * un archivo listo (ADR-006 §9). Sin esto, alguien podría usar en su página imágenes de otra
+   * organización (y, al borrarlas su dueña, la página ajena quedaría rota) o una imagen que aún se
+   * está procesando. Las URLs externas (https de otro dominio) siguen permitidas como antes.
+   */
+  private async assertMediaOwnership(organizationId: string, config: unknown): Promise<void> {
+    if (!this.storage) {
+      return;
+    }
+    const base = this.storage.publicUrl("").replace(/\/+$/, "");
+    const strings: string[] = [];
+    const collect = (value: unknown): void => {
+      if (typeof value === "string") {
+        strings.push(value);
+      } else if (Array.isArray(value)) {
+        value.forEach(collect);
+      } else if (value && typeof value === "object") {
+        Object.values(value).forEach(collect);
+      }
+    };
+    collect(config);
+
+    const references = strings.map((value) => parseMediaUrl(value, base)).filter((ref) => ref !== null);
+    if (references.length === 0) {
+      return;
+    }
+    if (references.some((ref) => ref.organizationId !== organizationId)) {
+      throw new UnprocessableEntityException("Esa imagen pertenece a otra organización.");
+    }
+    const assetIds = [...new Set(references.map((ref) => ref.assetId))];
+    const ready = await this.prisma.mediaAsset.count({
+      where: { id: { in: assetIds }, organizationId, status: MediaStatus.READY },
+    });
+    if (ready !== assetIds.length) {
+      throw new UnprocessableEntityException("La imagen ya no existe o todavía se está procesando.");
+    }
+  }
 
   /** Valida la cadena completa organización → sitio → página antes de tocar cualquier bloque. */
   private async assertPageInOrganization(
@@ -95,6 +137,16 @@ export class BlocksService {
       });
     }
 
+    // Texto alternativo obligatorio al guardar (PP2, WCAG 1.1.1). Va aparte del esquema a propósito:
+    // ver `findImagesWithoutAlt`.
+    const missingAlt = findImagesWithoutAlt(parsed.data);
+    if (missingAlt.length > 0) {
+      throw new UnprocessableEntityException({
+        message: "La configuración del bloque no es válida.",
+        issues: missingAlt.map((path) => ({ path: path.join("."), message: IMAGE_ALT_REQUIRED_MESSAGE })),
+      });
+    }
+
     return {
       config: sanitizeBlockConfig(type, parsed.data),
       version: definition.version,
@@ -149,6 +201,7 @@ export class BlocksService {
   ): Promise<BlockWithConfig> {
     await this.assertPageInOrganization(organizationId, siteId, pageId);
     const { config, version } = this.validateAndSanitize(input.type, input.config);
+    await this.assertMediaOwnership(organizationId, config);
     this.assertScheduleOrder(input.scheduledStart, input.scheduledEnd);
 
     const created = await this.prisma.$transaction(async (tx) => {
@@ -211,6 +264,9 @@ export class BlocksService {
 
     const sanitized =
       changes.config === undefined ? null : this.validateAndSanitize(block.type, changes.config);
+    if (sanitized) {
+      await this.assertMediaOwnership(organizationId, sanitized.config);
+    }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (sanitized) {

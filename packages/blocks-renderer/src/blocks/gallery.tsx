@@ -16,6 +16,7 @@ export function GalleryBlock({ config }: { config: GalleryBlockConfig }) {
           <SiteImage
             key={index}
             image={image}
+            sizes="256px"
             className="h-64 w-64 shrink-0 snap-start rounded-[var(--site-radius)] border border-[var(--site-color-border)] object-cover shadow-[var(--site-shadow)]"
           />
         ))}
@@ -29,6 +30,7 @@ export function GalleryBlock({ config }: { config: GalleryBlockConfig }) {
         <SiteImage
           key={index}
           image={image}
+          sizes="(min-width: 640px) 240px, 50vw"
           className="aspect-square w-full rounded-[var(--site-radius)] border border-[var(--site-color-border)] object-cover shadow-[var(--site-shadow)]"
         />
       ))}

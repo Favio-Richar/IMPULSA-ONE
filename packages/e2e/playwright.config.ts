@@ -58,6 +58,14 @@ export default defineConfig({
       timeout: 180_000,
     },
     {
+      // Worker (PP2): procesa las imágenes subidas; sin él una subida queda "Optimizando…".
+      command: "pnpm --filter @impulza/worker dev",
+      url: "http://localhost:4100/health",
+      cwd: path.join(import.meta.dirname, "..", ".."),
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
       // Superadministración (F4.4). Sus pruebas usan su propia sesión (`admin-session.json`).
       command: "pnpm --filter @impulza/admin dev",
       url: `${ADMIN_URL}/ingresar`,

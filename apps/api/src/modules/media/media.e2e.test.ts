@@ -312,6 +312,37 @@ describe("Biblioteca de medios (e2e) — PP1 / ADR-006", () => {
     });
   });
 
+  describe("uso en bloques (ADR-006 §9)", () => {
+    async function imageBlocksPath(owner: Awaited<ReturnType<typeof createOwnerWithOrg>>) {
+      const site = await owner.agent.post(`/api/v1/organizations/${owner.organizationId}/sites`).set(CSRF_HEADERS).send({ name: "Sitio", slug: unique("sitio") }).expect(201);
+      const pages = await owner.agent.get(`/api/v1/organizations/${owner.organizationId}/sites/${site.body.id}/pages`).expect(200);
+      return `/api/v1/organizations/${owner.organizationId}/sites/${site.body.id}/pages/${pages.body[0].id}/blocks`;
+    }
+
+    it("un bloque no puede usar una imagen de otra organización", async () => {
+      const a = await createOwnerWithOrg();
+      const b = await createOwnerWithOrg();
+      const imageOfA = await uploadReadyImage(a.agent, a.organizationId);
+      const path = await imageBlocksPath(b);
+
+      const rejected = await b.agent.post(path).set(CSRF_HEADERS).send({ type: "image", config: { image: { url: imageOfA.url, alt: "Ajena" } } }).expect(422);
+      expect(rejected.body.message).toMatch(/otra organización/);
+    });
+
+    it("tampoco una imagen que todavía se está procesando; una URL externa sigue permitida", async () => {
+      const owner = await createOwnerWithOrg();
+      const bytes = await phonePhoto();
+      const { asset, upload } = await requestUpload(owner.agent, owner.organizationId, bytes);
+      storage.simulateUpload(upload.url, bytes, "image/jpeg");
+      await owner.agent.post(`/api/v1/organizations/${owner.organizationId}/media/${asset.id}/confirm`).set(CSRF_HEADERS).expect(200);
+      const futureUrl = `https://media.test/org/${owner.organizationId}/${asset.id}/w1000.webp`;
+      const path = await imageBlocksPath(owner);
+
+      await owner.agent.post(path).set(CSRF_HEADERS).send({ type: "image", config: { image: { url: futureUrl, alt: "Aún no" } } }).expect(422);
+      await owner.agent.post(path).set(CSRF_HEADERS).send({ type: "image", config: { image: { url: "https://ejemplo.com/foto.jpg", alt: "Externa" } } }).expect(201);
+    });
+  });
+
   describe("borrar", () => {
     it("no se puede borrar una imagen que usa una página; sin uso se borra con sus variantes y queda auditado", async () => {
       const owner = await createOwnerWithOrg();

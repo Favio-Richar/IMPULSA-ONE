@@ -9,6 +9,7 @@ import { BLOCK_FIELD_SETS } from "../../lib/block-fields/catalog";
 import { FieldGroup } from "../../lib/block-fields/field-renderer";
 import { BLOCK_LABELS } from "../../lib/block-fields/labels";
 import { createBlockConfigResolver } from "../../lib/block-fields/resolver";
+import { sameConfig } from "../../lib/block-fields/same-config";
 import { toFormConfig } from "../../lib/block-fields/to-form-value";
 import { useUpdateBlock } from "../../lib/hooks/use-blocks";
 import { ContactFormPicker } from "./contact-form-picker";
@@ -76,7 +77,7 @@ export function BlockConfigPanel({
   // nada acá. Sincroniza el formulario con lo que hay ahora en el servidor, para que la próxima
   // tecla no reescriba encima de lo que acaba de deshacerse.
   useEffect(() => {
-    if (JSON.stringify(block.config) === JSON.stringify(lastPersistedRef.current)) {
+    if (sameConfig(block.config, lastPersistedRef.current)) {
       return;
     }
     openingConfigRef.current = block.config;

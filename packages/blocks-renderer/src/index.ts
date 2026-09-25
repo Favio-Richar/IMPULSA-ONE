@@ -8,6 +8,8 @@ export { Container } from "./ui/container.js";
 export { LinkButton, type ButtonVariant } from "./ui/link-button.js";
 export { RichText } from "./ui/rich-text.js";
 export { SiteImage } from "./ui/site-image.js";
+export { SiteBackdrop } from "./ui/site-backdrop.js";
+export { SURFACE_SCOPE } from "./ui/surface.js";
 
 export { sanitizeRichText } from "./lib/sanitize.js";
 

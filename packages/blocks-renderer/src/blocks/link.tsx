@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import type { LinkBlockConfig } from "@impulza/validation";
 import { NetworkIcon } from "../ui/network-icon.js";
+import { SURFACE_SCOPE } from "../ui/surface.js";
 
 /**
  * `icon` (opcional) es una red de la lista blanca (F2.4): si viene, el enlace muestra el logo de
@@ -17,9 +18,9 @@ export function LinkBlock({ config }: { config: LinkBlockConfig }) {
       rel="noopener noreferrer nofollow"
       className={`flex items-center gap-3 rounded-[var(--site-radius)] px-5 py-4 shadow-[var(--site-shadow)] transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 ${
         isOutline
-          ? "border border-[var(--site-color-primary)] bg-transparent text-[var(--site-color-primary)]"
+          ? "border border-[var(--site-color-link)] bg-transparent text-[var(--site-color-link)]"
           : isSecondary
-            ? "border border-[var(--site-color-border)] bg-[var(--site-color-surface)] text-[var(--site-color-foreground)]"
+            ? `${SURFACE_SCOPE} border border-[var(--site-color-border)] bg-[var(--site-color-surface)] text-[var(--site-color-foreground)]`
             : "border border-transparent bg-[var(--site-color-primary)] text-[var(--site-color-primary-foreground)]"
       }`}
     >

@@ -1,6 +1,8 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@impulza/database";
-import { parseStoredBlock } from "@impulza/validation";
+import type { StorageAdapter } from "@impulza/storage";
+import { parseStoredBlock, resolveSiteBackground, type ResolvedSiteBackground, themeTokensSchema } from "@impulza/validation";
+import { STORAGE } from "../../storage/storage.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { pageContentSnapshotSchema } from "../pages/page-content-snapshot.js";
 import { ThemesService } from "../themes/themes.service.js";
@@ -11,6 +13,7 @@ export interface PublicSiteView {
   name: string;
   slug: string;
   theme: { tokens: unknown };
+  background: ResolvedSiteBackground | null;
   pages: Array<{ slug: string; isHome: boolean; publishedAt: Date }>;
 }
 
@@ -36,6 +39,7 @@ export class PublicSitesService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly themesService: ThemesService,
+    @Inject(STORAGE) private readonly storage: StorageAdapter | null,
   ) {}
 
   /**
@@ -89,6 +93,11 @@ export class PublicSitesService {
       name: site.name,
       slug: site.slug,
       theme: { tokens: theme.tokens },
+      // Ya resuelto (PP3): el render no decide nada, solo pinta. Un fondo que dejó de ser válido
+      // (un video retirado de la biblioteca) cae al del tema en vez de romper la página.
+      background: resolveSiteBackground(site.background, themeTokensSchema.parse(theme.tokens), (key) =>
+        this.storage ? this.storage.publicUrl(key) : key,
+      ),
       pages: navPages.map((page) => ({
         slug: page.slug,
         isHome: page.isHome,

@@ -1,6 +1,7 @@
 import type { HeroBlockConfig } from "@impulza/validation";
 import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
 import { SiteImage } from "../ui/site-image.js";
+import { SURFACE_SCOPE } from "../ui/surface.js";
 
 const ALIGN_CLASSES: Record<HeroBlockConfig["alignment"], string> = {
   left: "text-left items-start",
@@ -28,7 +29,7 @@ export function HeroBlock({
 
       <div
         className={`relative flex flex-col gap-4 px-6 py-16 sm:px-10 sm:py-20 ${ALIGN_CLASSES[config.alignment]} ${
-          config.background ? "text-white" : "text-[var(--site-color-foreground)]"
+          config.background ? "text-white" : `${SURFACE_SCOPE} text-[var(--site-color-foreground)]`
         }`}
         style={config.background ? undefined : { backgroundColor: "var(--site-color-surface)" }}
       >

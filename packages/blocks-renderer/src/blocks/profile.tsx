@@ -21,7 +21,7 @@ export function ProfileBlock({ config }: { config: ProfileBlockConfig }) {
         <h1 className="text-2xl font-semibold text-[var(--site-color-foreground)]">{config.name}</h1>
         {config.verified ? (
           <BadgeCheck
-            className="h-5 w-5 shrink-0 text-[var(--site-color-primary)]"
+            className="h-5 w-5 shrink-0 text-[var(--site-color-link)]"
             aria-label="Perfil verificado"
           />
         ) : null}

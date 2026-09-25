@@ -8,5 +8,5 @@ export { MemoryStorageAdapter } from "./memory-adapter.js";
 export { assetPrefix, originalKey, parseMediaUrl, variantKey } from "./keys.js";
 export { detectImageType, MAGIC_BYTES_LENGTH } from "./magic.js";
 export { MEDIA_PROCESS_QUEUE, type MediaProcessJob } from "./job.js";
-export { processMediaAsset, type MediaProcessResult } from "./processor.js";
+export { computeImageTones, processMediaAsset, type MediaProcessResult } from "./processor.js";
 export { cleanupAbandonedMedia } from "./cleanup.js";

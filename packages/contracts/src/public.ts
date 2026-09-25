@@ -30,6 +30,9 @@ export const publicSiteResponse = z.object({
   name: z.string(),
   slug: z.string(),
   theme: publicThemeResponse,
+  /** Fondo de la página ya resuelto (PP3, `resolvedSiteBackgroundSchema` en `@impulza/validation`).
+   *  `null` = el fondo del tema. */
+  background: z.unknown().nullable(),
   /** Ordenadas por `position`. Una página `HIDDEN` no aparece acá, pero sigue siendo alcanzable
    *  por enlace directo — mismo criterio que la API autenticada (F2.3). */
   pages: z.array(publicNavPageResponse),

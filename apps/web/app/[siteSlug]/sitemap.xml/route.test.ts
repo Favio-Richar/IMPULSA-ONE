@@ -25,6 +25,7 @@ describe("GET /:siteSlug/sitemap.xml (F2.8)", () => {
       name: "Mi Sitio",
       slug: "mi-sitio",
       theme: { tokens: {} },
+    background: null,
       pages: [
         { slug: "inicio", isHome: true, publishedAt: "2026-01-01T00:00:00.000Z" },
         { slug: "servicios", isHome: false, publishedAt: "2026-02-01T00:00:00.000Z" },
@@ -50,6 +51,7 @@ describe("GET /:siteSlug/sitemap.xml (F2.8)", () => {
       name: "Mi Sitio",
       slug: "mi&sitio",
       theme: { tokens: {} },
+    background: null,
       pages: [{ slug: "inicio", isHome: true, publishedAt: "2026-01-01T00:00:00.000Z" }],
     };
     vi.mocked(getPublicSite).mockResolvedValue(site);

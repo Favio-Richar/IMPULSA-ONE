@@ -1,11 +1,26 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { type PrismaClient, type Site, SiteStatus } from "@impulza/database";
-import { HOME_PAGE_SLUG } from "@impulza/validation";
+import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
+import type { SiteBackgroundResponse } from "@impulza/contracts";
+import { MediaStatus, Prisma, type PrismaClient, type Site, SiteStatus } from "@impulza/database";
+import { parseMediaUrl, type StorageAdapter } from "@impulza/storage";
+import {
+  BACKGROUND_VIDEOS,
+  HOME_PAGE_SLUG,
+  imageTonesSchema,
+  isOverlayLegible,
+  legibleStrengths,
+  mediaVariantsSchema,
+  resolveSiteBackground,
+  siteBackgroundSchema,
+  type SiteBackground,
+  themeTokensSchema,
+} from "@impulza/validation";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
 import { ThemesService, type ThemeView } from "../themes/themes.service.js";
 import { PlansService } from "../plans/plans.service.js";
+import { RevalidateWebService } from "../public-sites/revalidate-web.service.js";
+import { STORAGE } from "../../storage/storage.module.js";
 
 @Injectable()
 export class SitesService {
@@ -14,6 +29,8 @@ export class SitesService {
     private readonly auditService: AuditService,
     private readonly themesService: ThemesService,
     private readonly plansService: PlansService,
+    private readonly revalidateWeb: RevalidateWebService,
+    @Inject(STORAGE) private readonly storage: StorageAdapter | null,
   ) {}
 
   /**
@@ -236,7 +253,100 @@ export class SitesService {
       targetId: site.id,
       metadata: { themeFrom: site.themeId, themeTo: themeId },
     });
+    // El tema se aplica en vivo (no se publica por versión): la página pública tiene que verlo ya.
+    await this.revalidateWeb.revalidateSite(site.id);
 
     return updated;
+  }
+
+  private videoUrl = (key: string): string => (this.storage ? this.storage.publicUrl(key) : key);
+
+  /** Fondo de la página (PP3): lo guardado, lo que pinta el render y los videos curados disponibles. */
+  async getSiteBackground(organizationId: string, siteId: string): Promise<SiteBackgroundResponse> {
+    const site = await this.getSiteOrThrow(organizationId, siteId);
+    const theme = themeTokensSchema.parse((await this.getSiteTheme(organizationId, siteId)).tokens);
+    return {
+      background: site.background ?? null,
+      resolved: resolveSiteBackground(site.background, theme, this.videoUrl),
+      // Sin almacenamiento configurado no hay de dónde servir los videos.
+      videos: this.storage
+        ? BACKGROUND_VIDEOS.map((video) => ({ code: video.code, name: video.name, posterUrl: this.videoUrl(video.posterKey) }))
+        : [],
+    };
+  }
+
+  /**
+   * Imagen de fondo: tiene que ser un archivo **listo** de la biblioteca de **esta** organización
+   * (ADR-006 §9; una URL externa no se acepta porque no se puede verificar su legibilidad ni se
+   * controla si desaparece), y la capa elegida tiene que alcanzar AA sobre sus tonos extremos. Se
+   * guarda siempre la URL canónica del archivo (su variante más grande), no la que envió el cliente.
+   */
+  private async checkImageBackground(organizationId: string, background: Extract<SiteBackground, { kind: "image" }>): Promise<SiteBackground> {
+    if (!this.storage) {
+      throw new UnprocessableEntityException("La subida de imágenes todavía no está habilitada en esta instalación.");
+    }
+    const reference = parseMediaUrl(background.image.url, this.storage.publicUrl(""));
+    if (!reference) {
+      throw new UnprocessableEntityException("Elige una imagen de tu biblioteca de medios.");
+    }
+    const asset =
+      reference.organizationId === organizationId
+        ? await this.prisma.mediaAsset.findFirst({ where: { id: reference.assetId, organizationId, status: MediaStatus.READY } })
+        : null;
+    if (!asset) {
+      throw new UnprocessableEntityException("Esa imagen no está disponible en tu biblioteca.");
+    }
+    const tones = imageTonesSchema.safeParse(asset.tones).data ?? null;
+    if (!isOverlayLegible(tones, background.overlay)) {
+      throw new UnprocessableEntityException({
+        message: "Con esa intensidad el texto no se leería bien sobre esta imagen. Elige una capa más intensa.",
+        legibleStrengths: legibleStrengths(tones, background.overlay.tone),
+      });
+    }
+    const variants = mediaVariantsSchema.parse(asset.variants);
+    const largest = [...variants].sort((a, b) => b.width - a.width)[0]!;
+    return { ...background, image: { url: this.storage.publicUrl(largest.key) } };
+  }
+
+  /**
+   * Cambia el fondo (o vuelve al del tema con `null`). Mismo permiso que aplicar un tema
+   * (`site.update`), queda auditado, y la página pública se actualiza de inmediato.
+   */
+  async setSiteBackground(organizationId: string, actorId: string, siteId: string, input: unknown): Promise<SiteBackgroundResponse> {
+    const site = await this.getSiteOrThrow(organizationId, siteId);
+
+    let background: SiteBackground | null = null;
+    if (input !== null) {
+      const parsed = siteBackgroundSchema.safeParse(input);
+      if (!parsed.success) {
+        throw new UnprocessableEntityException({
+          message: "El fondo no es válido.",
+          issues: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+        });
+      }
+      background = parsed.data.kind === "image" ? await this.checkImageBackground(organizationId, parsed.data) : parsed.data;
+      if (background.kind === "video" && !this.storage) {
+        throw new UnprocessableEntityException("Los videos de fondo todavía no están disponibles en esta instalación.");
+      }
+    }
+
+    await this.prisma.site.update({
+      where: { id: site.id },
+      data: { background: background === null ? Prisma.DbNull : (background as Prisma.InputJsonValue) },
+    });
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "site.background_changed",
+      targetType: "Site",
+      targetId: site.id,
+      metadata: {
+        from: (site.background as { kind?: string } | null)?.kind ?? null,
+        to: background?.kind ?? null,
+      },
+    });
+    await this.revalidateWeb.revalidateSite(site.id);
+
+    return this.getSiteBackground(organizationId, siteId);
   }
 }

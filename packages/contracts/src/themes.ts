@@ -29,3 +29,17 @@ export const siteThemeResponse = themeResponse.extend({
 
 export type ThemeResponse = z.infer<typeof themeResponse>;
 export type SiteThemeResponse = z.infer<typeof siteThemeResponse>;
+
+/**
+ * Fondo de la página de un sitio (PP3). `background` es lo guardado (`siteBackgroundSchema`) y
+ * `resolved`, lo que pinta el render (`resolvedSiteBackgroundSchema`), ambos en
+ * `@impulza/validation` — mismo criterio que `tokens`. `null` en los dos = el fondo del tema.
+ */
+export const siteBackgroundResponse = z.object({
+  background: z.unknown().nullable(),
+  resolved: z.unknown().nullable(),
+  /** Videos curados disponibles para elegir (vacío mientras la biblioteca esté en revisión). */
+  videos: z.array(z.object({ code: z.string(), name: z.string(), posterUrl: z.string() })),
+});
+
+export type SiteBackgroundResponse = z.infer<typeof siteBackgroundResponse>;

@@ -1,5 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { archiveSite, assignSiteTheme, createSite, getSite, getSiteTheme, listSites, updateSite } from "../api/sites";
+import {
+  archiveSite,
+  assignSiteTheme,
+  createSite,
+  getSite,
+  getSiteBackground,
+  getSiteTheme,
+  listSites,
+  setSiteBackground,
+  updateSite,
+} from "../api/sites";
 
 // `organizationId` en cada queryKey (F2.9): cambiar de organización activa invalida el caché de la
 // anterior en vez de arrastrarlo — el servidor ya aísla por su cuenta (ADR-002), esto es solo para
@@ -67,6 +77,23 @@ export function useAssignSiteTheme(organizationId: string, siteId: string) {
     mutationFn: (themeId: string | null) => assignSiteTheme(organizationId, siteId, themeId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["sites", organizationId, siteId] });
+    },
+  });
+}
+
+export function useSiteBackground(organizationId: string, siteId: string) {
+  return useQuery({
+    queryKey: ["sites", organizationId, siteId, "background"],
+    queryFn: () => getSiteBackground(organizationId, siteId),
+  });
+}
+
+export function useSetSiteBackground(organizationId: string, siteId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (background: unknown) => setSiteBackground(organizationId, siteId, background),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["sites", organizationId, siteId, "background"], data);
     },
   });
 }

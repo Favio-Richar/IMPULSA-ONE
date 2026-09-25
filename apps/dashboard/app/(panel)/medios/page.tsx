@@ -41,10 +41,15 @@ function MediaLibrary({ organizationId }: { organizationId: string }): React.JSX
       await deleteMutation.mutateAsync(assetId);
       setConfirmingId(null);
     } catch (error) {
-      const body = error instanceof ApiError ? (error.body as { code?: string; usages?: Array<{ siteName: string; pageSlug: string }> }) : undefined;
+      const body =
+        error instanceof ApiError
+          ? (error.body as { code?: string; usages?: Array<{ kind?: "page" | "background"; siteName: string; pageSlug: string | null }> })
+          : undefined;
       const message =
         body?.code === "MEDIA_IN_USE" && body.usages
-          ? `Se usa en: ${body.usages.map((usage) => `${usage.siteName} /${usage.pageSlug}`).join(", ")}. Quítala de ahí primero.`
+          ? `Se usa en: ${body.usages
+              .map((usage) => (usage.kind === "background" ? `${usage.siteName} (fondo de la página)` : `${usage.siteName} /${usage.pageSlug}`))
+              .join(", ")}. Quítala de ahí primero.`
           : "No pudimos borrar la imagen. Intenta de nuevo.";
       setDeleteError({ assetId, message });
       setConfirmingId(null);

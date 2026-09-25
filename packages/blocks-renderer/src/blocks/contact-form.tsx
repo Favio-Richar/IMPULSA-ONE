@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import type { PublicFormResponse } from "@impulza/contracts";
 import type { ContactFormBlockConfig } from "@impulza/validation";
+import { SURFACE_SCOPE } from "../ui/surface.js";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
@@ -40,7 +41,7 @@ export function ContactFormBlock({
 
   if (!config.formId) {
     return (
-      <div className="rounded-[var(--site-radius)] border border-dashed border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-6 text-sm text-[var(--site-color-muted-foreground)]">
+      <div className={`${SURFACE_SCOPE} rounded-[var(--site-radius)] border border-dashed border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-6 text-sm text-[var(--site-color-muted-foreground)]`}>
         {config.title ? <p className="mb-2 font-medium text-[var(--site-color-foreground)]">{config.title}</p> : null}
         Este bloque todavía no tiene un formulario elegido.
       </div>
@@ -53,7 +54,7 @@ export function ContactFormBlock({
     // previa no pide los datos reales del formulario), no un error; en el sitio público sí sería
     // un formulario borrado después de elegirlo.
     return (
-      <div className="rounded-[var(--site-radius)] border border-dashed border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-6 text-sm text-[var(--site-color-muted-foreground)]">
+      <div className={`${SURFACE_SCOPE} rounded-[var(--site-radius)] border border-dashed border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-6 text-sm text-[var(--site-color-muted-foreground)]`}>
         {config.title ? <p className="mb-2 font-medium text-[var(--site-color-foreground)]">{config.title}</p> : null}
         {mode === "preview"
           ? "Formulario elegido — se mostrará con sus campos reales en el sitio publicado."
@@ -101,7 +102,7 @@ export function ContactFormBlock({
 
   if (status === "success" && ack) {
     return (
-      <div className="rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-6 shadow-[var(--site-shadow)]">
+      <div className={`${SURFACE_SCOPE} rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-6 shadow-[var(--site-shadow)]`}>
         <p className="text-sm text-[var(--site-color-foreground)]">{ack.message}</p>
       </div>
     );
@@ -109,7 +110,7 @@ export function ContactFormBlock({
 
   return (
     <form
-      className="rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-6 shadow-[var(--site-shadow)]"
+      className={`${SURFACE_SCOPE} rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-6 shadow-[var(--site-shadow)]`}
       onSubmit={handleSubmit}
       noValidate
     >

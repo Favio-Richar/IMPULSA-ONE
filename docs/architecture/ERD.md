@@ -66,6 +66,8 @@ Site/Page (N) ──1 Template (opcional, origen de la página)
 ```
 
 - **Site**: id, organization_id, name, slug (único global), status (draft/published/archived), theme_id.
+  Desde PP3, `background` (JSON opcional, `siteBackgroundSchema`: color, degradado del catálogo, imagen
+  de la biblioteca propia o video curado, con capa de legibilidad). Se aplica en vivo, como el tema.
 - **SiteDomain**: id, site_id, domain, type (subdominio/propio), verification_status, ssl_status.
 - **SiteSlugRedirect**: id, site_id, from_slug (único global), created_at.
   - Agregado en F2.1 (no estaba en la versión original de este ERD): lo exige el criterio de F2.2
@@ -88,7 +90,8 @@ Site/Page (N) ──1 Template (opcional, origen de la página)
 > **Implementado en PP1 (ADR-006) como `MediaAsset`:** id, organization_id, uploaded_by_id,
 > kind (`IMAGE` | `VIDEO`), status (`PENDING_UPLOAD` → `PROCESSING` → `READY` | `FAILED`), file_name,
 > mime_type (verificado por bytes mágicos), size_bytes (declarado), stored_bytes (variantes), width,
-> height, variants (`[{width, key, sizeBytes}]`), failure_reason. El original se borra al procesar. Lo
+> height, variants (`[{width, key, sizeBytes}]`), failure_reason y, desde PP3, tones (`{darkest,
+> lightest}`, para verificar el contraste del texto sobre la imagen). El original se borra al procesar. Lo
 > que sigue en esta sección es el diseño previo, que se conserva como referencia.
 
 ```text

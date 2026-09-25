@@ -15,7 +15,7 @@ import { BLOCK_FIELD_SETS } from "../../../../../../../lib/block-fields/catalog"
 import { useActiveOrgStore } from "../../../../../../../lib/active-org-store";
 import { useBlockHistory } from "../../../../../../../lib/hooks/use-block-history";
 import { usePage, usePublishPage } from "../../../../../../../lib/hooks/use-pages";
-import { useSiteTheme } from "../../../../../../../lib/hooks/use-sites";
+import { useSiteBackground, useSiteTheme } from "../../../../../../../lib/hooks/use-sites";
 import {
   useBlocks,
   useCreateBlock,
@@ -52,6 +52,8 @@ function BlockEditor({
 }): React.JSX.Element {
   const pageQuery = usePage(organizationId, siteId, pageId);
   const themeQuery = useSiteTheme(organizationId, siteId);
+  // El fondo (PP3) no bloquea el constructor: mientras carga, o si falla, la vista previa usa el del tema.
+  const backgroundQuery = useSiteBackground(organizationId, siteId);
   const blocksQuery = useBlocks(organizationId, siteId, pageId);
 
   const createMutation = useCreateBlock(organizationId, siteId, pageId);
@@ -314,7 +316,7 @@ function BlockEditor({
       </div>
 
       <div className="h-80 shrink-0 lg:h-96">
-        <PreviewPane blocks={blocks} themeTokens={themeQuery.data.tokens} />
+        <PreviewPane blocks={blocks} themeTokens={themeQuery.data.tokens} background={backgroundQuery.data?.resolved ?? null} />
       </div>
     </div>
   );

@@ -346,6 +346,9 @@ model Site {
   slug           String     @unique
   status         SiteStatus @default(DRAFT)
   themeId        String?    @map("theme_id") @db.Uuid
+  // Fondo de la página (PP3): `siteBackgroundSchema` de `@impulza/validation`, validado al guardar
+  // y otra vez al leer. `null` = el fondo del tema. En vivo, como el tema: no va en la publicación.
+  background     Json?
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -842,6 +845,9 @@ model MediaAsset {
   height         Int?
   // [{ width, key, sizeBytes }] validado con `mediaVariantsSchema` al leer.
   variants       Json        @default("[]")
+  // Tonos extremos `{ darkest, lightest }` (PP3), para verificar el contraste del texto sobre la
+  // imagen usada de fondo. `null` en imágenes procesadas antes de PP3: se asume el peor caso.
+  tones          Json?
   failureReason  String?     @map("failure_reason")
   createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)

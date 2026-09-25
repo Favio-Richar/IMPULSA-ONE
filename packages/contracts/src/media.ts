@@ -22,6 +22,9 @@ export const mediaAssetResponse = z.object({
   /** Para `srcset`: de menor a mayor ancho. */
   variants: z.array(z.object({ width: z.number().int(), url: z.string() })),
   failureReason: z.string().nullable(),
+  /** Tonos extremos `{ darkest, lightest }` (PP3): con ellos el panel ofrece solo las capas de
+   *  legibilidad que alcanzan AA sobre esta imagen. `null` en imágenes procesadas antes de PP3. */
+  tones: z.object({ darkest: z.string(), lightest: z.string() }).nullable(),
   createdAt: isoDateTime,
 });
 

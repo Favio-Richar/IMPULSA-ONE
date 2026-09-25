@@ -5,7 +5,7 @@ import { AA_NORMAL_TEXT, AA_UI_COMPONENT, contrastRatio, HEX_COLOR_PATTERN } fro
 // los colores son hex de 6 dígitos y todo lo demás son enums. Un hex es un dato, no una regla de
 // estilo — no puede cerrar una declaración e inyectar otra, que es justo el riesgo de aceptar CSS.
 
-const hexColorSchema = z
+export const hexColorSchema = z
   .string()
   .trim()
   .regex(HEX_COLOR_PATTERN, "Usa un color hexadecimal de 6 dígitos, por ejemplo #1d4ed8.")

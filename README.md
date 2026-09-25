@@ -6,7 +6,8 @@ captación, reservas, ventas y analítica) desde una sola URL.
 **Estado actual: Fase 4 — SaaS comercial — en progreso (backlog en `docs/BACKLOG_FASE_4.md`;
 F4.1–F4.5 terminadas; F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.
 Por delante de F4.9 va la página pública premium (`docs/BACKLOG_PAGINA_PREMIUM.md`): PP1 y PP2
-(medios propios y selector de imágenes) terminadas en local; sigue PP3.** Fase 2
+(medios propios y selector de imágenes) terminadas en local; PP3 (fondo premium) construida y
+probada, en espera de que se apruebe el contenido de la biblioteca de videos.** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
@@ -1163,6 +1164,24 @@ pnpm --filter @impulza/storage run setup:local         # crea el bucket con lect
 - **Producción:** poner en el `.env` los valores `STORAGE_*` de R2 (ver `.env.example`). En R2, dar
   lectura pública al bucket por un dominio propio y un CORS que permita `PUT` desde el origen del
   panel. Sin esas variables, todo lo demás funciona y la subida avisa que no está configurada.
+
+## Fondo premium de la página (PP3)
+
+En la pantalla del sitio, "Fondo de la página": el del tema, un color, uno de 8 degradados curados,
+una imagen de la biblioteca o un video de la biblioteca curada (vacía hasta que se apruebe su
+contenido). Se aplica en vivo, como el tema, y la página pública se actualiza al instante.
+
+- **El texto siempre se lee (AA, verificado en el servidor).** Sobre un fondo oscuro, el texto de la
+  página pasa a claro, y al revés; las tarjetas conservan los colores del tema. Sobre una imagen, el
+  worker mide sus tonos extremos al procesarla y la API rechaza una capa de oscurecido o aclarado
+  demasiado suave para esa foto. El panel ya desactiva esas opciones.
+- **Nunca CSS libre:** colores hex, códigos del catálogo y archivos propios. Una imagen de fondo
+  tiene que ser de la biblioteca de la misma organización, y no se puede borrar mientras sea fondo.
+- **Video:** primero se ve el póster; el video se agrega solo sin "reducir movimiento" ni "ahorro de
+  datos", con `muted playsInline autoPlay loop` (lo que reproducen Instagram y TikTok).
+- **En local**, para que la página pública se actualice sin publicar, `apps/api` necesita
+  `WEB_APP_URL` y `WEB_REVALIDATE_SECRET` (el mismo `REVALIDATE_SECRET` de `apps/web`). Sin ellas el
+  aviso no se envía, igual que antes (no-op documentado).
 
 ## Soporte (F4.5)
 

@@ -3139,6 +3139,243 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/background": {
+      "get": {
+        "description": "`background` es lo guardado; `resolved`, lo que pinta el render (con la paleta de texto ya decidida para que se lea); `null` en ambos = el fondo del tema. `videos` lista la biblioteca curada disponible.",
+        "operationId": "SitesController_getBackground",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio de la organización.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fondo del sitio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "background": {
+                      "nullable": true
+                    },
+                    "resolved": {
+                      "nullable": true
+                    },
+                    "videos": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "posterUrl": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "name",
+                          "posterUrl"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "background",
+                    "resolved",
+                    "videos"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Leer el fondo de la página del sitio (PP3)",
+        "tags": [
+          "sites"
+        ]
+      },
+      "put": {
+        "description": "Color, degradado del catálogo, imagen de la biblioteca propia o video de la biblioteca curada, nunca CSS libre. El servidor verifica que el texto alcance WCAG 2.2 AA: un color con el que ningún texto se lee, o una capa de legibilidad demasiado suave para esa imagen, responde 422 (con `legibleStrengths` en el caso de la imagen). Una imagen tiene que ser un archivo listo de la biblioteca de esta organización. `background: null` vuelve al fondo del tema. La página pública se actualiza de inmediato.",
+        "operationId": "SitesController_setBackground",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio de la organización.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "background": {}
+                },
+                "required": [
+                  "background"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Fondo aplicado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "background": {
+                      "nullable": true
+                    },
+                    "resolved": {
+                      "nullable": true
+                    },
+                    "videos": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "posterUrl": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "name",
+                          "posterUrl"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "background",
+                    "resolved",
+                    "videos"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
+          },
+          "422": {
+            "description": "Fondo inválido o ilegible, o imagen que no es de la biblioteca de esta organización."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Cambiar el fondo de la página del sitio (PP3)",
+        "tags": [
+          "sites"
+        ]
+      }
+    },
     "/api/v1/organizations/{organizationId}/sites/{siteId}/archive": {
       "post": {
         "description": "Requiere el permiso `site.archive`. Acción y no DELETE: el contenido del usuario no se destruye desde un CRUD. Es idempotente — archivar dos veces no falla ni duplica la entrada de auditoría.",
@@ -3262,6 +3499,254 @@
         "summary": "Archivar un sitio",
         "tags": [
           "sites"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}": {
+      "get": {
+        "description": "Identidad del sitio, su tema efectivo y la lista de páginas para el menú (solo las `PUBLIC` y publicadas). Es lo que resuelve la raíz de un sitio en `apps/web`.",
+        "operationId": "PublicSitesController_getSite",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El sitio, listo para renderizar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "theme": {
+                      "type": "object",
+                      "properties": {
+                        "tokens": {}
+                      },
+                      "required": [
+                        "tokens"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "background": {
+                      "nullable": true
+                    },
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "isHome": {
+                            "type": "boolean"
+                          },
+                          "publishedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "slug",
+                          "isHome",
+                          "publishedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "slug",
+                    "theme",
+                    "background",
+                    "pages"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sitio no encontrado: no existe, o está archivado. Un sitio en borrador sin ninguna página publicada tampoco tiene nada que mostrar, pero eso lo decide cada página, no este endpoint."
+          },
+          "429": {
+            "description": "Límite de peticiones superado (120 por minuto y IP)."
+          }
+        },
+        "summary": "Sitio público por slug",
+        "tags": [
+          "public-sites"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/pages/{pageSlug}": {
+      "get": {
+        "description": "El slug de la home es `inicio` (constante compartida, `@impulza/validation`); no tiene ruta propia porque es una página real como cualquier otra, solo que `apps/web` la sirve en la raíz del sitio. Los bloques ya vienen filtrados: sin los ocultos, sin los fuera de su ventana programada y sin los degradados — lo que se devuelve es exactamente lo que hay que pintar, en orden.",
+        "operationId": "PublicSitesController_getPage",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La página, con sus bloques listos para renderizar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "isHome": {
+                      "type": "boolean"
+                    },
+                    "seo": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "canonicalPath": {
+                          "type": "string"
+                        },
+                        "robots": {
+                          "type": "string",
+                          "enum": [
+                            "index_follow",
+                            "noindex_follow",
+                            "index_nofollow",
+                            "noindex_nofollow"
+                          ]
+                        },
+                        "openGraph": {
+                          "type": "object",
+                          "properties": {
+                            "title": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "image": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "title"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "canonicalPath",
+                        "robots",
+                        "openGraph"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "blocks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "position": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "config": {}
+                        },
+                        "required": [
+                          "position",
+                          "type",
+                          "config"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "isHome",
+                    "seo",
+                    "blocks"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Página no encontrada: no existe, está en la papelera, o nunca se publicó — un borrador nunca es alcanzable acá, ni adivinando el slug exacto."
+          },
+          "429": {
+            "description": "Límite de peticiones superado (120 por minuto y IP)."
+          }
+        },
+        "summary": "Página publicada de un sitio, por slug",
+        "tags": [
+          "public-sites"
         ]
       }
     },
@@ -5038,250 +5523,6 @@
         "summary": "Restaurar una versión del historial",
         "tags": [
           "pages"
-        ]
-      }
-    },
-    "/api/v1/public/sites/{siteSlug}": {
-      "get": {
-        "description": "Identidad del sitio, su tema efectivo y la lista de páginas para el menú (solo las `PUBLIC` y publicadas). Es lo que resuelve la raíz de un sitio en `apps/web`.",
-        "operationId": "PublicSitesController_getSite",
-        "parameters": [
-          {
-            "name": "siteSlug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "El sitio, listo para renderizar.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "slug": {
-                      "type": "string"
-                    },
-                    "theme": {
-                      "type": "object",
-                      "properties": {
-                        "tokens": {}
-                      },
-                      "required": [
-                        "tokens"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "pages": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "slug": {
-                            "type": "string"
-                          },
-                          "isHome": {
-                            "type": "boolean"
-                          },
-                          "publishedAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                          }
-                        },
-                        "required": [
-                          "slug",
-                          "isHome",
-                          "publishedAt"
-                        ],
-                        "additionalProperties": false
-                      }
-                    }
-                  },
-                  "required": [
-                    "name",
-                    "slug",
-                    "theme",
-                    "pages"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Sitio no encontrado: no existe, o está archivado. Un sitio en borrador sin ninguna página publicada tampoco tiene nada que mostrar, pero eso lo decide cada página, no este endpoint."
-          },
-          "429": {
-            "description": "Límite de peticiones superado (120 por minuto y IP)."
-          }
-        },
-        "summary": "Sitio público por slug",
-        "tags": [
-          "public-sites"
-        ]
-      }
-    },
-    "/api/v1/public/sites/{siteSlug}/pages/{pageSlug}": {
-      "get": {
-        "description": "El slug de la home es `inicio` (constante compartida, `@impulza/validation`); no tiene ruta propia porque es una página real como cualquier otra, solo que `apps/web` la sirve en la raíz del sitio. Los bloques ya vienen filtrados: sin los ocultos, sin los fuera de su ventana programada y sin los degradados — lo que se devuelve es exactamente lo que hay que pintar, en orden.",
-        "operationId": "PublicSitesController_getPage",
-        "parameters": [
-          {
-            "name": "siteSlug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "pageSlug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "La página, con sus bloques listos para renderizar.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "slug": {
-                      "type": "string"
-                    },
-                    "isHome": {
-                      "type": "boolean"
-                    },
-                    "seo": {
-                      "type": "object",
-                      "properties": {
-                        "title": {
-                          "type": "string"
-                        },
-                        "description": {
-                          "type": "string"
-                        },
-                        "canonicalPath": {
-                          "type": "string"
-                        },
-                        "robots": {
-                          "type": "string",
-                          "enum": [
-                            "index_follow",
-                            "noindex_follow",
-                            "index_nofollow",
-                            "noindex_nofollow"
-                          ]
-                        },
-                        "openGraph": {
-                          "type": "object",
-                          "properties": {
-                            "title": {
-                              "type": "string"
-                            },
-                            "description": {
-                              "type": "string"
-                            },
-                            "image": {
-                              "type": "string"
-                            }
-                          },
-                          "required": [
-                            "title"
-                          ],
-                          "additionalProperties": false
-                        }
-                      },
-                      "required": [
-                        "title",
-                        "canonicalPath",
-                        "robots",
-                        "openGraph"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "blocks": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "position": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "type": {
-                            "type": "string"
-                          },
-                          "config": {}
-                        },
-                        "required": [
-                          "position",
-                          "type",
-                          "config"
-                        ],
-                        "additionalProperties": false
-                      }
-                    }
-                  },
-                  "required": [
-                    "slug",
-                    "isHome",
-                    "seo",
-                    "blocks"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Página no encontrada: no existe, está en la papelera, o nunca se publicó — un borrador nunca es alcanzable acá, ni adivinando el slug exacto."
-          },
-          "429": {
-            "description": "Límite de peticiones superado (120 por minuto y IP)."
-          }
-        },
-        "summary": "Página publicada de un sitio, por slug",
-        "tags": [
-          "public-sites"
         ]
       }
     },
@@ -13231,6 +13472,23 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "tones": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "darkest": {
+                                "type": "string"
+                              },
+                              "lightest": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "darkest",
+                              "lightest"
+                            ],
+                            "additionalProperties": false
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -13249,6 +13507,7 @@
                           "url",
                           "variants",
                           "failureReason",
+                          "tones",
                           "createdAt"
                         ],
                         "additionalProperties": false
@@ -13459,6 +13718,23 @@
                           "nullable": true,
                           "type": "string"
                         },
+                        "tones": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "darkest": {
+                              "type": "string"
+                            },
+                            "lightest": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "darkest",
+                            "lightest"
+                          ],
+                          "additionalProperties": false
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -13477,6 +13753,7 @@
                         "url",
                         "variants",
                         "failureReason",
+                        "tones",
                         "createdAt"
                       ],
                       "additionalProperties": false
@@ -13672,6 +13949,23 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "tones": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "darkest": {
+                          "type": "string"
+                        },
+                        "lightest": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "darkest",
+                        "lightest"
+                      ],
+                      "additionalProperties": false
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -13690,6 +13984,7 @@
                     "url",
                     "variants",
                     "failureReason",
+                    "tones",
                     "createdAt"
                   ],
                   "additionalProperties": false
@@ -13846,6 +14141,23 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "tones": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "darkest": {
+                          "type": "string"
+                        },
+                        "lightest": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "darkest",
+                        "lightest"
+                      ],
+                      "additionalProperties": false
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -13864,6 +14176,7 @@
                     "url",
                     "variants",
                     "failureReason",
+                    "tones",
                     "createdAt"
                   ],
                   "additionalProperties": false
@@ -13948,7 +14261,7 @@
             "description": "Archivo no encontrado."
           },
           "409": {
-            "description": "`MEDIA_IN_USE`: `usages` lista las páginas que lo usan."
+            "description": "`MEDIA_IN_USE`: `usages` lista dónde se usa: páginas (`kind: page`) o fondos de sitio (`kind: background`)."
           }
         },
         "security": [

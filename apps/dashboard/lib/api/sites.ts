@@ -1,4 +1,4 @@
-import type { SiteResponse, SiteThemeResponse } from "@impulza/contracts";
+import type { SiteBackgroundResponse, SiteResponse, SiteThemeResponse } from "@impulza/contracts";
 import { apiFetch } from "../api-client";
 
 export function listSites(organizationId: string): Promise<SiteResponse[]> {
@@ -47,5 +47,17 @@ export function assignSiteTheme(
   return apiFetch<SiteResponse>(`/organizations/${organizationId}/sites/${siteId}/theme`, {
     method: "PUT",
     body: { themeId },
+  });
+}
+
+export function getSiteBackground(organizationId: string, siteId: string): Promise<SiteBackgroundResponse> {
+  return apiFetch<SiteBackgroundResponse>(`/organizations/${organizationId}/sites/${siteId}/background`);
+}
+
+/** `background: null` vuelve al fondo del tema (PP3) — mismo criterio que `assignSiteTheme`. */
+export function setSiteBackground(organizationId: string, siteId: string, background: unknown): Promise<SiteBackgroundResponse> {
+  return apiFetch<SiteBackgroundResponse>(`/organizations/${organizationId}/sites/${siteId}/background`, {
+    method: "PUT",
+    body: { background },
   });
 }

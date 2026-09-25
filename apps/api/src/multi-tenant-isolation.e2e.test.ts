@@ -638,8 +638,9 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         .expect(200);
 
       // El contrato público es deliberadamente mínimo: nada de id, organizationId ni themeId —
-      // un visitante anónimo no necesita ni debe recibir identificadores internos (F2.7).
-      expect(Object.keys(publicSite.body).sort()).toEqual(["name", "pages", "slug", "theme"]);
+      // un visitante anónimo no necesita ni debe recibir identificadores internos (F2.7). `background`
+      // (PP3) es el fondo ya resuelto para pintar, sin ids.
+      expect(Object.keys(publicSite.body).sort()).toEqual(["background", "name", "pages", "slug", "theme"]);
       expect(publicSite.body).not.toHaveProperty("id");
       expect(publicSite.body).not.toHaveProperty("organizationId");
       expect(JSON.stringify(publicSite.body)).not.toContain(orgB.id);

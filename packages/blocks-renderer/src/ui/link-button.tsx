@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { SURFACE_SCOPE } from "./surface.js";
 
 export type ButtonVariant = "primary" | "secondary" | "outline";
 
@@ -16,10 +17,10 @@ interface LinkButtonProps {
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
     "bg-[var(--site-color-primary)] text-[var(--site-color-primary-foreground)] border border-transparent hover:opacity-90",
-  secondary:
-    "bg-[var(--site-color-surface)] text-[var(--site-color-foreground)] border border-[var(--site-color-border)] hover:bg-[var(--site-color-border)]/30",
+  secondary: `${SURFACE_SCOPE} bg-[var(--site-color-surface)] text-[var(--site-color-foreground)] border border-[var(--site-color-border)] hover:bg-[var(--site-color-border)]/30`,
+  // `--site-color-link` y no el primario: sobre un fondo oscuro (PP3) el primario puede no leerse.
   outline:
-    "bg-transparent text-[var(--site-color-primary)] border border-[var(--site-color-primary)] hover:bg-[var(--site-color-primary)]/10",
+    "bg-transparent text-[var(--site-color-link)] border border-[var(--site-color-link)] hover:bg-[var(--site-color-link)]/10",
 };
 
 /**

@@ -41,12 +41,16 @@
 }
 .prose-content code {
   background: var(--site-color-surface, #f8fafc);
+  /* Sobre la superficie del tema, el texto del tema (un fondo oscuro, PP3, aclara el de la página). */
+  color: var(--site-theme-foreground, inherit);
   border-radius: 0.25em;
   padding: 0.15em 0.4em;
   font-size: 0.9em;
 }
 .prose-content a {
-  color: var(--site-color-primary, #4338ca);
+  /* `--site-color-link` y no el primario: sobre un fondo oscuro (PP3) el primario puede no leerse. */
+  color: var(--site-color-link, var(--site-color-primary, #4338ca));
+  text-decoration: underline;
   text-underline-offset: 2px;
 }
 .prose-content :first-child {

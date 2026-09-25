@@ -39,3 +39,4 @@ export * from "./qr/index.js";
 export * from "./short-links/index.js";
 export * from "./plans/index.js";
 export * from "./media/index.js";
+export * from "./backgrounds/index.js";

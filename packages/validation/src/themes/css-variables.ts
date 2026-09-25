@@ -55,6 +55,13 @@ export interface ThemeCssVariables {
   "--site-color-primary": string;
   "--site-color-primary-foreground": string;
   "--site-color-border": string;
+  /** Color de los enlaces de texto: el primario, salvo que un fondo (PP3) lo cambie. */
+  "--site-color-link": string;
+  /** Copia fija de la paleta del tema: un fondo (PP3) cambia `--site-color-foreground` y compañía
+   *  para el texto que va directo sobre él, y las tarjetas vuelven a estos valores. */
+  "--site-theme-foreground": string;
+  "--site-theme-muted-foreground": string;
+  "--site-theme-border": string;
   "--site-font-family": string;
   "--site-radius": string;
   "--site-shadow": string;
@@ -73,6 +80,10 @@ export function themeTokensToCssVariables(tokens: ThemeTokens): ThemeCssVariable
     "--site-color-primary": tokens.palette.primary,
     "--site-color-primary-foreground": tokens.palette.primaryForeground,
     "--site-color-border": tokens.palette.border,
+    "--site-color-link": tokens.palette.primary,
+    "--site-theme-foreground": tokens.palette.foreground,
+    "--site-theme-muted-foreground": tokens.palette.mutedForeground,
+    "--site-theme-border": tokens.palette.border,
     "--site-font-family": FONT_STACKS[tokens.fontFamily],
     "--site-radius": RADIUS_VALUES[tokens.radius],
     "--site-shadow": SHADOW_VALUES[tokens.shadow],

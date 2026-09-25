@@ -1,6 +1,7 @@
 import { Star } from "lucide-react";
 import type { TestimonialsBlockConfig } from "@impulza/validation";
 import { SiteImage } from "../ui/site-image.js";
+import { SURFACE_SCOPE } from "../ui/surface.js";
 
 function Rating({ value }: { value: number }) {
   return (
@@ -30,7 +31,7 @@ export function TestimonialsBlock({ config }: { config: TestimonialsBlockConfig 
         {config.items.map((item, index) => (
           <figure
             key={index}
-            className="flex flex-col gap-3 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-5 shadow-[var(--site-shadow)]"
+            className={`${SURFACE_SCOPE} flex flex-col gap-3 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-5 shadow-[var(--site-shadow)]`}
           >
             {item.rating ? <Rating value={item.rating} /> : null}
             <blockquote className="m-0 text-sm text-[var(--site-color-foreground)]">

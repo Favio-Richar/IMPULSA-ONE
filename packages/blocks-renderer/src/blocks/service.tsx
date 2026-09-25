@@ -3,6 +3,7 @@ import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
 import { RichText } from "../ui/rich-text.js";
 import { SiteImage } from "../ui/site-image.js";
 import { formatPrice } from "../lib/format-price.js";
+import { SURFACE_SCOPE } from "../ui/surface.js";
 
 export function ServiceBlock({
   config,
@@ -12,7 +13,7 @@ export function ServiceBlock({
   buttonVariant: ButtonVariant;
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-5 shadow-[var(--site-shadow)] sm:flex-row">
+    <div className={`${SURFACE_SCOPE} flex flex-col gap-4 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-5 shadow-[var(--site-shadow)] sm:flex-row`}>
       {config.image ? (
         <SiteImage
           image={config.image}

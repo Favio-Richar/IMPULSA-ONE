@@ -103,7 +103,7 @@ export class MediaController {
   @ApiUuidParam("assetId", "Archivo a borrar.")
   @ApiResponse({ status: 204, description: "Borrado, con todas sus variantes." })
   @ApiResponse({ status: 404, description: "Archivo no encontrado." })
-  @ApiResponse({ status: 409, description: "`MEDIA_IN_USE`: `usages` lista las páginas que lo usan." })
+  @ApiResponse({ status: 409, description: "`MEDIA_IN_USE`: `usages` lista dónde se usa: páginas (`kind: page`) o fondos de sitio (`kind: background`)." })
   async remove(
     @Param("organizationId") organizationId: string,
     @Param("assetId", new ZodValidationPipe(uuidParamSchema)) assetId: string,

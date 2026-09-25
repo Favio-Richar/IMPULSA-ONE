@@ -26,7 +26,7 @@ Y todas comparten estas **reglas de la página pública**:
 |---|---|
 | PP1 — Almacenamiento y subida de imágenes | Terminada (local; falta que Favio cargue las credenciales de R2) |
 | PP2 — Biblioteca de medios y selector en los bloques | Terminada (local) |
-| PP3 — Fondo premium de la página (color, degradado, imagen, video de biblioteca) | Pendiente |
+| PP3 — Fondo premium de la página (color, degradado, imagen, video de biblioteca) | En progreso (falta el contenido de la biblioteca de videos, que aprueba Favio) |
 | PP4 — Familias de temas "Ejecutivo" y "Vibrante" y encabezado de perfil | Pendiente |
 | PP5 — Botón principal fijo en móvil y animaciones de entrada | Pendiente |
 | PP6 — Video de fondo propio (subida y transcodificación) | Pendiente |
@@ -130,6 +130,55 @@ Y todas comparten estas **reglas de la página pública**:
 - Render: primero el póster, video solo si no hay reducir movimiento ni ahorro de datos, y
   `playsinline muted autoplay loop`.
 - Vista previa idéntica en el constructor.
+
+> **Estado (2026-09-25): en progreso — todo construido y probado salvo el contenido de la biblioteca
+> de videos**, que por criterio de aceptación **aprueba Favio** (20–30 loops con licencia comercial
+> verificada). La biblioteca (`BACKGROUND_VIDEOS` en `@impulza/validation`) está vacía a propósito:
+> mientras lo esté, el panel no ofrece la opción de video y la API rechaza cualquier código.
+>
+> - **Modelo:** `sites.background` (JSON opcional, en vivo como el tema) y `media_assets.tones`
+>   (`{darkest, lightest}`), migración no destructiva `20260925230000_site_background`.
+> - **Fondos:** color, 8 degradados curados (4 claros, 4 oscuros), imagen de la biblioteca propia y
+>   video curado, con capa oscura o clara en 3 intensidades. Siempre valores cerrados, nunca CSS.
+> - **Legibilidad verificada en el servidor:**
+>   - el texto que va directo sobre el fondo cambia a una paleta clara u oscura cuando la del tema
+>     no alcanza AA, y un color con el que ningún texto se lee (un gris medio) se rechaza;
+>   - cada degradado se verifica con su paleta en todos sus colores (prueba);
+>   - sobre una imagen, el worker calcula sus tonos extremos (percentiles 2 y 98 de una versión
+>     reducida, así un reflejo suelto no decide nada) y la API rechaza la intensidad que no alcanza
+>     AA en el peor punto (422 con `legibleStrengths`). "Fuerte" alcanza AA sobre cualquier imagen,
+>     así que siempre hay una opción válida;
+>   - las tarjetas (enlaces, servicios, testimonios, formularios) vuelven a la paleta del tema
+>     (`SURFACE_SCOPE`), y los enlaces de texto y los botones de contorno usan `--site-color-link`
+>     en vez del primario, que puede no leerse sobre una foto oscura.
+> - **Imagen de fondo:** solo un archivo listo de la biblioteca de la misma organización (una URL
+>   externa se rechaza: no se puede verificar su legibilidad); se guarda su URL canónica, se sirve
+>   con `srcset` y prioridad alta, y no se puede borrar de la biblioteca mientras sea fondo.
+> - **Render (`SiteBackdrop`, compartido por el sitio público y la vista previa):** color de base
+>   igual al de la capa mientras carga la imagen; el video muestra primero el póster y solo se agrega
+>   si no hay "reducir movimiento" ni "ahorro de datos", con `muted playsInline autoPlay loop`.
+> - **Panel:** tarjeta "Fondo de la página" en el sitio, con vista previa en vivo, color con aviso
+>   de legibilidad al escribirlo, degradados y selector de imagen; las intensidades que no alcanzan
+>   AA sobre la foto elegida aparecen desactivadas.
+> - **Corrección de paso:** aplicar un tema no invalidaba la caché de la página pública (se veía
+>   recién al volver a publicar). Ahora el tema y el fondo avisan a `apps/web` al cambiar.
+>
+> **Verificación:** 14 pruebas unitarias del módulo de fondos (cada degradado legible en todos sus
+> colores, "fuerte" legible sobre cualquier imagen, gris medio rechazado, nunca CSS), 3 de
+> `computeImageTones` (un reflejo aislado no decide el tono; lo transparente cuenta como peor caso),
+> 5 de `SiteBackdrop` (el video no viaja en el HTML inicial, solo el póster) y 11 e2e de API (capa
+> insuficiente → 422 con `legibleStrengths`, URL canónica, imagen externa/ajena/en proceso
+> rechazadas, borrado bloqueado mientras es fondo, auditoría, permisos por rol, aislamiento y
+> respuesta pública). Playwright en móvil y escritorio (6 pruebas): degradado aplicado desde el panel
+> y visto en el constructor con el texto blanco y la portada con el color del tema; color ilegible
+> no aplicable; sobre una foto clara solo "Fuerte" habilitada. Confirmado que fallan al quitar la
+> verificación de la capa, el bloqueo del borrado y `SURFACE_SCOPE`. Revisión manual de la página
+> pública real (`apps/web` en el 3001, con invalidación de caché) con capturas de degradado, imagen y
+> tema, sin desplazamiento horizontal. `lint`/`typecheck`/`build` 47/47, `test` 25/25, Playwright
+> 65 pasan. OpenAPI regenerado (116 operaciones).
+>
+> **Falta para cerrarla:** que Favio apruebe los videos (fuente, licencia, contenido), subirlos al
+> bucket en `curated/` con su póster y declararlos en `BACKGROUND_VIDEOS` con sus tonos.
 
 ### PP4 — Familias de temas y encabezado de perfil
 **Criterios de aceptación:**

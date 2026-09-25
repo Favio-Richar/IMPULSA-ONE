@@ -8,7 +8,7 @@ import {
   originalKey,
   type StorageAdapter,
 } from "@impulza/storage";
-import { mediaVariantsSchema, type RequestImageUploadInput } from "@impulza/validation";
+import { imageTonesSchema, mediaVariantsSchema, type RequestImageUploadInput } from "@impulza/validation";
 import type { Queue } from "bullmq";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
@@ -23,6 +23,11 @@ const BYTES_PER_MB = 1024 * 1024;
 
 export const STORAGE_NOT_CONFIGURED = "STORAGE_NOT_CONFIGURED";
 export const MEDIA_IN_USE = "MEDIA_IN_USE";
+
+/** Un lugar donde se usa un asset: una página (bloque o versión publicada) o el fondo de un sitio. */
+export type MediaUsage =
+  | { kind: "page"; siteId: null; siteName: string; pageId: string; pageSlug: string }
+  | { kind: "background"; siteId: string; siteName: string; pageId: null; pageSlug: null };
 
 /**
  * Biblioteca de medios (PP1, ADR-006). Todo acotado a la organización (ADR-002): un asset de otra
@@ -70,6 +75,7 @@ export class MediaService {
       url: publicVariants.at(-1)?.url ?? null,
       variants: publicVariants,
       failureReason: asset.failureReason,
+      tones: imageTonesSchema.safeParse(asset.tones).data ?? null,
       createdAt: asset.createdAt.toISOString(),
     };
   }
@@ -180,12 +186,13 @@ export class MediaService {
   }
 
   /**
-   * Páginas que usan el asset: en un bloque vigente (último borrador) o en la versión publicada
-   * vigente. Borrarlo rompería una imagen que alguien está viendo (ADR-006 §8).
+   * Dónde se usa el asset: en un bloque vigente (último borrador), en la versión publicada vigente
+   * de una página, o como fondo de un sitio (PP3). Borrarlo rompería una imagen que alguien está
+   * viendo (ADR-006 §8).
    */
-  async usages(organizationId: string, assetId: string): Promise<Array<{ pageId: string; pageSlug: string; siteName: string }>> {
+  async usages(organizationId: string, assetId: string): Promise<MediaUsage[]> {
     const pattern = `%${assetId}%`;
-    return this.prisma.$queryRaw<Array<{ pageId: string; pageSlug: string; siteName: string }>>`
+    const pages = await this.prisma.$queryRaw<Array<{ pageId: string; pageSlug: string; siteName: string }>>`
       SELECT p.id AS "pageId", p.slug AS "pageSlug", s.name AS "siteName"
       FROM pages p
       JOIN sites s ON s.id = p.site_id
@@ -206,6 +213,15 @@ export class MediaService {
           )
         )
       ORDER BY s.name, p.slug`;
+    const backgrounds = await this.prisma.$queryRaw<Array<{ siteId: string; siteName: string }>>`
+      SELECT s.id AS "siteId", s.name AS "siteName"
+      FROM sites s
+      WHERE s.organization_id = ${organizationId}::uuid AND s.background::text LIKE ${pattern}
+      ORDER BY s.name`;
+    return [
+      ...backgrounds.map((site) => ({ kind: "background" as const, siteId: site.siteId, siteName: site.siteName, pageId: null, pageSlug: null })),
+      ...pages.map((page) => ({ kind: "page" as const, siteId: null, siteName: page.siteName, pageId: page.pageId, pageSlug: page.pageSlug })),
+    ];
   }
 
   async remove(organizationId: string, user: User, assetId: string): Promise<void> {
@@ -215,7 +231,7 @@ export class MediaService {
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
         code: MEDIA_IN_USE,
-        message: "Esta imagen se está usando. Quítala de esas páginas antes de borrarla.",
+        message: "Esta imagen se está usando. Quítala de ahí antes de borrarla.",
         usages,
       });
     }

@@ -25,6 +25,7 @@ describe("GET /:siteSlug/robots.txt (F2.8)", () => {
       name: "Mi Sitio",
       slug: "mi-sitio",
       theme: { tokens: {} },
+    background: null,
       pages: [],
     };
     vi.mocked(getPublicSite).mockResolvedValue(site);

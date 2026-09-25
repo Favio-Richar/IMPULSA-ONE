@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { siteResponse, siteThemeResponse } from "@impulza/contracts";
+import { siteBackgroundResponse, siteResponse, siteThemeResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
@@ -21,6 +21,7 @@ import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
 import { assignThemeSchema, type AssignThemeDto } from "../themes/dto/theme.dto.js";
 import { createSiteSchema, type CreateSiteDto } from "./dto/create-site.dto.js";
+import { setSiteBackgroundSchema, type SetSiteBackgroundDto } from "./dto/site-background.dto.js";
 import { updateSiteSchema, type UpdateSiteDto } from "./dto/update-site.dto.js";
 import { SitesService } from "./sites.service.js";
 
@@ -142,6 +143,42 @@ export class SitesController {
     @Body(new ZodValidationPipe(assignThemeSchema)) body: AssignThemeDto,
   ) {
     return this.sitesService.setSiteTheme(organizationId, user.id, siteId, body.themeId);
+  }
+
+  @Get(":siteId/background")
+  @ApiOperation({
+    summary: "Leer el fondo de la página del sitio (PP3)",
+    description:
+      "`background` es lo guardado; `resolved`, lo que pinta el render (con la paleta de texto ya decidida para que se lea); `null` en ambos = el fondo del tema. `videos` lista la biblioteca curada disponible.",
+  })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiZodResponse(200, siteBackgroundResponse, "Fondo del sitio.")
+  @ApiResponse({ status: 404, description: SITE_NOT_FOUND })
+  async getBackground(@Param("organizationId") organizationId: string, @Param("siteId") siteId: string) {
+    return this.sitesService.getSiteBackground(organizationId, siteId);
+  }
+
+  // PUT por el mismo motivo que el tema: reemplaza la elección completa y `null` significa algo.
+  @Put(":siteId/background")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_UPDATE)
+  @ApiOperation({
+    summary: "Cambiar el fondo de la página del sitio (PP3)",
+    description:
+      "Color, degradado del catálogo, imagen de la biblioteca propia o video de la biblioteca curada, nunca CSS libre. El servidor verifica que el texto alcance WCAG 2.2 AA: un color con el que ningún texto se lee, o una capa de legibilidad demasiado suave para esa imagen, responde 422 (con `legibleStrengths` en el caso de la imagen). Una imagen tiene que ser un archivo listo de la biblioteca de esta organización. `background: null` vuelve al fondo del tema. La página pública se actualiza de inmediato.",
+  })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiZodBody(setSiteBackgroundSchema)
+  @ApiZodResponse(200, siteBackgroundResponse, "Fondo aplicado.")
+  @ApiResponse({ status: 404, description: SITE_NOT_FOUND })
+  @ApiResponse({ status: 422, description: "Fondo inválido o ilegible, o imagen que no es de la biblioteca de esta organización." })
+  async setBackground(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(setSiteBackgroundSchema)) body: SetSiteBackgroundDto,
+  ) {
+    return this.sitesService.setSiteBackground(organizationId, user.id, siteId, body.background);
   }
 
   // Archivar y no borrar: el contenido del usuario no se destruye desde un endpoint de CRUD

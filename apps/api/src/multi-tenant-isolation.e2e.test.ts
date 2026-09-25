@@ -12,6 +12,7 @@ import { EMAIL_ADAPTER } from "./modules/auth/email-adapter.token.js";
 import { REDIS } from "./redis/redis.module.js";
 import { BROWSER_USER_AGENT, startAnalyticsTestWorker } from "./test-support/analytics-pipeline.js";
 import { assignRoomyPlan } from "./test-support/plans.js";
+import { listenForTests } from "./test-support/http.js";
 
 // F1.9 — prueba transversal de aislamiento multi-tenant (ADR-002). Dos organizaciones reales,
 // exactamente lo que exige el backlog: "verificar que ningún endpoint de Fase 1 permite leer o
@@ -76,7 +77,7 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     app.setGlobalPrefix("api/v1");
     await app.init();
 
-    httpServer = app.getHttpServer();
+    httpServer = await listenForTests(app);
     prisma = app.get(PRISMA);
     pipeline = startAnalyticsTestWorker(prisma);
     redis = app.get(REDIS);

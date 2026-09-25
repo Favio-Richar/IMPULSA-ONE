@@ -12,6 +12,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { assignRoomyPlan } from "../../test-support/plans.js";
+import { listenForTests } from "../../test-support/http.js";
 
 // F3.3 — mini-CRM de contactos: CRUD, filtros, notas, borrado en cascada auditado (ADR-004).
 
@@ -53,7 +54,7 @@ describe("Contacts (e2e) — F3.3", () => {
     app.setGlobalPrefix("api/v1");
     await app.init();
 
-    httpServer = app.getHttpServer();
+    httpServer = await listenForTests(app);
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
   });

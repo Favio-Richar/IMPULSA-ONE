@@ -278,7 +278,10 @@ bloqueado explícitamente.
 > móvil y la grilla del resumen).
 >
 > **Deudas declaradas:**
-> - **Suite e2e de la API inestable en corridas completas (prioridad alta).** Con 305 pruebas, una
+> - ~~**Suite e2e de la API inestable en corridas completas (prioridad alta).**~~ **Saldada el
+>   2026-09-24:** cada archivo escucha una sola vez (`test-support/http.ts`) y supertest usa un agente
+>   keep-alive (`vitest.setup.ts`; superagent traía `agent: false`). Una corrida completa dejaba
+>   ~2.000 sockets en `TIME_WAIT` y ahora deja ~150; 305/305. Con 305 pruebas, una
 >   corrida completa a veces falla 1–2 pruebas por tiempo (5 s) con ~1.500 sockets en `TIME_WAIT`, y
 >   en cada corrida falla una distinta. Aisladas pasan, y la misma suite completa repetida pasó
 >   305/305. La causa es que supertest abre una conexión por petición. La solución, `app.listen(0)` +

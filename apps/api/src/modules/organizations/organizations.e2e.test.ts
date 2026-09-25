@@ -12,6 +12,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { assignRoomyPlan } from "../../test-support/plans.js";
+import { listenForTests } from "../../test-support/http.js";
 
 // Pruebas de integración reales — NestJS completo + Postgres/Redis reales (docker-compose.yml).
 // Cubre F1.5 (CRUD de organizaciones/membresías) y sienta las bases de F1.9 (aislamiento
@@ -56,7 +57,7 @@ describe("Organizations (e2e)", () => {
     app.setGlobalPrefix("api/v1");
     await app.init();
 
-    httpServer = app.getHttpServer();
+    httpServer = await listenForTests(app);
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
   });

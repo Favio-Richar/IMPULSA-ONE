@@ -21,6 +21,7 @@ import { REDIS } from "../../redis/redis.module.js";
 import { grantSuperAdmin } from "../admin/superadmin-grants.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { assignRoomyPlan } from "../../test-support/plans.js";
+import { listenForTests } from "../../test-support/http.js";
 
 class FakeEmailAdapter implements EmailAdapter {
   messages: EmailMessage[] = [];
@@ -55,7 +56,7 @@ describe("Soporte mínimo (e2e) — F4.5", () => {
     app.use(cookieParser());
     app.setGlobalPrefix("api/v1");
     await app.init();
-    httpServer = app.getHttpServer();
+    httpServer = await listenForTests(app);
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
   });

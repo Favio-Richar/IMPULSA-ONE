@@ -13,6 +13,7 @@ import { REDIS } from "../../redis/redis.module.js";
 import { BROWSER_USER_AGENT, startAnalyticsTestWorker } from "../../test-support/analytics-pipeline.js";
 import { assignRoomyPlan } from "../../test-support/plans.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
+import { listenForTests } from "../../test-support/http.js";
 
 class FakeEmailAdapter implements EmailAdapter {
   messages: EmailMessage[] = [];
@@ -49,7 +50,7 @@ describe("Aplicación de límites de plan (e2e) — F4.2", () => {
     app.use(cookieParser());
     app.setGlobalPrefix("api/v1");
     await app.init();
-    httpServer = app.getHttpServer();
+    httpServer = await listenForTests(app);
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
     pipeline = startAnalyticsTestWorker(prisma);

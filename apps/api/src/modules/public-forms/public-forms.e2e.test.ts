@@ -11,6 +11,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { startAnalyticsTestWorker } from "../../test-support/analytics-pipeline.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
+import { listenForTests } from "../../test-support/http.js";
 
 // F3.2 — envío público: antispam, validación contra los campos reales, y el efecto en Contact/
 // ContactEvent según ADR-004 (consentimiento).
@@ -55,7 +56,7 @@ describe("Public form submission (e2e) — F3.2", () => {
     app.setGlobalPrefix("api/v1");
     await app.init();
 
-    httpServer = app.getHttpServer();
+    httpServer = await listenForTests(app);
     prisma = app.get(PRISMA);
     pipeline = startAnalyticsTestWorker(prisma);
     redis = app.get(REDIS);

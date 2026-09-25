@@ -17,6 +17,7 @@ import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { EMAIL_ADAPTER } from "./email-adapter.token.js";
+import { listenForTests } from "../../test-support/http.js";
 
 // Pruebas de integración reales: NestJS de verdad + Postgres/Redis reales de docker-compose.yml
 // (no mocks de la base de datos — F1.9 exige exactamente esto para aislamiento multi-tenant, y
@@ -52,6 +53,7 @@ function uniqueEmail(): string {
 
 describe("Auth (e2e)", () => {
   let app: INestApplication;
+  let baseUrl: string;
   let prisma: PrismaClient;
   let redis: Redis;
   let emailAdapter: FakeEmailAdapter;
@@ -68,6 +70,7 @@ describe("Auth (e2e)", () => {
     app.use(cookieParser());
     app.setGlobalPrefix("api/v1");
     await app.init();
+    baseUrl = await listenForTests(app);
 
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
@@ -89,7 +92,7 @@ describe("Auth (e2e)", () => {
 
   async function registerAndVerify(password = "password1234"): Promise<{ email: string }> {
     const email = uniqueEmail();
-    const registered = await request(app.getHttpServer())
+    const registered = await request(baseUrl)
       .post("/api/v1/auth/register")
       .set(CSRF_HEADERS)
       .send({ email, password })
@@ -98,7 +101,7 @@ describe("Auth (e2e)", () => {
     registerResponse.parse(registered.body);
 
     const token = emailAdapter.lastToken();
-    await request(app.getHttpServer())
+    await request(baseUrl)
       .post("/api/v1/auth/verify-email")
       .set(CSRF_HEADERS)
       .send({ token })
@@ -109,7 +112,7 @@ describe("Auth (e2e)", () => {
 
   it("GET /auth/me devuelve el usuario autenticado y rechaza sin cookie", async () => {
     const { email } = await registerAndVerify();
-    const agent = request.agent(app.getHttpServer());
+    const agent = request.agent(baseUrl);
 
     await agent
       .post("/api/v1/auth/login")
@@ -125,13 +128,13 @@ describe("Auth (e2e)", () => {
     expect(me.body.email).toBe(email);
     expect(me.body.emailVerifiedAt).not.toBeNull();
 
-    await request(app.getHttpServer()).get("/api/v1/auth/me").expect(401);
+    await request(baseUrl).get("/api/v1/auth/me").expect(401);
   });
 
   it("registra, verifica el correo y permite iniciar sesión", async () => {
     const { email } = await registerAndVerify();
 
-    const loginResponse = await request(app.getHttpServer())
+    const loginResponse = await request(baseUrl)
       .post("/api/v1/auth/login")
       .set(CSRF_HEADERS)
       .send({ email, password: "password1234" })
@@ -147,13 +150,13 @@ describe("Auth (e2e)", () => {
   it("rechaza login con contraseña incorrecta sin revelar si el correo existe", async () => {
     const { email } = await registerAndVerify();
 
-    const wrongPassword = await request(app.getHttpServer())
+    const wrongPassword = await request(baseUrl)
       .post("/api/v1/auth/login")
       .set(CSRF_HEADERS)
       .send({ email, password: "incorrecta" })
       .expect(401);
 
-    const nonExistentEmail = await request(app.getHttpServer())
+    const nonExistentEmail = await request(baseUrl)
       .post("/api/v1/auth/login")
       .set(CSRF_HEADERS)
       .send({ email: uniqueEmail(), password: "cualquiera" })
@@ -166,13 +169,13 @@ describe("Auth (e2e)", () => {
     const { email } = await registerAndVerify();
 
     for (let i = 0; i < 5; i += 1) {
-      await request(app.getHttpServer())
+      await request(baseUrl)
         .post("/api/v1/auth/login")
         .set(CSRF_HEADERS)
         .send({ email, password: "incorrecta" });
     }
 
-    const lockedAttempt = await request(app.getHttpServer())
+    const lockedAttempt = await request(baseUrl)
       .post("/api/v1/auth/login")
       .set(CSRF_HEADERS)
       .send({ email, password: "password1234" }); // incluso con la contraseña correcta
@@ -181,7 +184,7 @@ describe("Auth (e2e)", () => {
   });
 
   it("exige la cabecera CSRF en solicitudes mutantes", async () => {
-    await request(app.getHttpServer())
+    await request(baseUrl)
       .post("/api/v1/auth/register")
       .send({ email: uniqueEmail(), password: "password1234" })
       .expect(403);
@@ -190,7 +193,7 @@ describe("Auth (e2e)", () => {
   it("aplica rate limiting por IP en /register", async () => {
     const attempts = await Promise.all(
       Array.from({ length: 7 }, () =>
-        request(app.getHttpServer())
+        request(baseUrl)
           .post("/api/v1/auth/register")
           .set(CSRF_HEADERS)
           .send({ email: uniqueEmail(), password: "password1234" }),
@@ -202,12 +205,12 @@ describe("Auth (e2e)", () => {
   });
 
   it("rechaza acceso a rutas protegidas sin cookie de sesión", async () => {
-    await request(app.getHttpServer()).get("/api/v1/auth/sessions").expect(401);
+    await request(baseUrl).get("/api/v1/auth/sessions").expect(401);
   });
 
   it("lista y revoca sesiones propias, y rechaza revocar una sesión ajena", async () => {
     const { email } = await registerAndVerify();
-    const agent = request.agent(app.getHttpServer());
+    const agent = request.agent(baseUrl);
 
     await agent
       .post("/api/v1/auth/login")
@@ -225,7 +228,7 @@ describe("Auth (e2e)", () => {
 
     // Segundo usuario: su sesión no debe poder revocar la del primero.
     const { email: otherEmail } = await registerAndVerify();
-    const otherAgent = request.agent(app.getHttpServer());
+    const otherAgent = request.agent(baseUrl);
     await otherAgent
       .post("/api/v1/auth/login")
       .set(CSRF_HEADERS)
@@ -243,7 +246,7 @@ describe("Auth (e2e)", () => {
 
   it("logout invalida la sesión actual", async () => {
     const { email } = await registerAndVerify();
-    const agent = request.agent(app.getHttpServer());
+    const agent = request.agent(baseUrl);
 
     await agent
       .post("/api/v1/auth/login")
@@ -257,7 +260,7 @@ describe("Auth (e2e)", () => {
 
   it("recupera la contraseña, revoca sesiones activas y rechaza reusar el token", async () => {
     const { email } = await registerAndVerify();
-    const agent = request.agent(app.getHttpServer());
+    const agent = request.agent(baseUrl);
 
     await agent
       .post("/api/v1/auth/login")
@@ -265,7 +268,7 @@ describe("Auth (e2e)", () => {
       .send({ email, password: "password1234" })
       .expect(201);
 
-    await request(app.getHttpServer())
+    await request(baseUrl)
       .post("/api/v1/auth/forgot-password")
       .set(CSRF_HEADERS)
       .send({ email })
@@ -273,7 +276,7 @@ describe("Auth (e2e)", () => {
 
     const resetToken = emailAdapter.lastToken();
 
-    await request(app.getHttpServer())
+    await request(baseUrl)
       .post("/api/v1/auth/reset-password")
       .set(CSRF_HEADERS)
       .send({ token: resetToken, password: "nueva-password-5678" })
@@ -283,21 +286,21 @@ describe("Auth (e2e)", () => {
     await agent.get("/api/v1/auth/sessions").expect(401);
 
     // La contraseña vieja ya no sirve.
-    await request(app.getHttpServer())
+    await request(baseUrl)
       .post("/api/v1/auth/login")
       .set(CSRF_HEADERS)
       .send({ email, password: "password1234" })
       .expect(401);
 
     // La nueva sí.
-    await request(app.getHttpServer())
+    await request(baseUrl)
       .post("/api/v1/auth/login")
       .set(CSRF_HEADERS)
       .send({ email, password: "nueva-password-5678" })
       .expect(201);
 
     // El token de reseteo no se puede reusar.
-    await request(app.getHttpServer())
+    await request(baseUrl)
       .post("/api/v1/auth/reset-password")
       .set(CSRF_HEADERS)
       .send({ token: resetToken, password: "otra-mas-1234" })
@@ -307,13 +310,13 @@ describe("Auth (e2e)", () => {
   it("responde igual en /forgot-password exista o no la cuenta (sin enumeración)", async () => {
     const { email } = await registerAndVerify();
 
-    const existing = await request(app.getHttpServer())
+    const existing = await request(baseUrl)
       .post("/api/v1/auth/forgot-password")
       .set(CSRF_HEADERS)
       .send({ email })
       .expect(204);
 
-    const nonExisting = await request(app.getHttpServer())
+    const nonExisting = await request(baseUrl)
       .post("/api/v1/auth/forgot-password")
       .set(CSRF_HEADERS)
       .send({ email: uniqueEmail() })
@@ -324,7 +327,7 @@ describe("Auth (e2e)", () => {
 
   it("configura y habilita 2FA con un código TOTP válido", async () => {
     const { email } = await registerAndVerify();
-    const agent = request.agent(app.getHttpServer());
+    const agent = request.agent(baseUrl);
 
     await agent
       .post("/api/v1/auth/login")

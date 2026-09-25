@@ -12,6 +12,7 @@ import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
+import { listenForTests } from "../../test-support/http.js";
 
 // F2.7 — render público: solo contenido publicado, filtrado de bloques ocultos/programados/
 // degradados, y ningún borrador alcanzable ni adivinando el slug exacto.
@@ -54,7 +55,7 @@ describe("Public sites (e2e) — F2.7", () => {
     app.setGlobalPrefix("api/v1");
     await app.init();
 
-    httpServer = app.getHttpServer();
+    httpServer = await listenForTests(app);
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
   });

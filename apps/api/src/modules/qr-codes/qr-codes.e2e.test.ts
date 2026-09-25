@@ -11,6 +11,7 @@ import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
+import { listenForTests } from "../../test-support/http.js";
 
 // F3.5 — códigos QR: catálogo cerrado de estilos, enlace corto o URL directa.
 
@@ -52,7 +53,7 @@ describe("QR codes (e2e) — F3.5", () => {
     app.setGlobalPrefix("api/v1");
     await app.init();
 
-    httpServer = app.getHttpServer();
+    httpServer = await listenForTests(app);
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
   });

@@ -11,6 +11,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { BROWSER_USER_AGENT, startAnalyticsTestWorker } from "../../test-support/analytics-pipeline.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
+import { listenForTests } from "../../test-support/http.js";
 
 // F3.5 — resolución pública: enlace corto y QR cuentan su propio contador y su propio evento.
 
@@ -53,7 +54,7 @@ describe("Public links resolution (e2e) — F3.5", () => {
     app.setGlobalPrefix("api/v1");
     await app.init();
 
-    httpServer = app.getHttpServer();
+    httpServer = await listenForTests(app);
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
     pipeline = startAnalyticsTestWorker(prisma);

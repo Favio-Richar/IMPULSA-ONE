@@ -12,6 +12,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { assignRoomyPlan } from "../../test-support/plans.js";
+import { listenForTests } from "../../test-support/http.js";
 
 // F2.2 — CRUD de sitios y reglas de slug, contra NestJS + Postgres/Redis reales.
 
@@ -53,7 +54,7 @@ describe("Sites (e2e) — F2.2", () => {
     app.setGlobalPrefix("api/v1");
     await app.init();
 
-    httpServer = app.getHttpServer();
+    httpServer = await listenForTests(app);
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
   });

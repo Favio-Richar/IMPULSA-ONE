@@ -11,6 +11,21 @@ export type StackButtonVariant = "primary" | "secondary" | "outline" | "glass";
  * (bordes moderados, sombras discretas: identidad propia, no la de otra plataforma).
  */
 export function stackButtonClass(variant: StackButtonVariant, primary = false): string {
+  return [
+    "relative flex w-full items-center justify-center px-14 text-center",
+    "transition-[opacity,transform] duration-150 hover:opacity-90 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100",
+    "focus-visible:outline-2 focus-visible:outline-offset-2",
+    primary ? `min-h-16 py-3.5 ${PRIMARY_ACTION_HALO}` : "min-h-14 py-3",
+    stackSurfaceClass(variant),
+  ].join(" ");
+}
+
+/**
+ * Superficie de la pila (colores, borde, radio y sombra del tema) sin la geometría de botón: la
+ * usan los contenidos que acompañan a la pila — reseñas desplegadas, fotos de la galería (PL6) —
+ * para hablar el mismo lenguaje visual que los botones, incluida la variante `glass`.
+ */
+export function stackSurfaceClass(variant: StackButtonVariant): string {
   const colors =
     variant === "glass"
       ? // PL5 (ADR-008): translúcido sobre foto o fondo oscuro. Tinte = texto de la página al 12 %
@@ -21,13 +36,7 @@ export function stackButtonClass(variant: StackButtonVariant, primary = false): 
       : variant === "secondary"
         ? `${SURFACE_SCOPE} border border-[var(--site-color-border)] bg-[var(--site-color-surface)] text-[var(--site-color-foreground)]`
         : "border border-transparent bg-[var(--site-color-primary)] text-[var(--site-color-primary-foreground)]";
-  return [
-    "relative flex w-full items-center justify-center rounded-[var(--site-radius)] px-14 text-center shadow-[var(--site-shadow)]",
-    "transition-[opacity,transform] duration-150 hover:opacity-90 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100",
-    "focus-visible:outline-2 focus-visible:outline-offset-2",
-    primary ? `min-h-16 py-3.5 ${PRIMARY_ACTION_HALO}` : "min-h-14 py-3",
-    colors,
-  ].join(" ");
+  return `rounded-[var(--site-radius)] shadow-[var(--site-shadow)] ${colors}`;
 }
 
 /** Contenido de un botón de la pila: ícono a la izquierda, texto (y descripción) centrados. */

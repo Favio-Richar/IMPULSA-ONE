@@ -7,7 +7,7 @@
 export type FieldControl =
   | { kind: "text"; maxLength: number }
   | { kind: "richtext" }
-  | { kind: "number"; min?: number; max?: number }
+  | { kind: "number"; min?: number; max?: number; step?: number }
   | { kind: "boolean" }
   | { kind: "select"; options: ReadonlyArray<{ value: string; label: string }> }
   | { kind: "url" }

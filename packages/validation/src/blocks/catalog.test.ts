@@ -6,6 +6,8 @@ import {
   isBlockType,
   isPrimaryActionBlockType,
   PRIMARY_ACTION_BLOCK_TYPES,
+  socialSchema,
+  testimonialsSchema,
   type BlockType,
 } from "./catalog.js";
 import { parseVideoUrl, safeUrlSchema } from "./primitives.js";
@@ -234,6 +236,34 @@ describe("encabezado de perfil (PP4)", () => {
     expect(
       schema.safeParse({ name: "Ana", socials: [{ network: "instagram", url: "javascript:alert(1)" }] }).success,
     ).toBe(false);
+  });
+});
+
+describe("reseñas como insignia (PL6)", () => {
+  const schema = testimonialsSchema;
+  const items = [{ quote: "Excelente", author: "Clienta" }];
+
+  it("una configuración anterior, sin promedio, total ni enlace, sigue siendo válida sin cambios", () => {
+    const stored = { title: "Reseñas", items };
+    expect(parseStoredBlock("testimonials", 1, stored)).toEqual({ renderable: true, config: stored });
+  });
+
+  it("acepta promedio con un decimal, total entero y enlace seguro", () => {
+    expect(schema.safeParse({ items, ratingAverage: 4.9, reviewCount: 128, reviewsUrl: "https://ejemplo.cl/r" }).success).toBe(true);
+  });
+
+  it("rechaza promedio fuera de 1–5 o con más de un decimal, total no entero y enlace peligroso", () => {
+    expect(schema.safeParse({ items, ratingAverage: 5.5 }).success).toBe(false);
+    expect(schema.safeParse({ items, ratingAverage: 4.95 }).success).toBe(false);
+    expect(schema.safeParse({ items, reviewCount: 1.5 }).success).toBe(false);
+    expect(schema.safeParse({ items, reviewsUrl: "javascript:alert(1)" }).success).toBe(false);
+  });
+});
+
+describe("redes (ADR-008)", () => {
+  it("sin estilo elegido, las redes son botones de la pila", () => {
+    const parsed = socialSchema.parse({ links: [{ network: "instagram", url: "https://instagram.com/ana" }] });
+    expect(parsed.style).toBe("buttons");
   });
 });
 

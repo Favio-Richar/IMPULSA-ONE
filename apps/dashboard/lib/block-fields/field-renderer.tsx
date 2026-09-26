@@ -131,6 +131,7 @@ function FieldControlView({ field, namePrefix }: { field: FieldDescriptor; nameP
             type="number"
             min={field.control.min}
             max={field.control.max}
+            step={field.control.step}
             className={inputClass}
             {...register(name, { valueAsNumber: true })}
           />

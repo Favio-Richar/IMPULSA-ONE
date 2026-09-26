@@ -138,13 +138,13 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
         control: {
           kind: "select",
           options: [
-            { value: "icons", label: "Íconos" },
             { value: "buttons", label: "Botones" },
+            { value: "icons", label: "Íconos" },
           ],
         },
       },
     ],
-    seedConfig: () => ({ links: [{ network: "instagram", url: "https://instagram.com/tu-usuario" }], style: "icons" }),
+    seedConfig: () => ({ links: [{ network: "instagram", url: "https://instagram.com/tu-usuario" }], style: "buttons" }),
   },
 
   image: {
@@ -328,6 +328,28 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
             { name: "rating", label: "Calificación (1 a 5)", optional: true, control: { kind: "number", min: 1, max: 5 } },
           ],
         },
+      },
+      // PL6: la página muestra las reseñas como una insignia ("★ 4,9 · 128 reseñas").
+      {
+        name: "ratingAverage",
+        label: "Calificación promedio",
+        optional: true,
+        helperText: "La de tu perfil en Google u otra plataforma, p. ej. 4.9. Si la dejas vacía, se calcula de los testimonios.",
+        control: { kind: "number", min: 1, max: 5, step: 0.1 },
+      },
+      {
+        name: "reviewCount",
+        label: "Cantidad de reseñas",
+        optional: true,
+        helperText: "Si la dejas vacía, se cuentan los testimonios de este bloque.",
+        control: { kind: "number", min: 1 },
+      },
+      {
+        name: "reviewsUrl",
+        label: "Enlace a tus reseñas",
+        optional: true,
+        helperText: "Google, Instagram u otra. Si no pones uno, al tocar la insignia se despliegan los testimonios.",
+        control: { kind: "url" },
       },
     ],
     seedConfig: () => ({

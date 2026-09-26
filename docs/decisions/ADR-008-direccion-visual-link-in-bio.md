@@ -28,8 +28,13 @@ prioridad sobre cualquier análisis o ADR anterior.
 1. La página pública del sitio (`SitePage`/`SiteShell`/`blocks-renderer`) adopta el patrón
    estructural de Linktree/Beacons: portada a sangre o fondo con foto/video oscurecido, avatar
    circular superpuesto sobre el borde inferior de la portada, nombre + badge de verificado, bio
-   corta, fila de íconos sociales, pila vertical de botones full-width (ícono/miniatura a la
-   izquierda, texto centrado, alto uniforme), tarjetas de contenido con imagen/precio/CTA.
+   corta y **una sola pila vertical de botones full-width** (ícono/miniatura a la izquierda, texto
+   centrado, alto uniforme). Todo lo que se toca es un botón de esa pila: enlaces, WhatsApp, **cada
+   red social** (logo + nombre de la red, no una fila de íconos), **cada servicio** (miniatura,
+   nombre, "precio · acción") y **las reseñas** (insignia "★ 4,9 · 128 reseñas"). Nada de tarjetas
+   de contenido aparte en medio de la pila. *(Corregido el 2026-09-26, PL6: la primera redacción
+   decía "fila de íconos sociales" y "tarjetas de contenido con imagen/precio/CTA", y así se
+   construyó; Favio lo rechazó al verlo en el navegador.)*
 2. **Nunca se copian activos reales**: logos, nombres de marca, textos o imágenes de Linktree,
    Beacons, Stan o de las cuentas usadas como referencia. Se copia la estructura y jerarquía visual,
    no el contenido ni la identidad de esas plataformas ni de sus usuarios.
@@ -70,6 +75,23 @@ prioridad sobre cualquier análisis o ADR anterior.
 - Seguimiento: si en producción los visitantes o los propios clientes de Impulza perciben la página
   como "igual a Linktree" de forma negativa (soporte, cancelaciones, feedback), revisar esta decisión
   con datos reales, no solo con la impresión inicial de un mockup.
+
+## Variante adicional pedida por Favio (2026-09-26): portada de cuerpo entero, monocromo
+
+Favio mandó una captura de referencia estructural adicional (perfil real de Linktree, foto de
+cuerpo entero como portada — sin avatar circular separado —, pila de botones todos del mismo tono
+neutro con miniatura a la izquierda, texto centrado y un menú de opciones "···" a la derecha; muy
+minimalista). Pide que las plantillas puedan verse así también, "más elegante". **Se toma solo la
+estructura, nunca contenido de esa cuenta** (misma restricción de siempre).
+
+Para la próxima sesión que toque diseño: evaluar una variante de `ProfileBlock` sin el avatar
+circular superpuesto — la portada ocupa toda la cabecera y el nombre/bio van directamente debajo,
+sin foto redonda — y una variante de botón "monocromo" (todos del mismo color neutro, sin distinguir
+primario/secundario por color, con miniatura y un ícono de opciones opcional a la derecha). Debe
+pasar por la misma matriz de contraste AA que las demás variantes antes de ofrecerse en el
+selector de temas/plantillas. No crear un ADR nuevo para esto: es una variante dentro de la misma
+dirección visual de ADR-008, documentarla como historia nueva en `BACKLOG_PLANTILLAS.md` cuando se
+tome.
 
 ## Restricciones asociadas
 

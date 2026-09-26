@@ -7,8 +7,12 @@ import { Container } from "./ui/container.js";
 import type { ButtonVariant } from "./ui/link-button.js";
 import { PrimaryActionBar } from "./ui/primary-action-bar.js";
 
-/** Bloques que se ven como un botón de la pila de enlaces (PP8). */
-const STACK_TYPES = new Set(["link", "whatsapp", "contact_form", "contact_actions"]);
+/**
+ * Bloques que se ven como botones de la pila de enlaces (PP8). PL6 suma redes, servicios, reseñas y
+ * preguntas: también son botones de la pila, así que van a la misma distancia que los enlaces y la
+ * columna se lee como una sola pila pareja.
+ */
+const STACK_TYPES = new Set(["link", "whatsapp", "contact_form", "contact_actions", "social", "service", "testimonials", "faq"]);
 
 function buttonVariantFor(buttonStyle: ThemeTokens["buttonStyle"]): ButtonVariant {
   return buttonStyle === "outline" ? "outline" : buttonStyle === "glass" ? "glass" : "primary";

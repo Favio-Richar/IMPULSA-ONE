@@ -131,16 +131,78 @@ describe("PageBlocks — patrón enlace en bio (PL5, ADR-008)", () => {
     expect(html).not.toMatch(/opacity-\d{2}[^"]*"[^>]*>Presets y cursos/);
   });
 
-  it("las reseñas van en un carrusel horizontal que se puede recorrer con el teclado", () => {
+  it("las reseñas son una insignia de la pila (PL6): promedio y total, y se despliegan sin salir de la página", () => {
     const html = render([
       {
         position: 0,
         type: "testimonials",
-        config: { title: "Lo que dicen", items: [{ quote: "Excelente", author: "Clienta 1" }, { quote: "Muy bueno", author: "Cliente 2" }] },
+        config: {
+          title: "Lo que dicen",
+          items: [
+            { quote: "Excelente", author: "Clienta 1", rating: 5 },
+            { quote: "Muy bueno", author: "Cliente 2", rating: 4 },
+          ],
+        },
       },
     ]);
-    expect(html).toMatch(/role="region" aria-label="Lo que dicen" tabindex="0"[^>]*overflow-x-auto/);
-    expect(html.match(/snap-start/g)).toHaveLength(2);
+    // Promedio calculado de las reseñas (4,5) y total; sin caja ni carrusel aparte.
+    expect(html).toMatch(/<details[^>]*data-testimonials-badge=""/);
+    expect(html).toMatch(/<summary[^>]*min-h-14[^>]*aria-label="Lo que dicen: 4,5 · 2 reseñas"/);
+    expect(html).not.toContain("overflow-x-auto");
+    expect(html).not.toContain("w-64");
+    // Las reseñas completas están en el desplegable.
+    expect(html).toContain("“Excelente”");
+  });
+
+  it("con promedio, total y enlace propios, la insignia lleva a la plataforma de reseñas", () => {
+    const html = render([
+      {
+        position: 0,
+        type: "testimonials",
+        config: {
+          items: [{ quote: "Excelente", author: "Clienta 1" }],
+          ratingAverage: 4.9,
+          reviewCount: 128,
+          reviewsUrl: "https://ejemplo.cl/resenas",
+        },
+      },
+    ]);
+    expect(html).toMatch(/<a href="https:\/\/ejemplo.cl\/resenas"[^>]*data-testimonials-badge=""[^>]*aria-label="Reseñas: 4,9 · 128 reseñas"/);
+    expect(html).not.toContain("<details");
+  });
+
+  it("un servicio es un botón de la pila con precio y acción, no una tarjeta (PL6)", () => {
+    const html = render([
+      {
+        position: 0,
+        type: "service",
+        config: { name: "Corte clásico", priceAmount: 12000, priceCurrency: "CLP", cta: { label: "Reservar", url: "https://ejemplo.cl/corte" } },
+      },
+    ]);
+    expect(html).toMatch(/<a href="https:\/\/ejemplo.cl\/corte"[^>]*min-h-14[^>]*data-service-button=""/);
+    expect(html).toContain("Corte clásico");
+    expect(html).toMatch(/\$12\.000 · Reservar/);
+    expect(html).not.toContain("p-5");
+  });
+
+  it("con tema glass, redes, servicios, reseñas, galería y preguntas usan la superficie translúcida", () => {
+    const html = renderToStaticMarkup(
+      <PageBlocks
+        buttonStyle="glass"
+        blocks={[
+          { position: 0, type: "social", config: { links: [{ network: "instagram", url: "https://instagram.com/ana" }] } },
+          { position: 1, type: "service", config: { name: "Clase", cta: { label: "Ir", url: "https://ejemplo.cl/clase" } } },
+          { position: 2, type: "testimonials", config: { items: [{ quote: "Bien", author: "A" }] } },
+          { position: 3, type: "gallery", config: { images: [{ url: "https://cdn.example.com/a.webp", alt: "Foto" }] } },
+          { position: 4, type: "faq", config: { items: [{ question: "¿Horario?", answer: "<p>9 a 18</p>" }] } },
+        ]}
+      />,
+    );
+    expect(html.match(/backdrop-blur-sm/g)?.length ?? 0).toBeGreaterThanOrEqual(5);
+    // Redes, servicio, reseñas y preguntas van a la distancia de la pila; la galería no es un botón.
+    expect(html.match(/data-stack=""/g)).toHaveLength(4);
+    // Redes por defecto como botones con el nombre de la red visible.
+    expect(html).toMatch(/<span class="font-medium">Instagram<\/span>/);
   });
 
   it("con una acción principal, WhatsApp no compite con ella en sólido (un solo primario)", () => {

@@ -103,7 +103,7 @@ function social(networks: SocialNetworkHome[]): TemplateBlockSeed {
   return {
     type: "social",
     configSchemaVersion: 1,
-    config: { links: networks.map((network) => ({ network, url: NETWORK_HOME[network] })), style: "icons" },
+    config: { links: networks.map((network) => ({ network, url: NETWORK_HOME[network] })), style: "buttons" },
   };
 }
 

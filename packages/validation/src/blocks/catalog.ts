@@ -78,7 +78,8 @@ export const socialSchema = z.object({
     .array(socialLinkSchema)
     .min(1)
     .max(12),
-  style: z.enum(["icons", "buttons"]).default("icons"),
+  // ADR-008: por defecto botones de la pila; "icons" solo si el cliente lo elige.
+  style: z.enum(["icons", "buttons"]).default("buttons"),
 });
 
 export const imageBlockSchema = z.object({
@@ -163,6 +164,13 @@ export const testimonialsSchema = z.object({
     )
     .min(1)
     .max(30),
+  // PL6: la página pública muestra las reseñas como una insignia de la pila ("★ 4,9 · 128
+  // reseñas"). Promedio y total son los del cliente en su plataforma de reseñas (si no vienen, se
+  // calculan de `items`); `reviewsUrl` lleva a esa plataforma. Opcionales y sin subir la versión del
+  // esquema, igual que PP4: una configuración anterior sigue siendo válida.
+  ratingAverage: z.number().min(1).max(5).multipleOf(0.1).optional(),
+  reviewCount: z.number().int().min(1).max(1_000_000).optional(),
+  reviewsUrl: safeUrlSchema.optional(),
 });
 
 /**

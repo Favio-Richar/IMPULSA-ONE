@@ -2,7 +2,7 @@ import { BadgeCheck } from "lucide-react";
 import type { ProfileBlockConfig } from "@impulza/validation";
 import { RichText } from "../ui/rich-text.js";
 import { SiteImage } from "../ui/site-image.js";
-import { SocialIconLinks } from "../ui/social-icon-links.js";
+import { SocialButtonLinks } from "../ui/social-button-links.js";
 
 /** Hasta dos iniciales del nombre ("Café Aroma" → "CA"), para el monograma sin foto (PP8). */
 function initials(name: string): string {
@@ -13,14 +13,14 @@ function initials(name: string): string {
 
 /**
  * Encabezado de perfil (PP4): portada, avatar montado sobre su borde inferior, nombre con
- * verificación, frase, bio y fila de redes. Todo es opcional salvo el nombre, así que un perfil
+ * verificación, frase, bio y redes como botones de la pila (ADR-008). Todo es opcional salvo el nombre, así que un perfil
  * guardado antes de PP4 (sin portada ni redes) se ve igual que siempre.
  *
  * Sobre la portada no va texto: solo el avatar, con un marco del color de fondo del tema que lo
  * separa de la foto. Por eso la portada no necesita capa de legibilidad — el texto queda debajo,
  * sobre el fondo de la página, cuyo contraste ya garantizan el tema y el fondo (PP3).
  */
-export function ProfileBlock({ config }: { config: ProfileBlockConfig }) {
+export function ProfileBlock({ config, glass = false }: { config: ProfileBlockConfig; glass?: boolean }) {
   const hasCover = config.cover !== undefined;
 
   return (
@@ -63,7 +63,7 @@ export function ProfileBlock({ config }: { config: ProfileBlockConfig }) {
         </span>
       )}
 
-      <div className="mt-4 flex flex-col items-center gap-3">
+      <div className="mt-4 flex w-full flex-col items-center gap-3">
         <div className="flex items-center gap-1.5">
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--site-color-foreground)] sm:text-3xl">
             {config.name}
@@ -78,8 +78,8 @@ export function ProfileBlock({ config }: { config: ProfileBlockConfig }) {
         {config.bio ? <RichText html={config.bio} className="max-w-xl text-sm" /> : null}
 
         {config.socials && config.socials.length > 0 ? (
-          <nav aria-label={`Redes de ${config.name}`} className="pt-1">
-            <SocialIconLinks links={config.socials} />
+          <nav aria-label={`Redes de ${config.name}`} className="w-full pt-1">
+            <SocialButtonLinks links={config.socials} glass={glass} />
           </nav>
         ) : null}
       </div>

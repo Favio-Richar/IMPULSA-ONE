@@ -1,49 +1,37 @@
+import { Tag } from "lucide-react";
 import type { ServiceBlockConfig } from "@impulza/validation";
-import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
-import { RichText } from "../ui/rich-text.js";
+import type { ButtonVariant } from "../ui/link-button.js";
+import { OUTBOUND_LINK } from "../ui/outbound.js";
 import { SiteImage } from "../ui/site-image.js";
+import { StackButtonContent, stackButtonClass } from "../ui/stack-button.js";
 import { formatPrice } from "../lib/format-price.js";
-import { SURFACE_SCOPE } from "../ui/surface.js";
 
-export function ServiceBlock({
-  config,
-  buttonVariant,
-}: {
-  config: ServiceBlockConfig;
-  buttonVariant: ButtonVariant;
-}) {
-  return (
-    // PL5: tarjeta de contenido de la columna de enlaces — imagen arriba, título y precio, texto y
-    // un botón a lo ancho, como en el boceto de perfiles por rubro.
-    <div className={`${SURFACE_SCOPE} flex flex-col gap-4 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-5 shadow-[var(--site-shadow)]`}>
-      {config.image ? (
-        <SiteImage
-          image={config.image}
-          sizes="(min-width: 544px) 456px, calc(100vw - 72px)"
-          className="aspect-[16/9] w-full rounded-[var(--site-radius)] border border-[var(--site-color-border)] object-cover"
-        />
-      ) : null}
+/**
+ * Servicio como un botón más de la pila de enlaces (PL5: "nunca como una tarjeta aparte con su
+ * propio mini-botón"): miniatura o ícono a la izquierda, nombre centrado y debajo el precio y la
+ * acción ("$12.000 · Reservar"). Todo el botón lleva al destino de la acción; sin acción, es una
+ * fila informativa con la misma geometría. La descripción larga no cabe en un botón y no se pinta
+ * acá (sigue guardada en el bloque).
+ */
+export function ServiceBlock({ config, buttonVariant }: { config: ServiceBlockConfig; buttonVariant: ButtonVariant }) {
+  const price =
+    config.priceAmount !== undefined && config.priceCurrency ? formatPrice(config.priceAmount, config.priceCurrency) : null;
+  const detail = [price, config.cta?.label].filter(Boolean).join(" · ");
+  const icon = config.image ? (
+    <SiteImage image={config.image} sizes="40px" width={40} height={40} className="h-10 w-10 shrink-0 rounded-[calc(var(--site-radius)/2)] object-cover" />
+  ) : (
+    <Tag className="h-5 w-5 shrink-0" aria-hidden="true" />
+  );
+  const className = stackButtonClass(buttonVariant === "glass" ? "glass" : "secondary");
+  const content = <StackButtonContent icon={icon} label={config.name} description={detail || undefined} />;
 
-      <div className="flex flex-1 flex-col gap-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-lg font-semibold text-[var(--site-color-foreground)]">{config.name}</h3>
-          {config.priceAmount !== undefined && config.priceCurrency ? (
-            <span className="font-medium text-[var(--site-color-primary)]">
-              {formatPrice(config.priceAmount, config.priceCurrency)}
-            </span>
-          ) : null}
-        </div>
-
-        {config.description ? <RichText html={config.description} className="text-sm" /> : null}
-
-        {config.cta ? (
-          <div className="pt-2">
-            <LinkButton href={config.cta.url} variant={buttonVariant === "glass" ? "primary" : buttonVariant} block>
-              {config.cta.label}
-            </LinkButton>
-          </div>
-        ) : null}
-      </div>
+  return config.cta ? (
+    <a href={config.cta.url} {...OUTBOUND_LINK} className={className} data-service-button="">
+      {content}
+    </a>
+  ) : (
+    <div className={className} data-service-button="">
+      {content}
     </div>
   );
 }

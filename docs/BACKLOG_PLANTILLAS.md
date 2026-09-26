@@ -34,7 +34,7 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 | PL3 — Catálogo semilla de plantillas por rubro | Lista para tu revisión (capturas en la galería de PL4) |
 | PL4 — Selector de plantillas en onboarding y constructor | Lista para tu revisión (capturas en `docs/design/capturas/pl4/`) |
 | PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio) | Lista para tu revisión (capturas mostradas en el chat) |
-| PL6 — Extender ADR-008 a `service`, `testimonials` y `gallery` (sacar las tarjetas grandes) | Pendiente |
+| PL6 — Extender ADR-008 a `service`, `testimonials` y `gallery` (sacar las tarjetas grandes) | Lista para tu revisión (capturas de las 7 plantillas en `docs/design/capturas/pl6/`) |
 
 ### Bitácora de avance (para retomar)
 
@@ -59,6 +59,32 @@ Orden obligatorio: PL2 → PL5 → PL1 → PL3 → PL4. Cada entrada dice dónde
   clara"): la imagen de MinIO no se pudo descargar; y las que piden `FFMPEG_PATH` quedaron omitidas.
   Todas las demás pasan (71 Playwright en móvil y escritorio).
 - **2026-09-26 — PL6 agregada al backlog** (feedback de Favio en el chat, sin commit todavía): las tarjetas de `service`/`testimonials`/`gallery` deben seguir la misma línea visual del encabezado de perfil y los botones (PL5), no el diseño de tarjeta grande anterior. Ver sección PL6 más abajo.
+- **2026-09-26 — PL6 terminada**, en "Lista para tu revisión". Favio revisó la barbería y el
+  creador en el navegador: "no es un portal biográfico, es una página común". Todo lo que no era
+  un botón de la pila pasó a serlo:
+  - **Redes** (`social` y las redes del perfil): un botón a lo ancho por red, con logo y nombre
+    ("Instagram"), no una fila de íconos. El estilo por defecto del bloque pasa a `buttons`; "Íconos"
+    queda como opción manual en el constructor. Las 7 plantillas usan botones.
+  - **Servicios**: botón de la pila con miniatura (o ícono), nombre y "$12.000 · Reservar"; todo el
+    botón va al destino de la acción. La descripción larga ya no se pinta en la página (sigue
+    guardada en el bloque).
+  - **Reseñas**: insignia de la pila "★ 4,9 · 128 reseñas". Campos nuevos opcionales
+    `ratingAverage`, `reviewCount` y `reviewsUrl` (sin subir versión de esquema; si faltan, se
+    calculan de los testimonios). Con enlace lleva a Google/Instagram; sin enlace se despliega ahí
+    mismo (`<details>`, sin JavaScript). Se quitó el carrusel de tarjetas `w-64`.
+  - **Galería y preguntas frecuentes**: superficie de la pila (`stackSurfaceClass`, con `glass`);
+    cada pregunta es un elemento de la pila que se despliega. Redes, servicios, reseñas y preguntas
+    van a la distancia de la pila (`STACK_TYPES`).
+  - **ADR-008** corregido: decía "fila de íconos sociales" y "tarjetas de contenido"; ahora dice
+    botones de la pila.
+  - Verificación: validation 398, blocks-renderer 44, dashboard 5, web 17, api 362 (contactos y
+    administración dieron timeout de 5 s en la corrida completa con los 5 servidores de desarrollo
+    arriba y pasaron 9/9 y 26/26 aislados); lint, typecheck y build de producción OK; Playwright
+    plantillas/temas/revisión visual/enlaces/acción principal: 60/60 en móvil y escritorio. La matriz
+    tema × fondo (`theme-background-matrix.test.ts`) sigue en verde: las superficies nuevas reusan
+    los pares ya verificados (superficie secundaria y `glass`). Capturas de las 7 plantillas a
+    390 px y 1280 px en `docs/design/capturas/pl6/`, sin desplazamiento horizontal.
+  - Siguiente: tu revisión de PL1-PL6 en el navegador (`localhost:3300/demo-<rubro>`).
 - Notas de entorno de esta sesión (no son de PL1-PL4): (1) con `packages/database/.env` presente,
   Prisma recarga variables y falla `revalidate-web.service.test.ts` ("no llama a nada si
   WEB_APP_URL…"); sin ese archivo pasa. (2) `admin.e2e.test.ts` "quitar la marca directo en la

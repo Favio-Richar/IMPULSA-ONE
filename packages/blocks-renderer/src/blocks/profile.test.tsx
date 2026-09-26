@@ -6,7 +6,7 @@ const avatar = { url: "https://cdn.example.com/ana.webp", alt: "Ana sonriendo" }
 const cover = { url: "https://cdn.example.com/portada.webp", alt: "Oficina frente al mar" };
 
 describe("ProfileBlock — encabezado de perfil (PP4)", () => {
-  it("un perfil anterior a PP4 (sin portada ni redes) no pinta portada ni fila de redes", () => {
+  it("un perfil anterior a PP4 (sin portada ni redes) no pinta portada ni redes", () => {
     const html = renderToStaticMarkup(<ProfileBlock config={{ name: "Ana", avatar, verified: false }} />);
     expect(html).not.toContain("data-profile-cover");
     expect(html).not.toContain("<nav");
@@ -25,7 +25,7 @@ describe("ProfileBlock — encabezado de perfil (PP4)", () => {
     expect(html).toContain('aria-label="Perfil verificado"');
   });
 
-  it("la fila de redes usa el nombre de cada red como texto accesible y abre ahí mismo (PP8)", () => {
+  it("las redes son botones de la pila con el nombre de la red visible y abren ahí mismo (ADR-008)", () => {
     const html = renderToStaticMarkup(
       <ProfileBlock
         config={{
@@ -39,8 +39,9 @@ describe("ProfileBlock — encabezado de perfil (PP4)", () => {
       />,
     );
     expect(html).toContain('aria-label="Redes de Ana"');
-    expect(html).toContain('aria-label="Instagram"');
-    expect(html).toContain('aria-label="TikTok"');
+    expect(html).toContain('<span class="font-medium">Instagram</span>');
+    expect(html).toContain('<span class="font-medium">TikTok</span>');
+    expect(html.match(/min-h-14/g)).toHaveLength(2);
     expect(html.match(/rel="nofollow"/g)).toHaveLength(2);
     expect(html).not.toContain("target=");
   });

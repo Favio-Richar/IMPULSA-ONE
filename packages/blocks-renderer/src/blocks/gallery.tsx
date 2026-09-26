@@ -1,5 +1,6 @@
 import type { GalleryBlockConfig } from "@impulza/validation";
 import { SiteImage } from "../ui/site-image.js";
+import { stackSurfaceClass } from "../ui/stack-button.js";
 
 /**
  * "Carrusel" sin una línea de JavaScript: una fila con `scroll-snap`, que el navegador ya sabe
@@ -7,8 +8,14 @@ import { SiteImage } from "../ui/site-image.js";
  * con "estados de carga/error resueltos, nunca en blanco" del criterio de aceptación sin agregar
  * una dependencia de carrusel ni lógica de cliente a una página que, hasta acá, es enteramente
  * estática.
+ *
+ * PL6: cada foto lleva la superficie de la pila de botones (borde, radio y sombra del tema; `glass`
+ * sobre fondo oscuro o foto), así la galería se lee como parte de la pila y no como un catálogo
+ * aparte.
  */
-export function GalleryBlock({ config }: { config: GalleryBlockConfig }) {
+export function GalleryBlock({ config, glass = false }: { config: GalleryBlockConfig; glass?: boolean }) {
+  const surface = stackSurfaceClass(glass ? "glass" : "secondary");
+
   if (config.layout === "carousel") {
     return (
       <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2" tabIndex={0}>
@@ -17,7 +24,7 @@ export function GalleryBlock({ config }: { config: GalleryBlockConfig }) {
             key={index}
             image={image}
             sizes="256px"
-            className="h-64 w-64 shrink-0 snap-start rounded-[var(--site-radius)] border border-[var(--site-color-border)] object-cover shadow-[var(--site-shadow)]"
+            className={`${surface} h-64 w-64 shrink-0 snap-start object-cover`}
           />
         ))}
       </div>
@@ -31,7 +38,7 @@ export function GalleryBlock({ config }: { config: GalleryBlockConfig }) {
           key={index}
           image={image}
           sizes="(min-width: 640px) 240px, 50vw"
-          className="aspect-square w-full rounded-[var(--site-radius)] border border-[var(--site-color-border)] object-cover shadow-[var(--site-shadow)]"
+          className={`${surface} aspect-square w-full object-cover`}
         />
       ))}
     </div>

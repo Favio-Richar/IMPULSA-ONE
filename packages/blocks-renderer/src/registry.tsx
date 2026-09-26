@@ -66,7 +66,7 @@ export function RenderBlock({
   switch (block.type) {
     case "profile": {
       const parsed = profileSchema.safeParse(block.config);
-      return parsed.success ? <ProfileBlock config={parsed.data} /> : null;
+      return parsed.success ? <ProfileBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
     }
     case "hero": {
       const parsed = heroSchema.safeParse(block.config);
@@ -82,7 +82,7 @@ export function RenderBlock({
     }
     case "social": {
       const parsed = socialSchema.safeParse(block.config);
-      return parsed.success ? <SocialBlock config={parsed.data} /> : null;
+      return parsed.success ? <SocialBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
     }
     case "image": {
       const parsed = imageBlockSchema.safeParse(block.config);
@@ -90,7 +90,7 @@ export function RenderBlock({
     }
     case "gallery": {
       const parsed = gallerySchema.safeParse(block.config);
-      return parsed.success ? <GalleryBlock config={parsed.data} /> : null;
+      return parsed.success ? <GalleryBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
     }
     case "video": {
       const parsed = videoSchema.safeParse(block.config);
@@ -128,11 +128,11 @@ export function RenderBlock({
     }
     case "faq": {
       const parsed = faqSchema.safeParse(block.config);
-      return parsed.success ? <FaqBlock config={parsed.data} /> : null;
+      return parsed.success ? <FaqBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
     }
     case "testimonials": {
       const parsed = testimonialsSchema.safeParse(block.config);
-      return parsed.success ? <TestimonialsBlock config={parsed.data} /> : null;
+      return parsed.success ? <TestimonialsBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
     }
     default:
       return null;

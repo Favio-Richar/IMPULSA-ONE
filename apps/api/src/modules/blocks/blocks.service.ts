@@ -165,6 +165,17 @@ export class BlocksService {
     };
   }
 
+  /**
+   * La misma puerta de entrada que crear o editar un bloque (esquema, texto alternativo, saneo del
+   * texto enriquecido y medios de la propia organización), para quien escribe bloques por otra vía:
+   * aplicar una plantilla (PL4). Así no existe un segundo camino a la base que se salte alguna regla.
+   */
+  async prepareBlockConfig(organizationId: string, type: string, config: unknown): Promise<{ config: unknown; version: number }> {
+    const prepared = this.validateAndSanitize(type, config);
+    await this.assertMediaOwnership(organizationId, prepared.config);
+    return prepared;
+  }
+
   /** Une el bloque con la configuración de su última versión y marca si está degradado. */
   private toBlockWithConfig(
     block: Block & { versions: Array<{ config: PrismaTypes.JsonValue }> },

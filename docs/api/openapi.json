@@ -2783,16 +2783,36 @@
         ]
       }
     },
-    "/api/v1/organizations/{organizationId}/sites": {
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/apply-template": {
       "post": {
-        "description": "Requiere el permiso `site.create`. El slug es la identidad pública del sitio (`slug.dominio`) y es único en toda la plataforma, no solo dentro de la organización.",
-        "operationId": "SitesController_create",
+        "description": "Reemplaza los bloques de la página por los de la plantilla, personalizados con `personalization`, y con `applyAppearance` aplica al sitio su tema y fondo (en vivo). Los bloques nuevos no se publican solos. Los anteriores se recuperan restaurando una versión publicada; si hay cambios que ninguna versión guarda, responde 409 `UNPUBLISHED_CHANGES` salvo que `discardUnpublishedChanges` sea `true`. La respuesta trae el tema y fondo anteriores para deshacer la apariencia.",
+        "operationId": "ApplyTemplateController_apply",
         "parameters": [
           {
             "name": "organizationId",
             "required": true,
             "in": "path",
             "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio de la organización.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageId",
+            "required": true,
+            "in": "path",
+            "description": "Página del sitio cuyos bloques se reemplazan.",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -2818,84 +2838,298 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 120
-                  },
-                  "slug": {
+                  "templateCode": {
                     "type": "string",
                     "minLength": 3,
-                    "maxLength": 63,
-                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+                    "maxLength": 60,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                  },
+                  "applyAppearance": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "discardUnpublishedChanges": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "personalization": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "headline": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                      },
+                      "bio": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      },
+                      "whatsappPhone": {
+                        "type": "string",
+                        "pattern": "^\\+[1-9]\\d{6,14}$"
+                      },
+                      "socials": {
+                        "maxItems": 8,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "network": {
+                              "type": "string",
+                              "enum": [
+                                "instagram",
+                                "facebook",
+                                "tiktok",
+                                "youtube",
+                                "linkedin",
+                                "x",
+                                "whatsapp",
+                                "threads",
+                                "pinterest",
+                                "spotify",
+                                "github",
+                                "website",
+                                "onlyfans",
+                                "twitch",
+                                "kick",
+                                "telegram",
+                                "snapchat",
+                                "discord",
+                                "patreon",
+                                "soundcloud",
+                                "applemusic",
+                                "vimeo",
+                                "behance",
+                                "dribbble",
+                                "substack",
+                                "medium",
+                                "etsy",
+                                "shopify",
+                                "calendly",
+                                "googlemaps"
+                              ]
+                            },
+                            "url": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2048
+                            }
+                          },
+                          "required": [
+                            "network",
+                            "url"
+                          ]
+                        }
+                      },
+                      "links": {
+                        "maxItems": 5,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            },
+                            "url": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2048
+                            }
+                          },
+                          "required": [
+                            "label",
+                            "url"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "onboarding": {
+                    "type": "object",
+                    "properties": {
+                      "accountType": {
+                        "type": "string",
+                        "enum": [
+                          "personal",
+                          "negocio",
+                          "agencia"
+                        ]
+                      },
+                      "objective": {
+                        "type": "string",
+                        "enum": [
+                          "captar",
+                          "vender",
+                          "reservar",
+                          "mostrar",
+                          "compartir"
+                        ]
+                      },
+                      "industry": {
+                        "type": "string",
+                        "enum": [
+                          "profesional",
+                          "servicios-locales",
+                          "belleza-bienestar",
+                          "salud",
+                          "gastronomia",
+                          "turismo",
+                          "eventos",
+                          "comercio",
+                          "creador",
+                          "emprendimiento"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "accountType",
+                      "objective",
+                      "industry"
+                    ]
                   }
                 },
                 "required": [
-                  "name",
-                  "slug"
+                  "templateCode"
                 ]
               }
             }
           }
         },
         "responses": {
-          "201": {
-            "description": "Sitio creado en estado `DRAFT`.",
+          "200": {
+            "description": "Plantilla aplicada: los bloques nuevos y la apariencia anterior.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "organizationId": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "name": {
+                    "templateCode": {
                       "type": "string"
                     },
-                    "slug": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "DRAFT",
-                        "PUBLISHED",
-                        "ARCHIVED"
-                      ]
-                    },
-                    "themeId": {
-                      "nullable": true,
+                    "pageId": {
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    "createdAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    "blocks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "pageId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "position": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "configSchemaVersion": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "visible": {
+                            "type": "boolean"
+                          },
+                          "scheduledStart": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "scheduledEnd": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "isPrimary": {
+                            "type": "boolean"
+                          },
+                          "config": {},
+                          "degraded": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "unknown_type",
+                              "future_version",
+                              "invalid_config"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "pageId",
+                          "type",
+                          "position",
+                          "configSchemaVersion",
+                          "visible",
+                          "scheduledStart",
+                          "scheduledEnd",
+                          "isPrimary",
+                          "config",
+                          "degraded"
+                        ],
+                        "additionalProperties": false
+                      }
                     },
-                    "updatedAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    "appearance": {
+                      "type": "object",
+                      "properties": {
+                        "applied": {
+                          "type": "boolean"
+                        },
+                        "previous": {
+                          "type": "object",
+                          "properties": {
+                            "themeId": {
+                              "nullable": true,
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "background": {
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "themeId",
+                            "background"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "applied",
+                        "previous"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
-                    "id",
-                    "organizationId",
-                    "name",
-                    "slug",
-                    "status",
-                    "themeId",
-                    "createdAt",
-                    "updatedAt"
+                    "templateCode",
+                    "pageId",
+                    "blocks",
+                    "appearance"
                   ],
                   "additionalProperties": false
                 }
@@ -2908,14 +3142,17 @@
           "401": {
             "description": "Sin sesión válida."
           },
-          "402": {
-            "description": "Límite de plan alcanzado (`sites`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
-          },
           "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+            "description": "Sin `page.manage`, o con `applyAppearance` sin `site.update`."
+          },
+          "404": {
+            "description": "Sitio o página de otra organización, o inexistente. Plantilla no encontrada."
           },
           "409": {
-            "description": "Ese slug ya lo usa otro sitio, o lo ocupa una redirección viva de otro sitio."
+            "description": "`code: UNPUBLISHED_CHANGES`: la página tiene cambios sin publicar y no se confirmó descartarlos."
+          },
+          "422": {
+            "description": "La personalización deja un bloque inválido. `issues` indica el campo."
           }
         },
         "security": [
@@ -2923,20 +3160,42 @@
             "sesion": []
           }
         ],
-        "summary": "Crear un sitio",
+        "summary": "Aplicar una plantilla a la página",
         "tags": [
-          "sites"
+          "templates"
         ]
-      },
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks": {
       "get": {
-        "description": "Solo pide membresía activa: ANALYST y SUPPORT necesitan verlos para hacer su trabajo.",
-        "operationId": "SitesController_list",
+        "description": "En orden de `position`, con la configuración de su versión vigente. Un bloque que no se puede renderizar viene con `degraded` en vez de romper la respuesta: el render lo omite y el constructor puede avisar. Solo pide membresía activa.",
+        "operationId": "BlocksController_list",
         "parameters": [
           {
             "name": "organizationId",
             "required": true,
             "in": "path",
             "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio dueño de la página.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageId",
+            "required": true,
+            "in": "path",
+            "description": "Página dueña de los bloques.",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -2957,7 +3216,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Sitios de la organización, archivados incluidos.",
+            "description": "Bloques de la página, ordenados.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2970,51 +3229,65 @@
                         "format": "uuid",
                         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                       },
-                      "organizationId": {
+                      "pageId": {
                         "type": "string",
                         "format": "uuid",
                         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                       },
-                      "name": {
+                      "type": {
                         "type": "string"
                       },
-                      "slug": {
-                        "type": "string"
+                      "position": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
                       },
-                      "status": {
-                        "type": "string",
-                        "enum": [
-                          "DRAFT",
-                          "PUBLISHED",
-                          "ARCHIVED"
-                        ]
+                      "configSchemaVersion": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
                       },
-                      "themeId": {
+                      "visible": {
+                        "type": "boolean"
+                      },
+                      "scheduledStart": {
                         "nullable": true,
                         "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       },
-                      "createdAt": {
+                      "scheduledEnd": {
+                        "nullable": true,
                         "type": "string",
                         "format": "date-time",
                         "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       },
-                      "updatedAt": {
+                      "isPrimary": {
+                        "type": "boolean"
+                      },
+                      "config": {},
+                      "degraded": {
+                        "nullable": true,
                         "type": "string",
-                        "format": "date-time",
-                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        "enum": [
+                          "unknown_type",
+                          "future_version",
+                          "invalid_config"
+                        ]
                       }
                     },
                     "required": [
                       "id",
-                      "organizationId",
-                      "name",
-                      "slug",
-                      "status",
-                      "themeId",
-                      "createdAt",
-                      "updatedAt"
+                      "pageId",
+                      "type",
+                      "position",
+                      "configSchemaVersion",
+                      "visible",
+                      "scheduledStart",
+                      "scheduledEnd",
+                      "isPrimary",
+                      "config",
+                      "degraded"
                     ],
                     "additionalProperties": false
                   }
@@ -3030,131 +3303,9 @@
           },
           "403": {
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Listar los sitios de la organización",
-        "tags": [
-          "sites"
-        ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/sites/{siteId}": {
-      "get": {
-        "operationId": "SitesController_getOne",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "siteId",
-            "required": true,
-            "in": "path",
-            "description": "Sitio de la organización.",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "El sitio solicitado.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "organizationId": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "slug": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "DRAFT",
-                        "PUBLISHED",
-                        "ARCHIVED"
-                      ]
-                    },
-                    "themeId": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "createdAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    },
-                    "updatedAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "organizationId",
-                    "name",
-                    "slug",
-                    "status",
-                    "themeId",
-                    "createdAt",
-                    "updatedAt"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
           "404": {
-            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
+            "description": "Página no encontrada, o de otra organización (ADR-002)."
           }
         },
         "security": [
@@ -3162,14 +3313,14 @@
             "sesion": []
           }
         ],
-        "summary": "Leer un sitio",
+        "summary": "Listar los bloques de la página",
         "tags": [
-          "sites"
+          "blocks"
         ]
       },
-      "patch": {
-        "description": "Requiere el permiso `site.update`. Cambiarle el slug a un sitio **publicado** deja una redirección desde el anterior, para no romper en silencio los enlaces ya compartidos; un sitio en borrador nunca fue alcanzable, así que no genera redirección. Un cuerpo vacío es 400, no un 200 que no hace nada.",
-        "operationId": "SitesController_update",
+      "post": {
+        "description": "Requiere `page.manage`. `type` sale del catálogo cerrado y `config` se valida contra el esquema **de ese tipo** y se sanitiza en el servidor — es el único camino por el que una configuración llega a la base, que es lo que convierte «bloques tipados, no HTML arbitrario» en una garantía y no en una intención.",
+        "operationId": "BlocksController_create",
         "parameters": [
           {
             "name": "organizationId",
@@ -3185,7 +3336,17 @@
             "name": "siteId",
             "required": true,
             "in": "path",
-            "description": "Sitio de la organización.",
+            "description": "Sitio dueño de la página.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageId",
+            "required": true,
+            "in": "path",
+            "description": "Página donde se agrega el bloque.",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -3211,88 +3372,309 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "name": {
+                  "type": {
                     "type": "string",
-                    "minLength": 2,
-                    "maxLength": 120
+                    "enum": [
+                      "profile",
+                      "hero",
+                      "text",
+                      "link",
+                      "social",
+                      "image",
+                      "gallery",
+                      "video",
+                      "whatsapp",
+                      "contact_actions",
+                      "contact_form",
+                      "service",
+                      "divider",
+                      "faq",
+                      "testimonials"
+                    ]
                   },
-                  "slug": {
+                  "config": {},
+                  "visible": {
+                    "type": "boolean"
+                  },
+                  "scheduledStart": {
                     "type": "string",
-                    "minLength": 3,
-                    "maxLength": 63,
-                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "scheduledEnd": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "config"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Bloque creado, al final de la página.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "pageId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "configSchemaVersion": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    },
+                    "scheduledStart": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "scheduledEnd": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "isPrimary": {
+                      "type": "boolean"
+                    },
+                    "config": {},
+                    "degraded": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "unknown_type",
+                        "future_version",
+                        "invalid_config"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "pageId",
+                    "type",
+                    "position",
+                    "configSchemaVersion",
+                    "visible",
+                    "scheduledStart",
+                    "scheduledEnd",
+                    "isPrimary",
+                    "config",
+                    "degraded"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tipo de bloque fuera del catálogo, o `scheduledStart` posterior o igual a `scheduledEnd`."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Página no encontrada, o de otra organización (ADR-002)."
+          },
+          "422": {
+            "description": "La configuración no cumple el esquema de ese tipo de bloque. `issues` indica el campo exacto."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Agregar un bloque a la página",
+        "tags": [
+          "blocks"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks/reorder": {
+      "put": {
+        "description": "Requiere `page.manage`. Mismo criterio que las páginas: se manda el orden completo, con exactamente todos los bloques de la página y sin repetidos.",
+        "operationId": "BlocksController_reorder",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio dueño de la página.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageId",
+            "required": true,
+            "in": "path",
+            "description": "Página cuyos bloques se reordenan.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "blockIds": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  }
+                },
+                "required": [
+                  "blockIds"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bloques en el nuevo orden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "pageId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "position": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "configSchemaVersion": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "visible": {
+                        "type": "boolean"
+                      },
+                      "scheduledStart": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "scheduledEnd": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "isPrimary": {
+                        "type": "boolean"
+                      },
+                      "config": {},
+                      "degraded": {
+                        "nullable": true,
+                        "type": "string",
+                        "enum": [
+                          "unknown_type",
+                          "future_version",
+                          "invalid_config"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "pageId",
+                      "type",
+                      "position",
+                      "configSchemaVersion",
+                      "visible",
+                      "scheduledStart",
+                      "scheduledEnd",
+                      "isPrimary",
+                      "config",
+                      "degraded"
+                    ],
+                    "additionalProperties": false
                   }
                 }
               }
             }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Sitio actualizado.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "organizationId": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "slug": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "DRAFT",
-                        "PUBLISHED",
-                        "ARCHIVED"
-                      ]
-                    },
-                    "themeId": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "createdAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    },
-                    "updatedAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "organizationId",
-                    "name",
-                    "slug",
-                    "status",
-                    "themeId",
-                    "createdAt",
-                    "updatedAt"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
           },
           "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
+            "description": "La lista tiene identificadores repetidos, o no incluye exactamente todos los bloques de la página."
           },
           "401": {
             "description": "Sin sesión válida."
@@ -3301,10 +3683,7 @@
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
           "404": {
-            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
-          },
-          "409": {
-            "description": "Ese slug ya lo usa otro sitio, o lo ocupa una redirección viva de otro sitio."
+            "description": "Página no encontrada, o de otra organización (ADR-002)."
           }
         },
         "security": [
@@ -3312,148 +3691,16 @@
             "sesion": []
           }
         ],
-        "summary": "Editar un sitio",
+        "summary": "Reordenar los bloques de la página",
         "tags": [
-          "sites"
+          "blocks"
         ]
       }
     },
-    "/api/v1/organizations/{organizationId}/sites/{siteId}/theme": {
-      "get": {
-        "description": "Nunca responde «sin tema»: si el sitio no eligió ninguno, devuelve el del catálogo por defecto con `isDefault: true`. Una página pública siempre tiene apariencia.",
-        "operationId": "SitesController_getTheme",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "siteId",
-            "required": true,
-            "in": "path",
-            "description": "Sitio de la organización.",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Tema con el que se muestra el sitio.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "code": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "source": {
-                      "type": "string",
-                      "enum": [
-                        "catalog",
-                        "organization"
-                      ]
-                    },
-                    "family": {
-                      "nullable": true,
-                      "type": "string",
-                      "enum": [
-                        "oscuro",
-                        "ejecutivo",
-                        "vibrante",
-                        "clasico"
-                      ]
-                    },
-                    "editable": {
-                      "type": "boolean"
-                    },
-                    "tokens": {},
-                    "createdAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    },
-                    "updatedAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    },
-                    "isDefault": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "name",
-                    "code",
-                    "source",
-                    "family",
-                    "editable",
-                    "tokens",
-                    "createdAt",
-                    "updatedAt",
-                    "isDefault"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          },
-          "404": {
-            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Leer el tema efectivo del sitio",
-        "tags": [
-          "sites"
-        ]
-      },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks/primary": {
       "put": {
-        "description": "Requiere `site.update` y no `theme.manage`: aplicar apariencia es configurar el sitio, no crear temas — un EDITOR puede cambiar de tema sin poder inventar paletas. `themeId: null` devuelve el sitio al tema por defecto. PUT y no PATCH porque `null` es un valor con significado, no un campo omitido.",
-        "operationId": "SitesController_setTheme",
+        "description": "Requiere `page.manage`. PP5: el bloque elegido (WhatsApp, enlace o formulario) se destaca y, en el teléfono, queda fijo abajo. A lo sumo uno por página: marcar otro desmarca el anterior, y `blockId: null` la quita. Es un cambio del borrador: se ve al publicar.",
+        "operationId": "BlocksController_setPrimary",
         "parameters": [
           {
             "name": "organizationId",
@@ -3469,7 +3716,17 @@
             "name": "siteId",
             "required": true,
             "in": "path",
-            "description": "Sitio de la organización.",
+            "description": "Sitio dueño de la página.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageId",
+            "required": true,
+            "in": "path",
+            "description": "Página cuya acción principal se elige.",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -3495,7 +3752,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "themeId": {
+                  "blockId": {
                     "nullable": true,
                     "type": "string",
                     "format": "uuid",
@@ -3503,7 +3760,7 @@
                   }
                 },
                 "required": [
-                  "themeId"
+                  "blockId"
                 ]
               }
             }
@@ -3511,64 +3768,81 @@
         },
         "responses": {
           "200": {
-            "description": "Sitio con el tema aplicado.",
+            "description": "Bloques de la página, con la acción principal ya marcada.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "pageId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "position": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "configSchemaVersion": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "visible": {
+                        "type": "boolean"
+                      },
+                      "scheduledStart": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "scheduledEnd": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "isPrimary": {
+                        "type": "boolean"
+                      },
+                      "config": {},
+                      "degraded": {
+                        "nullable": true,
+                        "type": "string",
+                        "enum": [
+                          "unknown_type",
+                          "future_version",
+                          "invalid_config"
+                        ]
+                      }
                     },
-                    "organizationId": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "slug": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "DRAFT",
-                        "PUBLISHED",
-                        "ARCHIVED"
-                      ]
-                    },
-                    "themeId": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    },
-                    "createdAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    },
-                    "updatedAt": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "organizationId",
-                    "name",
-                    "slug",
-                    "status",
-                    "themeId",
-                    "createdAt",
-                    "updatedAt"
-                  ],
-                  "additionalProperties": false
+                    "required": [
+                      "id",
+                      "pageId",
+                      "type",
+                      "position",
+                      "configSchemaVersion",
+                      "visible",
+                      "scheduledStart",
+                      "scheduledEnd",
+                      "isPrimary",
+                      "config",
+                      "degraded"
+                    ],
+                    "additionalProperties": false
+                  }
                 }
               }
             }
@@ -3583,7 +3857,13 @@
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
           "404": {
-            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002). El tema tampoco se confirma si es de otra organización."
+            "description": "La página o el bloque no existen en esta organización."
+          },
+          "409": {
+            "description": "Otra petición cambió la acción principal al mismo tiempo."
+          },
+          "422": {
+            "description": "El bloque no es de un tipo de acción (WhatsApp, enlace o formulario)."
           }
         },
         "security": [
@@ -3591,16 +3871,16 @@
             "sesion": []
           }
         ],
-        "summary": "Aplicar un tema al sitio",
+        "summary": "Elegir la acción principal de la página",
         "tags": [
-          "sites"
+          "blocks"
         ]
       }
     },
-    "/api/v1/organizations/{organizationId}/sites/{siteId}/background": {
-      "get": {
-        "description": "`background` es lo guardado; `resolved`, lo que pinta el render (con la paleta de texto ya decidida para que se lea); `null` en ambos = el fondo del tema. `videos` lista la biblioteca curada disponible.",
-        "operationId": "SitesController_getBackground",
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks/{blockId}": {
+      "patch": {
+        "description": "Requiere `page.manage`. Enviar `config` la reemplaza entera y crea una versión nueva: se vuelve a validar y sanitizar desde cero, no se parchea lo guardado. Un cuerpo vacío es 400.",
+        "operationId": "BlocksController_update",
         "parameters": [
           {
             "name": "organizationId",
@@ -3616,115 +3896,27 @@
             "name": "siteId",
             "required": true,
             "in": "path",
-            "description": "Sitio de la organización.",
+            "description": "Sitio dueño de la página.",
             "schema": {
               "format": "uuid",
               "type": "string"
             }
           },
           {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Fondo del sitio.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "background": {
-                      "nullable": true
-                    },
-                    "resolved": {
-                      "nullable": true
-                    },
-                    "videos": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string"
-                          },
-                          "name": {
-                            "type": "string"
-                          },
-                          "posterUrl": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "code",
-                          "name",
-                          "posterUrl"
-                        ],
-                        "additionalProperties": false
-                      }
-                    }
-                  },
-                  "required": [
-                    "background",
-                    "resolved",
-                    "videos"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          },
-          "404": {
-            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Leer el fondo de la página del sitio (PP3)",
-        "tags": [
-          "sites"
-        ]
-      },
-      "put": {
-        "description": "Color, degradado del catálogo, imagen de la biblioteca propia o video de la biblioteca curada, nunca CSS libre. El servidor verifica que el texto alcance WCAG 2.2 AA: un color con el que ningún texto se lee, o una capa de legibilidad demasiado suave para esa imagen, responde 422 (con `legibleStrengths` en el caso de la imagen). Una imagen tiene que ser un archivo listo de la biblioteca de esta organización. `background: null` vuelve al fondo del tema. La página pública se actualiza de inmediato.",
-        "operationId": "SitesController_setBackground",
-        "parameters": [
-          {
-            "name": "organizationId",
+            "name": "pageId",
             "required": true,
             "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "description": "Página dueña del bloque.",
             "schema": {
               "format": "uuid",
               "type": "string"
             }
           },
           {
-            "name": "siteId",
+            "name": "blockId",
             "required": true,
             "in": "path",
-            "description": "Sitio de la organización.",
+            "description": "Bloque a editar.",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -3750,57 +3942,99 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "background": {}
-                },
-                "required": [
-                  "background"
-                ]
+                  "config": {},
+                  "visible": {
+                    "type": "boolean"
+                  },
+                  "scheduledStart": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "scheduledEnd": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Fondo aplicado.",
+            "description": "Bloque actualizado, con su versión vigente.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "background": {
-                      "nullable": true
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    "resolved": {
-                      "nullable": true
+                    "pageId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    "videos": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "code": {
-                            "type": "string"
-                          },
-                          "name": {
-                            "type": "string"
-                          },
-                          "posterUrl": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "code",
-                          "name",
-                          "posterUrl"
-                        ],
-                        "additionalProperties": false
-                      }
+                    "type": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "configSchemaVersion": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    },
+                    "scheduledStart": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "scheduledEnd": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "isPrimary": {
+                      "type": "boolean"
+                    },
+                    "config": {},
+                    "degraded": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "unknown_type",
+                        "future_version",
+                        "invalid_config"
+                      ]
                     }
                   },
                   "required": [
-                    "background",
-                    "resolved",
-                    "videos"
+                    "id",
+                    "pageId",
+                    "type",
+                    "position",
+                    "configSchemaVersion",
+                    "visible",
+                    "scheduledStart",
+                    "scheduledEnd",
+                    "isPrimary",
+                    "config",
+                    "degraded"
                   ],
                   "additionalProperties": false
                 }
@@ -3808,7 +4042,7 @@
             }
           },
           "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
+            "description": "Cuerpo vacío, o `scheduledStart` posterior o igual a `scheduledEnd`."
           },
           "401": {
             "description": "Sin sesión válida."
@@ -3817,10 +4051,10 @@
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
           "404": {
-            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
+            "description": "Bloque no encontrado: no existe en esa página, o la página es de otra organización (ADR-002)."
           },
           "422": {
-            "description": "Fondo inválido o ilegible, o imagen que no es de la biblioteca de esta organización."
+            "description": "La configuración no cumple el esquema de ese tipo de bloque. `issues` indica el campo exacto."
           }
         },
         "security": [
@@ -3828,16 +4062,14 @@
             "sesion": []
           }
         ],
-        "summary": "Cambiar el fondo de la página del sitio (PP3)",
+        "summary": "Editar un bloque",
         "tags": [
-          "sites"
+          "blocks"
         ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/sites/{siteId}/archive": {
-      "post": {
-        "description": "Requiere el permiso `site.archive`. Acción y no DELETE: el contenido del usuario no se destruye desde un CRUD. Es idempotente — archivar dos veces no falla ni duplica la entrada de auditoría.",
-        "operationId": "SitesController_archive",
+      },
+      "delete": {
+        "description": "Requiere `page.manage`. A diferencia de una página, el borrado es real: un bloque suelto no es una unidad de contenido que el usuario espere recuperar, y su historial de versiones se va con él. Las posiciones siguientes se cierran para que el orden siga siendo 0..n-1.",
+        "operationId": "BlocksController_remove",
         "parameters": [
           {
             "name": "organizationId",
@@ -3853,7 +4085,113 @@
             "name": "siteId",
             "required": true,
             "in": "path",
-            "description": "Sitio de la organización.",
+            "description": "Sitio dueño de la página.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageId",
+            "required": true,
+            "in": "path",
+            "description": "Página dueña del bloque.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "blockId",
+            "required": true,
+            "in": "path",
+            "description": "Bloque a eliminar.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Bloque eliminado."
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Bloque no encontrado: no existe en esa página, o la página es de otra organización (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Eliminar un bloque",
+        "tags": [
+          "blocks"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks/{blockId}/duplicate": {
+      "post": {
+        "description": "Requiere `page.manage`. La copia queda justo debajo del original y los siguientes se corren una posición.",
+        "operationId": "BlocksController_duplicate",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio dueño de la página.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageId",
+            "required": true,
+            "in": "path",
+            "description": "Página dueña del bloque.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "blockId",
+            "required": true,
+            "in": "path",
+            "description": "Bloque a copiar.",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -3874,7 +4212,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Sitio en estado `ARCHIVED`.",
+            "description": "Copia creada, en la posición siguiente al original.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3885,51 +4223,65 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    "organizationId": {
+                    "pageId": {
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    "name": {
+                    "type": {
                       "type": "string"
                     },
-                    "slug": {
-                      "type": "string"
+                    "position": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
                     },
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "DRAFT",
-                        "PUBLISHED",
-                        "ARCHIVED"
-                      ]
+                    "configSchemaVersion": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
                     },
-                    "themeId": {
+                    "visible": {
+                      "type": "boolean"
+                    },
+                    "scheduledStart": {
                       "nullable": true,
                       "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     },
-                    "createdAt": {
+                    "scheduledEnd": {
+                      "nullable": true,
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     },
-                    "updatedAt": {
+                    "isPrimary": {
+                      "type": "boolean"
+                    },
+                    "config": {},
+                    "degraded": {
+                      "nullable": true,
                       "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      "enum": [
+                        "unknown_type",
+                        "future_version",
+                        "invalid_config"
+                      ]
                     }
                   },
                   "required": [
                     "id",
-                    "organizationId",
-                    "name",
-                    "slug",
-                    "status",
-                    "themeId",
-                    "createdAt",
-                    "updatedAt"
+                    "pageId",
+                    "type",
+                    "position",
+                    "configSchemaVersion",
+                    "visible",
+                    "scheduledStart",
+                    "scheduledEnd",
+                    "isPrimary",
+                    "config",
+                    "degraded"
                   ],
                   "additionalProperties": false
                 }
@@ -3946,7 +4298,7 @@
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
           "404": {
-            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
+            "description": "Bloque no encontrado: no existe en esa página, o la página es de otra organización (ADR-002)."
           }
         },
         "security": [
@@ -3954,260 +4306,9 @@
             "sesion": []
           }
         ],
-        "summary": "Archivar un sitio",
+        "summary": "Duplicar un bloque",
         "tags": [
-          "sites"
-        ]
-      }
-    },
-    "/api/v1/public/sites/{siteSlug}": {
-      "get": {
-        "description": "Identidad del sitio, su tema efectivo y la lista de páginas para el menú (solo las `PUBLIC` y publicadas). Es lo que resuelve la raíz de un sitio en `apps/web`.",
-        "operationId": "PublicSitesController_getSite",
-        "parameters": [
-          {
-            "name": "siteSlug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "El sitio, listo para renderizar.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "slug": {
-                      "type": "string"
-                    },
-                    "theme": {
-                      "type": "object",
-                      "properties": {
-                        "tokens": {}
-                      },
-                      "required": [
-                        "tokens"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "background": {
-                      "nullable": true
-                    },
-                    "pages": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "slug": {
-                            "type": "string"
-                          },
-                          "isHome": {
-                            "type": "boolean"
-                          },
-                          "publishedAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                          }
-                        },
-                        "required": [
-                          "slug",
-                          "isHome",
-                          "publishedAt"
-                        ],
-                        "additionalProperties": false
-                      }
-                    }
-                  },
-                  "required": [
-                    "name",
-                    "slug",
-                    "theme",
-                    "background",
-                    "pages"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Sitio no encontrado: no existe, o está archivado. Un sitio en borrador sin ninguna página publicada tampoco tiene nada que mostrar, pero eso lo decide cada página, no este endpoint."
-          },
-          "429": {
-            "description": "Límite de peticiones superado (120 por minuto y IP)."
-          }
-        },
-        "summary": "Sitio público por slug",
-        "tags": [
-          "public-sites"
-        ]
-      }
-    },
-    "/api/v1/public/sites/{siteSlug}/pages/{pageSlug}": {
-      "get": {
-        "description": "El slug de la home es `inicio` (constante compartida, `@impulza/validation`); no tiene ruta propia porque es una página real como cualquier otra, solo que `apps/web` la sirve en la raíz del sitio. Los bloques ya vienen filtrados: sin los ocultos, sin los fuera de su ventana programada y sin los degradados — lo que se devuelve es exactamente lo que hay que pintar, en orden.",
-        "operationId": "PublicSitesController_getPage",
-        "parameters": [
-          {
-            "name": "siteSlug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "pageSlug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "La página, con sus bloques listos para renderizar.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "slug": {
-                      "type": "string"
-                    },
-                    "isHome": {
-                      "type": "boolean"
-                    },
-                    "seo": {
-                      "type": "object",
-                      "properties": {
-                        "title": {
-                          "type": "string"
-                        },
-                        "description": {
-                          "type": "string"
-                        },
-                        "canonicalPath": {
-                          "type": "string"
-                        },
-                        "robots": {
-                          "type": "string",
-                          "enum": [
-                            "index_follow",
-                            "noindex_follow",
-                            "index_nofollow",
-                            "noindex_nofollow"
-                          ]
-                        },
-                        "openGraph": {
-                          "type": "object",
-                          "properties": {
-                            "title": {
-                              "type": "string"
-                            },
-                            "description": {
-                              "type": "string"
-                            },
-                            "image": {
-                              "type": "string"
-                            }
-                          },
-                          "required": [
-                            "title"
-                          ],
-                          "additionalProperties": false
-                        }
-                      },
-                      "required": [
-                        "title",
-                        "canonicalPath",
-                        "robots",
-                        "openGraph"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "blocks": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "position": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "type": {
-                            "type": "string"
-                          },
-                          "config": {},
-                          "primary": {
-                            "type": "boolean"
-                          }
-                        },
-                        "required": [
-                          "position",
-                          "type",
-                          "config"
-                        ],
-                        "additionalProperties": false
-                      }
-                    }
-                  },
-                  "required": [
-                    "slug",
-                    "isHome",
-                    "seo",
-                    "blocks"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Página no encontrada: no existe, está en la papelera, o nunca se publicó — un borrador nunca es alcanzable acá, ni adivinando el slug exacto."
-          },
-          "429": {
-            "description": "Límite de peticiones superado (120 por minuto y IP)."
-          }
-        },
-        "summary": "Página publicada de un sitio, por slug",
-        "tags": [
-          "public-sites"
+          "blocks"
         ]
       }
     },
@@ -5987,10 +6088,261 @@
         ]
       }
     },
-    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks": {
+    "/api/v1/public/sites/{siteSlug}": {
       "get": {
-        "description": "En orden de `position`, con la configuración de su versión vigente. Un bloque que no se puede renderizar viene con `degraded` en vez de romper la respuesta: el render lo omite y el constructor puede avisar. Solo pide membresía activa.",
-        "operationId": "BlocksController_list",
+        "description": "Identidad del sitio, su tema efectivo y la lista de páginas para el menú (solo las `PUBLIC` y publicadas). Es lo que resuelve la raíz de un sitio en `apps/web`.",
+        "operationId": "PublicSitesController_getSite",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El sitio, listo para renderizar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "theme": {
+                      "type": "object",
+                      "properties": {
+                        "tokens": {}
+                      },
+                      "required": [
+                        "tokens"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "background": {
+                      "nullable": true
+                    },
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "isHome": {
+                            "type": "boolean"
+                          },
+                          "publishedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "slug",
+                          "isHome",
+                          "publishedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "slug",
+                    "theme",
+                    "background",
+                    "pages"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sitio no encontrado: no existe, o está archivado. Un sitio en borrador sin ninguna página publicada tampoco tiene nada que mostrar, pero eso lo decide cada página, no este endpoint."
+          },
+          "429": {
+            "description": "Límite de peticiones superado (120 por minuto y IP)."
+          }
+        },
+        "summary": "Sitio público por slug",
+        "tags": [
+          "public-sites"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/pages/{pageSlug}": {
+      "get": {
+        "description": "El slug de la home es `inicio` (constante compartida, `@impulza/validation`); no tiene ruta propia porque es una página real como cualquier otra, solo que `apps/web` la sirve en la raíz del sitio. Los bloques ya vienen filtrados: sin los ocultos, sin los fuera de su ventana programada y sin los degradados — lo que se devuelve es exactamente lo que hay que pintar, en orden.",
+        "operationId": "PublicSitesController_getPage",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La página, con sus bloques listos para renderizar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "isHome": {
+                      "type": "boolean"
+                    },
+                    "seo": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "canonicalPath": {
+                          "type": "string"
+                        },
+                        "robots": {
+                          "type": "string",
+                          "enum": [
+                            "index_follow",
+                            "noindex_follow",
+                            "index_nofollow",
+                            "noindex_nofollow"
+                          ]
+                        },
+                        "openGraph": {
+                          "type": "object",
+                          "properties": {
+                            "title": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "image": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "title"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "canonicalPath",
+                        "robots",
+                        "openGraph"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "blocks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "position": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "config": {},
+                          "primary": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "position",
+                          "type",
+                          "config"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "isHome",
+                    "seo",
+                    "blocks"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Página no encontrada: no existe, está en la papelera, o nunca se publicó — un borrador nunca es alcanzable acá, ni adivinando el slug exacto."
+          },
+          "429": {
+            "description": "Límite de peticiones superado (120 por minuto y IP)."
+          }
+        },
+        "summary": "Página publicada de un sitio, por slug",
+        "tags": [
+          "public-sites"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites": {
+      "post": {
+        "description": "Requiere el permiso `site.create`. El slug es la identidad pública del sitio (`slug.dominio`) y es único en toda la plataforma, no solo dentro de la organización.",
+        "operationId": "SitesController_create",
         "parameters": [
           {
             "name": "organizationId",
@@ -6003,20 +6355,144 @@
             }
           },
           {
-            "name": "siteId",
-            "required": true,
-            "in": "path",
-            "description": "Sitio dueño de la página.",
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
             "schema": {
-              "format": "uuid",
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "slug": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 63,
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+                  }
+                },
+                "required": [
+                  "name",
+                  "slug"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sitio creado en estado `DRAFT`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "organizationId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "DRAFT",
+                        "PUBLISHED",
+                        "ARCHIVED"
+                      ]
+                    },
+                    "themeId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "organizationId",
+                    "name",
+                    "slug",
+                    "status",
+                    "themeId",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
             }
           },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "402": {
+            "description": "Límite de plan alcanzado (`sites`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "409": {
+            "description": "Ese slug ya lo usa otro sitio, o lo ocupa una redirección viva de otro sitio."
+          }
+        },
+        "security": [
           {
-            "name": "pageId",
+            "sesion": []
+          }
+        ],
+        "summary": "Crear un sitio",
+        "tags": [
+          "sites"
+        ]
+      },
+      "get": {
+        "description": "Solo pide membresía activa: ANALYST y SUPPORT necesitan verlos para hacer su trabajo.",
+        "operationId": "SitesController_list",
+        "parameters": [
+          {
+            "name": "organizationId",
             "required": true,
             "in": "path",
-            "description": "Página dueña de los bloques.",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -6037,7 +6513,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Bloques de la página, ordenados.",
+            "description": "Sitios de la organización, archivados incluidos.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6050,65 +6526,51 @@
                         "format": "uuid",
                         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                       },
-                      "pageId": {
+                      "organizationId": {
                         "type": "string",
                         "format": "uuid",
                         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                       },
-                      "type": {
+                      "name": {
                         "type": "string"
                       },
-                      "position": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
+                      "slug": {
+                        "type": "string"
                       },
-                      "configSchemaVersion": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "visible": {
-                        "type": "boolean"
-                      },
-                      "scheduledStart": {
-                        "nullable": true,
-                        "type": "string",
-                        "format": "date-time",
-                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                      },
-                      "scheduledEnd": {
-                        "nullable": true,
-                        "type": "string",
-                        "format": "date-time",
-                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                      },
-                      "isPrimary": {
-                        "type": "boolean"
-                      },
-                      "config": {},
-                      "degraded": {
-                        "nullable": true,
+                      "status": {
                         "type": "string",
                         "enum": [
-                          "unknown_type",
-                          "future_version",
-                          "invalid_config"
+                          "DRAFT",
+                          "PUBLISHED",
+                          "ARCHIVED"
                         ]
+                      },
+                      "themeId": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       }
                     },
                     "required": [
                       "id",
-                      "pageId",
-                      "type",
-                      "position",
-                      "configSchemaVersion",
-                      "visible",
-                      "scheduledStart",
-                      "scheduledEnd",
-                      "isPrimary",
-                      "config",
-                      "degraded"
+                      "organizationId",
+                      "name",
+                      "slug",
+                      "status",
+                      "themeId",
+                      "createdAt",
+                      "updatedAt"
                     ],
                     "additionalProperties": false
                   }
@@ -6124,9 +6586,6 @@
           },
           "403": {
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          },
-          "404": {
-            "description": "Página no encontrada, o de otra organización (ADR-002)."
           }
         },
         "security": [
@@ -6134,14 +6593,15 @@
             "sesion": []
           }
         ],
-        "summary": "Listar los bloques de la página",
+        "summary": "Listar los sitios de la organización",
         "tags": [
-          "blocks"
+          "sites"
         ]
-      },
-      "post": {
-        "description": "Requiere `page.manage`. `type` sale del catálogo cerrado y `config` se valida contra el esquema **de ese tipo** y se sanitiza en el servidor — es el único camino por el que una configuración llega a la base, que es lo que convierte «bloques tipados, no HTML arbitrario» en una garantía y no en una intención.",
-        "operationId": "BlocksController_create",
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}": {
+      "get": {
+        "operationId": "SitesController_getOne",
         "parameters": [
           {
             "name": "organizationId",
@@ -6157,17 +6617,7 @@
             "name": "siteId",
             "required": true,
             "in": "path",
-            "description": "Sitio dueño de la página.",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "pageId",
-            "required": true,
-            "in": "path",
-            "description": "Página donde se agrega el bloque.",
+            "description": "Sitio de la organización.",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -6186,59 +6636,9 @@
             }
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "profile",
-                      "hero",
-                      "text",
-                      "link",
-                      "social",
-                      "image",
-                      "gallery",
-                      "video",
-                      "whatsapp",
-                      "contact_actions",
-                      "contact_form",
-                      "service",
-                      "divider",
-                      "faq",
-                      "testimonials"
-                    ]
-                  },
-                  "config": {},
-                  "visible": {
-                    "type": "boolean"
-                  },
-                  "scheduledStart": {
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                  },
-                  "scheduledEnd": {
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                  }
-                },
-                "required": [
-                  "type",
-                  "config"
-                ]
-              }
-            }
-          }
-        },
         "responses": {
-          "201": {
-            "description": "Bloque creado, al final de la página.",
+          "200": {
+            "description": "El sitio solicitado.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6249,65 +6649,51 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    "pageId": {
+                    "organizationId": {
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    "type": {
+                    "name": {
                       "type": "string"
                     },
-                    "position": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
+                    "slug": {
+                      "type": "string"
                     },
-                    "configSchemaVersion": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    "visible": {
-                      "type": "boolean"
-                    },
-                    "scheduledStart": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    },
-                    "scheduledEnd": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    },
-                    "isPrimary": {
-                      "type": "boolean"
-                    },
-                    "config": {},
-                    "degraded": {
-                      "nullable": true,
+                    "status": {
                       "type": "string",
                       "enum": [
-                        "unknown_type",
-                        "future_version",
-                        "invalid_config"
+                        "DRAFT",
+                        "PUBLISHED",
+                        "ARCHIVED"
                       ]
+                    },
+                    "themeId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     }
                   },
                   "required": [
                     "id",
-                    "pageId",
-                    "type",
-                    "position",
-                    "configSchemaVersion",
-                    "visible",
-                    "scheduledStart",
-                    "scheduledEnd",
-                    "isPrimary",
-                    "config",
-                    "degraded"
+                    "organizationId",
+                    "name",
+                    "slug",
+                    "status",
+                    "themeId",
+                    "createdAt",
+                    "updatedAt"
                   ],
                   "additionalProperties": false
                 }
@@ -6315,7 +6701,7 @@
             }
           },
           "400": {
-            "description": "Tipo de bloque fuera del catálogo, o `scheduledStart` posterior o igual a `scheduledEnd`."
+            "description": "Entrada inválida (detalle en `issues`)."
           },
           "401": {
             "description": "Sin sesión válida."
@@ -6324,10 +6710,7 @@
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
           "404": {
-            "description": "Página no encontrada, o de otra organización (ADR-002)."
-          },
-          "422": {
-            "description": "La configuración no cumple el esquema de ese tipo de bloque. `issues` indica el campo exacto."
+            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
           }
         },
         "security": [
@@ -6335,16 +6718,14 @@
             "sesion": []
           }
         ],
-        "summary": "Agregar un bloque a la página",
+        "summary": "Leer un sitio",
         "tags": [
-          "blocks"
+          "sites"
         ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks/reorder": {
-      "put": {
-        "description": "Requiere `page.manage`. Mismo criterio que las páginas: se manda el orden completo, con exactamente todos los bloques de la página y sin repetidos.",
-        "operationId": "BlocksController_reorder",
+      },
+      "patch": {
+        "description": "Requiere el permiso `site.update`. Cambiarle el slug a un sitio **publicado** deja una redirección desde el anterior, para no romper en silencio los enlaces ya compartidos; un sitio en borrador nunca fue alcanzable, así que no genera redirección. Un cuerpo vacío es 400, no un 200 que no hace nada.",
+        "operationId": "SitesController_update",
         "parameters": [
           {
             "name": "organizationId",
@@ -6360,17 +6741,7 @@
             "name": "siteId",
             "required": true,
             "in": "path",
-            "description": "Sitio dueño de la página.",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "pageId",
-            "required": true,
-            "in": "path",
-            "description": "Página cuyos bloques se reordenan.",
+            "description": "Sitio de la organización.",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -6396,106 +6767,88 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "blockIds": {
-                    "minItems": 1,
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    }
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "slug": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 63,
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
                   }
-                },
-                "required": [
-                  "blockIds"
-                ]
+                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Bloques en el nuevo orden.",
+            "description": "Sitio actualizado.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      },
-                      "pageId": {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      },
-                      "type": {
-                        "type": "string"
-                      },
-                      "position": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "configSchemaVersion": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "visible": {
-                        "type": "boolean"
-                      },
-                      "scheduledStart": {
-                        "nullable": true,
-                        "type": "string",
-                        "format": "date-time",
-                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                      },
-                      "scheduledEnd": {
-                        "nullable": true,
-                        "type": "string",
-                        "format": "date-time",
-                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                      },
-                      "isPrimary": {
-                        "type": "boolean"
-                      },
-                      "config": {},
-                      "degraded": {
-                        "nullable": true,
-                        "type": "string",
-                        "enum": [
-                          "unknown_type",
-                          "future_version",
-                          "invalid_config"
-                        ]
-                      }
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    "required": [
-                      "id",
-                      "pageId",
-                      "type",
-                      "position",
-                      "configSchemaVersion",
-                      "visible",
-                      "scheduledStart",
-                      "scheduledEnd",
-                      "isPrimary",
-                      "config",
-                      "degraded"
-                    ],
-                    "additionalProperties": false
-                  }
+                    "organizationId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "DRAFT",
+                        "PUBLISHED",
+                        "ARCHIVED"
+                      ]
+                    },
+                    "themeId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "organizationId",
+                    "name",
+                    "slug",
+                    "status",
+                    "themeId",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
           },
           "400": {
-            "description": "La lista tiene identificadores repetidos, o no incluye exactamente todos los bloques de la página."
+            "description": "Entrada inválida (detalle en `issues`)."
           },
           "401": {
             "description": "Sin sesión válida."
@@ -6504,7 +6857,10 @@
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
           "404": {
-            "description": "Página no encontrada, o de otra organización (ADR-002)."
+            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
+          },
+          "409": {
+            "description": "Ese slug ya lo usa otro sitio, o lo ocupa una redirección viva de otro sitio."
           }
         },
         "security": [
@@ -6512,16 +6868,16 @@
             "sesion": []
           }
         ],
-        "summary": "Reordenar los bloques de la página",
+        "summary": "Editar un sitio",
         "tags": [
-          "blocks"
+          "sites"
         ]
       }
     },
-    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks/primary": {
-      "put": {
-        "description": "Requiere `page.manage`. PP5: el bloque elegido (WhatsApp, enlace o formulario) se destaca y, en el teléfono, queda fijo abajo. A lo sumo uno por página: marcar otro desmarca el anterior, y `blockId: null` la quita. Es un cambio del borrador: se ve al publicar.",
-        "operationId": "BlocksController_setPrimary",
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/theme": {
+      "get": {
+        "description": "Nunca responde «sin tema»: si el sitio no eligió ninguno, devuelve el del catálogo por defecto con `isDefault: true`. Una página pública siempre tiene apariencia.",
+        "operationId": "SitesController_getTheme",
         "parameters": [
           {
             "name": "organizationId",
@@ -6537,17 +6893,139 @@
             "name": "siteId",
             "required": true,
             "in": "path",
-            "description": "Sitio dueño de la página.",
+            "description": "Sitio de la organización.",
             "schema": {
               "format": "uuid",
               "type": "string"
             }
           },
           {
-            "name": "pageId",
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tema con el que se muestra el sitio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "catalog",
+                        "organization"
+                      ]
+                    },
+                    "family": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "oscuro",
+                        "ejecutivo",
+                        "vibrante",
+                        "clasico"
+                      ]
+                    },
+                    "editable": {
+                      "type": "boolean"
+                    },
+                    "tokens": {},
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "isDefault": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "code",
+                    "source",
+                    "family",
+                    "editable",
+                    "tokens",
+                    "createdAt",
+                    "updatedAt",
+                    "isDefault"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Leer el tema efectivo del sitio",
+        "tags": [
+          "sites"
+        ]
+      },
+      "put": {
+        "description": "Requiere `site.update` y no `theme.manage`: aplicar apariencia es configurar el sitio, no crear temas — un EDITOR puede cambiar de tema sin poder inventar paletas. `themeId: null` devuelve el sitio al tema por defecto. PUT y no PATCH porque `null` es un valor con significado, no un campo omitido.",
+        "operationId": "SitesController_setTheme",
+        "parameters": [
+          {
+            "name": "organizationId",
             "required": true,
             "in": "path",
-            "description": "Página cuya acción principal se elige.",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio de la organización.",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -6573,7 +7051,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "blockId": {
+                  "themeId": {
                     "nullable": true,
                     "type": "string",
                     "format": "uuid",
@@ -6581,7 +7059,7 @@
                   }
                 },
                 "required": [
-                  "blockId"
+                  "themeId"
                 ]
               }
             }
@@ -6589,81 +7067,64 @@
         },
         "responses": {
           "200": {
-            "description": "Bloques de la página, con la acción principal ya marcada.",
+            "description": "Sitio con el tema aplicado.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      },
-                      "pageId": {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      },
-                      "type": {
-                        "type": "string"
-                      },
-                      "position": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "configSchemaVersion": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "visible": {
-                        "type": "boolean"
-                      },
-                      "scheduledStart": {
-                        "nullable": true,
-                        "type": "string",
-                        "format": "date-time",
-                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                      },
-                      "scheduledEnd": {
-                        "nullable": true,
-                        "type": "string",
-                        "format": "date-time",
-                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                      },
-                      "isPrimary": {
-                        "type": "boolean"
-                      },
-                      "config": {},
-                      "degraded": {
-                        "nullable": true,
-                        "type": "string",
-                        "enum": [
-                          "unknown_type",
-                          "future_version",
-                          "invalid_config"
-                        ]
-                      }
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    "required": [
-                      "id",
-                      "pageId",
-                      "type",
-                      "position",
-                      "configSchemaVersion",
-                      "visible",
-                      "scheduledStart",
-                      "scheduledEnd",
-                      "isPrimary",
-                      "config",
-                      "degraded"
-                    ],
-                    "additionalProperties": false
-                  }
+                    "organizationId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "DRAFT",
+                        "PUBLISHED",
+                        "ARCHIVED"
+                      ]
+                    },
+                    "themeId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "organizationId",
+                    "name",
+                    "slug",
+                    "status",
+                    "themeId",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
@@ -6678,13 +7139,7 @@
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
           "404": {
-            "description": "La página o el bloque no existen en esta organización."
-          },
-          "409": {
-            "description": "Otra petición cambió la acción principal al mismo tiempo."
-          },
-          "422": {
-            "description": "El bloque no es de un tipo de acción (WhatsApp, enlace o formulario)."
+            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002). El tema tampoco se confirma si es de otra organización."
           }
         },
         "security": [
@@ -6692,16 +7147,16 @@
             "sesion": []
           }
         ],
-        "summary": "Elegir la acción principal de la página",
+        "summary": "Aplicar un tema al sitio",
         "tags": [
-          "blocks"
+          "sites"
         ]
       }
     },
-    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks/{blockId}": {
-      "patch": {
-        "description": "Requiere `page.manage`. Enviar `config` la reemplaza entera y crea una versión nueva: se vuelve a validar y sanitizar desde cero, no se parchea lo guardado. Un cuerpo vacío es 400.",
-        "operationId": "BlocksController_update",
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/background": {
+      "get": {
+        "description": "`background` es lo guardado; `resolved`, lo que pinta el render (con la paleta de texto ya decidida para que se lea); `null` en ambos = el fondo del tema. `videos` lista la biblioteca curada disponible.",
+        "operationId": "SitesController_getBackground",
         "parameters": [
           {
             "name": "organizationId",
@@ -6717,27 +7172,115 @@
             "name": "siteId",
             "required": true,
             "in": "path",
-            "description": "Sitio dueño de la página.",
+            "description": "Sitio de la organización.",
             "schema": {
               "format": "uuid",
               "type": "string"
             }
           },
           {
-            "name": "pageId",
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fondo del sitio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "background": {
+                      "nullable": true
+                    },
+                    "resolved": {
+                      "nullable": true
+                    },
+                    "videos": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "posterUrl": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "name",
+                          "posterUrl"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "background",
+                    "resolved",
+                    "videos"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Leer el fondo de la página del sitio (PP3)",
+        "tags": [
+          "sites"
+        ]
+      },
+      "put": {
+        "description": "Color, degradado del catálogo, imagen de la biblioteca propia o video de la biblioteca curada, nunca CSS libre. El servidor verifica que el texto alcance WCAG 2.2 AA: un color con el que ningún texto se lee, o una capa de legibilidad demasiado suave para esa imagen, responde 422 (con `legibleStrengths` en el caso de la imagen). Una imagen tiene que ser un archivo listo de la biblioteca de esta organización. `background: null` vuelve al fondo del tema. La página pública se actualiza de inmediato.",
+        "operationId": "SitesController_setBackground",
+        "parameters": [
+          {
+            "name": "organizationId",
             "required": true,
             "in": "path",
-            "description": "Página dueña del bloque.",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
             "schema": {
               "format": "uuid",
               "type": "string"
             }
           },
           {
-            "name": "blockId",
+            "name": "siteId",
             "required": true,
             "in": "path",
-            "description": "Bloque a editar.",
+            "description": "Sitio de la organización.",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -6763,191 +7306,62 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "config": {},
-                  "visible": {
-                    "type": "boolean"
-                  },
-                  "scheduledStart": {
-                    "nullable": true,
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                  },
-                  "scheduledEnd": {
-                    "nullable": true,
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                  }
-                }
+                  "background": {}
+                },
+                "required": [
+                  "background"
+                ]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Bloque actualizado, con su versión vigente.",
+            "description": "Fondo aplicado.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    "background": {
+                      "nullable": true
                     },
-                    "pageId": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    "resolved": {
+                      "nullable": true
                     },
-                    "type": {
-                      "type": "string"
-                    },
-                    "position": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    "configSchemaVersion": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    "visible": {
-                      "type": "boolean"
-                    },
-                    "scheduledStart": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    },
-                    "scheduledEnd": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    },
-                    "isPrimary": {
-                      "type": "boolean"
-                    },
-                    "config": {},
-                    "degraded": {
-                      "nullable": true,
-                      "type": "string",
-                      "enum": [
-                        "unknown_type",
-                        "future_version",
-                        "invalid_config"
-                      ]
+                    "videos": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "posterUrl": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "name",
+                          "posterUrl"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
-                    "id",
-                    "pageId",
-                    "type",
-                    "position",
-                    "configSchemaVersion",
-                    "visible",
-                    "scheduledStart",
-                    "scheduledEnd",
-                    "isPrimary",
-                    "config",
-                    "degraded"
+                    "background",
+                    "resolved",
+                    "videos"
                   ],
                   "additionalProperties": false
                 }
               }
             }
-          },
-          "400": {
-            "description": "Cuerpo vacío, o `scheduledStart` posterior o igual a `scheduledEnd`."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          },
-          "404": {
-            "description": "Bloque no encontrado: no existe en esa página, o la página es de otra organización (ADR-002)."
-          },
-          "422": {
-            "description": "La configuración no cumple el esquema de ese tipo de bloque. `issues` indica el campo exacto."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Editar un bloque",
-        "tags": [
-          "blocks"
-        ]
-      },
-      "delete": {
-        "description": "Requiere `page.manage`. A diferencia de una página, el borrado es real: un bloque suelto no es una unidad de contenido que el usuario espere recuperar, y su historial de versiones se va con él. Las posiciones siguientes se cierran para que el orden siga siendo 0..n-1.",
-        "operationId": "BlocksController_remove",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "siteId",
-            "required": true,
-            "in": "path",
-            "description": "Sitio dueño de la página.",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "pageId",
-            "required": true,
-            "in": "path",
-            "description": "Página dueña del bloque.",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "blockId",
-            "required": true,
-            "in": "path",
-            "description": "Bloque a eliminar.",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Bloque eliminado."
           },
           "400": {
             "description": "Entrada inválida (detalle en `issues`)."
@@ -6959,7 +7373,10 @@
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
           "404": {
-            "description": "Bloque no encontrado: no existe en esa página, o la página es de otra organización (ADR-002)."
+            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
+          },
+          "422": {
+            "description": "Fondo inválido o ilegible, o imagen que no es de la biblioteca de esta organización."
           }
         },
         "security": [
@@ -6967,16 +7384,16 @@
             "sesion": []
           }
         ],
-        "summary": "Eliminar un bloque",
+        "summary": "Cambiar el fondo de la página del sitio (PP3)",
         "tags": [
-          "blocks"
+          "sites"
         ]
       }
     },
-    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks/{blockId}/duplicate": {
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/archive": {
       "post": {
-        "description": "Requiere `page.manage`. La copia queda justo debajo del original y los siguientes se corren una posición.",
-        "operationId": "BlocksController_duplicate",
+        "description": "Requiere el permiso `site.archive`. Acción y no DELETE: el contenido del usuario no se destruye desde un CRUD. Es idempotente — archivar dos veces no falla ni duplica la entrada de auditoría.",
+        "operationId": "SitesController_archive",
         "parameters": [
           {
             "name": "organizationId",
@@ -6992,27 +7409,7 @@
             "name": "siteId",
             "required": true,
             "in": "path",
-            "description": "Sitio dueño de la página.",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "pageId",
-            "required": true,
-            "in": "path",
-            "description": "Página dueña del bloque.",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "blockId",
-            "required": true,
-            "in": "path",
-            "description": "Bloque a copiar.",
+            "description": "Sitio de la organización.",
             "schema": {
               "format": "uuid",
               "type": "string"
@@ -7033,7 +7430,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Copia creada, en la posición siguiente al original.",
+            "description": "Sitio en estado `ARCHIVED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7044,65 +7441,51 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    "pageId": {
+                    "organizationId": {
                       "type": "string",
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     },
-                    "type": {
+                    "name": {
                       "type": "string"
                     },
-                    "position": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
+                    "slug": {
+                      "type": "string"
                     },
-                    "configSchemaVersion": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    "visible": {
-                      "type": "boolean"
-                    },
-                    "scheduledStart": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    },
-                    "scheduledEnd": {
-                      "nullable": true,
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                    },
-                    "isPrimary": {
-                      "type": "boolean"
-                    },
-                    "config": {},
-                    "degraded": {
-                      "nullable": true,
+                    "status": {
                       "type": "string",
                       "enum": [
-                        "unknown_type",
-                        "future_version",
-                        "invalid_config"
+                        "DRAFT",
+                        "PUBLISHED",
+                        "ARCHIVED"
                       ]
+                    },
+                    "themeId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     }
                   },
                   "required": [
                     "id",
-                    "pageId",
-                    "type",
-                    "position",
-                    "configSchemaVersion",
-                    "visible",
-                    "scheduledStart",
-                    "scheduledEnd",
-                    "isPrimary",
-                    "config",
-                    "degraded"
+                    "organizationId",
+                    "name",
+                    "slug",
+                    "status",
+                    "themeId",
+                    "createdAt",
+                    "updatedAt"
                   ],
                   "additionalProperties": false
                 }
@@ -7119,7 +7502,7 @@
             "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
           },
           "404": {
-            "description": "Bloque no encontrado: no existe en esa página, o la página es de otra organización (ADR-002)."
+            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
           }
         },
         "security": [
@@ -7127,9 +7510,9 @@
             "sesion": []
           }
         ],
-        "summary": "Duplicar un bloque",
+        "summary": "Archivar un sitio",
         "tags": [
-          "blocks"
+          "sites"
         ]
       }
     },

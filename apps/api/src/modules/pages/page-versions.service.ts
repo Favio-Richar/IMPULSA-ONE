@@ -129,6 +129,23 @@ export class PageVersionsService {
     return this.toDetail(row);
   }
 
+  /**
+   * ¿Hay trabajo en la página que ninguna versión guarda? Sí si el contenido vivo difiere de la
+   * última versión publicada, o si nunca se publicó y ya tiene bloques. Lo usa aplicar una plantilla
+   * (PL4) antes de reemplazar los bloques: lo publicado siempre se recupera desde el historial; lo
+   * no publicado, no.
+   */
+  async hasUnpublishedChanges(organizationId: string, siteId: string, pageId: string): Promise<boolean> {
+    const page = await this.getPageOrThrow(organizationId, siteId, pageId);
+    const last = await this.prisma.pageVersion.findFirst({ where: { pageId }, orderBy: { versionNumber: "desc" } });
+
+    if (!last) {
+      return (await this.prisma.block.count({ where: { pageId } })) > 0;
+    }
+
+    return !snapshotsEqual(last.contentSnapshot, await this.buildCandidateSnapshot(pageId, page));
+  }
+
   /** Arma el snapshot con el estado **vivo** actual de la página y sus bloques. */
   private async buildCandidateSnapshot(
     pageId: string,

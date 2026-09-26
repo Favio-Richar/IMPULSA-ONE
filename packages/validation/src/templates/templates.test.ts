@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { templateBackgroundSchema, templateBlocksSeedSchema, templateSchema, type TemplateDefinition } from "./index.js";
+import {
+  applyTemplateSchema,
+  personalizeTemplateBlocks,
+  templateBackgroundSchema,
+  templateBlocksSeedSchema,
+  templateSchema,
+  type TemplateBlockSeed,
+  type TemplateDefinition,
+} from "./index.js";
 
 // PL1 — una plantilla con un bloque inválido no puede guardarse: la validan los mismos esquemas de
 // bloques que el constructor.
@@ -140,5 +148,82 @@ describe("templateBlocksSeedSchema", () => {
     expect(templateBlocksSeedSchema.safeParse([profile, whatsapp]).success).toBe(true);
     expect(templateBlocksSeedSchema.safeParse([profile, whatsapp, link]).success).toBe(false);
     expect(paths([{ ...profile, isPrimary: true }])).toContain("0.isPrimary");
+  });
+});
+
+describe("personalizeTemplateBlocks (PL4)", () => {
+  const seed: TemplateBlockSeed[] = [
+    { type: "profile", configSchemaVersion: 1, config: { name: "Tu Café", headline: "Ejemplo", bio: "<p>Ejemplo</p>", verified: false } },
+    { type: "whatsapp", configSchemaVersion: 1, isPrimary: true, config: { phone: "+56900000000", label: "Pide" } },
+    { type: "link", configSchemaVersion: 1, config: { label: "Carta", url: "https://example.com/carta", style: "secondary" } },
+    { type: "service", configSchemaVersion: 1, config: { name: "Brunch" } },
+    { type: "social", configSchemaVersion: 1, config: { links: [{ network: "instagram", url: "https://www.instagram.com/" }], style: "icons" } },
+  ];
+
+  it("sin personalización devuelve una copia idéntica, sin tocar la plantilla original", () => {
+    const result = personalizeTemplateBlocks(seed, undefined);
+    expect(result).toEqual(seed);
+    expect(result[0]).not.toBe(seed[0]);
+  });
+
+  it("reemplaza perfil, número de WhatsApp y redes; escapa la bio", () => {
+    const result = personalizeTemplateBlocks(seed, {
+      name: "Café Real",
+      headline: "Tostado en casa",
+      bio: "Abierto <todos> los días & feriados",
+      whatsappPhone: "+56911112222",
+      socials: [{ network: "tiktok", url: "https://www.tiktok.com/@cafe" }],
+    });
+
+    expect(result[0]!.config).toMatchObject({
+      name: "Café Real",
+      headline: "Tostado en casa",
+      bio: "<p>Abierto &lt;todos&gt; los días &amp; feriados</p>",
+    });
+    expect(result[1]!.config).toMatchObject({ phone: "+56911112222", label: "Pide" });
+    expect(result[1]!.isPrimary).toBe(true);
+    expect(result[4]!.config).toMatchObject({ links: [{ network: "tiktok", url: "https://www.tiktok.com/@cafe" }] });
+    expect(seed[0]!.config).toMatchObject({ name: "Tu Café" });
+  });
+
+  it("inserta los enlaces importados como secundarios después de las acciones de la plantilla", () => {
+    const result = personalizeTemplateBlocks(seed, {
+      links: [
+        { label: "Mi tienda", url: "https://tienda.test/" },
+        { label: "Mi blog", url: "https://blog.test/" },
+      ],
+    });
+
+    expect(result.map((block) => block.type)).toEqual(["profile", "whatsapp", "link", "link", "link", "service", "social"]);
+    expect(result[3]!.config).toEqual({ label: "Mi tienda", url: "https://tienda.test/", style: "secondary" });
+    expect(result[3]!.isPrimary).toBeUndefined();
+    expect(templateBlocksSeedSchema.safeParse(result).success).toBe(true);
+  });
+
+  it("una red sin ninguna entrada deja las de la plantilla", () => {
+    const result = personalizeTemplateBlocks(seed, { socials: [] });
+    expect(result[4]!.config).toEqual(seed[4]!.config);
+  });
+});
+
+describe("applyTemplateSchema", () => {
+  it("aplica la apariencia por defecto y nunca descarta cambios sin pedirlo", () => {
+    expect(applyTemplateSchema.parse({ templateCode: "cafe-gastronomia" })).toEqual({
+      templateCode: "cafe-gastronomia",
+      applyAppearance: true,
+      discardUnpublishedChanges: false,
+    });
+  });
+
+  it("rechaza un teléfono o un enlace inválido en la personalización", () => {
+    expect(
+      applyTemplateSchema.safeParse({ templateCode: "cafe-gastronomia", personalization: { whatsappPhone: "912345678" } }).success,
+    ).toBe(false);
+    expect(
+      applyTemplateSchema.safeParse({
+        templateCode: "cafe-gastronomia",
+        personalization: { links: [{ label: "x", url: "javascript:alert(1)" }] },
+      }).success,
+    ).toBe(false);
   });
 });

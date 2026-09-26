@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { findImagesWithoutAlt, IMAGE_ALT_REQUIRED_MESSAGE } from "../blocks/primitives.js";
+import {
+  findImagesWithoutAlt,
+  IMAGE_ALT_REQUIRED_MESSAGE,
+  phoneSchema,
+  safeUrlSchema,
+  socialNetworkSchema,
+} from "../blocks/primitives.js";
 import { getBlockDefinition, isPrimaryActionBlockType } from "../blocks/catalog.js";
 import { siteBackgroundSchema } from "../backgrounds/index.js";
 import { getCatalogTheme, THEME_FAMILIES } from "../themes/catalog.js";
@@ -207,3 +213,125 @@ export const templateSchema = z
   });
 
 export type TemplateDefinition = z.infer<typeof templateSchema>;
+
+// --- Aplicar una plantilla (PL4) ---------------------------------------------------------------
+
+/** Paso 1 del onboarding (PM §8.2). Se registra en la auditoría; el modo agencia es de otra fase. */
+export const ONBOARDING_ACCOUNT_TYPES = ["personal", "negocio", "agencia"] as const;
+export type OnboardingAccountType = (typeof ONBOARDING_ACCOUNT_TYPES)[number];
+
+export const ONBOARDING_ACCOUNT_TYPE_LABELS: Record<OnboardingAccountType, { label: string; description: string }> = {
+  personal: { label: "Personal o marca personal", description: "Profesional independiente, creador o artista." },
+  negocio: { label: "Negocio", description: "Un local, una tienda o una empresa de servicios." },
+  agencia: { label: "Agencia", description: "Gestionas la presencia digital de tus clientes." },
+};
+
+export const TEMPLATE_MAX_IMPORTED_LINKS = 5;
+export const TEMPLATE_MAX_IMPORTED_SOCIALS = 8;
+
+/**
+ * Lo que el usuario cuenta en el onboarding y reemplaza el contenido de ejemplo de la plantilla:
+ * nombre, frase y bio del perfil (paso 8), el número de WhatsApp de la acción principal, y las
+ * redes y enlaces que trae (paso 6). Todo opcional: aplicar una plantilla desde el constructor puede
+ * no traer nada. Cada bloque resultante vuelve a pasar por el esquema de su tipo en el servidor.
+ */
+export const templatePersonalizationSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  headline: z.string().trim().min(1).max(160).optional(),
+  // Texto plano: el servidor lo escapa y lo envuelve en un párrafo antes del saneo normal.
+  bio: z.string().trim().min(1).max(500).optional(),
+  whatsappPhone: phoneSchema.optional(),
+  socials: z.array(z.object({ network: socialNetworkSchema, url: safeUrlSchema })).max(TEMPLATE_MAX_IMPORTED_SOCIALS).optional(),
+  links: z
+    .array(z.object({ label: z.string().trim().min(1).max(80), url: safeUrlSchema }))
+    .max(TEMPLATE_MAX_IMPORTED_LINKS)
+    .optional(),
+});
+export type TemplatePersonalization = z.infer<typeof templatePersonalizationSchema>;
+
+export const applyTemplateSchema = z.object({
+  templateCode: templateCodeSchema,
+  /** Aplicar también el tema y el fondo de la plantilla. Se ven en vivo, sin publicar. */
+  applyAppearance: z.boolean().default(true),
+  /**
+   * Confirmación explícita de que se pierden los cambios que ninguna versión guarda. Sin ella, la
+   * API responde 409 (`UNPUBLISHED_CHANGES`) en vez de reemplazar: lo publicado se recupera desde
+   * el historial, lo no publicado no.
+   */
+  discardUnpublishedChanges: z.boolean().default(false),
+  personalization: templatePersonalizationSchema.optional(),
+  /** Respuestas de los pasos 1-3 del onboarding, para la auditoría. */
+  onboarding: z
+    .object({
+      accountType: z.enum(ONBOARDING_ACCOUNT_TYPES),
+      objective: z.enum(TEMPLATE_OBJECTIVES),
+      industry: z.enum(TEMPLATE_INDUSTRIES),
+    })
+    .optional(),
+});
+export type ApplyTemplateInput = z.infer<typeof applyTemplateSchema>;
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+/**
+ * Bloques de la plantilla con la personalización aplicada, en orden. Función pura e isomorfa: el
+ * servidor la usa para escribir y el panel para la vista previa del onboarding (paso 9), así lo que
+ * se ve es exactamente lo que se guarda.
+ *
+ * - Perfil: nombre, frase y bio reemplazan los de ejemplo.
+ * - WhatsApp: el número reemplaza el de relleno en todos los bloques de WhatsApp.
+ * - Redes: si trae alguna, reemplazan las de ejemplo del bloque de redes.
+ * - Enlaces: entran como botones secundarios justo después de los enlaces/WhatsApp de la plantilla.
+ */
+export function personalizeTemplateBlocks(
+  blocks: readonly TemplateBlockSeed[],
+  personalization: TemplatePersonalization | undefined,
+): TemplateBlockSeed[] {
+  if (!personalization) {
+    return blocks.map((block) => ({ ...block }));
+  }
+
+  const result: TemplateBlockSeed[] = blocks.map((block) => {
+    const config = (block.config ?? {}) as Record<string, unknown>;
+
+    if (block.type === "profile") {
+      return {
+        ...block,
+        config: {
+          ...config,
+          ...(personalization.name ? { name: personalization.name } : {}),
+          ...(personalization.headline ? { headline: personalization.headline } : {}),
+          ...(personalization.bio ? { bio: `<p>${escapeHtml(personalization.bio)}</p>` } : {}),
+        },
+      };
+    }
+
+    if (block.type === "whatsapp" && personalization.whatsappPhone) {
+      return { ...block, config: { ...config, phone: personalization.whatsappPhone } };
+    }
+
+    if (block.type === "social" && personalization.socials && personalization.socials.length > 0) {
+      return { ...block, config: { ...config, links: personalization.socials } };
+    }
+
+    return { ...block };
+  });
+
+  const links = personalization.links ?? [];
+  if (links.length > 0) {
+    const lastActionIndex = result.reduce(
+      (last, block, index) => (block.type === "link" || block.type === "whatsapp" ? index : last),
+      0,
+    );
+    const imported: TemplateBlockSeed[] = links.map((link) => ({
+      type: "link",
+      configSchemaVersion: 1,
+      config: { label: link.label, url: link.url, style: "secondary" },
+    }));
+    result.splice(lastActionIndex + 1, 0, ...imported);
+  }
+
+  return result;
+}

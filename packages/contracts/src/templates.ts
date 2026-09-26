@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { uuid } from "./primitives.js";
+import { blockResponse } from "./sites.js";
 
 // Catálogo de plantillas (PL1). Las listas cerradas se repiten acá porque este paquete no depende
 // de `@impulza/validation` (mismo criterio que `themeResponse.family`); la fuente de verdad sigue
@@ -56,4 +57,22 @@ export const templateResponse = z.object({
 });
 
 export type TemplateResponse = z.infer<typeof templateResponse>;
+
+/**
+ * Resultado de aplicar una plantilla a una página (PL4). `blocks` son los bloques nuevos, en orden
+ * (forma de `blockResponse`). `appearance.previous` es el tema y el fondo que tenía el sitio antes,
+ * para ofrecer "deshacer" la apariencia: los bloques anteriores se recuperan desde el historial de
+ * versiones, pero el tema y el fondo se aplican en vivo y no tienen historial propio.
+ */
+export const applyTemplateResponse = z.object({
+  templateCode: z.string(),
+  pageId: uuid,
+  blocks: z.array(blockResponse),
+  appearance: z.object({
+    applied: z.boolean(),
+    previous: z.object({ themeId: uuid.nullable(), background: z.unknown().nullable() }),
+  }),
+});
+
+export type ApplyTemplateResponse = z.infer<typeof applyTemplateResponse>;
 export type TemplateBlockSeedResponse = z.infer<typeof templateBlockSeedResponse>;

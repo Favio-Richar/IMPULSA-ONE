@@ -39,6 +39,18 @@ export function stackSurfaceClass(variant: StackButtonVariant): string {
   return `rounded-[var(--site-radius)] shadow-[var(--site-shadow)] ${colors}`;
 }
 
+/**
+ * Color del texto de cada variante, para un control que va **sobre** el botón sin estar dentro de él
+ * (el botón de compartir de PL8): así lee igual que el texto del botón, con el mismo par verificado.
+ */
+export function stackTextClass(variant: StackButtonVariant): string {
+  return variant === "primary"
+    ? "text-[var(--site-color-primary-foreground)]"
+    : variant === "outline"
+      ? "text-[var(--site-color-link)]"
+      : `${variant === "secondary" ? SURFACE_SCOPE : ""} text-[var(--site-color-foreground)]`;
+}
+
 /** Contenido de un botón de la pila: ícono a la izquierda, texto (y descripción) centrados. */
 export function StackButtonContent({
   icon,

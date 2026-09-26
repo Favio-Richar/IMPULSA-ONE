@@ -36,6 +36,7 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 | PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio) | Lista para tu revisión (capturas mostradas en el chat) |
 | PL6 — Extender ADR-008 a `service`, `testimonials` y `gallery` (sacar las tarjetas grandes) | Lista para tu revisión (capturas de las 7 plantillas en `docs/design/capturas/pl6/`) |
 | PL7 — Variante "portada de cuerpo entero" y botones monocromo (ADR-008, nota del 2026-09-26) | Lista para tu revisión (capturas en `docs/design/capturas/pl7/`) |
+| PL8 — Compartir desde la página pública (botón por enlace y de la página) | Lista para tu revisión (capturas en `docs/design/capturas/pl8/`) |
 
 ### Bitácora de avance (para retomar)
 
@@ -106,11 +107,42 @@ Orden obligatorio: PL2 → PL5 → PL1 → PL3 → PL4. Cada entrada dice dónde
   - **Aviso**: al cerrar PL7 había cambios de otra sesión en `apps/web` (sitio comercial:
     `components/marketing/`, `lib/api.ts`) con un error de lint en `reveal.tsx`. No se tocaron ni se
     incluyeron en el commit de PL7.
+- **2026-09-26 — PL8 terminada**, en "Lista para tu revisión". `link.shareable` y
+  `profile.shareButton` (opcionales, apagados sin la clave: nada publicado cambia), elegibles en el
+  constructor; las 8 plantillas y los enlaces pegados en el onboarding los traen activados.
+  `ShareButton` (`packages/blocks-renderer/src/ui/share-button.tsx`): hoja de compartir del
+  teléfono o, si no hay, copiar + "Enlace copiado" en `aria-live`; botón hermano del enlace (nunca
+  anidado), 40 px, color del texto del botón (`stackTextClass`). No suma eventos de analítica (el
+  rastreador solo cuenta clics en enlaces). Pruebas: validation 457, blocks-renderer 50, dashboard
+  5; Playwright temas/plantillas/acción principal 18/18 con la prueba nueva (copia la dirección y
+  lo anuncia, móvil y escritorio).
+  - **Observado, sin causa confirmada:** `blocks.e2e.test.ts` "la base garantiza una sola por
+    página aunque dos cambios lleguen a la vez" falló 2 veces en ~13 corridas bajo carga y pasó en
+    las demás (10 seguidas aisladas). Hipótesis: un *deadlock* de Postgres entre dos
+    `setPrimaryBlock` simultáneos (Prisma P2034) que hoy sale como 500 y no como 409. No se cambió
+    código sin reproducirlo; si reaparece, capturar el error y mapear P2034 a 409.
 - Notas de entorno de esta sesión (no son de PL1-PL4): (1) con `packages/database/.env` presente,
   Prisma recarga variables y falla `revalidate-web.service.test.ts` ("no llama a nada si
   WEB_APP_URL…"); sin ese archivo pasa. (2) `admin.e2e.test.ts` "quitar la marca directo en la
   base…" falló una vez en la corrida completa y pasó en las siguientes (3/3 aislada, y la suite
   completa después); parece depender del reloj del código 2FA. Quedan para revisar aparte.
+
+### PL8 — Compartir desde la página pública
+
+**Origen:** el menú "···" por botón de la referencia de Favio (ADR-008, "Variante adicional"), que
+PL7 dejó fuera. Favio pidió seguir con él el 2026-09-26.
+
+**Criterios de aceptación:**
+- Opcional y desactivado por defecto: una página ya publicada no cambia. `link.shareable` (botón
+  para compartir ese enlace) y `profile.shareButton` (botón para compartir la página), elegibles en
+  el constructor. Las plantillas los traen activados.
+- Al tocarlo: la hoja de compartir del teléfono (`navigator.share`) si existe; si no, copia el
+  enlace y anuncia "Enlace copiado" (región `aria-live`); si tampoco se puede copiar, lo dice. Nunca
+  una ventana del navegador que bloquee.
+- El botón no va dentro del enlace (HTML válido, un solo destino por control), tiene nombre
+  accesible ("Compartir …"), tamaño de toque ≥ 40 px y el foco visible del sitio. No tapa el texto
+  del botón de la pila (que ya reserva el costado derecho).
+- Pruebas unitarias y Playwright (copiar en móvil y escritorio), capturas a Favio.
 
 ### PL7 — Variante "portada de cuerpo entero" y botones monocromo
 

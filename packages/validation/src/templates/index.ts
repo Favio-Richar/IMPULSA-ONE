@@ -335,7 +335,8 @@ export function personalizeTemplateBlocks(
     const imported: TemplateBlockSeed[] = links.map((link) => ({
       type: "link",
       configSchemaVersion: 1,
-      config: { label: link.label, url: link.url, style: "secondary" },
+      // PL8: como los enlaces de la plantilla, se pueden compartir.
+      config: { label: link.label, url: link.url, style: "secondary", shareable: true },
     }));
     result.splice(lastActionIndex + 1, 0, ...imported);
   }

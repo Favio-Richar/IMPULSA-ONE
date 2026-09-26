@@ -239,6 +239,17 @@ describe("encabezado de perfil (PP4)", () => {
   });
 });
 
+describe("compartir (PL8)", () => {
+  it("shareable y shareButton son opcionales: sin ellos, lo guardado se lee igual", () => {
+    expect(parseStoredBlock("link", 1, { label: "A", url: "https://a.cl", style: "secondary" })).toEqual({
+      renderable: true,
+      config: { label: "A", url: "https://a.cl", style: "secondary" },
+    });
+    expect(BLOCK_CATALOG.link.schema.safeParse({ label: "A", url: "https://a.cl", shareable: true }).success).toBe(true);
+    expect(BLOCK_CATALOG.profile.schema.safeParse({ name: "Ana", shareButton: "sí" }).success).toBe(false);
+  });
+});
+
 describe("cabecera de cuerpo entero (PL7)", () => {
   it("acepta `layout` avatar o hero, rechaza otro valor, y sin él la configuración anterior no cambia", () => {
     const schema = BLOCK_CATALOG.profile.schema;

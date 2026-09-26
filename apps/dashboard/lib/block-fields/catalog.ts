@@ -58,6 +58,8 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
         },
       },
       { name: "verified", label: "Cuenta verificada", control: { kind: "boolean" } },
+      // PL8: compartir la página completa desde la cabecera.
+      { name: "shareButton", label: "Mostrar botón para compartir la página", optional: true, control: { kind: "boolean" } },
       {
         name: "socials",
         label: "Redes bajo la biografía",
@@ -125,6 +127,8 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
         helperText: "Si lo dejas vacío, se usa el logo de la plataforma del enlace (Instagram, TikTok, YouTube…).",
         control: { kind: "select", options: SOCIAL_NETWORK_OPTIONS },
       },
+      // PL8: compartir este enlace desde la página.
+      { name: "shareable", label: "Mostrar botón para compartir este enlace", optional: true, control: { kind: "boolean" } },
     ],
     seedConfig: () => ({ label: "Mi enlace", url: "https://ejemplo.com", style: "primary" }),
   },

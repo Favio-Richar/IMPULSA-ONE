@@ -195,7 +195,7 @@ describe("personalizeTemplateBlocks (PL4)", () => {
     });
 
     expect(result.map((block) => block.type)).toEqual(["profile", "whatsapp", "link", "link", "link", "service", "social"]);
-    expect(result[3]!.config).toEqual({ label: "Mi tienda", url: "https://tienda.test/", style: "secondary" });
+    expect(result[3]!.config).toEqual({ label: "Mi tienda", url: "https://tienda.test/", style: "secondary", shareable: true });
     expect(result[3]!.isPrimary).toBeUndefined();
     expect(templateBlocksSeedSchema.safeParse(result).success).toBe(true);
   });

@@ -53,6 +53,8 @@ export const profileSchema = z.object({
   // PL7: `hero` = portada de cuerpo entero sin avatar redondo. Opcional y sin valor por defecto: un
   // perfil guardado antes se lee igual (sin la clave = `avatar`).
   layout: z.enum(["avatar", "hero"]).optional(),
+  // PL8: botón para compartir la página. Opcional y apagado sin la clave: nada publicado cambia.
+  shareButton: z.boolean().optional(),
 });
 
 export const heroSchema = z.object({
@@ -74,6 +76,8 @@ export const linkSchema = z.object({
   description: plainTextSchema(160).optional(),
   style: z.enum(["primary", "secondary", "outline"]).default("primary"),
   icon: socialNetworkSchema.optional(),
+  // PL8: botón para compartir este enlace. Opcional y apagado sin la clave.
+  shareable: z.boolean().optional(),
 });
 
 export const socialSchema = z.object({

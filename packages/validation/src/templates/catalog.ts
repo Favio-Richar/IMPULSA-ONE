@@ -26,7 +26,8 @@ function profile(name: string, headline: string, bio: string, layout?: "hero"): 
     type: "profile",
     configSchemaVersion: 1,
     // `hero` (PL7): portada de cuerpo entero; sin foto todavía, muestra las iniciales a lo alto.
-    config: { name, headline, bio: `<p>${bio}</p>`, verified: false, ...(layout ? { layout } : {}) },
+    // PL8: las plantillas traen el botón para compartir la página.
+    config: { name, headline, bio: `<p>${bio}</p>`, verified: false, shareButton: true, ...(layout ? { layout } : {}) },
   };
 }
 
@@ -49,6 +50,8 @@ function link(label: string, path: string, options: { description?: string; prim
       url: `https://example.com/${path}`,
       ...(options.description ? { description: options.description } : {}),
       style: options.primary ? "primary" : "secondary",
+      // PL8: cada enlace de la plantilla se puede compartir.
+      shareable: true,
     },
   };
 }

@@ -236,3 +236,29 @@ describe("PageBlocks — botones monocromo (PL7)", () => {
     expect(html.match(/bg-\[var\(--site-color-surface\)\]/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
   });
 });
+
+describe("PageBlocks — compartir (PL8)", () => {
+  it("sin activarlo no hay botón de compartir: lo publicado no cambia", () => {
+    const html = render([
+      { position: 0, type: "profile", config: { name: "Ana", verified: false } },
+      { position: 1, type: "link", config: { label: "Portafolio", url: "https://ejemplo.cl/p", style: "secondary" } },
+    ]);
+    expect(html).not.toContain("data-share-button");
+  });
+
+  it("activado, el enlace lleva su botón al lado (nunca dentro del enlace) y el perfil el de la página", () => {
+    const html = render([
+      { position: 0, type: "profile", config: { name: "Ana", verified: false, shareButton: true } },
+      { position: 1, type: "link", config: { label: "Portafolio", url: "https://ejemplo.cl/p", style: "secondary", shareable: true } },
+    ]);
+    expect(html).toContain('aria-label="Compartir la página de Ana"');
+    expect(html).toContain('aria-label="Compartir Portafolio"');
+    expect(html.match(/<button[^>]*data-share-button=""/g)).toHaveLength(2);
+    // Ningún botón queda anidado dentro de un <a>.
+    for (const anchor of html.match(/<a [\s\S]*?<\/a>/g) ?? []) {
+      expect(anchor).not.toContain("<button");
+    }
+    // Cada botón anuncia el resultado en una región viva.
+    expect(html.match(/role="status" aria-live="polite"/g)).toHaveLength(2);
+  });
+});

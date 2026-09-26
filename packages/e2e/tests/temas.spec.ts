@@ -168,3 +168,42 @@ test("tema Minimal (PL7): los botones de la pila van todos con la superficie neu
     await applyTheme(page, "Clásicos", "Claro profesional");
   }
 });
+
+test("compartir (PL8): el botón junto a un enlace copia su dirección y lo anuncia", async ({ page, context, browserName }) => {
+  // Sin hoja de compartir del sistema (en Windows o en un teléfono abriría un diálogo nativo): se
+  // prueba el camino de copiar, que es el que tiene cualquier navegador.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", { value: undefined, configurable: true });
+  });
+  if (browserName === "chromium") {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  }
+  const created = await page.request.post(blocksPath, {
+    headers: CSRF,
+    data: { type: "link", config: { label: "Mi portafolio compartible", url: "https://example.com/portafolio", style: "secondary", shareable: true } },
+  });
+  expect(created.status()).toBe(201);
+  const blockId = ((await created.json()) as { id: string }).id;
+
+  try {
+    await page.goto(`/sitios/${fixture.siteId}/paginas/${fixture.pageId}/editor`);
+    const site = page.locator("[data-site-root]");
+    const share = site.getByRole("button", { name: "Compartir Mi portafolio compartible" });
+    await expect(share).toBeVisible();
+
+    // Queda dentro del botón de la pila, a la derecha, con tamaño de toque suficiente.
+    const link = site.getByRole("link", { name: /Mi portafolio compartible/ });
+    const linkBox = (await link.boundingBox())!;
+    const shareBox = (await share.boundingBox())!;
+    expect(shareBox.width).toBeGreaterThanOrEqual(40);
+    expect(shareBox.x + shareBox.width).toBeLessThanOrEqual(linkBox.x + linkBox.width);
+    expect(shareBox.x).toBeGreaterThan(linkBox.x + linkBox.width / 2);
+
+    await share.click();
+    await expect(site.locator("[data-share-status]").filter({ hasText: "Enlace copiado" })).toHaveCount(1);
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("https://example.com/portafolio");
+    await expectNoHorizontalScroll(page);
+  } finally {
+    await page.request.delete(`${blocksPath}/${blockId}`, { headers: CSRF });
+  }
+});

@@ -3,6 +3,8 @@ import type { ProfileBlockConfig } from "@impulza/validation";
 import { RichText } from "../ui/rich-text.js";
 import { SiteImage } from "../ui/site-image.js";
 import { SocialButtonLinks } from "../ui/social-button-links.js";
+import { ShareButton } from "../ui/share-button.js";
+import { stackSurfaceClass } from "../ui/stack-button.js";
 
 /** Hasta dos iniciales del nombre ("Café Aroma" → "CA"), para el monograma sin foto (PP8). */
 function initials(name: string): string {
@@ -28,7 +30,8 @@ export function ProfileBlock({ config, glass = false }: { config: ProfileBlockCo
   const hasCover = config.cover !== undefined;
 
   return (
-    <div className="flex flex-col items-center text-center">
+    <div className="relative flex flex-col items-center text-center">
+      <PageShare config={config} />
       {config.cover ? (
         <div
           data-profile-cover=""
@@ -84,7 +87,8 @@ export function ProfileBlock({ config, glass = false }: { config: ProfileBlockCo
  */
 function HeroProfile({ config, glass }: { config: ProfileBlockConfig; glass: boolean }) {
   return (
-    <div className="flex flex-col items-center text-center">
+    <div className="relative flex flex-col items-center text-center">
+      <PageShare config={config} />
       <div
         data-profile-cover=""
         data-profile-hero=""
@@ -133,6 +137,21 @@ function ProfileText({ config, glass, large = false }: { config: ProfileBlockCon
           <SocialButtonLinks links={config.socials} glass={glass} />
         </nav>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * PL8: compartir la página, arriba a la derecha de la cabecera. Con su propia superficie del tema
+ * (par superficie/texto verificado), así se lee igual sobre una portada, una foto o el fondo.
+ */
+function PageShare({ config }: { config: ProfileBlockConfig }) {
+  if (!config.shareButton) {
+    return null;
+  }
+  return (
+    <div className="absolute right-2 top-2 z-10">
+      <ShareButton title={config.name} label={`Compartir la página de ${config.name}`} className={`${stackSurfaceClass("secondary")} shadow-[var(--site-shadow)]`} />
     </div>
   );
 }

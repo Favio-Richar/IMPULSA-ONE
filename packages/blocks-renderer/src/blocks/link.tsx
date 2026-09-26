@@ -2,7 +2,8 @@ import { ExternalLink } from "lucide-react";
 import { detectSocialNetwork, type LinkBlockConfig } from "@impulza/validation";
 import { NetworkIcon } from "../ui/network-icon.js";
 import { OUTBOUND_LINK } from "../ui/outbound.js";
-import { StackButtonContent, stackButtonClass } from "../ui/stack-button.js";
+import { ShareButton } from "../ui/share-button.js";
+import { StackButtonContent, stackButtonClass, stackTextClass } from "../ui/stack-button.js";
 
 /**
  * Un botón de la pila de enlaces (PP8). `icon` (opcional) es una plataforma de la lista blanca
@@ -27,7 +28,7 @@ export function LinkBlock({
   // PP8: sin ícono elegido, el de la plataforma del enlace (`instagram.com/...` → Instagram).
   const network = config.icon ?? detectSocialNetwork(config.url);
 
-  return (
+  const link = (
     <a href={config.url} {...OUTBOUND_LINK} className={stackButtonClass(variant, primary)}>
       <StackButtonContent
         primary={primary}
@@ -42,5 +43,22 @@ export function LinkBlock({
         description={config.description}
       />
     </a>
+  );
+
+  if (!config.shareable) {
+    return link;
+  }
+  // PL8: el botón de compartir va junto al enlace, no dentro (un control, un destino), sobre el
+  // costado derecho que el botón de la pila ya deja libre (`px-14`).
+  return (
+    <div className="relative">
+      {link}
+      <ShareButton
+        url={config.url}
+        title={config.label}
+        label={`Compartir ${config.label}`}
+        className={`absolute right-2 top-1/2 -translate-y-1/2 ${stackTextClass(variant)}`}
+      />
+    </div>
   );
 }

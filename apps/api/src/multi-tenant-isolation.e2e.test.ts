@@ -1038,6 +1038,130 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  // --- F4.9: plan y uso, soporte, medios y administración ---
+
+  describe("Plan y uso (F4.1-F4.3/F4.9): ningún acceso cruzado ni cambio de plan desde el cliente", () => {
+    it("A no lee el plan ni el uso de B, y su propio uso nunca cuenta objetos de B", async () => {
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/plan`).expect(403);
+
+      const before = (await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/plan`).expect(200)).body;
+      // B crea un sitio más: el uso de A no se mueve.
+      await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Otro sitio de B", slug: uniqueSlug() })
+        .expect(201);
+      const after = (await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/plan`).expect(200)).body;
+      expect(after.usage).toEqual(before.usage);
+    });
+
+    it("el plan no se puede cambiar desde el panel: no hay ruta de escritura y un planId enviado se ignora", async () => {
+      const paid = await prisma.plan.findUniqueOrThrow({ where: { code: "agencia" } });
+      for (const method of ["put", "patch", "post"] as const) {
+        const response = await orgA.ownerAgent[method](`/api/v1/organizations/${orgA.id}/plan`).set(CSRF_HEADERS).send({ planId: paid.id });
+        expect(response.status, method).toBe(404);
+      }
+      // Tampoco se cuela al crear una organización: nace con el plan por defecto.
+      const created = await orgA.ownerAgent
+        .post("/api/v1/organizations")
+        .set(CSRF_HEADERS)
+        .send({ name: "Org con plan colado", slug: uniqueSlug(), planId: paid.id })
+        .expect(201);
+      const plan = (await orgA.ownerAgent.get(`/api/v1/organizations/${created.body.id}/plan`).expect(200)).body;
+      expect(plan.source).toBe("default");
+      expect(plan.plan.code).not.toBe("agencia");
+      // Y la ruta de administración que sí lo cambia no se abre con la sesión del panel.
+      await orgA.ownerAgent
+        .put(`/api/v1/admin/organizations/${orgA.id}/plan`)
+        .set(CSRF_HEADERS)
+        .send({ planId: paid.id, reason: "intento desde el panel" })
+        .expect(401);
+    });
+  });
+
+  describe("Soporte (F4.5/F4.9): ningún acceso cruzado entre organizaciones", () => {
+    it("A no ve, no lista ni responde una solicitud de B por ninguna combinación de ids", async () => {
+      const ticketOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/support-tickets`)
+        .set(CSRF_HEADERS)
+        .send({ subject: "Consulta privada de B", body: "Detalle privado de la organización B." })
+        .expect(201);
+      const ticketId = ticketOfB.body.id as string;
+
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/support-tickets`).expect(403);
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/support-tickets/${ticketId}`).expect(403);
+      await orgA.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/support-tickets/${ticketId}/messages`)
+        .set(CSRF_HEADERS)
+        .send({ body: "Respuesta que no debería llegar." })
+        .expect(403);
+
+      // Organización propia de A con la solicitud de B.
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/support-tickets/${ticketId}`).expect(404);
+      await orgA.ownerAgent
+        .post(`/api/v1/organizations/${orgA.id}/support-tickets/${ticketId}/messages`)
+        .set(CSRF_HEADERS)
+        .send({ body: "Respuesta que no debería llegar." })
+        .expect(404);
+
+      const listOfA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/support-tickets`).expect(200);
+      expect(JSON.stringify(listOfA.body)).not.toContain(ticketId);
+      expect(await prisma.supportMessage.count({ where: { ticketId } })).toBe(1);
+    });
+  });
+
+  describe("Medios (PP1-PP2/F4.9): ningún acceso cruzado entre organizaciones", () => {
+    it("A no ve, no confirma ni borra un archivo de B por ninguna combinación de ids", async () => {
+      // Directo en la base: esta prueba mide el aislamiento, no el proveedor de almacenamiento.
+      const assetOfB = await prisma.mediaAsset.create({
+        data: { organizationId: orgB.id, kind: "IMAGE", fileName: "privada-de-b.jpg", mimeType: "image/jpeg", sizeBytes: 1024 },
+      });
+
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/media`).expect(403);
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/media/${assetOfB.id}`).expect(403);
+
+      const ownOrgPath = `/api/v1/organizations/${orgA.id}/media/${assetOfB.id}`;
+      await orgA.ownerAgent.get(ownOrgPath).expect(404);
+      await orgA.ownerAgent.post(`${ownOrgPath}/confirm`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.delete(ownOrgPath).set(CSRF_HEADERS).expect(404);
+
+      const listOfA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/media`).expect(200);
+      expect(JSON.stringify(listOfA.body)).not.toContain(assetOfB.id);
+      expect(await prisma.mediaAsset.findUnique({ where: { id: assetOfB.id } })).not.toBeNull();
+    });
+  });
+
+  describe("Administración (F4.4/F4.9): un usuario de organización nunca la alcanza", () => {
+    it("ni el OWNER ni un ADMIN de una organización abren una ruta de administración", async () => {
+      const paths = [
+        "/api/v1/admin/auth/me",
+        "/api/v1/admin/overview",
+        "/api/v1/admin/organizations",
+        `/api/v1/admin/organizations/${orgB.id}`,
+        "/api/v1/admin/users",
+        "/api/v1/admin/plans",
+        "/api/v1/admin/audit-logs",
+        "/api/v1/admin/support-tickets",
+      ];
+      for (const agent of [orgA.ownerAgent, orgA.adminAgent]) {
+        for (const path of paths) {
+          const response = await agent.get(path);
+          expect(response.status, path).toBe(401);
+        }
+        await agent.post(`/api/v1/admin/organizations/${orgB.id}/block`).set(CSRF_HEADERS).send({ reason: "intento" }).expect(401);
+      }
+    });
+
+    it("las credenciales de un usuario de organización no abren una sesión de administración", async () => {
+      await request(httpServer)
+        .post("/api/v1/admin/auth/login")
+        .set(CSRF_HEADERS)
+        .send({ email: orgA.ownerEmail, password: "password1234", code: "123456" })
+        .expect(401);
+      expect(await prisma.session.count({ where: { user: { email: orgA.ownerEmail }, scope: "ADMIN" } })).toBe(0);
+    });
+  });
+
   describe("Ningún dato de una organización aparece en las respuestas de la otra", () => {
     it("GET /organizations no cruza organizaciones entre usuarios sin relación", async () => {
       const orgsOfA = await orgA.ownerAgent.get("/api/v1/organizations");

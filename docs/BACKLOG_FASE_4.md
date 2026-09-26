@@ -40,7 +40,7 @@ bloqueado explícitamente.
 | F4.6 — Cobro recurrente con pasarela | Bloqueada (decisión #5) |
 | F4.7 — Dominios personalizados | Pendiente (parcialmente bloqueada por decisión #1) |
 | F4.8 — Producción y monitoreo | Bloqueada (decisión de hosting) |
-| F4.9 — Aislamiento y seguridad de Fase 4 | Pendiente |
+| F4.9 — Aislamiento y seguridad de Fase 4 | Lista para tu revisión (el caso de dominios se suma con F4.7, que todavía no existe) |
 
 ### F4.1 — Catálogo de planes y plan por organización
 **Criterios de aceptación:**
@@ -318,6 +318,26 @@ bloqueado explícitamente.
   de otra organización no son legibles ni modificables por id cruzado.
 - Un usuario de organización nunca alcanza `apps/admin` ni sus endpoints.
 - Un límite no se puede evadir cambiando el plan desde el cliente ni creando en paralelo.
+
+> **Estado (2026-09-26): lista para revisión de Favio.** Siete casos nuevos en la suite central
+> `apps/api/src/multi-tenant-isolation.e2e.test.ts` (48/48):
+>
+> - **Plan y uso**: A no lee el plan ni el uso de B (403), y el uso de A no se mueve cuando B crea
+>   objetos. El plan no se cambia desde el panel: `PUT/PATCH/POST .../plan` no existen (404), un
+>   `planId` enviado al crear una organización se ignora (nace con el plan por defecto) y la ruta de
+>   administración que lo cambia no se abre con la sesión del panel (401).
+> - **Soporte**: A no ve, no lista ni responde una solicitud de B por ninguna combinación de ids
+>   (403 con la organización de B, 404 con la propia) y la solicitud de B no recibe mensajes.
+> - **Medios** (no estaban en la suite central): A no ve, no confirma ni borra un archivo de B.
+> - **Administración**: ni el OWNER ni un ADMIN de una organización abren ninguna ruta de
+>   `/admin/*` (401), ni sus credenciales abren una sesión de administración.
+> - **Creación en paralelo**: ya cubierta por `plan-limits.e2e.test.ts` ("carrera: altas simultáneas
+>   nunca superan el límite", 5 altas simultáneas → 1 creada, 4 con 402).
+> - **Dominios**: sin F4.7 no hay endpoints de dominios; su caso se suma a esta suite con F4.7.
+> - No se pudo hacer la verificación "romper el filtro y ver fallar la prueba": el control de
+>   permisos de la sesión bloqueó editar temporalmente el filtro de organización en soporte. Queda
+>   para hacerla a mano si se quiere (revertir el `visibleWhere` en `getVisibleOrThrow` y correr la
+>   suite).
 
 ## Salida de Fase 4
 

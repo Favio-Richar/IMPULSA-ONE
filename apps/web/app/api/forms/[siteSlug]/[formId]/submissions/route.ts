@@ -1,4 +1,5 @@
 import { env } from "../../../../../../lib/env";
+import { fetchUpstream } from "../../../../../../lib/upstream";
 import { visitorProxyHeaders } from "../../../../../../lib/visitor-headers";
 
 /**
@@ -23,7 +24,8 @@ export async function POST(
     return Response.json({ message: "Cuerpo inválido." }, { status: 400 });
   }
 
-  const upstream = await fetch(
+  const upstream = await fetchUpstream(
+    "forms",
     `${env.API_BASE_URL}/public/sites/${encodeURIComponent(siteSlug)}/forms/${encodeURIComponent(formId)}/submissions`,
     {
       method: "POST",
@@ -35,6 +37,10 @@ export async function POST(
       body: JSON.stringify(body),
     },
   );
+
+  if (!upstream) {
+    return Response.json({ message: "No pudimos enviar el formulario ahora. Intenta de nuevo en un momento." }, { status: 502 });
+  }
 
   const payload = await upstream.json().catch(() => null);
   return Response.json(payload ?? { message: "Respuesta inesperada del servidor." }, { status: upstream.status });

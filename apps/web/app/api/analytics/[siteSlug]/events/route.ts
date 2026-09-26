@@ -1,4 +1,5 @@
 import { env } from "../../../../../lib/env";
+import { fetchUpstream } from "../../../../../lib/upstream";
 import { visitorProxyHeaders } from "../../../../../lib/visitor-headers";
 
 /**
@@ -18,7 +19,7 @@ export async function POST(
     return new Response(null, { status: 400 });
   }
 
-  const upstream = await fetch(`${env.API_BASE_URL}/public/sites/${encodeURIComponent(siteSlug)}/events`, {
+  const upstream = await fetchUpstream("analytics", `${env.API_BASE_URL}/public/sites/${encodeURIComponent(siteSlug)}/events`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -29,5 +30,6 @@ export async function POST(
     body: JSON.stringify(body),
   });
 
-  return new Response(null, { status: upstream.status });
+  // La analítica es best-effort: sin API, 502 y el visitante sigue navegando como si nada.
+  return new Response(null, { status: upstream ? upstream.status : 502 });
 }

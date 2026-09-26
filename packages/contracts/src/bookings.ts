@@ -90,3 +90,27 @@ export const publicBookingConfirmationResponse = z.object({
   paymentUrl: z.string().nullable(),
 });
 export type PublicBookingConfirmationResponse = z.infer<typeof publicBookingConfirmationResponse>;
+
+/** Una reserva en la agenda del negocio (F5.3). Datos del cliente: solo para miembros de la organización. */
+export const bookingResponse = z.object({
+  id: uuid,
+  siteId: uuid,
+  serviceId: uuid.nullable(),
+  contactId: uuid.nullable(),
+  serviceName: z.string(),
+  durationMinutes: z.number().int(),
+  priceAmount: z.number().int().nullable(),
+  priceCurrency: z.string().nullable(),
+  startsAt: isoDateTime,
+  endsAt: isoDateTime,
+  timeZone: z.string(),
+  customerName: z.string(),
+  customerEmail: z.string(),
+  customerPhone: z.string().nullable(),
+  note: z.string().nullable(),
+  status: z.enum(["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"]),
+  source: z.enum(["PUBLIC", "MANUAL"]),
+  cancelledAt: isoDateTime.nullable(),
+  createdAt: isoDateTime,
+});
+export type BookingResponse = z.infer<typeof bookingResponse>;

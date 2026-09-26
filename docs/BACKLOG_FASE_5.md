@@ -25,7 +25,7 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
 |---|---|
 | F5.1 — Servicios reservables y disponibilidad | Lista para tu revisión (capturas en `docs/design/capturas/f51/`) |
 | F5.2 — Reserva pública desde la página (bloque "Reservar") | Lista para tu revisión (capturas en `docs/design/capturas/f52/`) |
-| F5.3 — Agenda del negocio en el panel | Pendiente |
+| F5.3 — Agenda del negocio en el panel | Lista para tu revisión (capturas en `docs/design/capturas/f53/`) |
 | F5.4 — Confirmaciones, cancelación/reprogramación y recordatorios | Pendiente |
 | F5.5 — Catálogo y pedidos (productos físicos, digitales y servicios) con pago externo | Pendiente |
 | F5.6 — Campañas de email con consentimiento y bajas | Pendiente |
@@ -83,6 +83,21 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
     porque el build de producción de `apps/web` sigue roto por `app/page.tsx` (sitio comercial en
     progreso de otra sesión). En CI corre contra el build de producción como las demás.
   - Siguiente: F5.3 (agenda del negocio en el panel).
+- **2026-09-26 — F5.3 terminada**, en "Lista para tu revisión".
+  - Permiso nuevo `booking.manage` (OWNER, ADMIN, EDITOR, SUPPORT; ANALYST solo ve): 16 permisos,
+    41 asignaciones en el seed.
+  - API `organizations/:id/bookings`: listar por rango (hasta 62 días, filtro por sitio y estado),
+    leer, **anotar a mano** (puede quedar fuera del horario publicado, nunca encima de otra
+    confirmada; sin consentimiento no crea contacto, pero enlaza uno existente con ese correo) y
+    **cambiar estado** (atendida, no llegó, cancelada, deshacer; reactivar una cancelada se
+    rechaza si su hora ya se ocupó). Auditoría en cada cambio.
+  - Panel `/reservas` (nuevo en el menú): resumen de la semana (por atender, atendidas, no
+    llegaron, ingreso estimado por moneda), tira de días con cuántas reservas tiene cada uno, vista
+    de día o semana, filtro por estado, tarjetas con correo, teléfono y WhatsApp del cliente, y
+    formulario para anotar. Todo en la zona horaria del sitio.
+  - Pruebas: API 396/396 (agenda 4, con ANALYST sin permiso) y caso en la suite central;
+    Playwright `agenda.spec.ts` (móvil, escritorio y 360 px).
+  - Siguiente: F5.4 (confirmaciones por correo, cancelar/reprogramar y recordatorios).
 
 ---
 

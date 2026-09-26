@@ -1241,6 +1241,40 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Agenda (F5.3/F5.7): ningún acceso cruzado entre organizaciones", () => {
+    it("A no ve, no anota ni cambia reservas de B por ninguna combinación de ids", async () => {
+      const baseB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/booking`;
+      const serviceOfB = await orgB.ownerAgent.post(`${baseB}/services`).set(CSRF_HEADERS).send({ name: "Agenda de B", durationMinutes: 30 }).expect(201);
+      const bookingOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/bookings`)
+        .set(CSRF_HEADERS)
+        .send({ siteId: orgB.siteId, serviceId: serviceOfB.body.id, startsAt: "2031-03-03T13:00:00Z", name: "Cliente de B", email: `cliente-b${TEST_EMAIL_DOMAIN}` })
+        .expect(201);
+      const bookingId = bookingOfB.body.id as string;
+      const range = "from=2031-03-01T00:00:00Z&to=2031-03-10T00:00:00Z";
+
+      // Con la organización de B en la URL: 403.
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/bookings?${range}`).expect(403);
+      await orgA.ownerAgent.patch(`/api/v1/organizations/${orgB.id}/bookings/${bookingId}`).set(CSRF_HEADERS).send({ status: "CANCELLED" }).expect(403);
+
+      // Organización propia de A con ids de B: 404, y el listado de A no la incluye.
+      const agendaA = `/api/v1/organizations/${orgA.id}/bookings`;
+      await orgA.ownerAgent.get(`${agendaA}/${bookingId}`).expect(404);
+      await orgA.ownerAgent.patch(`${agendaA}/${bookingId}`).set(CSRF_HEADERS).send({ status: "CANCELLED" }).expect(404);
+      await orgA.ownerAgent.get(`${agendaA}?${range}&siteId=${orgB.siteId}`).expect(404);
+      await orgA.ownerAgent
+        .post(agendaA)
+        .set(CSRF_HEADERS)
+        .send({ siteId: orgB.siteId, serviceId: serviceOfB.body.id, startsAt: "2031-03-04T13:00:00Z", name: "Intruso", email: `intruso${TEST_EMAIL_DOMAIN}` })
+        .expect(404);
+      const listOfA = await orgA.ownerAgent.get(`${agendaA}?${range}`).expect(200);
+      expect(JSON.stringify(listOfA.body)).not.toContain(bookingId);
+      expect(JSON.stringify(listOfA.body)).not.toContain("Cliente de B");
+
+      expect((await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } })).status).toBe("CONFIRMED");
+    });
+  });
+
   describe("Administración (F4.4/F4.9): un usuario de organización nunca la alcanza", () => {
     it("ni el OWNER ni un ADMIN de una organización abren una ruta de administración", async () => {
       const paths = [

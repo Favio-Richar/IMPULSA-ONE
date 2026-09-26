@@ -18,6 +18,7 @@ export const PERMISSIONS = {
   SHORTLINK_MANAGE: "shortlink.manage",
   SUPPORT_VIEW_ALL: "support.view_all",
   MEDIA_MANAGE: "media.manage",
+  BOOKING_MANAGE: "booking.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -87,6 +88,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.MEDIA_MANAGE,
     description: "Subir y borrar imágenes y videos de la biblioteca de medios (PP1). Consume la cuota de almacenamiento del plan.",
   },
+  {
+    key: PERMISSIONS.BOOKING_MANAGE,
+    description: "Gestionar la agenda: crear reservas a mano y cambiar su estado (F5.3).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -113,6 +118,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.SHORTLINK_MANAGE,
     PERMISSIONS.SUPPORT_VIEW_ALL,
     PERMISSIONS.MEDIA_MANAGE,
+    PERMISSIONS.BOOKING_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -130,6 +136,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.SHORTLINK_MANAGE,
     PERMISSIONS.SUPPORT_VIEW_ALL,
     PERMISSIONS.MEDIA_MANAGE,
+    PERMISSIONS.BOOKING_MANAGE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y
@@ -144,12 +151,16 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.SHORTLINK_MANAGE,
     // Subir fotos es parte del trabajo de contenido (PP1).
     PERMISSIONS.MEDIA_MANAGE,
+    // Atender la agenda del negocio (F5.3).
+    PERMISSIONS.BOOKING_MANAGE,
   ],
   ANALYST: [],
   // SUPPORT es "soporte al cliente con acceso limitado y auditado" (seed.ts) — administrar el
   // mini-CRM es exactamente ese trabajo, sin poder borrar contactos (ARCO+ es decisión de
   // OWNER/ADMIN) ni tocar formularios/enlaces (eso es marketing/contenido, no soporte).
-  SUPPORT: [PERMISSIONS.CONTACT_MANAGE],
+  // Atender la agenda (marcar asistencia, cancelar, anotar una reserva) también es atención al
+  // cliente (F5.3).
+  SUPPORT: [PERMISSIONS.CONTACT_MANAGE, PERMISSIONS.BOOKING_MANAGE],
   AGENCY_MANAGER: [],
   SUPER_ADMIN: [],
 };

@@ -196,3 +196,48 @@ export const publicBookingRequestSchema = z.object({
   [BOOKING_HONEYPOT_FIELD]: z.string().max(200).optional(),
 });
 export type PublicBookingRequest = z.infer<typeof publicBookingRequestSchema>;
+
+// --- Agenda del negocio (F5.3) ---
+
+export const BOOKING_STATUSES = ["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"] as const;
+export type BookingStatusValue = (typeof BOOKING_STATUSES)[number];
+export const BOOKING_STATUS_LABELS: Record<BookingStatusValue, string> = {
+  CONFIRMED: "Confirmada",
+  COMPLETED: "Atendida",
+  NO_SHOW: "No llegó",
+  CANCELLED: "Cancelada",
+};
+/** Rango máximo de una consulta de agenda: dos meses. */
+export const MAX_AGENDA_RANGE_DAYS = 62;
+
+export const listBookingsQuerySchema = z
+  .object({
+    siteId: z.uuid().optional(),
+    from: z.iso.datetime({ offset: true }),
+    to: z.iso.datetime({ offset: true }),
+    status: z.enum(BOOKING_STATUSES).optional(),
+  })
+  .refine((query) => Date.parse(query.to) > Date.parse(query.from), { message: "El fin tiene que ser posterior al inicio.", path: ["to"] })
+  .refine((query) => Date.parse(query.to) - Date.parse(query.from) <= MAX_AGENDA_RANGE_DAYS * 24 * 3_600_000, {
+    message: `Consulta hasta ${MAX_AGENDA_RANGE_DAYS} días a la vez.`,
+    path: ["to"],
+  });
+export type ListBookingsQuery = z.infer<typeof listBookingsQuerySchema>;
+
+/**
+ * Reserva anotada por el negocio (llamada, mostrador). Puede quedar fuera del horario publicado —
+ * lo decide el negocio— pero nunca encima de otra reserva confirmada (la base lo impide).
+ */
+export const manualBookingSchema = z.object({
+  siteId: z.uuid(),
+  serviceId: z.uuid(),
+  startsAt: z.iso.datetime({ offset: true }),
+  name: plainTextSchema(120),
+  email: z.email("Escribe un correo válido.").max(254),
+  phone: phoneSchema.optional(),
+  note: plainTextSchema(500).optional(),
+});
+export type ManualBookingInput = z.infer<typeof manualBookingSchema>;
+
+export const updateBookingStatusSchema = z.object({ status: z.enum(BOOKING_STATUSES) });
+export type UpdateBookingStatusInput = z.infer<typeof updateBookingStatusSchema>;

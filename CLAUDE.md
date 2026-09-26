@@ -59,13 +59,22 @@ contratos/adaptadores de proveedores externos.
 
 ## No negociables de UI/UX
 
-Fondo blanco o muy claro, estilo profesional/moderno/elegante, tipografía clara con jerarquía
-fuerte, iconos lineales, sombras discretas, bordes moderados, nada excesivamente redondo, evitar
-paneles hechos solo de tarjetas grandes, CTA visibles, vista previa protagonista en el constructor,
-responsive real, objetivo WCAG 2.2 AA. No copiar la interfaz visual de Linktree, HeyLink, Beacons
-ni Stan — son referencias funcionales, no visuales. Usar las skills de diseño disponibles
-(`design-system`, `design-critique`, `accessibility-review`, `design-handoff`, `ux-copy`) para
-revisar cualquier pantalla antes de darla por terminada.
+**Actualizado 2026-09-26 (ADR-008) — reemplaza la restricción anterior de "solo fondo claro" y "no
+copiar Linktree/Beacons/Stan" para la página pública del sitio.** Favio revirtió explícitamente esa
+decisión: la página pública debe adoptar el patrón visual de las apps de enlace en bio de referencia
+(Linktree, Beacons) — portada a sangre o fondo oscuro con imagen/video y overlay, avatar circular
+superpuesto sobre el borde de la portada, nombre + verificado, pila de botones full-width con
+ícono/miniatura a la izquierda y texto centrado — construido con nuestro propio sistema de tokens
+(`Theme`/`Background` de `packages/validation`), nunca copiando literalmente logos, marca o textos
+de esas plataformas. El motor ya soporta esto (temas claros existentes + degradados oscuros
+`medianoche`/`grafito`/`ciruela` + fondo de imagen/video con overlay AA, ver ADR-008). Sigue
+aplicando siempre, sin excepción: WCAG 2.2 AA en todo par de texto/fondo, bordes moderados (nada de
+"pill" extremo salvo que ADR-008 lo autorice para un componente específico), sombras discretas,
+responsive real, estados de carga/vacío/error/éxito. El resto del producto (dashboard, panel,
+constructor, sitio comercial de Impulza) **sigue** con fondo claro y estilo profesional/sobrio — este
+cambio es solo para la página pública del sitio del cliente final. Usar las skills de diseño
+disponibles (`design-system`, `design-critique`, `accessibility-review`, `design-handoff`,
+`ux-copy`) para revisar cualquier pantalla antes de darla por terminada.
 
 ## Arquitectura y stack (no cambiar sin ADR nuevo)
 

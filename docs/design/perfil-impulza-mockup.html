@@ -1,0 +1,562 @@
+<title>Perfiles Impulza</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAFAF8;
+    --bg-raised:#FFFFFF;
+    --ink:#171519;
+    --ink-soft:#57535E;
+    --ink-faint:#8B8790;
+    --line:#E6E2E8;
+    --line-soft:#F0EDF1;
+    --accent:#4B3FE0;
+    --accent-ink:#FFFFFF;
+    --accent-tint:#EFEDFC;
+    --good:#1F8A5C;
+    --warn:#B8792B;
+    --shadow: 0 1px 2px rgba(23,21,25,.04), 0 8px 24px -12px rgba(23,21,25,.18);
+    --radius-s: 8px;
+    --radius-m: 14px;
+    --radius-l: 22px;
+    color-scheme: light;
+  }
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme: dark){
+      --bg:#111014;
+      --bg-raised:#1A181F;
+      --ink:#F3F1F5;
+      --ink-soft:#C2BCC8;
+      --ink-faint:#837E8C;
+      --line:#2C2934;
+      --line-soft:#221F28;
+      --accent:#8B80F5;
+      --accent-ink:#131120;
+      --accent-tint:#221F3A;
+      --good:#4FCC93;
+      --warn:#E0A857;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -14px rgba(0,0,0,.6);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#111014;
+    --bg-raised:#1A181F;
+    --ink:#F3F1F5;
+    --ink-soft:#C2BCC8;
+    --ink-faint:#837E8C;
+    --line:#2C2934;
+    --line-soft:#221F28;
+    --accent:#8B80F5;
+    --accent-ink:#131120;
+    --accent-tint:#221F3A;
+    --good:#4FCC93;
+    --warn:#E0A857;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -14px rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    padding-inline:20px;
+    padding-block:40px 64px;
+  }
+  h1,h2,h3{font-family:'Fraunces',Georgia,serif; text-wrap:balance; margin:0;}
+  a{color:inherit;}
+
+  .wrap{max-width:1180px; margin-inline:auto;}
+
+  /* ---------- Header ---------- */
+  .top{
+    display:flex; flex-wrap:wrap; gap:24px; align-items:flex-end; justify-content:space-between;
+    margin-bottom:40px;
+  }
+  .kicker{
+    font-size:12.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--accent);
+    font-weight:700; margin-bottom:10px; display:block;
+  }
+  .top h1{font-size:clamp(28px,4vw,40px); font-weight:600; max-width:640px; line-height:1.12;}
+  .top p{color:var(--ink-soft); max-width:46ch; margin-top:12px; line-height:1.55; font-size:15px;}
+
+  .legend{
+    display:flex; gap:10px; flex-wrap:wrap;
+  }
+  .legend span{
+    font-size:12px; font-family:'IBM Plex Mono',monospace; color:var(--ink-faint);
+    border:1px solid var(--line); border-radius:999px; padding:5px 12px;
+    background:var(--bg-raised);
+  }
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex; gap:8px; flex-wrap:wrap; margin-bottom:32px;
+    border-bottom:1px solid var(--line); padding-bottom:0;
+  }
+  .tab{
+    appearance:none; border:none; background:none; cursor:pointer;
+    font-family:'Inter',sans-serif; font-weight:600; font-size:14px; color:var(--ink-faint);
+    padding:12px 4px; margin-right:22px; position:relative; border-bottom:2px solid transparent;
+    transition:color .15s ease;
+  }
+  .tab:hover{color:var(--ink);}
+  .tab[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent);}
+  .tab .dot{
+    display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px;
+    background:var(--dot,var(--accent)); position:relative; top:-1px;
+  }
+
+  /* ---------- Layout: phone + notes ---------- */
+  .stage{
+    display:grid; grid-template-columns:340px 1fr; gap:48px; align-items:start;
+  }
+  @media (max-width:860px){ .stage{grid-template-columns:1fr; justify-items:center;} }
+
+  .panel{display:none;}
+  .panel.is-active{display:grid; grid-template-columns:340px 1fr; gap:48px; width:100%;}
+  @media (max-width:860px){ .panel.is-active{grid-template-columns:1fr; justify-items:center;} }
+
+  /* Phone frame */
+  .phone{
+    width:320px; border-radius:40px; background:var(--ink); padding:12px;
+    box-shadow:var(--shadow);
+  }
+  .phone-screen{
+    background:var(--v-bg,var(--bg-raised)); border-radius:30px; overflow:hidden;
+    height:660px; overflow-y:auto; position:relative;
+    scrollbar-width:none;
+  }
+  .phone-screen::-webkit-scrollbar{display:none;}
+  .notch{
+    position:sticky; top:0; z-index:2; display:flex; justify-content:center; padding:10px 0 2px;
+    background:var(--v-bg,var(--bg-raised));
+  }
+  .notch i{width:80px; height:5px; border-radius:99px; background:rgba(0,0,0,.15); display:block;}
+
+  .profile{padding:6px 22px 28px; text-align:center; font-family:'Inter',sans-serif;}
+  .cover{
+    height:86px; margin:0 -22px 0; background:var(--v-cover, linear-gradient(135deg,var(--v-a1,var(--accent)),var(--v-a2,var(--accent))));
+  }
+  .avatar{
+    width:76px; height:76px; border-radius:50%; margin:-38px auto 12px; display:flex; align-items:center; justify-content:center;
+    background:var(--v-avatar-bg,var(--accent-tint)); color:var(--v-avatar-ink,var(--accent)); font-family:'Fraunces',serif;
+    font-weight:600; font-size:22px; border:4px solid var(--v-bg,var(--bg-raised)); box-shadow:var(--shadow);
+    background-size:cover; background-position:center;
+  }
+  .p-name{display:flex; align-items:center; justify-content:center; gap:6px; font-size:18px; font-weight:700; font-family:'Fraunces',serif;}
+  .p-name svg{width:15px; height:15px; color:var(--good); flex:none;}
+  .p-tag{color:var(--ink-faint); font-size:12.5px; margin-top:3px;}
+  .p-bio{color:var(--ink-soft); font-size:12.5px; line-height:1.55; margin-top:10px; padding:0 6px;}
+
+  .socials{display:flex; justify-content:center; gap:10px; margin-top:14px;}
+  .soc{
+    width:32px; height:32px; border-radius:50%; border:1px solid var(--line); display:flex; align-items:center;
+    justify-content:center; color:var(--ink-soft);
+  }
+  .soc svg{width:15px; height:15px;}
+
+  .btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; padding:12px 14px; border-radius:var(--radius-m); font-size:13.5px; font-weight:600;
+    margin-top:10px; border:1px solid transparent; cursor:default;
+  }
+  .btn svg{width:15px; height:15px; flex:none;}
+  .btn-primary{background:var(--v-a1,var(--accent)); color:var(--v-primary-ink,#fff);}
+  .btn-secondary{background:var(--bg-raised); color:var(--ink); border-color:var(--line);}
+  .btn-ghost{background:var(--line-soft); color:var(--ink-soft); border-color:transparent;}
+  .btns{margin-top:16px;}
+
+  .card{
+    text-align:left; border:1px solid var(--line); border-radius:var(--radius-m); padding:13px 14px;
+    margin-top:12px; background:var(--bg-raised);
+  }
+  .card-row{display:flex; justify-content:space-between; gap:10px; align-items:flex-start;}
+  .card-title{font-size:13px; font-weight:700;}
+  .card-desc{font-size:11.5px; color:var(--ink-faint); margin-top:3px; line-height:1.5;}
+  .card-price{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--v-a1,var(--accent)); font-weight:500; white-space:nowrap;}
+  .card-cta{
+    margin-top:10px; font-size:11.5px; font-weight:700; color:var(--v-primary-ink,#fff); background:var(--v-a1,var(--accent));
+    border-radius:8px; padding:7px 0; text-align:center;
+  }
+
+  .section-label{
+    text-align:left; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint);
+    margin:22px 0 8px; font-weight:700;
+  }
+
+  .reviews{display:flex; gap:8px; overflow-x:auto; margin:0 -22px; padding:0 22px 4px;}
+  .review{
+    flex:none; width:158px; text-align:left; border:1px solid var(--line); border-radius:var(--radius-m);
+    padding:11px 12px; background:var(--bg-raised);
+  }
+  .stars{display:flex; gap:2px; margin-bottom:6px;}
+  .stars svg{width:11px; height:11px; color:var(--warn);}
+  .review p{font-size:11px; color:var(--ink-soft); margin:0; line-height:1.5;}
+  .review span{display:block; font-size:10.5px; color:var(--ink-faint); margin-top:6px; font-weight:600;}
+
+  .faq{text-align:left; border-top:1px solid var(--line-soft); padding-top:4px;}
+  .faq-item{border-bottom:1px solid var(--line-soft); padding:11px 0; font-size:12.5px; display:flex; justify-content:space-between; gap:10px; color:var(--ink);}
+  .faq-item span:last-child{color:var(--ink-faint); font-weight:600;}
+
+  .p-footer{margin-top:20px; font-size:10.5px; color:var(--ink-faint);}
+
+  /* ---------- Notes column ---------- */
+  .notes{padding-top:8px;}
+  .notes h3{font-size:22px; font-weight:600; margin-bottom:6px;}
+  .notes > p{color:var(--ink-soft); font-size:14px; line-height:1.6; max-width:56ch; margin:0 0 22px;}
+
+  .tokens{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-bottom:26px;
+  }
+  .token{
+    border:1px solid var(--line); border-radius:var(--radius-m); padding:12px; background:var(--bg-raised);
+  }
+  .swatch{width:100%; height:34px; border-radius:8px; margin-bottom:9px; border:1px solid rgba(0,0,0,.06);}
+  .token b{display:block; font-size:12.5px;}
+  .token span{display:block; font-size:11px; color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; margin-top:1px;}
+
+  .traits{display:grid; gap:10px; grid-template-columns:1fr 1fr;}
+  @media (max-width:520px){.traits{grid-template-columns:1fr;}}
+  .trait{
+    border:1px solid var(--line); border-radius:var(--radius-m); padding:14px; background:var(--bg-raised);
+  }
+  .trait b{font-size:13px; display:block; margin-bottom:4px;}
+  .trait p{font-size:12px; color:var(--ink-soft); margin:0; line-height:1.55;}
+
+  /* ---------- Principles ---------- */
+  .principles{
+    margin-top:56px; padding-top:40px; border-top:1px solid var(--line);
+  }
+  .principles h2{font-size:24px; font-weight:600; margin-bottom:26px;}
+  .p-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px;}
+  .p-card{
+    border:1px solid var(--line); border-radius:var(--radius-m); padding:18px; background:var(--bg-raised);
+  }
+  .p-card .n{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--accent); font-weight:500; margin-bottom:10px; display:block;
+  }
+  .p-card h4{font-size:14.5px; margin:0 0 6px; font-family:'Inter',sans-serif; font-weight:700;}
+  .p-card p{font-size:12.5px; color:var(--ink-soft); margin:0; line-height:1.6;}
+</style>
+
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <span class="kicker">Impulza One — Sistema de perfiles</span>
+      <h1>Un mismo motor, un perfil distinto para cada rubro</h1>
+      <p>Los mismos bloques (identidad, CTA, servicios, prueba social, FAQ) se visten con tokens de tema distintos según el rubro elegido en el onboarding. Esto es lo que reemplaza a la plantilla genérica tipo "lista de enlaces".</p>
+    </div>
+    <div class="legend">
+      <span>Fraunces · Inter · IBM Plex Mono</span>
+      <span>WCAG 2.2 AA</span>
+      <span>Light + Dark</span>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" data-target="profesional" role="tab" aria-selected="true"><i class="dot" style="--dot:#4B3FE0"></i>Profesional / Servicios</button>
+    <button class="tab" data-target="cafe" role="tab" aria-selected="false"><i class="dot" style="--dot:#B8611F"></i>Café &amp; Gastronomía</button>
+    <button class="tab" data-target="comercio" role="tab" aria-selected="false"><i class="dot" style="--dot:#0F7A63"></i>Comercio / Retail</button>
+    <button class="tab" data-target="creador" role="tab" aria-selected="false"><i class="dot" style="--dot:#171519"></i>Creador / Personal</button>
+  </div>
+
+  <!-- ================= PROFESIONAL ================= -->
+  <div class="panel is-active" id="panel-profesional">
+    <div class="phone">
+      <div class="phone-screen" style="--v-bg:#FCFCFB; --v-a1:#4B3FE0; --v-a2:#7A6FF0; --v-avatar-bg:#EFEDFC; --v-avatar-ink:#4B3FE0; --v-primary-ink:#fff;">
+        <div class="notch"><i></i></div>
+        <div class="profile">
+          <div class="cover"></div>
+          <div class="avatar">MP</div>
+          <div class="p-name">María Paz Contreras
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div class="p-tag">Psicóloga clínica · Providencia, Santiago</div>
+          <div class="p-bio">Terapia individual y de pareja, presencial y online. Convenios Isapre disponibles.</div>
+
+          <div class="socials">
+            <div class="soc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r=".6" fill="currentColor" stroke="none"/></svg></div>
+            <div class="soc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6Z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></div>
+          </div>
+
+          <div class="btns">
+            <div class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Agendar hora por WhatsApp</div>
+            <div class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Ver disponibilidad</div>
+          </div>
+
+          <div class="section-label">Servicios</div>
+          <div class="card">
+            <div class="card-row"><div><div class="card-title">Primera sesión</div><div class="card-desc">Evaluación inicial, 50 min, online o presencial.</div></div><div class="card-price">$35.000</div></div>
+          </div>
+          <div class="card">
+            <div class="card-row"><div><div class="card-title">Sesión de seguimiento</div><div class="card-desc">50 min. Pack mensual disponible.</div></div><div class="card-price">$30.000</div></div>
+            <div class="card-cta">Reservar</div>
+          </div>
+
+          <div class="section-label">Pacientes dicen</div>
+          <div class="reviews">
+            <div class="review"><div class="stars">★★★★★</div><p>"Se nota la formación y la calidez. Recomendada."</p><span>Constanza R.</span></div>
+            <div class="review"><div class="stars">★★★★★</div><p>"Fácil agendar y siempre puntual."</p><span>Ignacio V.</span></div>
+          </div>
+
+          <div class="section-label">Preguntas frecuentes</div>
+          <div class="faq">
+            <div class="faq-item"><span>¿Atiende por Fonasa?</span><span>+</span></div>
+            <div class="faq-item"><span>¿Cómo pago la sesión?</span><span>+</span></div>
+          </div>
+          <div class="p-footer">impulza.one/mariapaz · Términos · Privacidad</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>Perfil "Profesional / Servicios"</h3>
+      <p>Pensado para salud, asesorías, estudios y consultoría. Prioriza confianza y agenda: portada discreta, credencial verificada, CTA directo a WhatsApp/agenda, y servicios con precio y botón de reserva explícito.</p>
+      <div class="tokens">
+        <div class="token"><div class="swatch" style="background:#4B3FE0"></div><b>Acento</b><span>#4B3FE0</span></div>
+        <div class="token"><div class="swatch" style="background:#EFEDFC"></div><b>Superficie tinte</b><span>#EFEDFC</span></div>
+        <div class="token"><div class="swatch" style="background:#FCFCFB;border:1px solid #E6E2E8"></div><b>Fondo</b><span>#FCFCFB</span></div>
+        <div class="token"><div class="swatch" style="background:#171519"></div><b>Texto</b><span>#171519</span></div>
+      </div>
+      <div class="traits">
+        <div class="trait"><b>Bloques prioritarios</b><p>Perfil, CTA agenda, servicios con precio, testimonios, FAQ.</p></div>
+        <div class="trait"><b>Tono de copy</b><p>Cercano y profesional, primera persona, sin tecnicismos.</p></div>
+        <div class="trait"><b>Foto</b><p>Retrato real, fondo neutro, portada en degradé de marca (sin foto genérica de stock).</p></div>
+        <div class="trait"><b>Conversión clave</b><p>WhatsApp → agenda. Todo lo demás es secundario.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CAFÉ ================= -->
+  <div class="panel" id="panel-cafe">
+    <div class="phone">
+      <div class="phone-screen" style="--v-bg:#FFFBF6; --v-a1:#B8611F; --v-a2:#E0A857; --v-avatar-bg:#F7E4D0; --v-avatar-ink:#8A4A15; --v-primary-ink:#fff;">
+        <div class="notch"><i></i></div>
+        <div class="profile">
+          <div class="cover" style="background:linear-gradient(135deg,#B8611F,#E0A857);"></div>
+          <div class="avatar">CA</div>
+          <div class="p-name">Café Aroma
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div class="p-tag">Café de especialidad · Ñuñoa, Santiago</div>
+          <div class="p-bio">Tostamos nuestro propio grano y horneamos todo en casa. Abierto lunes a sábado, 8:00–20:00.</div>
+
+          <div class="socials">
+            <div class="soc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></div>
+            <div class="soc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M8 4v16M16 4v16M4 8h16M4 16h16"/></svg></div>
+          </div>
+
+          <div class="btns">
+            <div class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Pide por WhatsApp</div>
+            <div class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>Ver la carta</div>
+          </div>
+
+          <div class="section-label">Lo más pedido</div>
+          <div class="card">
+            <div class="card-row"><div><div class="card-title">Brunch de fin de semana</div><div class="card-desc">Huevos, pan de masa madre, fruta y café a elección.</div></div><div class="card-price">$12.900</div></div>
+            <div class="card-cta">Reservar mesa</div>
+          </div>
+          <div class="card">
+            <div class="card-row"><div><div class="card-title">Café en grano · 250 g</div><div class="card-desc">Origen Colombia, tueste medio.</div></div><div class="card-price">$8.500</div></div>
+          </div>
+
+          <div class="section-label">Nuestros clientes dicen</div>
+          <div class="reviews">
+            <div class="review"><div class="stars">★★★★★</div><p>"El mejor flat white del barrio."</p><span>Camila R.</span></div>
+            <div class="review"><div class="stars">★★★★★</div><p>"Ideal para trabajar una mañana."</p><span>Diego M.</span></div>
+          </div>
+
+          <div class="section-label">Preguntas frecuentes</div>
+          <div class="faq">
+            <div class="faq-item"><span>¿Tienen opciones veganas?</span><span>+</span></div>
+            <div class="faq-item"><span>¿Hacen despacho?</span><span>+</span></div>
+          </div>
+          <div class="p-footer">impulza.one/cafearoma · Términos · Privacidad</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>Perfil "Café &amp; Gastronomía"</h3>
+      <p>Cálido y apetitoso sin perder orden. La foto del producto manda: portada texturizada, tarjetas de menú con precio visible y reserva de mesa como segunda acción, nunca la primera (el pedido va antes).</p>
+      <div class="tokens">
+        <div class="token"><div class="swatch" style="background:#B8611F"></div><b>Acento</b><span>#B8611F</span></div>
+        <div class="token"><div class="swatch" style="background:#F7E4D0"></div><b>Superficie tinte</b><span>#F7E4D0</span></div>
+        <div class="token"><div class="swatch" style="background:#FFFBF6;border:1px solid #E6E2E8"></div><b>Fondo</b><span>#FFFBF6</span></div>
+        <div class="token"><div class="swatch" style="background:#171519"></div><b>Texto</b><span>#171519</span></div>
+      </div>
+      <div class="traits">
+        <div class="trait"><b>Bloques prioritarios</b><p>Perfil, WhatsApp/pedido, carta con precios, reserva, reseñas.</p></div>
+        <div class="trait"><b>Tono de copy</b><p>Sensorial y directo: describe sabor y textura, no adjetivos vacíos.</p></div>
+        <div class="trait"><b>Foto</b><p>Producto real fotografiado en el local, luz natural.</p></div>
+        <div class="trait"><b>Conversión clave</b><p>Pedido/WhatsApp primero; reserva de mesa como alternativa.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= COMERCIO ================= -->
+  <div class="panel" id="panel-comercio">
+    <div class="phone">
+      <div class="phone-screen" style="--v-bg:#F9FCFB; --v-a1:#0F7A63; --v-a2:#3FBFA0; --v-avatar-bg:#DDF3EB; --v-avatar-ink:#0F6B57; --v-primary-ink:#fff;">
+        <div class="notch"><i></i></div>
+        <div class="profile">
+          <div class="cover" style="background:linear-gradient(135deg,#0F7A63,#3FBFA0);"></div>
+          <div class="avatar">NT</div>
+          <div class="p-name">Nexus Tech
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div class="p-tag">Reparación de celulares y notebooks · 3 sucursales</div>
+          <div class="p-bio">Diagnóstico gratis. Repuestos originales y garantía de 90 días en toda reparación.</div>
+
+          <div class="socials">
+            <div class="soc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></div>
+            <div class="soc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9Z"/></svg></div>
+          </div>
+
+          <div class="btns">
+            <div class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Cotiza tu reparación</div>
+            <div class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Ver sucursales</div>
+          </div>
+
+          <div class="section-label">Servicios más pedidos</div>
+          <div class="card">
+            <div class="card-row"><div><div class="card-title">Cambio de pantalla</div><div class="card-desc">iPhone y Android. Listo en 45 min.</div></div><div class="card-price">desde $39.900</div></div>
+            <div class="card-cta">Cotizar por WhatsApp</div>
+          </div>
+          <div class="card">
+            <div class="card-row"><div><div class="card-title">Cambio de batería</div><div class="card-desc">Con certificado de garantía.</div></div><div class="card-price">desde $29.900</div></div>
+          </div>
+
+          <div class="section-label">Clientes dicen</div>
+          <div class="reviews">
+            <div class="review"><div class="stars">★★★★★</div><p>"Rápido y con boleta. Volvería."</p><span>Patricio S.</span></div>
+            <div class="review"><div class="stars">★★★★★</div><p>"Me arreglaron el notebook en el día."</p><span>Fernanda O.</span></div>
+          </div>
+
+          <div class="section-label">Preguntas frecuentes</div>
+          <div class="faq">
+            <div class="faq-item"><span>¿Cuánto dura la garantía?</span><span>+</span></div>
+            <div class="faq-item"><span>¿Atienden sin cita previa?</span><span>+</span></div>
+          </div>
+          <div class="p-footer">impulza.one/nexustech · Términos · Privacidad</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>Perfil "Comercio / Retail"</h3>
+      <p>Foco operativo: precios desde, tiempos de entrega y sucursales visibles arriba. El verde transmite garantía/confianza técnica sin caer en frío o corporativo.</p>
+      <div class="tokens">
+        <div class="token"><div class="swatch" style="background:#0F7A63"></div><b>Acento</b><span>#0F7A63</span></div>
+        <div class="token"><div class="swatch" style="background:#DDF3EB"></div><b>Superficie tinte</b><span>#DDF3EB</span></div>
+        <div class="token"><div class="swatch" style="background:#F9FCFB;border:1px solid #E6E2E8"></div><b>Fondo</b><span>#F9FCFB</span></div>
+        <div class="token"><div class="swatch" style="background:#171519"></div><b>Texto</b><span>#171519</span></div>
+      </div>
+      <div class="traits">
+        <div class="trait"><b>Bloques prioritarios</b><p>Cotización, catálogo de servicios con precio "desde", sucursales, garantía.</p></div>
+        <div class="trait"><b>Tono de copy</b><p>Concreto y técnico sin jerga: tiempos, garantías, condiciones claras.</p></div>
+        <div class="trait"><b>Foto</b><p>Local y equipo de trabajo, no stock genérico de "tecnología".</p></div>
+        <div class="trait"><b>Conversión clave</b><p>Cotización por WhatsApp con foto del equipo dañado.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CREADOR ================= -->
+  <div class="panel" id="panel-creador">
+    <div class="phone">
+      <div class="phone-screen" style="--v-bg:#121114; --v-a1:#171519; --v-a2:#38343D; --v-avatar-bg:#25232A; --v-avatar-ink:#F3F1F5; --v-primary-ink:#F3F1F5; color:#F3F1F5;">
+        <div class="notch" style="background:#121114;"><i style="background:rgba(255,255,255,.18)"></i></div>
+        <div class="profile" style="color:#F3F1F5;">
+          <div class="cover" style="background:linear-gradient(160deg,#25232A,#121114);"></div>
+          <div class="avatar" style="border-color:#121114;">VR</div>
+          <div class="p-name" style="color:#F3F1F5;">Valentina Ríos
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div class="p-tag" style="color:#9B96A3;">Fotógrafa &amp; creadora de contenido</div>
+          <div class="p-bio" style="color:#C2BCC8;">Presets, mentorías 1:1 y mi próximo taller de fotografía editorial.</div>
+
+          <div class="socials">
+            <div class="soc" style="border-color:#38343D; color:#C2BCC8;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></div>
+            <div class="soc" style="border-color:#38343D; color:#C2BCC8;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 8h1.5a2 2 0 0 1 2 2v.5a2 2 0 0 1-2 2H9v-4Zm0 4.5h1.8a2 2 0 0 1 2 2V15a2 2 0 0 1-2 2H9v-4.5Z"/><circle cx="12" cy="12" r="9.5"/></svg></div>
+          </div>
+
+          <div class="btns">
+            <div class="btn" style="background:#F3F1F5; color:#121114;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="4"/></svg>Comprar mis presets</div>
+            <div class="btn" style="background:#211F26; color:#F3F1F5; border-color:#38343D;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>Agenda una mentoría</div>
+          </div>
+
+          <div class="section-label" style="color:#9B96A3;">Próximo taller</div>
+          <div class="card" style="background:#1A181F; border-color:#2C2934;">
+            <div class="card-row"><div><div class="card-title" style="color:#F3F1F5;">Fotografía editorial</div><div class="card-desc" style="color:#9B96A3;">Cupos limitados · 12 de octubre</div></div><div class="card-price" style="color:#E8E5EC;">$45.000</div></div>
+            <div class="card-cta" style="background:#F3F1F5; color:#121114;">Reservar cupo</div>
+          </div>
+
+          <div class="section-label" style="color:#9B96A3;">Mi comunidad dice</div>
+          <div class="reviews">
+            <div class="review" style="background:#1A181F; border-color:#2C2934;"><div class="stars">★★★★★</div><p style="color:#C2BCC8;">"Sus presets me cambiaron el feed."</p><span style="color:#9B96A3;">@juli.fotos</span></div>
+            <div class="review" style="background:#1A181F; border-color:#2C2934;"><div class="stars">★★★★★</div><p style="color:#C2BCC8;">"La mentoría vale cada peso."</p><span style="color:#9B96A3;">@tomasg</span></div>
+          </div>
+
+          <div class="p-footer" style="color:#6F6A78;">impulza.one/valentinarios · Términos · Privacidad</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>Perfil "Creador / Personal"</h3>
+      <p>Editorial y personal: fondo oscuro, tipografía protagonista, foco 100% en la persona. Aquí la venta es de productos digitales y cupos, no de un local físico.</p>
+      <div class="tokens">
+        <div class="token"><div class="swatch" style="background:#121114"></div><b>Fondo</b><span>#121114</span></div>
+        <div class="token"><div class="swatch" style="background:#F3F1F5;border:1px solid #E6E2E8"></div><b>Acento (invertido)</b><span>#F3F1F5</span></div>
+        <div class="token"><div class="swatch" style="background:#1A181F"></div><b>Superficie</b><span>#1A181F</span></div>
+        <div class="token"><div class="swatch" style="background:#9B96A3"></div><b>Texto secundario</b><span>#9B96A3</span></div>
+      </div>
+      <div class="traits">
+        <div class="trait"><b>Bloques prioritarios</b><p>Productos digitales, cupos con fecha límite, comunidad/redes.</p></div>
+        <div class="trait"><b>Tono de copy</b><p>Primera persona, cercano, sin corporativismo.</p></div>
+        <div class="trait"><b>Foto</b><p>Retrato editorial propio, no ilustración genérica.</p></div>
+        <div class="trait"><b>Conversión clave</b><p>Compra directa de producto digital o cupo a taller/mentoría.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="principles">
+    <h2>Por qué esto ya no se ve "tipo Linktree"</h2>
+    <div class="p-grid">
+      <div class="p-card"><span class="n">01</span><h4>Un solo motor, temas por rubro</h4><p>Los 4 perfiles son los mismos componentes (`Block`, `Theme` del ERD) con tokens de color, foto y copy distintos. Nadie programa una plantilla nueva por rubro.</p></div>
+      <div class="p-card"><span class="n">02</span><h4>Jerarquía real, no botones apilados</h4><p>Un solo CTA primario por perfil. Servicios con precio y acción propia. Reseñas y FAQ como prueba social, no como relleno.</p></div>
+      <div class="p-card"><span class="n">03</span><h4>Tipografía con carácter</h4><p>Fraunces para el nombre y títulos le da calidez editorial; Inter mantiene la lectura funcional del resto. Ningún competidor usa esta pareja.</p></div>
+      <div class="p-card"><span class="n">04</span><h4>Fotografía real por rubro</h4><p>Nunca stock genérico: portada con paleta del rubro, foto de producto o retrato real. Esto es lo que más separa "profesional" de "plantilla gratis".</p></div>
+      <div class="p-card"><span class="n">05</span><h4>Contraste y accesibilidad</h4><p>Todas las combinaciones texto/fondo de esta página pasan WCAG AA, incluido el tema oscuro del perfil de creador.</p></div>
+      <div class="p-card"><span class="n">06</span><h4>Listo para handoff</h4><p>Esta paleta y estos componentes son la base de `packages/ui` (Fase 1) y del `Theme`/`Template` del ERD — pásale esta página a Claude Code con la skill <code>design-handoff</code> para generar la spec de desarrollo.</p></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  (function(){
+    var tabs = document.querySelectorAll('.tab');
+    var panels = {
+      profesional: document.getElementById('panel-profesional'),
+      cafe: document.getElementById('panel-cafe'),
+      comercio: document.getElementById('panel-comercio'),
+      creador: document.getElementById('panel-creador')
+    };
+    tabs.forEach(function(tab){
+      tab.addEventListener('click', function(){
+        tabs.forEach(function(t){ t.setAttribute('aria-selected','false'); });
+        tab.setAttribute('aria-selected','true');
+        Object.keys(panels).forEach(function(key){
+          panels[key].classList.toggle('is-active', key === tab.dataset.target);
+        });
+      });
+    });
+  })();
+</script>

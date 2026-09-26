@@ -100,3 +100,7 @@ y ese es el diferenciador visual para negocios, frente a la estética de creador
 - [Best Link in Bio Tools for Small Businesses 2026 — Findstack](https://findstack.com/software/link-in-bio-tools/s/small-business)
 - [WhatsApp Penetration in Latin America 2026 — Mazkara](https://mazkara.studio/en/newsletter/whatsapp-penetration-latin-america-2026/)
 - [WhatsApp Business API Chile 2026 — ChatDaddy](https://chatdaddy.tech/blog/whatsapp-business-api-chile)
+
+---
+
+**Nota (2026-09-26):** la recomendación de §5 sobre no copiar el look de Linktree/Beacons fue revertida explícitamente por Favio. La decisión vigente sobre dirección visual de la página pública está en `docs/decisions/ADR-008-direccion-visual-link-in-bio.md`. Este documento se conserva sin editar como registro histórico del análisis que sí sigue vigente en todo lo demás (precios, quejas de mercado, contexto Chile/LATAM, estado de Impulza frente a la competencia).

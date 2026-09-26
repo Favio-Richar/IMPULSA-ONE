@@ -7,7 +7,10 @@ import type { DeviceType } from "./taxonomy.js";
 // automáticamente y, sin excluirla, cada enlace compartido contaría un clic que nadie hizo.
 const BOT_PATTERN = new RegExp(
   [
-    "bot\b",
+    // Doble barra porque esto es un string: con una sola, "\b" era un carácter de retroceso y el
+    // patrón nunca coincidía (un "AhrefsBot;" o "SemrushBot;" contaba como visita real).
+    // `(?<!cu)`: la marca de teléfonos Cubot ("CUBOT X30") no es un bot.
+    "(?<!cu)bot\\b",
     "bot/",
     "crawl",
     "spider",
@@ -25,7 +28,9 @@ const BOT_PATTERN = new RegExp(
     "quora link preview",
     "skypeuripreview",
     "vkshare",
-    "pinterest",
+    // Solo el agente de vista previa de Pinterest: "[Pinterest/Android]" es la app, o sea una persona
+    // que tocó el enlace (su crawler "Pinterestbot" ya cae por "bot").
+    "pinterest/0\\.",
     "bingpreview",
     "google-inspectiontool",
     "googleother",
@@ -72,7 +77,10 @@ export function isBotUserAgent(userAgent: string | null | undefined): boolean {
  *  fingerprinting). */
 export function detectDeviceType(userAgent: string | null | undefined): DeviceType {
   const ua = userAgent ?? "";
-  if (/ipad|tablet|kindle|silk|playbook|(android(?!.*mobile))/i.test(ua)) {
+  // Android sin "mobile" **en ninguna parte** es una tablet. Mirar solo lo que sigue a "android" no
+  // alcanza: el navegador interno de Instagram repite "Android (35/15; ...)" al final, sin "mobile"
+  // detrás, y las visitas desde el teléfono se contaban como de tablet.
+  if (/ipad|tablet|kindle|silk|playbook/i.test(ua) || (/android/i.test(ua) && !/mobile/i.test(ua))) {
     return "tablet";
   }
   if (/mobi|iphone|ipod|android|windows phone|blackberry|opera mini/i.test(ua)) {

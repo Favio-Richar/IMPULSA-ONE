@@ -15,6 +15,15 @@ export const API_BASE_URL = process.env.E2E_API_URL ?? "http://localhost:4000/ap
 const API_HEALTH_URL = new URL("/health", API_BASE_URL).toString();
 export const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL ?? "http://localhost:3100";
 export const ADMIN_URL = process.env.E2E_ADMIN_URL ?? "http://localhost:3200";
+/**
+ * Sitio público **en modo producción** (PP7): el rendimiento se mide contra `next build` +
+ * `next start`, nunca contra el servidor de desarrollo (que compila en cada petición). Puerto propio
+ * para no confundirse con el `next dev` del 3300.
+ */
+export const PUBLIC_WEB_URL = process.env.E2E_PUBLIC_WEB_URL ?? "http://localhost:3390";
+/** Secreto de revalidación de ese servidor: las pruebas que cambian tema o fondo invalidan su caché
+ *  por la vía oficial (`POST /api/revalidate`), como lo haría la API en producción. */
+export const PUBLIC_WEB_REVALIDATE_SECRET = process.env.REVALIDATE_SECRET ?? "e2e-revalidate-secret-not-used-in-tests-0000";
 
 export default defineConfig({
   testDir: "./tests",
@@ -64,6 +73,24 @@ export default defineConfig({
       cwd: path.join(import.meta.dirname, "..", ".."),
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
+    },
+    {
+      command: "pnpm --filter @impulza/web build && pnpm --filter @impulza/web exec next start -p 3390",
+      url: `${PUBLIC_WEB_URL}/`,
+      cwd: path.join(import.meta.dirname, "..", ".."),
+      reuseExistingServer: !process.env.CI,
+      timeout: 300_000,
+      env: {
+        ...(process.env as Record<string, string>),
+        // El `.env` de desarrollo trae NODE_ENV=development, y `next build` con eso rompe el
+        // prerender (React de desarrollo en un build de producción).
+        NODE_ENV: "production",
+        API_BASE_URL: API_BASE_URL,
+        PUBLIC_WEB_BASE_URL: PUBLIC_WEB_URL,
+        // Mismo secreto que la API (lo exige para creerle las cabeceras del visitante).
+        INTERNAL_PROXY_SECRET: process.env.INTERNAL_PROXY_SECRET ?? "",
+        REVALIDATE_SECRET: PUBLIC_WEB_REVALIDATE_SECRET,
+      },
     },
     {
       // Superadministración (F4.4). Sus pruebas usan su propia sesión (`admin-session.json`).

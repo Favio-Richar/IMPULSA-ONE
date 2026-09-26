@@ -7,8 +7,8 @@ captación, reservas, ventas y analítica) desde una sola URL.
 F4.1–F4.5 terminadas; F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.
 Por delante de F4.9 va la página pública premium (`docs/BACKLOG_PAGINA_PREMIUM.md`): PP1 y PP2
 (medios propios y selector de imágenes), PP4 (temas Ejecutivo y Vibrante, encabezado de perfil) y
-PP5 (acción principal fija en el teléfono y entrada de los bloques) y PP6 (video de fondo propio)
-terminadas en local; PP3 (fondo premium) construida y probada, en espera de que se apruebe el
+PP5 (acción principal fija en el teléfono y entrada de los bloques), PP6 (video de fondo propio) y
+PP7 (rendimiento, navegadores de Instagram/TikTok y revisión visual) terminadas en local; PP3 (fondo premium) construida y probada, en espera de que se apruebe el
 contenido de la biblioteca de videos.** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
@@ -1218,6 +1218,17 @@ contenido). Se aplica en vivo, como el tema, y la página pública se actualiza 
   sobre todas las escenas del video, no solo la primera.
 - Necesita ffmpeg en el worker: `FFMPEG_PATH` y `FFPROBE_PATH` (ver `.env.example`). Sin ellas todo
   funciona y la subida de video simplemente no se ofrece.
+
+## Verificación de la página pública (PP7)
+
+`pnpm test:e2e` levanta además el sitio público **en modo producción** (puerto 3390) y comprueba lo
+que vive el visitante que toca el enlace desde Instagram o TikTok:
+
+- **Rendimiento:** con un teléfono en 4G lento emulado, el contenido principal se ve en menos de
+  1 segundo (presupuesto: 2,5 s) aunque la página tenga video de fondo; el video llega después.
+- **Navegadores internos** de Instagram, TikTok, Facebook y Pinterest: la página se ve bien, el video
+  se reproduce solo y la visita cuenta como de teléfono en la analítica.
+- **Revisión visual:** capturas de cada tema y cada tipo de fondo en `packages/e2e/.playwright/revision-visual/`.
 
 ## Soporte (F4.5)
 

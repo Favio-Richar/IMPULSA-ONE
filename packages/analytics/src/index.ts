@@ -5,3 +5,4 @@ export * from "./metrics.js";
 export * from "./job.js";
 export * from "./processor.js";
 export * from "./proxy-headers.js";
+export * from "./in-app-user-agents.js";

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { IN_APP_USER_AGENTS } from "./in-app-user-agents.js";
 import { detectDeviceType, isBotUserAgent } from "./user-agent.js";
 
 const CHROME_DESKTOP =
@@ -46,5 +47,28 @@ describe("detectDeviceType", () => {
     expect(detectDeviceType(CHROME_ANDROID)).toBe("mobile");
     expect(detectDeviceType(SAFARI_IPAD)).toBe("tablet");
     expect(detectDeviceType(ANDROID_TABLET)).toBe("tablet");
+  });
+});
+
+describe("navegadores internos de las apps (PP7)", () => {
+  // Es de donde llega la mayoría de las visitas a una página de enlaces: si se descartaran como
+  // bots, la analítica mostraría muchas menos visitas de las reales.
+  it.each(Object.entries(IN_APP_USER_AGENTS))("cuenta la visita desde %s", (_name, userAgent) => {
+    expect(isBotUserAgent(userAgent)).toBe(false);
+    expect(detectDeviceType(userAgent)).toBe("mobile");
+  });
+
+  it("un teléfono Cubot tampoco es un bot aunque su modelo termine en «bot»", () => {
+    expect(isBotUserAgent("Mozilla/5.0 (Linux; Android 10; CUBOT X30) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36")).toBe(false);
+  });
+
+  it.each([
+    "Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)",
+    "Mozilla/5.0 (compatible; SemrushBot; +http://www.semrush.com/bot.html)",
+    "Mozilla/5.0 (compatible; MJ12bot; http://mj12bot.com/)",
+    "Pinterest/0.2 (+https://www.pinterest.com/bot.html)",
+    "Mozilla/5.0 (compatible; Pinterestbot/1.0; +http://www.pinterest.com/bot.html)",
+  ])("sigue descartando al crawler %s", (userAgent) => {
+    expect(isBotUserAgent(userAgent)).toBe(true);
   });
 });

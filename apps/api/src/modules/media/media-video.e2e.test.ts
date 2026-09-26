@@ -50,7 +50,8 @@ function unique(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-describe.skipIf(!tools)("Video de fondo propio (e2e) — PP6 / ADR-007", () => {
+// Cada prueba convierte videos con ffmpeg real: más que los 5 s por defecto bajo carga.
+describe.skipIf(!tools)("Video de fondo propio (e2e) — PP6 / ADR-007", { timeout: 60_000 }, () => {
   let app: INestApplication;
   let prisma: PrismaClient;
   let redis: Redis;
@@ -117,7 +118,7 @@ describe.skipIf(!tools)("Video de fondo propio (e2e) — PP6 / ADR-007", () => {
     });
     await prisma.user.deleteMany({ where: { email: { endsWith: TEST_EMAIL_DOMAIN } } });
     await app.close();
-    rmSync(workDir, { recursive: true, force: true });
+    rmSync(workDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   });
 
   beforeEach(async () => {

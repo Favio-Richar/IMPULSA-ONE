@@ -10,6 +10,7 @@
     "lint": "eslint ."
   },
   "devDependencies": {
+    "@impulza/analytics": "workspace:*",
     "@impulza/database": "workspace:*",
     "@impulza/eslint-config": "workspace:*",
     "@impulza/tsconfig": "workspace:*",

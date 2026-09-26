@@ -16,9 +16,12 @@ try {
 }
 const tools = parseVideoToolsConfig(process.env);
 
-describe.skipIf(!tools)("conversión de video con ffmpeg real (PP6, ADR-007)", () => {
+// Convertir video de verdad tarda: con todas las suites corriendo a la vez, más que los 5 s por
+// defecto de vitest. El límite de ffmpeg en producción es otro (3 min, ver `video.ts`).
+describe.skipIf(!tools)("conversión de video con ffmpeg real (PP6, ADR-007)", { timeout: 60_000 }, () => {
   const dir = mkdtempSync(path.join(tmpdir(), "impulza-video-test-"));
-  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  // En Windows un archivo abierto no se puede borrar: se reintenta mientras ffmpeg termina de soltarlo.
+  afterAll(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }));
 
   function generate(name: string, args: string[]): string {
     const output = path.join(dir, name);

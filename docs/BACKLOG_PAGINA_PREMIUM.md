@@ -30,7 +30,7 @@ Y todas comparten estas **reglas de la página pública**:
 | PP4 — Familias de temas "Ejecutivo" y "Vibrante" y encabezado de perfil | Terminada (local) |
 | PP5 — Botón principal fijo en móvil y animaciones de entrada | Terminada (local) |
 | PP6 — Video de fondo propio (subida y transcodificación) | Terminada (local; licencias a revisar antes de producción, ADR-007) |
-| PP7 — Verificación de rendimiento y navegadores internos | Pendiente |
+| PP7 — Verificación de rendimiento y navegadores internos | Terminada (local) |
 
 ### PP1 — Almacenamiento y subida de imágenes
 **Criterios de aceptación:**
@@ -355,3 +355,46 @@ Y todas comparten estas **reglas de la página pública**:
 - Prueba de rendimiento con red 4G simulada (LCP < 2,5 s) sobre una página con video de fondo.
 - Prueba de render con los user-agents de los navegadores internos de Instagram y TikTok.
 - Revisión visual con capturas de móvil y escritorio de cada tema y cada tipo de fondo.
+
+> **Estado (2026-09-26): terminada en local.** Tres pruebas Playwright nuevas contra el sitio público
+> **en modo producción** (`next build` + `next start`, puerto 3390 en `playwright.config.ts`: el
+> servidor de desarrollo compila en cada petición y no sirve para medir), con una página preparada
+> como la de un cliente real (`tests/support/published-page.ts`): publicada, con encabezado de perfil
+> y redes, video de fondo propio convertido por el worker y la acción principal marcada.
+>
+> - **Rendimiento (`rendimiento.spec.ts`):** teléfono con el preset "Slow 4G" de Lighthouse (150 ms,
+>   1,6 Mbps de bajada, 750 kbps de subida) y CPU 4× más lenta, emulados por Chrome. **LCP de
+>   600–760 ms** en las corridas (presupuesto 2 500 ms; el elemento es el nombre del perfil). El HTML
+>   inicial no trae `<video>` y el video se pide **después** del LCP (a los ~2 s), así que no compite
+>   por la red con lo que se ve primero.
+> - **Navegadores internos (`navegadores-apps.spec.ts`):** Instagram (iOS y Android), TikTok (iOS y
+>   Android), Facebook y Pinterest, con sus user-agents reales (`IN_APP_USER_AGENTS` en
+>   `@impulza/analytics`). En cada uno: la página se ve completa y sin desborde, las redes abren
+>   afuera, el video tiene `muted playsinline autoplay loop`, la barra de acción principal enlaza al
+>   destino correcto y se esconde con el original a la vista, y **la visita queda en la base como
+>   vista de página desde un teléfono**.
+> - **Revisión visual (`revision-visual.spec.ts`):** los 11 temas con su fondo, y un tema por línea
+>   (Marino, Coral, Claro profesional) sobre degradado, imagen y video, en teléfono y escritorio: 40
+>   capturas en `packages/e2e/.playwright/revision-visual/`. Afirma sin desborde, contraste AA del
+>   nombre medido en el navegador sobre el fondo del tema, y texto claro sobre los fondos oscuros.
+>   Revisadas a ojo.
+>
+> **Defectos reales que encontró PP7 (corregidos en `@impulza/analytics`):**
+> 1. **Instagram en Android se contaba como tablet:** la regla de tablet miraba solo lo que sigue a
+>    "android", y ese navegador repite "Android (35/15; …)" al final. Ahora es tablet un Android sin
+>    "mobile" en ninguna parte.
+> 2. **Las visitas desde la app de Pinterest se descartaban como bot** (el patrón "pinterest" era
+>    demasiado amplio). Ahora solo su agente de vista previa (`Pinterest/0.x`); su crawler cae por
+>    "bot".
+> 3. **El patrón `"bot\b"` nunca funcionó** (en un string, `\b` es un carácter de retroceso), así que
+>    `AhrefsBot;`, `SemrushBot;` o `MJ12bot;` contaban como visitas. Corregido, sin marcar como bot a
+>    los teléfonos Cubot.
+>
+> **Verificación:** 12 pruebas nuevas de user-agents (fallaban 4 con el código anterior), y la de
+> navegadores internos falla de punta a punta con la versión anterior (Instagram Android no llega
+> como teléfono). En `playwright.config.ts`, el servidor de producción recibe `NODE_ENV=production`:
+> con el `development` del `.env`, `next build` rompe el prerender. Las pruebas de conversión de video
+> tienen límite propio de 60 s (bajo la carga de todas las suites, 5 s no alcanzaban) y su limpieza
+> reintenta en Windows. `lint`/`typecheck` 26/26, `build` 15/15, `test` 23/23 (sin caché),
+> `@impulza/api` 347/347, Playwright 122/122 (+8 omitidas por diseño: variantes de escritorio de las
+> pruebas de teléfono).

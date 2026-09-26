@@ -798,6 +798,9 @@ importers:
 
   packages/e2e:
     devDependencies:
+      '@impulza/analytics':
+        specifier: workspace:*
+        version: link:../analytics
       '@impulza/database':
         specifier: workspace:*
         version: link:../database

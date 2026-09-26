@@ -49,6 +49,14 @@ Orden obligatorio: PL2 → PL5 → PL1 → PL3 → PL4. Cada entrada dice dónde
 - **2026-09-26 — PL4 terminada** (commit `feat(onboarding): ... (PL4)`), en "Lista para tu
   revisión". **Todo el backlog PL1-PL5 queda en "Lista para tu revisión"**: nada está marcado como
   terminado hasta tu aprobación. Siguiente: tu revisión de PL2, PL5, PL1, PL3 y PL4.
+- **Para decidir (fuera del backlog, no se tocó):** `.github/workflows/ci.yml` se dispara con
+  `push` a `main` y en pull requests, pero el repositorio trabaja en `master`: en GitHub no hay
+  ninguna ejecución del CI. Las verificaciones de esta sesión se corrieron a mano (lint, typecheck,
+  build, pruebas unitarias/integración y Playwright). Arreglo propuesto: `branches: [main, master]`.
+- **Pruebas que no pudieron correr en la nube** (entorno, no código): las 4 de MinIO de
+  `packages/storage` y las Playwright que suben archivos (`medios.spec.ts`, `fondo.spec.ts` "foto
+  clara"): la imagen de MinIO no se pudo descargar; y las que piden `FFMPEG_PATH` quedaron omitidas.
+  Todas las demás pasan (71 Playwright en móvil y escritorio).
 - Notas de entorno de esta sesión (no son de PL1-PL4): (1) con `packages/database/.env` presente,
   Prisma recarga variables y falla `revalidate-web.service.test.ts` ("no llama a nada si
   WEB_APP_URL…"); sin ese archivo pasa. (2) `admin.e2e.test.ts` "quitar la marca directo en la

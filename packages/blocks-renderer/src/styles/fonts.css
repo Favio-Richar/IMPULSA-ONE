@@ -1,0 +1,17 @@
+/*
+ * Parejas tipográficas de los temas Ejecutivo y Vibrante (PP4). Fuentes OFL-1.1 de los paquetes
+ * `@fontsource-variable/*`: cada app (`apps/web`, y `apps/dashboard` para la vista previa) las
+ * empaqueta en sus propios estáticos, así que **el navegador del visitante nunca le pide nada a un
+ * tercero** (sin Google Fonts: privacidad y una conexión menos).
+ *
+ * Declarar las cuatro no cuesta descargas: el navegador baja una fuente solo cuando hay texto que
+ * la usa, y solo el subconjunto (`unicode-range`) de los caracteres que aparecen — el latino para
+ * español. Todas usan `font-display: swap`: el texto se ve de inmediato con la fuente del sistema.
+ *
+ * Los nombres de familia que declaran ("Inter Variable", …) son los que usa
+ * `themeTokensToCssVariables` en `@impulza/validation`; una prueba verifica que coincidan.
+ */
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/source-serif-4";
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/bricolage-grotesque";

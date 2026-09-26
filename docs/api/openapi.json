@@ -1696,6 +1696,15 @@
                           "organization"
                         ]
                       },
+                      "family": {
+                        "nullable": true,
+                        "type": "string",
+                        "enum": [
+                          "ejecutivo",
+                          "vibrante",
+                          "clasico"
+                        ]
+                      },
                       "editable": {
                         "type": "boolean"
                       },
@@ -1716,6 +1725,7 @@
                       "name",
                       "code",
                       "source",
+                      "family",
                       "editable",
                       "tokens",
                       "createdAt",
@@ -1823,6 +1833,15 @@
                         "organization"
                       ]
                     },
+                    "family": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "ejecutivo",
+                        "vibrante",
+                        "clasico"
+                      ]
+                    },
                     "editable": {
                       "type": "boolean"
                     },
@@ -1843,6 +1862,7 @@
                     "name",
                     "code",
                     "source",
+                    "family",
                     "editable",
                     "tokens",
                     "createdAt",
@@ -1941,6 +1961,15 @@
                         "organization"
                       ]
                     },
+                    "family": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "ejecutivo",
+                        "vibrante",
+                        "clasico"
+                      ]
+                    },
                     "editable": {
                       "type": "boolean"
                     },
@@ -1961,6 +1990,7 @@
                     "name",
                     "code",
                     "source",
+                    "family",
                     "editable",
                     "tokens",
                     "createdAt",
@@ -2076,6 +2106,15 @@
                         "organization"
                       ]
                     },
+                    "family": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "ejecutivo",
+                        "vibrante",
+                        "clasico"
+                      ]
+                    },
                     "editable": {
                       "type": "boolean"
                     },
@@ -2096,6 +2135,7 @@
                     "name",
                     "code",
                     "source",
+                    "family",
                     "editable",
                     "tokens",
                     "createdAt",
@@ -2282,6 +2322,15 @@
                         "organization"
                       ]
                     },
+                    "family": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "ejecutivo",
+                        "vibrante",
+                        "clasico"
+                      ]
+                    },
                     "editable": {
                       "type": "boolean"
                     },
@@ -2302,6 +2351,7 @@
                     "name",
                     "code",
                     "source",
+                    "family",
                     "editable",
                     "tokens",
                     "createdAt",
@@ -2936,6 +2986,15 @@
                         "organization"
                       ]
                     },
+                    "family": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "ejecutivo",
+                        "vibrante",
+                        "clasico"
+                      ]
+                    },
                     "editable": {
                       "type": "boolean"
                     },
@@ -2959,6 +3018,7 @@
                     "name",
                     "code",
                     "source",
+                    "family",
                     "editable",
                     "tokens",
                     "createdAt",

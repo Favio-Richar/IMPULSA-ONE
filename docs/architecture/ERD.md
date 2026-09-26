@@ -83,6 +83,9 @@ Site/Page (N) ──1 Template (opcional, origen de la página)
 - **BlockVersion**: id, block_id, version_number, config (JSON tipado por `type`), created_at.
 - **Theme**: id, organization_id (nullable si es tema global del catálogo), tokens (paleta,
   tipografía, espaciado).
+  - PP4: `tokens.fontFamily` admite además las parejas `executive` y `vibrant` (títulos + texto,
+    fuentes alojadas en el propio sitio). La línea del catálogo (`ejecutivo`/`vibrante`/`clasico`)
+    no es columna: la API la deriva de `code` con `THEME_CATALOG`.
 - **Template**: id, name, industry, objective, style, preview_url, blocks_seed.
 
 ## 4. Media

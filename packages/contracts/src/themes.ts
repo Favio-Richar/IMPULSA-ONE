@@ -7,6 +7,11 @@ export const themeResponse = z.object({
   /** Identificador estable del catálogo global (`claro-profesional`, …). `null` en un tema propio. */
   code: z.string().nullable(),
   source: z.enum(["catalog", "organization"]),
+  /**
+   * Línea del catálogo (PP4): `ejecutivo` (sobrio, serif en títulos), `vibrante` (juvenil, más
+   * color) o `clasico` (los primeros temas). `null` en un tema propio de la organización.
+   */
+  family: z.enum(["ejecutivo", "vibrante", "clasico"]).nullable(),
   /** Los temas del catálogo se ven y se aplican, pero solo se editan duplicándolos. */
   editable: z.boolean(),
   /**

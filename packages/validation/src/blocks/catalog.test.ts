@@ -202,3 +202,29 @@ describe("degradación controlada de bloques guardados (F2.4)", () => {
     });
   });
 });
+
+describe("encabezado de perfil (PP4)", () => {
+  const schema = BLOCK_CATALOG.profile.schema;
+  const cover = { url: "https://cdn.example.com/portada.webp", alt: "Oficina frente al mar" };
+
+  it("una configuración anterior, sin portada ni redes, sigue siendo válida sin cambios", () => {
+    const stored = { name: "Ana", headline: "Abogada", verified: true };
+    expect(parseStoredBlock("profile", 1, stored)).toEqual({ renderable: true, config: stored });
+  });
+
+  it("acepta portada y hasta 8 redes", () => {
+    const socials = Array.from({ length: 8 }, (_, index) => ({
+      network: "instagram",
+      url: `https://instagram.com/ana${index}`,
+    }));
+    expect(schema.safeParse({ name: "Ana", cover, socials }).success).toBe(true);
+    expect(schema.safeParse({ name: "Ana", cover, socials: [...socials, socials[0]] }).success).toBe(false);
+  });
+
+  it("rechaza una red desconocida o un enlace peligroso en la fila de redes", () => {
+    expect(schema.safeParse({ name: "Ana", socials: [{ network: "myspace", url: "https://x.com" }] }).success).toBe(false);
+    expect(
+      schema.safeParse({ name: "Ana", socials: [{ network: "instagram", url: "javascript:alert(1)" }] }).success,
+    ).toBe(false);
+  });
+});

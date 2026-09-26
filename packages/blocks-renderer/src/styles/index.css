@@ -1,0 +1,4 @@
+/* Punto de entrada de estilos del render de sitios (`@impulza/blocks-renderer/styles.css`). */
+@import "./fonts.css";
+@import "./prose.css";
+@import "./site.css";

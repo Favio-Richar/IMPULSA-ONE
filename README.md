@@ -6,8 +6,9 @@ captación, reservas, ventas y analítica) desde una sola URL.
 **Estado actual: Fase 4 — SaaS comercial — en progreso (backlog en `docs/BACKLOG_FASE_4.md`;
 F4.1–F4.5 terminadas; F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.
 Por delante de F4.9 va la página pública premium (`docs/BACKLOG_PAGINA_PREMIUM.md`): PP1 y PP2
-(medios propios y selector de imágenes) terminadas en local; PP3 (fondo premium) construida y
-probada, en espera de que se apruebe el contenido de la biblioteca de videos.** Fase 2
+(medios propios y selector de imágenes) y PP4 (temas Ejecutivo y Vibrante, encabezado de perfil)
+terminadas en local; PP3 (fondo premium) construida y probada, en espera de que se apruebe el
+contenido de la biblioteca de videos.** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
@@ -1182,6 +1183,21 @@ contenido). Se aplica en vivo, como el tema, y la página pública se actualiza 
 - **En local**, para que la página pública se actualice sin publicar, `apps/api` necesita
   `WEB_APP_URL` y `WEB_REVALIDATE_SECRET` (el mismo `REVALIDATE_SECRET` de `apps/web`). Sin ellas el
   aviso no se envía, igual que antes (no-op documentado).
+
+## Temas Ejecutivo y Vibrante, y encabezado de perfil (PP4)
+
+- **Dos líneas nuevas de temas**, con pareja tipográfica real (una fuente para títulos y otra para
+  el texto): **Ejecutivo** (Marino, Grafito, Borgoña — serif sobria en títulos) y **Vibrante**
+  (Coral, Violeta, Turquesa — más color, títulos expresivos). En el panel, "Apariencia" agrupa los
+  temas por línea y cada tarjeta muestra su tipografía y su botón. Todos verificados AA.
+- **Fuentes alojadas en el propio sitio:** paquetes `@fontsource-variable/*` (licencia OFL) que cada
+  app empaqueta en sus estáticos. El visitante nunca le pide fuentes a Google ni a otro tercero, y
+  solo descarga la que usa el tema (subconjunto latino, `font-display: swap`).
+- **Encabezado de perfil:** el bloque perfil acepta una portada, con el avatar montado sobre su
+  borde, y una fila de hasta 8 redes con su logo real bajo la biografía. Ambos opcionales: los
+  perfiles existentes se ven igual.
+- **Al desplegar sobre una base existente**, correr `pnpm --filter @impulza/database run db:seed`
+  para que aparezcan los temas nuevos (idempotente).
 
 ## Soporte (F4.5)
 

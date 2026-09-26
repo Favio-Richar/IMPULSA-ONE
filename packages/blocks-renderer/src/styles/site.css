@@ -1,0 +1,7 @@
+/*
+ * Reglas del contenedor de todo sitio (`SiteBackdrop`, con `data-site-root`): los títulos usan la
+ * fuente de títulos del tema (PP4). Con `:where` para no ganarle a una clase puntual de un bloque.
+ */
+[data-site-root] :where(h1, h2, h3, h4) {
+  font-family: var(--site-font-heading, inherit);
+}

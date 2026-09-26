@@ -52,11 +52,14 @@ export function SiteBackdrop({
   const style = {
     ...themeTokensToCssVariables(theme),
     ...(background ? backgroundTextCssVariables(background.text) : {}),
+    fontFamily: "var(--site-font-family)",
   } as CSSProperties;
 
   return (
     <div
       style={style}
+      // Ancla de `styles/site.css`: los títulos usan `--site-font-heading` (PP4).
+      data-site-root=""
       data-background={background?.kind ?? "theme"}
       className={`relative isolate bg-[var(--site-color-background)] text-[var(--site-color-foreground)] ${className}`}
     >

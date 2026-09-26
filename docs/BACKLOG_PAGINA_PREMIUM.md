@@ -27,7 +27,7 @@ Y todas comparten estas **reglas de la página pública**:
 | PP1 — Almacenamiento y subida de imágenes | Terminada (local; falta que Favio cargue las credenciales de R2) |
 | PP2 — Biblioteca de medios y selector en los bloques | Terminada (local) |
 | PP3 — Fondo premium de la página (color, degradado, imagen, video de biblioteca) | En progreso (falta el contenido de la biblioteca de videos, que aprueba Favio) |
-| PP4 — Familias de temas "Ejecutivo" y "Vibrante" y encabezado de perfil | Pendiente |
+| PP4 — Familias de temas "Ejecutivo" y "Vibrante" y encabezado de perfil | Terminada (local) |
 | PP5 — Botón principal fijo en móvil y animaciones de entrada | Pendiente |
 | PP6 — Video de fondo propio (subida y transcodificación) | Pendiente |
 | PP7 — Verificación de rendimiento y navegadores internos | Pendiente |
@@ -187,6 +187,55 @@ Y todas comparten estas **reglas de la página pública**:
   el navegador del visitante), todos con contraste AA verificado.
 - Encabezado de perfil con avatar sobre la portada, nombre, verificación, bio y fila de redes con
   logos reales.
+
+> **Estado (2026-09-25): terminada en local.**
+>
+> - **Parejas tipográficas alojadas en el propio sitio:** `fontFamily` suma `executive` (Source
+>   Serif 4 en títulos + Inter en texto) y `vibrant` (Bricolage Grotesque + Manrope). Son fuentes
+>   OFL-1.1 de `@fontsource-variable/*`, declaradas en `packages/blocks-renderer/src/styles/fonts.css`
+>   y empaquetadas por cada app en sus propios estáticos (`/_next/static/media/`): **el navegador del
+>   visitante no le pide nada a Google ni a ningún tercero**. Solo se descarga la fuente que el tema
+>   usa y el subconjunto latino (~25–50 KB cada una), con `font-display: swap` (no frena el LCP) y
+>   pila del sistema de respaldo. Nueva variable `--site-font-heading` para `h1`–`h4`
+>   (`[data-site-root]` en `SiteBackdrop`); en las familias anteriores vale lo mismo que el texto,
+>   así que los sitios existentes no cambian.
+> - **Catálogo por líneas:** `THEME_FAMILIES` (`ejecutivo`, `vibrante`, `clasico`) y 6 temas nuevos:
+>   Ejecutivo — Marino, Grafito, Borgoña; Vibrante — Coral, Violeta, Turquesa. Fondos siempre claros
+>   (los vibrantes, teñidos), bordes moderados, sombras discretas. La API devuelve `family` en cada
+>   tema (sale del catálogo en código, sin migración; `null` en los propios) y el panel agrupa la
+>   sección "Apariencia" por línea, con cada tarjeta mostrando su pareja tipográfica real y su botón.
+> - **Contraste:** los 11 temas del catálogo alcanzan AA también en pares que el esquema no exigía y
+>   el render sí usa — texto secundario sobre tarjeta, y el primario como **texto** de enlaces y de
+>   botones de contorno (≥ 4,5 sobre fondo y tarjeta, no solo 3). Nueva prueba del catálogo.
+> - **Encabezado de perfil:** el bloque perfil suma `cover` (portada) y `socials` (hasta 8 redes con
+>   su logo real), ambos opcionales y **sin subir la versión del esquema** (un perfil guardado sigue
+>   igual; un despliegue anterior ignora los campos nuevos). La portada no lleva texto encima: el
+>   avatar se monta sobre su borde con un marco del color del fondo, y nombre, verificación, frase,
+>   bio y redes van debajo, sobre el fondo de la página (cuyo contraste ya garantiza PP3). Redes en
+>   círculos de 44 px (`SocialIconLinks`, compartido con el bloque "redes"). La portada hereda todas
+>   las reglas de imágenes: texto alternativo obligatorio al guardar, solo medios propios de la
+>   organización, `srcset` y prioridad alta, y bloqueo de borrado mientras esté en uso.
+> - **Constructor:** campos "Portada" (guía 16:9) y "Redes bajo la biografía" en el bloque perfil.
+>
+> **Verificación:** pruebas unitarias de las parejas (títulos ≠ texto, respaldo del sistema, familias
+> anteriores intactas), del catálogo (líneas con ≥ 3 temas y su pareja, AA en los pares nuevos, tema
+> por defecto sin cambios), del esquema del perfil (configuración anterior válida sin cambios, 8
+> redes como máximo, red desconocida o `javascript:` rechazados), de `ProfileBlock` (4) y de
+> `fonts.css` (cada fuente nombrada por un tema está declarada; todas OFL, locales y con `swap`).
+> e2e de API: `family` por tema y `null` en la copia, tema propio con pareja aceptado y nombre de
+> fuente libre rechazado, portada sin texto alternativo → 422 en `cover.alt`, red con `javascript:`
+> rechazada, y portada con imagen de otra organización rechazada. Playwright en móvil y escritorio:
+> aplicar "Marino" desde el panel y ver en el constructor los títulos en Source Serif 4 y el texto en
+> Inter, con la fuente **cargada de verdad y servida desde el mismo origen**; encabezado con el
+> avatar cruzando el borde de la portada, centrado, redes de ≥ 44 px y sin desplazamiento horizontal.
+> Confirmado que fallan al romper el nombre de una fuente y al quitar `family` de la respuesta.
+> Revisión visual con capturas reales de la vista previa (Marino, Grafito, Coral, Violeta; móvil y
+> escritorio). `@impulza/api` 335/335, `lint`/`typecheck` 26/26, `build` 15/15, `test` 25/25,
+> Playwright 69/69. OpenAPI regenerado.
+>
+> **Despliegue:** los 6 temas nuevos llegan a una base existente con
+> `pnpm --filter @impulza/database run db:seed` (upsert idempotente por `code`; no toca los temas
+> propios de las organizaciones).
 
 ### PP5 — Botón principal y animaciones
 **Criterios de aceptación:**

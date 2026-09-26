@@ -188,26 +188,40 @@ function ThemePicker({ organizationId, siteId }: { organizationId: string; siteI
   }
 
   const effectiveThemeId = effectiveThemeQuery.data.id;
+  const groups = THEME_GROUPS.map((group) => ({
+    ...group,
+    themes: themesQuery.data.filter((theme) => theme.family === group.family),
+  })).filter((group) => group.themes.length > 0);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Apariencia</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {themesQuery.data.map((theme) => (
-            <ThemeCard
-              key={theme.id}
-              theme={theme}
-              selected={theme.id === effectiveThemeId}
-              disabled={assignMutation.isPending}
-              onSelect={() => assignMutation.mutate(theme.id)}
-            />
-          ))}
-        </div>
+      <CardContent className="flex flex-col gap-6">
+        {groups.map((group) => (
+          <section key={group.family ?? "propios"} aria-labelledby={`temas-${group.family ?? "propios"}`}>
+            <div className="mb-3">
+              <h3 id={`temas-${group.family ?? "propios"}`} className="text-sm font-semibold text-foreground">
+                {group.label}
+              </h3>
+              <p className="text-xs text-muted-foreground">{group.description}</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {group.themes.map((theme) => (
+                <ThemeCard
+                  key={theme.id}
+                  theme={theme}
+                  selected={theme.id === effectiveThemeId}
+                  disabled={assignMutation.isPending}
+                  onSelect={() => assignMutation.mutate(theme.id)}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
         {assignMutation.isError ? (
-          <p role="alert" className="mt-3 text-sm text-danger">
+          <p role="alert" className="text-sm text-danger">
             No pudimos aplicar el tema. Intenta de nuevo.
           </p>
         ) : null}
@@ -215,6 +229,14 @@ function ThemePicker({ organizationId, siteId }: { organizationId: string; siteI
     </Card>
   );
 }
+
+/** Líneas del catálogo (PP4) en el orden en que se ofrecen; `null` agrupa los temas propios. */
+const THEME_GROUPS: ReadonlyArray<{ family: ThemeResponse["family"]; label: string; description: string }> = [
+  { family: "ejecutivo", label: "Ejecutivo", description: "Sobrio y formal, con títulos en serif." },
+  { family: "vibrante", label: "Vibrante", description: "Juvenil y con más color." },
+  { family: "clasico", label: "Clásicos", description: "Neutros, con las fuentes del dispositivo." },
+  { family: null, label: "Tus temas", description: "Copias que personalizaste." },
+];
 
 function ThemeCard({
   theme,
@@ -235,26 +257,42 @@ function ThemeCard({
       type="button"
       onClick={onSelect}
       disabled={disabled || selected}
+      data-theme-code={theme.code ?? undefined}
       className={
         "flex flex-col gap-2 rounded-lg border p-3 text-left transition-colors disabled:cursor-default " +
         (selected ? "border-primary ring-2 ring-primary" : "border-border hover:border-border-strong")
       }
       style={vars as React.CSSProperties}
     >
+      {/* Muestra con la pareja tipográfica real del tema (títulos + texto) y su botón. */}
       <div
-        className="flex h-14 items-center gap-2 rounded-md border p-2"
+        aria-hidden="true"
+        className="flex h-16 w-full items-center gap-3 rounded-md border px-3"
         style={{
           background: "var(--site-color-background)",
           borderColor: "var(--site-color-border)",
         }}
       >
-        <span className="h-full w-2 rounded-full" style={{ background: "var(--site-color-primary)" }} />
-        <span className="text-xs" style={{ color: "var(--site-color-foreground)" }}>
+        <span
+          className="text-2xl font-semibold leading-none"
+          style={{ color: "var(--site-color-foreground)", fontFamily: "var(--site-font-heading)" }}
+        >
           Aa
         </span>
-        <span className="text-xs" style={{ color: "var(--site-color-muted-foreground)" }}>
-          Aa
+        <span
+          className="text-xs"
+          style={{ color: "var(--site-color-muted-foreground)", fontFamily: "var(--site-font-family)" }}
+        >
+          Texto
         </span>
+        <span
+          className="ml-auto h-6 w-10 rounded-[var(--site-radius)]"
+          style={
+            tokens.buttonStyle === "outline"
+              ? { border: "2px solid var(--site-color-primary)" }
+              : { background: "var(--site-color-primary)" }
+          }
+        />
       </div>
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-foreground">{theme.name}</span>

@@ -327,6 +327,13 @@ describe("Biblioteca de medios (e2e) — PP1 / ADR-006", () => {
 
       const rejected = await b.agent.post(path).set(CSRF_HEADERS).send({ type: "image", config: { image: { url: imageOfA.url, alt: "Ajena" } } }).expect(422);
       expect(rejected.body.message).toMatch(/otra organización/);
+      // Tampoco como portada del perfil (PP4): la verificación recorre toda la configuración.
+      const asCover = await b.agent
+        .post(path)
+        .set(CSRF_HEADERS)
+        .send({ type: "profile", config: { name: "B", cover: { url: imageOfA.url, alt: "Ajena" } } })
+        .expect(422);
+      expect(asCover.body.message).toMatch(/otra organización/);
     });
 
     it("tampoco una imagen que todavía se está procesando; una URL externa sigue permitida", async () => {

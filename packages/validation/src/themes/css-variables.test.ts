@@ -62,4 +62,22 @@ describe("themeTokensToCssVariables (F2.7)", () => {
       expect(vars["--site-shadow"].split(",").length).toBeLessThanOrEqual(2);
     }
   });
+
+  it("las parejas tipográficas (PP4) separan títulos y texto, y siempre caen a una fuente del sistema", () => {
+    for (const fontFamily of ["executive", "vibrant"] as const) {
+      const vars = themeTokensToCssVariables({ ...baseTokens, fontFamily });
+
+      expect(vars["--site-font-heading"]).not.toBe(vars["--site-font-family"]);
+      // Si la fuente propia no llega (red lenta, bloqueada), el texto se sigue viendo bien.
+      expect(vars["--site-font-family"]).toMatch(/(sans-serif|serif)$/);
+      expect(vars["--site-font-heading"]).toMatch(/(sans-serif|serif)$/);
+    }
+  });
+
+  it("las familias del sistema usan la misma fuente en títulos y texto (nada cambia en temas previos)", () => {
+    for (const fontFamily of ["system", "serif", "geometric", "humanist"] as const) {
+      const vars = themeTokensToCssVariables({ ...baseTokens, fontFamily });
+      expect(vars["--site-font-heading"]).toBe(vars["--site-font-family"]);
+    }
+  });
 });

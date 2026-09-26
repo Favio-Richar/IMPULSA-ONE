@@ -187,6 +187,37 @@ describe("Blocks (e2e) — F2.4", () => {
         .expect(422);
     });
 
+    it("encabezado de perfil (PP4): portada con texto alternativo obligatorio y fila de redes validada", async () => {
+      const { agent, basePath } = await createPageWithOwner();
+      const cover = { url: "https://ejemplo.com/portada.jpg", alt: "Frente del local" };
+
+      const rejected = await agent
+        .post(basePath)
+        .set(CSRF_HEADERS)
+        .send({ type: "profile", config: { name: "Ana", cover: { url: cover.url, alt: "" } } })
+        .expect(422);
+      expect(rejected.body.issues).toEqual([{ path: "cover.alt", message: expect.stringMatching(/decorativa/) }]);
+
+      await agent
+        .post(basePath)
+        .set(CSRF_HEADERS)
+        .send({ type: "profile", config: { name: "Ana", socials: [{ network: "instagram", url: "javascript:alert(1)" }] } })
+        .expect(422);
+
+      const created = await agent
+        .post(basePath)
+        .set(CSRF_HEADERS)
+        .send({
+          type: "profile",
+          config: { name: "Ana", cover, socials: [{ network: "instagram", url: "https://instagram.com/ana" }] },
+        })
+        .expect(201);
+      // Sin subir la versión del esquema: un perfil anterior sigue siendo v1 y válido.
+      expect(created.body.configSchemaVersion).toBe(1);
+      expect(created.body.config.cover).toEqual(cover);
+      expect(created.body.config.socials).toEqual([{ network: "instagram", url: "https://instagram.com/ana" }]);
+    });
+
     it("rechaza enlaces javascript: y data: en cualquier bloque", async () => {
       const { agent, basePath } = await createPageWithOwner();
 

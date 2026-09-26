@@ -28,10 +28,15 @@ const paletteSchema = z.object({
 
 /**
  * Familias tipográficas permitidas. Lista blanca por dos razones: evita que alguien inyecte una
- * cadena arbitraria en un `font-family`, y mantiene la promesa de "tipografía clara" sin cargar
- * fuentes de terceros que además tendrían implicancias de privacidad.
+ * cadena arbitraria en un `font-family`, y mantiene la promesa de "tipografía clara" sin pedirle
+ * fuentes a un tercero desde el navegador del visitante (implicancias de privacidad).
+ *
+ * Las cuatro primeras usan fuentes del sistema. `executive` y `vibrant` (PP4) son parejas reales
+ * —una fuente para títulos y otra para el texto— **alojadas en el propio sitio** (paquetes
+ * `@fontsource-variable/*` con licencia OFL, empaquetados por cada app): ver
+ * `themeTokensToCssVariables` y `packages/blocks-renderer/src/styles/fonts.css`.
  */
-export const FONT_FAMILIES = ["system", "serif", "geometric", "humanist"] as const;
+export const FONT_FAMILIES = ["system", "serif", "geometric", "humanist", "executive", "vibrant"] as const;
 
 // "Bordes moderados, nada excesivamente redondo" es dirección visual obligatoria (CLAUDE.md), así
 // que no existe una opción "pill" para el marco general del tema.

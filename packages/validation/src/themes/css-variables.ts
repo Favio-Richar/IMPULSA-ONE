@@ -12,14 +12,30 @@ import type { ThemeTokens } from "./tokens.js";
 // sombra "discreta", misma escala de radio "moderada") para que el producto entero —panel interno
 // y sitios públicos— se sienta de la misma familia visual aunque el color varíe por tenant.
 //
-// Sin fuentes de terceros (mismo criterio que `packages/ui`, "sin fuente custom todavía"): cada
-// familia usa únicamente fuentes del sistema operativo, así que no hay carga de red ni las
-// implicancias de privacidad de un proveedor externo de fuentes.
-const FONT_STACKS: Record<ThemeTokens["fontFamily"], string> = {
-  system: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  serif: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif',
-  geometric: 'ui-sans-serif, "Century Gothic", Futura, "Segoe UI", system-ui, sans-serif',
-  humanist: 'ui-sans-serif, "Segoe UI", "Noto Sans", Calibri, "Helvetica Neue", Arial, sans-serif',
+// Sin fuentes pedidas a terceros: las familias clásicas usan fuentes del sistema operativo, y las
+// parejas `executive`/`vibrant` (PP4) usan fuentes OFL **alojadas en el propio sitio** (declaradas
+// en `packages/blocks-renderer/src/styles/fonts.css`, que cada app empaqueta en sus estáticos). El
+// navegador solo descarga una fuente cuando hay texto que la usa, y solo el subconjunto de
+// caracteres que aparece (latino para español), con `font-display: swap` para no frenar el LCP.
+// Cada pila termina en fuentes del sistema: si la fuente propia no cargó, el texto se ve igual.
+const SYSTEM_SANS = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const SYSTEM_SERIF = 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
+
+const FONT_STACKS: Record<ThemeTokens["fontFamily"], { body: string; heading: string }> = {
+  system: { body: SYSTEM_SANS, heading: SYSTEM_SANS },
+  serif: { body: SYSTEM_SERIF, heading: SYSTEM_SERIF },
+  geometric: {
+    body: 'ui-sans-serif, "Century Gothic", Futura, "Segoe UI", system-ui, sans-serif',
+    heading: 'ui-sans-serif, "Century Gothic", Futura, "Segoe UI", system-ui, sans-serif',
+  },
+  humanist: {
+    body: 'ui-sans-serif, "Segoe UI", "Noto Sans", Calibri, "Helvetica Neue", Arial, sans-serif',
+    heading: 'ui-sans-serif, "Segoe UI", "Noto Sans", Calibri, "Helvetica Neue", Arial, sans-serif',
+  },
+  // Sobria y formal: serif editorial para los títulos, sans neutra y muy legible para el texto.
+  executive: { body: `"Inter Variable", ${SYSTEM_SANS}`, heading: `"Source Serif 4 Variable", ${SYSTEM_SERIF}` },
+  // Juvenil: grotesca expresiva para los títulos, sans redondeada para el texto.
+  vibrant: { body: `"Manrope Variable", ${SYSTEM_SANS}`, heading: `"Bricolage Grotesque Variable", ${SYSTEM_SANS}` },
 };
 
 const RADIUS_VALUES: Record<ThemeTokens["radius"], string> = {
@@ -63,6 +79,8 @@ export interface ThemeCssVariables {
   "--site-theme-muted-foreground": string;
   "--site-theme-border": string;
   "--site-font-family": string;
+  /** Fuente de los títulos (`h1`–`h4`). Igual a `--site-font-family` salvo en las parejas (PP4). */
+  "--site-font-heading": string;
   "--site-radius": string;
   "--site-shadow": string;
   "--site-gap": string;
@@ -84,7 +102,8 @@ export function themeTokensToCssVariables(tokens: ThemeTokens): ThemeCssVariable
     "--site-theme-foreground": tokens.palette.foreground,
     "--site-theme-muted-foreground": tokens.palette.mutedForeground,
     "--site-theme-border": tokens.palette.border,
-    "--site-font-family": FONT_STACKS[tokens.fontFamily],
+    "--site-font-family": FONT_STACKS[tokens.fontFamily].body,
+    "--site-font-heading": FONT_STACKS[tokens.fontFamily].heading,
     "--site-radius": RADIUS_VALUES[tokens.radius],
     "--site-shadow": SHADOW_VALUES[tokens.shadow],
     "--site-gap": density.gap,

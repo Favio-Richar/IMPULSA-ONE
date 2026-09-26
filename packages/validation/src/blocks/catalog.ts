@@ -36,12 +36,20 @@ export type BlockType = (typeof BLOCK_TYPES)[number];
 
 const alignmentSchema = z.enum(["left", "center", "right"]).default("left");
 
+const socialLinkSchema = z.object({ network: socialNetworkSchema, url: safeUrlSchema });
+
+// Encabezado de perfil (PP4): `cover` (portada detrás del avatar) y `socials` (fila de redes bajo la
+// bio) son opcionales y se agregaron sin subir la versión del esquema: una configuración anterior
+// sigue siendo válida tal cual, y un despliegue anterior que lea una nueva simplemente los ignora
+// (Zod descarta las claves que no conoce) en vez de dejar de mostrar el bloque.
 export const profileSchema = z.object({
   name: plainTextSchema(120),
   headline: plainTextSchema(160).optional(),
   bio: richTextSchema.optional(),
   avatar: imageSchema.optional(),
+  cover: imageSchema.optional(),
   verified: z.boolean().default(false),
+  socials: z.array(socialLinkSchema).max(8).optional(),
 });
 
 export const heroSchema = z.object({
@@ -67,7 +75,7 @@ export const linkSchema = z.object({
 
 export const socialSchema = z.object({
   links: z
-    .array(z.object({ network: socialNetworkSchema, url: safeUrlSchema }))
+    .array(socialLinkSchema)
     .min(1)
     .max(12),
   style: z.enum(["icons", "buttons"]).default("icons"),

@@ -43,7 +43,23 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
       { name: "headline", label: "Frase corta", optional: true, control: { kind: "text", maxLength: 160 } },
       { name: "bio", label: "Biografía", optional: true, control: { kind: "richtext" } },
       imageField("avatar", "Foto de perfil", true, "square"),
+      imageField("cover", "Portada", true, "wide"),
       { name: "verified", label: "Cuenta verificada", control: { kind: "boolean" } },
+      {
+        name: "socials",
+        label: "Redes bajo la biografía",
+        optional: true,
+        control: {
+          kind: "array",
+          min: 0,
+          max: 8,
+          itemLabel: "Red",
+          fields: [
+            { name: "network", label: "Red", control: { kind: "select", options: SOCIAL_NETWORK_OPTIONS } },
+            { name: "url", label: "Enlace", control: { kind: "url" } },
+          ],
+        },
+      },
     ],
     seedConfig: () => ({ name: "Tu nombre", verified: false }),
   },

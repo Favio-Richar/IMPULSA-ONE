@@ -7,7 +7,7 @@ import {
   UnprocessableEntityException,
 } from "@nestjs/common";
 import type { Prisma as PrismaTypes, PrismaClient, Theme } from "@impulza/database";
-import { DEFAULT_THEME_CODE, themeTokensSchema, type ThemeTokens } from "@impulza/validation";
+import { DEFAULT_THEME_CODE, getCatalogTheme, themeTokensSchema, type ThemeFamily, type ThemeTokens } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
 
@@ -21,6 +21,8 @@ export interface ThemeView {
   name: string;
   code: string | null;
   source: "catalog" | "organization";
+  /** Línea del catálogo (PP4) para agrupar en el panel; `null` en un tema propio. */
+  family: ThemeFamily | null;
   editable: boolean;
   tokens: unknown;
   createdAt: Date;
@@ -42,6 +44,9 @@ export class ThemesService {
       name: theme.name,
       code: theme.code,
       source: isCatalog ? "catalog" : "organization",
+      // Sale del catálogo en código y no de una columna: es presentación, no dato del tenant, y así
+      // reordenar las líneas no pide migración.
+      family: isCatalog && theme.code !== null ? (getCatalogTheme(theme.code)?.family ?? null) : null,
       editable: !isCatalog,
       tokens: theme.tokens,
       createdAt: theme.createdAt,

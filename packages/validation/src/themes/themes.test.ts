@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AA_NORMAL_TEXT, AA_UI_COMPONENT, contrastRatio } from "../contrast.js";
-import { DEFAULT_THEME_CODE, getCatalogTheme, THEME_CATALOG } from "./catalog.js";
+import { DEFAULT_THEME_CODE, getCatalogTheme, THEME_CATALOG, THEME_FAMILIES } from "./catalog.js";
 import { themeTokensSchema } from "./tokens.js";
 
 const baseTokens = THEME_CATALOG[0]!.tokens;
@@ -46,6 +46,41 @@ describe("catálogo de temas (F2.5)", () => {
         AA_UI_COMPONENT,
       );
     }
+  });
+
+  it("en el catálogo, el texto secundario y el primario usado como texto también alcanzan AA", () => {
+    // Pares que el esquema no exige a un tema propio pero que el render sí usa: la descripción de
+    // un enlace (texto secundario) va sobre una tarjeta, y el primario es el color de los enlaces
+    // de texto y del texto de un botón de contorno — ahí es texto, no un componente, y pide 4,5.
+    for (const { code, tokens } of THEME_CATALOG) {
+      const { palette } = tokens;
+      expect(contrastRatio(palette.mutedForeground, palette.surface), `${code}: secundario/superficie`).toBeGreaterThanOrEqual(
+        AA_NORMAL_TEXT,
+      );
+      expect(contrastRatio(palette.primary, palette.background), `${code}: enlace/fondo`).toBeGreaterThanOrEqual(
+        AA_NORMAL_TEXT,
+      );
+      expect(contrastRatio(palette.primary, palette.surface), `${code}: enlace/superficie`).toBeGreaterThanOrEqual(
+        AA_NORMAL_TEXT,
+      );
+    }
+  });
+
+  it("las líneas Ejecutivo y Vibrante (PP4) tienen al menos tres temas con su pareja tipográfica", () => {
+    for (const family of THEME_FAMILIES) {
+      expect(THEME_CATALOG.filter((theme) => theme.family === family).length, family).toBeGreaterThanOrEqual(3);
+    }
+    for (const theme of THEME_CATALOG.filter((entry) => entry.family === "ejecutivo")) {
+      expect(theme.tokens.fontFamily, theme.code).toBe("executive");
+    }
+    for (const theme of THEME_CATALOG.filter((entry) => entry.family === "vibrante")) {
+      expect(theme.tokens.fontFamily, theme.code).toBe("vibrant");
+    }
+  });
+
+  it("el tema por defecto sigue siendo el mismo (los sitios sin tema elegido no cambian de aspecto)", () => {
+    expect(DEFAULT_THEME_CODE).toBe("claro-profesional");
+    expect(getCatalogTheme(DEFAULT_THEME_CODE)?.family).toBe("clasico");
   });
 
   it("todos los fondos son claros, como exige la dirección visual del proyecto", () => {

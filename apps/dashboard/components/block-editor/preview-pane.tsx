@@ -62,15 +62,13 @@ export function PreviewPane({
           style={{ width: DEVICES[device].width, maxWidth: "100%" }}
         >
           <SiteBackdrop theme={tokens} background={resolvedBackground} fixed={false} className="min-h-full">
-            <div style={{ fontFamily: "var(--site-font-family)" }}>
-              {visibleBlocks.length === 0 ? (
-                <p className="p-10 text-center text-sm text-[var(--site-color-muted-foreground)]">
-                  Agrega un bloque para ver la vista previa.
-                </p>
-              ) : (
-                <PageBlocks blocks={visibleBlocks} buttonStyle={tokens.buttonStyle} mode="preview" />
-              )}
-            </div>
+            {visibleBlocks.length === 0 ? (
+              <p className="p-10 text-center text-sm text-[var(--site-color-muted-foreground)]">
+                Agrega un bloque para ver la vista previa.
+              </p>
+            ) : (
+              <PageBlocks blocks={visibleBlocks} buttonStyle={tokens.buttonStyle} mode="preview" />
+            )}
           </SiteBackdrop>
         </div>
       </div>

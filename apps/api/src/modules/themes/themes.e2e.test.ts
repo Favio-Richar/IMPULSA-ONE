@@ -3,7 +3,7 @@ import { Test } from "@nestjs/testing";
 import { siteThemeResponse, themeResponse } from "@impulza/contracts";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
 import type { PrismaClient } from "@impulza/database";
-import { DEFAULT_THEME_CODE, THEME_CATALOG } from "@impulza/validation";
+import { DEFAULT_THEME_CODE, getCatalogTheme, THEME_CATALOG, THEME_FAMILIES } from "@impulza/validation";
 import cookieParser from "cookie-parser";
 import type { Redis } from "ioredis";
 import request from "supertest";
@@ -201,6 +201,45 @@ describe("Themes (e2e) — F2.5", () => {
         .set(CSRF_HEADERS)
         .send({ name: "Mi versión" })
         .expect(200);
+    });
+  });
+
+  describe("líneas del catálogo (PP4)", () => {
+    it("cada tema del catálogo trae su línea; las copias propias no tienen ninguna", async () => {
+      const { agent, themesPath } = await createOrgWithOwner();
+
+      const list = await agent.get(themesPath).expect(200);
+      const catalog = list.body.filter((t: { source: string }) => t.source === "catalog");
+
+      for (const theme of catalog) {
+        expect(theme.family, theme.code).toBe(getCatalogTheme(theme.code)?.family);
+      }
+      // El contrato repite la lista de líneas (no depende de `@impulza/validation`): si divergen,
+      // esto lo delata.
+      expect(new Set(catalog.map((t: { family: string }) => t.family))).toEqual(new Set(THEME_FAMILIES));
+      const executive = catalog.find((t: { code: string }) => t.code === "ejecutivo-marino");
+      expect(executive.tokens.fontFamily).toBe("executive");
+
+      const copy = await agent.post(`${themesPath}/${executive.id}/duplicate`).set(CSRF_HEADERS).send({}).expect(201);
+      themeResponse.parse(copy.body);
+      expect(copy.body.family).toBeNull();
+      expect(copy.body.tokens.fontFamily).toBe("executive");
+    });
+
+    it("un tema propio puede usar las parejas tipográficas, pero no un nombre de fuente libre", async () => {
+      const { agent, themesPath } = await createOrgWithOwner();
+      const base = THEME_CATALOG[0]!.tokens;
+
+      await agent
+        .post(themesPath)
+        .set(CSRF_HEADERS)
+        .send({ name: "Vibrante propio", tokens: { ...base, fontFamily: "vibrant" } })
+        .expect(201);
+      await agent
+        .post(themesPath)
+        .set(CSRF_HEADERS)
+        .send({ name: "Fuente libre", tokens: { ...base, fontFamily: "'Inter Variable'; color: red" } })
+        .expect(422);
     });
   });
 

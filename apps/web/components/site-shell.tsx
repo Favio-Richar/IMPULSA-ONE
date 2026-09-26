@@ -18,33 +18,31 @@ export function SiteShell({ site, children }: { site: PublicSiteResponse; childr
 
   return (
     <SiteBackdrop theme={tokens} background={background} className="min-h-dvh">
-      <div style={{ fontFamily: "var(--site-font-family)" }}>
-        <header className="border-b border-[var(--site-color-border)]">
-          <Container className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-5">
-            <a href={`/${site.slug}`} className="text-lg font-semibold">
-              {site.name}
-            </a>
-            {site.pages.length > 1 ? (
-              <nav aria-label="Páginas del sitio">
-                <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                  {site.pages.map((page) => (
-                    <li key={page.slug}>
-                      <a
-                        href={page.isHome ? `/${site.slug}` : `/${site.slug}/${page.slug}`}
-                        className="text-[var(--site-color-muted-foreground)] hover:text-[var(--site-color-foreground)]"
-                      >
-                        {page.isHome ? "Inicio" : page.slug}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            ) : null}
-          </Container>
-        </header>
+      <header className="border-b border-[var(--site-color-border)]">
+        <Container className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-5">
+          <a href={`/${site.slug}`} className="text-lg font-semibold" style={{ fontFamily: "var(--site-font-heading)" }}>
+            {site.name}
+          </a>
+          {site.pages.length > 1 ? (
+            <nav aria-label="Páginas del sitio">
+              <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                {site.pages.map((page) => (
+                  <li key={page.slug}>
+                    <a
+                      href={page.isHome ? `/${site.slug}` : `/${site.slug}/${page.slug}`}
+                      className="text-[var(--site-color-muted-foreground)] hover:text-[var(--site-color-foreground)]"
+                    >
+                      {page.isHome ? "Inicio" : page.slug}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ) : null}
+        </Container>
+      </header>
 
-        <main>{children}</main>
-      </div>
+      <main>{children}</main>
     </SiteBackdrop>
   );
 }

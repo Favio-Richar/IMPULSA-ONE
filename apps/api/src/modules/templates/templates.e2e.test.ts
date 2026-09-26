@@ -2,7 +2,7 @@ import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { templateResponse } from "@impulza/contracts";
 import type { Prisma, PrismaClient } from "@impulza/database";
-import type { TemplateDefinition } from "@impulza/validation";
+import { TEMPLATE_CATALOG, type TemplateDefinition } from "@impulza/validation";
 import type { Redis } from "ioredis";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -146,6 +146,22 @@ describe("Templates (e2e) — PL1", () => {
 
     await request(httpServer).get(`/api/v1/templates/${PREFIX}-no-existe`).expect(404);
     await request(httpServer).get(`/api/v1/templates/${PREFIX}-rota`).expect(404);
+  });
+
+  it("sirve completo el catálogo real (PL3): ninguna plantilla sembrada queda fuera por inválida", async () => {
+    // Mismo upsert idempotente que el seed, para no depender de que alguien lo haya corrido.
+    for (const entry of TEMPLATE_CATALOG) {
+      const { code, ...data } = row(entry.code, entry);
+      await prisma.template.upsert({ where: { code: code }, update: data, create: { code, ...data } });
+    }
+
+    const response = await request(httpServer).get("/api/v1/templates").expect(200);
+    const served = z
+      .array(templateResponse)
+      .parse(response.body)
+      .filter((template) => !template.code.startsWith(PREFIX));
+
+    expect(served.map((template) => template.code)).toEqual(TEMPLATE_CATALOG.map((template) => template.code));
   });
 
   it("aplica límite de tasa por IP a la lista", async () => {

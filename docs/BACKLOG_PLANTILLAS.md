@@ -31,7 +31,7 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 |---|---|
 | PL1 — Modelo `Template` y migración | Lista para tu revisión (sin UI: se revisa por API y pruebas) |
 | PL2 — Familia de temas "Editorial oscuro" (ADR-008) | Lista para tu revisión (capturas mostradas en el chat) |
-| PL3 — Catálogo semilla de plantillas por rubro | Pendiente |
+| PL3 — Catálogo semilla de plantillas por rubro | Lista para tu revisión (capturas en la galería de PL4) |
 | PL4 — Selector de plantillas en onboarding y constructor | Pendiente |
 | PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio) | Lista para tu revisión (capturas mostradas en el chat) |
 
@@ -41,6 +41,8 @@ Orden obligatorio: PL2 → PL5 → PL1 → PL3 → PL4. Cada entrada dice dónde
 
 - **2026-09-26 — PL1 terminada** (commit `feat(templates): ... (PL1)`), en "Lista para tu revisión".
   Siguiente: PL3.
+- **2026-09-26 — PL3 terminada** (commit `feat(templates): catalogo semilla ... (PL3)`), en "Lista
+  para tu revisión". 7 plantillas sembradas. Siguiente: PL4.
 
 ### PL1 — Modelo `Template` y migración
 **Criterios de aceptación:**
@@ -122,6 +124,37 @@ Orden obligatorio: PL2 → PL5 → PL1 → PL3 → PL4. Cada entrada dice dónde
 - Ningún texto, logo ni imagen de Linktree/Beacons/Stan ni de las cuentas usadas como referencia —
   contenido íntegramente ficticio (ver restricción de ADR-008).
 - Seed en `packages/database/prisma/seed.ts`, igual que `THEME_CATALOG` hoy.
+
+> **Estado (2026-09-26): lista para revisión de Favio.** Las capturas de cada plantilla renderizada
+> salen de la galería de PL4 (ahí se ven en tamaño real, móvil y escritorio).
+>
+> - **7 plantillas** en `TEMPLATE_CATALOG` (`packages/validation/src/templates/catalog.ts`):
+>
+>   | Código | Rubro | Tema | Fondo | Acción principal |
+>   |---|---|---|---|---|
+>   | `profesional-servicios` | Profesional/Servicios | Ejecutivo marino | del tema | WhatsApp |
+>   | `cafe-gastronomia` | Café/Gastronomía | Editorial | degradado Arena | WhatsApp |
+>   | `comercio-tienda` | Comercio/Retail | Vibrante coral | del tema | WhatsApp |
+>   | `creador-personal` | Creador/Personal | **Oscuro Noche** (PL2) | degradado Grafito del tema | Enlace |
+>   | `salud-bienestar` | Salud/Bienestar | Océano | degradado Brisa | WhatsApp |
+>   | `eventos-turismo` | Eventos/Turismo | **Oscuro Índigo** (PL2) | degradado Medianoche del tema | WhatsApp |
+>   | `belleza-barberia` | Barbería y belleza (extra, PM §4) | Ejecutivo grafito | del tema | WhatsApp |
+>
+> - **Composición** (decisión 1: estructura ADR-008 + jerarquía del boceto): perfil, **una** acción
+>   principal, 1 enlace secundario, tarjetas de servicio con precio de ejemplo en CLP, reseñas y
+>   preguntas frecuentes donde el rubro las usa, y la fila de redes al final.
+> - **Contenido ficticio y marcado**: nombres "Tu …", bio que empieza con "Texto de ejemplo",
+>   precios, reseñas y respuestas "de ejemplo"; enlaces a `example.com` (dominio reservado para
+>   ejemplos), redes a la portada de cada red (nunca una cuenta), teléfono de relleno
+>   `+56900000000`. Sin imágenes: el perfil muestra el monograma (PP8) hasta que el cliente sube su
+>   foto. Sin formulario de contacto: sin conectar se vería vacío en la página publicada.
+> - **Contraste**: todas las combinaciones tema + fondo usadas están dentro de la matriz AA de PL2
+>   (`theme-background-matrix.test.ts`, 15 temas × 13 fondos).
+> - **Pruebas**: `catalog.test.ts` verifica cada criterio sobre el catálogo real (≥ 6, los 6 rubros,
+>   creador oscuro, perfil primero con texto de ejemplo, 1-2 enlaces/WhatsApp con una sola acción
+>   principal, servicio o galería, redes, sin URLs de terceros ni cuentas reales, sin nombrar a
+>   Linktree/Beacons/Stan). Seed idempotente comprobado (dos corridas, 7 filas). E2E: la API sirve
+>   el catálogo completo sin omitir ninguna plantilla.
 
 ### PL4 — Selector de plantillas en onboarding y constructor
 **Criterios de aceptación:**

@@ -31,7 +31,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 |---|---|---|
 | Registro, verificación de email, login, Google opcional, recuperación de contraseña, 2FA, sesiones/dispositivos | PM §8.1, ST §7 | Fase 1 |
 | Rate limiting y bloqueo temporal por abuso | ST §7, §15 | Fase 1 |
-| Onboarding guiado de 11 pasos (tipo de cuenta → objetivo → industria → nombre → slug → import redes → plantilla → perfil/CTA → preview → publicar → checklist) | PM §8.2 | Fase 2 — se construye en PL4 (`BACKLOG_PLANTILLAS.md`, decisión 2 de Favio) |
+| Onboarding guiado de 11 pasos (tipo de cuenta → objetivo → industria → nombre → slug → import redes → plantilla → perfil/CTA → preview → publicar → checklist) | PM §8.2 | Fase 2 — construido en PL4 (`/bienvenida`, `BACKLOG_PLANTILLAS.md`, decisión 2 de Favio); en revisión |
 
 ## 4. Constructor visual y sitio público
 

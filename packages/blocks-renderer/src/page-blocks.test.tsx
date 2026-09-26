@@ -60,6 +60,15 @@ describe("PageBlocks — acción principal (PP5)", () => {
     expect(empty).not.toContain("data-primary-action-bar");
   });
 
+  it("en una miniatura (PL4) no hay barra fija ni ancla, pero la acción principal se sigue destacando", () => {
+    const html = renderToStaticMarkup(
+      <PageBlocks blocks={[link, { ...whatsapp, primary: true }, text]} buttonStyle="solid" primaryActionBar={false} />,
+    );
+    expect(html).not.toContain("data-primary-action-bar");
+    expect(html).not.toContain('id="accion-principal"');
+    expect(html).toContain("data-primary-action");
+  });
+
   it("cada bloque entra escalonado según su orden (la animación la apaga «reducir movimiento» en CSS)", () => {
     const html = render([link, whatsapp, text]);
     expect(html.match(/class="site-block-enter/g)).toHaveLength(3);

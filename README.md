@@ -1200,6 +1200,18 @@ contenido). Se aplica en vivo, como el tema, y la página pública se actualiza 
 - **Al desplegar sobre una base existente**, correr `pnpm --filter @impulza/database run db:seed`
   para que aparezcan los temas nuevos (idempotente).
 
+## Plantillas y onboarding (PL1, PL3, PL4)
+
+- **Catálogo** (`TEMPLATE_CATALOG`, `packages/validation/src/templates`): 7 plantillas por rubro con
+  contenido de ejemplo ficticio, validadas con los mismos esquemas de bloques del constructor.
+  `GET /api/v1/templates` (filtros `industry`, `objective`, `family`) sin sesión.
+- **Al desplegar sobre una base existente**: `pnpm --filter @impulza/database run db:migrate:deploy`
+  (tabla `templates`, reversible con su `down.sql`) y luego `db:seed` (idempotente).
+- **Onboarding** en `/bienvenida` (11 pasos del plan maestro §8.2): termina con la página creada
+  desde la plantilla elegida, con los datos del usuario, y publicada.
+- **Constructor**: "Usar una plantilla" reemplaza los bloques de la página con confirmación; los
+  anteriores se recuperan desde el historial de versiones y el tema/fondo se pueden deshacer.
+
 ## Acción principal y entrada de los bloques (PP5)
 
 - En el constructor, un bloque de WhatsApp, enlace o formulario se marca como **acción principal**

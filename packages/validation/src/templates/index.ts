@@ -241,6 +241,8 @@ export const templatePersonalizationSchema = z.object({
   // Texto plano: el servidor lo escapa y lo envuelve en un párrafo antes del saneo normal.
   bio: z.string().trim().min(1).max(500).optional(),
   whatsappPhone: phoneSchema.optional(),
+  // Texto y destino del botón principal cuando la acción principal de la plantilla es un enlace.
+  primaryLink: z.object({ label: z.string().trim().min(1).max(80), url: safeUrlSchema }).optional(),
   socials: z.array(z.object({ network: socialNetworkSchema, url: safeUrlSchema })).max(TEMPLATE_MAX_IMPORTED_SOCIALS).optional(),
   links: z
     .array(z.object({ label: z.string().trim().min(1).max(80), url: safeUrlSchema }))
@@ -282,6 +284,7 @@ function escapeHtml(value: string): string {
  *
  * - Perfil: nombre, frase y bio reemplazan los de ejemplo.
  * - WhatsApp: el número reemplaza el de relleno en todos los bloques de WhatsApp.
+ * - Enlace principal: si la acción principal es un enlace, toma el texto y el destino del usuario.
  * - Redes: si trae alguna, reemplazan las de ejemplo del bloque de redes.
  * - Enlaces: entran como botones secundarios justo después de los enlaces/WhatsApp de la plantilla.
  */
@@ -310,6 +313,10 @@ export function personalizeTemplateBlocks(
 
     if (block.type === "whatsapp" && personalization.whatsappPhone) {
       return { ...block, config: { ...config, phone: personalization.whatsappPhone } };
+    }
+
+    if (block.type === "link" && block.isPrimary && personalization.primaryLink) {
+      return { ...block, config: { ...config, label: personalization.primaryLink.label, url: personalization.primaryLink.url } };
     }
 
     if (block.type === "social" && personalization.socials && personalization.socials.length > 0) {

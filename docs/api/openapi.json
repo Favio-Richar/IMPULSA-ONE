@@ -2874,6 +2874,25 @@
                         "type": "string",
                         "pattern": "^\\+[1-9]\\d{6,14}$"
                       },
+                      "primaryLink": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "url": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2048
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "url"
+                        ]
+                      },
                       "socials": {
                         "maxItems": 8,
                         "type": "array",

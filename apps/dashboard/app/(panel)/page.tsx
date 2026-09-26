@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@impulza/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useActiveOrgStore } from "../../lib/active-org-store";
@@ -75,9 +76,24 @@ export default function PanelHomePage(): React.JSX.Element {
           title="Todavía no tienes una organización"
           description="Crea la primera para empezar a construir tu sitio."
         />
+        {/* PL4: el camino recomendado es el asistente (PM §8.2), que crea la organización, el sitio
+            y la página desde una plantilla. La creación manual de abajo sigue disponible. */}
+        <Card className="mt-4 border-primary">
+          <CardHeader>
+            <CardTitle>Crea tu página en pocos minutos</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">
+              Te guiamos paso a paso: eliges una plantilla para tu rubro, agregas tus datos y la publicas.
+            </p>
+            <Button asChild>
+              <Link href="/bienvenida">Empezar con el asistente</Link>
+            </Button>
+          </CardContent>
+        </Card>
         <Card className="mt-4">
           <CardHeader>
-            <CardTitle>Crear organización</CardTitle>
+            <CardTitle>O crea solo la organización</CardTitle>
           </CardHeader>
           <CardContent>
             <form className="flex flex-col gap-4" onSubmit={handleSubmit(onCreateOrg)} noValidate>

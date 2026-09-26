@@ -1,12 +1,15 @@
 "use client";
 
-import type { BlockResponse } from "@impulza/contracts";
+import type { ApplyTemplateResponse, BlockResponse } from "@impulza/contracts";
 import { type BlockType } from "@impulza/validation";
 import { Button, EmptyState, ErrorState, LoadingState } from "@impulza/ui";
-import { Redo2, Undo2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { LayoutTemplate, Redo2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ApplyTemplateDialog } from "../../../../../../../components/templates/apply-template-dialog";
+import { assignSiteTheme, setSiteBackground } from "../../../../../../../lib/api/sites";
 import { BlockCanvas } from "../../../../../../../components/block-editor/block-canvas";
 import { BlockConfigPanel } from "../../../../../../../components/block-editor/block-config-panel";
 import { BlockLibrary } from "../../../../../../../components/block-editor/block-library";
@@ -65,6 +68,25 @@ function BlockEditor({
 
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [togglingBlockId, setTogglingBlockId] = useState<string | null>(null);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  // Última plantilla aplicada (PL4): el aviso de éxito y, si cambió la apariencia, cómo deshacerla.
+  const [applied, setApplied] = useState<{ name: string; result: ApplyTemplateResponse } | null>(null);
+  const queryClient = useQueryClient();
+
+  // El tema y el fondo se aplican en vivo y no tienen historial: se vuelve a los anteriores, que
+  // devolvió la API al aplicar la plantilla.
+  const undoAppearanceMutation = useMutation({
+    mutationFn: async (previous: ApplyTemplateResponse["appearance"]["previous"]) => {
+      await assignSiteTheme(organizationId, siteId, previous.themeId);
+      await setSiteBackground(organizationId, siteId, previous.background);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["sites", organizationId, siteId] });
+      setApplied((current) =>
+        current ? { ...current, result: { ...current.result, appearance: { ...current.result.appearance, applied: false } } } : null,
+      );
+    },
+  });
 
   const history = useBlockHistory(async (change, direction) => {
     if (change.kind === "config") {
@@ -229,6 +251,10 @@ function BlockEditor({
               <Redo2 className="size-4" />
             </Button>
           </div>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setTemplateDialogOpen(true)}>
+            <LayoutTemplate className="size-4" aria-hidden="true" />
+            Usar una plantilla
+          </Button>
           <div className="flex items-center gap-2 border-l border-border pl-3">
             <span className="text-sm text-muted-foreground">
               {page.status === "PUBLISHED" ? "Publicada" : "Borrador — nunca publicada"}
@@ -245,6 +271,55 @@ function BlockEditor({
         </p>
       ) : null}
       {publishMutation.isSuccess ? <p className="-mt-2 self-end text-sm text-success">Publicado.</p> : null}
+      {applied ? (
+        <div
+          role="status"
+          className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 text-sm text-foreground sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p>
+            Plantilla «{applied.name}» aplicada. Los bloques anteriores se recuperan desde el{" "}
+            <Link href={`/sitios/${siteId}/paginas/${pageId}`} className="font-medium text-primary underline">
+              historial de versiones
+            </Link>
+            . Publica para que tus visitantes vean los bloques nuevos.
+          </p>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {applied.result.appearance.applied ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                loading={undoAppearanceMutation.isPending}
+                onClick={() => undoAppearanceMutation.mutate(applied.result.appearance.previous)}
+              >
+                Deshacer tema y fondo
+              </Button>
+            ) : null}
+            <Button type="button" size="sm" variant="ghost" onClick={() => setApplied(null)}>
+              Cerrar aviso
+            </Button>
+          </div>
+          {undoAppearanceMutation.isError ? (
+            <p role="alert" className="text-danger">
+              No pudimos volver al tema y fondo anteriores. Intenta de nuevo.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      <ApplyTemplateDialog
+        organizationId={organizationId}
+        siteId={siteId}
+        pageId={pageId}
+        blockCount={blocks.length}
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+        onApplied={(result, template) => {
+          setSelectedBlockId(null);
+          history.clear();
+          undoAppearanceMutation.reset();
+          setApplied({ name: template.name, result });
+        }}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:grid-cols-[260px_1fr_360px]">
         <section

@@ -28,12 +28,19 @@ export function PageBlocks({
   siteSlug,
   forms,
   mode = "public",
+  primaryActionBar = true,
 }: {
   blocks: PublicBlockResponse[];
   buttonStyle: ThemeTokens["buttonStyle"];
   siteSlug?: string;
   forms?: Record<string, PublicFormResponse>;
   mode?: "public" | "preview";
+  /**
+   * `false` en una miniatura (galería de plantillas, PL4): sin barra fija ni ancla de la acción
+   * principal. Con varias miniaturas en la misma pantalla, el ancla se repetiría y cada barra
+   * observaría el botón de otra. La acción principal se sigue destacando igual.
+   */
+  primaryActionBar?: boolean;
 }) {
   const buttonVariant = buttonVariantFor(buttonStyle);
   // PP5: a lo sumo uno (la API ya lo garantiza); si llegara más de uno, manda el primero.
@@ -61,7 +68,7 @@ export function PageBlocks({
             // `styles/site.css`), que no existe con "reducir movimiento".
             <div
               key={index}
-              id={isPrimary ? PRIMARY_ACTION_ANCHOR : undefined}
+              id={isPrimary && primaryActionBar ? PRIMARY_ACTION_ANCHOR : undefined}
               data-block-position={block.position}
               data-block-type={block.type}
               data-primary-action={isPrimary ? "" : undefined}
@@ -80,7 +87,7 @@ export function PageBlocks({
             </div>
           );
         })}
-        {primaryBlock && primaryAction ? (
+        {primaryActionBar && primaryBlock && primaryAction ? (
           <PrimaryActionBar
             action={primaryAction}
             position={primaryBlock.position}

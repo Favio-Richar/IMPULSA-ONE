@@ -53,11 +53,17 @@ function SitesList({ organizationId }: { organizationId: string }): React.JSX.El
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-lg font-semibold text-foreground">Sitios</h1>
-        <Button asChild>
-          <Link href="/sitios/nuevo">Crear sitio</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {/* PL4: el asistente crea el sitio desde una plantilla; "Crear sitio" sigue creando uno vacío. */}
+          <Button asChild variant="secondary">
+            <Link href="/bienvenida">Crear con una plantilla</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/sitios/nuevo">Crear sitio</Link>
+          </Button>
+        </div>
       </div>
 
       {sites.length === 0 ? (

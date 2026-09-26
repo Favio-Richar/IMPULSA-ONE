@@ -200,6 +200,19 @@ describe("personalizeTemplateBlocks (PL4)", () => {
     expect(templateBlocksSeedSchema.safeParse(result).success).toBe(true);
   });
 
+  it("el enlace principal solo reemplaza el enlace que es la acción principal", () => {
+    const withPrimaryLink: TemplateBlockSeed[] = [
+      seed[0]!,
+      { type: "link", configSchemaVersion: 1, isPrimary: true, config: { label: "Ejemplo", url: "https://example.com/a", style: "primary" } },
+      { type: "link", configSchemaVersion: 1, config: { label: "Otro", url: "https://example.com/b", style: "secondary" } },
+    ];
+    const result = personalizeTemplateBlocks(withPrimaryLink, {
+      primaryLink: { label: "Escucha mi disco", url: "https://musica.test/disco" },
+    });
+    expect(result[1]!.config).toEqual({ label: "Escucha mi disco", url: "https://musica.test/disco", style: "primary" });
+    expect(result[2]!.config).toEqual(withPrimaryLink[2]!.config);
+  });
+
   it("una red sin ninguna entrada deja las de la plantilla", () => {
     const result = personalizeTemplateBlocks(seed, { socials: [] });
     expect(result[4]!.config).toEqual(seed[4]!.config);

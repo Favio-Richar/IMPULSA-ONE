@@ -32,7 +32,7 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 | PL1 — Modelo `Template` y migración | Lista para tu revisión (sin UI: se revisa por API y pruebas) |
 | PL2 — Familia de temas "Editorial oscuro" (ADR-008) | Lista para tu revisión (capturas mostradas en el chat) |
 | PL3 — Catálogo semilla de plantillas por rubro | Lista para tu revisión (capturas en la galería de PL4) |
-| PL4 — Selector de plantillas en onboarding y constructor | Pendiente |
+| PL4 — Selector de plantillas en onboarding y constructor | Lista para tu revisión (capturas en `docs/design/capturas/pl4/`) |
 | PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio) | Lista para tu revisión (capturas mostradas en el chat) |
 
 ### Bitácora de avance (para retomar)
@@ -46,6 +46,9 @@ Orden obligatorio: PL2 → PL5 → PL1 → PL3 → PL4. Cada entrada dice dónde
 - **2026-09-26 — PL4 en progreso.** Hecho el servidor (commit `d8bcef6`): `POST .../pages/:pageId/apply-template`
   con personalización, 409 `UNPUBLISHED_CHANGES`, apariencia anterior para deshacer, auditoría y
   e2e con aislamiento. Falta: onboarding de 11 pasos (panel) y selector en el constructor.
+- **2026-09-26 — PL4 terminada** (commit `feat(onboarding): ... (PL4)`), en "Lista para tu
+  revisión". **Todo el backlog PL1-PL5 queda en "Lista para tu revisión"**: nada está marcado como
+  terminado hasta tu aprobación. Siguiente: tu revisión de PL2, PL5, PL1, PL3 y PL4.
 - Notas de entorno de esta sesión (no son de PL1-PL4): (1) con `packages/database/.env` presente,
   Prisma recarga variables y falla `revalidate-web.service.test.ts` ("no llama a nada si
   WEB_APP_URL…"); sin ese archivo pasa. (2) `admin.e2e.test.ts` "quitar la marca directo en la
@@ -174,6 +177,53 @@ Orden obligatorio: PL2 → PL5 → PL1 → PL3 → PL4. Cada entrada dice dónde
   antes de reemplazar los bloques actuales (acción destructiva reversible vía historial de
   versiones, ya existente).
 - Estados de carga/vacío/error; responsive.
+
+> **Estado (2026-09-26): lista para revisión de Favio.** Capturas (móvil y escritorio) en
+> `docs/design/capturas/pl4/`.
+>
+> - **Onboarding de 11 pasos** en `/bienvenida` (PM §8.2, decisión 2): tipo de cuenta → objetivo →
+>   industria → nombre visible → dirección (sugerida desde el nombre, validada con
+>   `publicSlugSchema`) → redes y enlaces → plantilla → perfil y acción principal → vista previa →
+>   publicación → checklist. Marco propio sin barra lateral, barra de progreso, foco al título en
+>   cada paso. El borrador vive en `sessionStorage` (sobrevive a una recarga, se descarta si entra
+>   otra cuenta). Entradas: el inicio sin organización ("Empezar con el asistente", la creación
+>   manual sigue debajo) y la lista de sitios ("Crear con una plantilla"; "Crear sitio" vacío sigue).
+> - **Galería** (onboarding y constructor): filtros por industria, objetivo y estilo (arrancan con lo
+>   elegido en los pasos 2 y 3), miniatura real de cada plantilla, vista previa **a tamaño real**
+>   (móvil 390 px, escritorio 1280 px; si no cabe se reduce proporcionalmente y lo indica) y "Usar
+>   esta plantilla". Carga, vacío (con "Ver todas") y error con reintento.
+> - **Vista previa = lo que se guarda**: la personalización se aplica con `personalizeTemplateBlocks`
+>   (`@impulza/validation`), la misma función que usa la API al guardar, y se pinta con el mismo
+>   `SiteBackdrop` + `PageBlocks` del sitio público.
+> - **Publicación (paso 10)**: crea la organización (solo si no hay ninguna; si no, usa la activa),
+>   el sitio, aplica la plantilla y publica, por los endpoints de siempre. Cada resultado queda en el
+>   borrador: "Reintentar" sigue desde donde falló sin duplicar nada. Dirección tomada → vuelve al
+>   paso 5 con el aviso; límite de plan → aviso con enlace a planes; "Guardar sin publicar" también.
+> - **Checklist (paso 11)**: QR (→ Enlaces y QR), analítica, primer contacto (→ constructor, bloque
+>   Formulario) y dominio propio marcado "Próximamente": todavía no existe esa función en el panel
+>   (no se inventó una pantalla).
+> - **Constructor**: botón "Usar una plantilla" → galería → confirmación explícita (cuántos bloques
+>   se reemplazan; casilla para aplicar también tema y fondo, avisando que se ven en vivo) → si la
+>   API responde `UNPUBLISHED_CHANGES`, segundo paso que explica qué se pierde ("Descartar los
+>   cambios y aplicar" o cancelar para publicar antes). Después: aviso con enlace al historial de
+>   versiones (bloques) y **"Deshacer tema y fondo"** (vuelve a los anteriores que devolvió la API).
+> - **API** (commit `d8bcef6`): `POST .../pages/:pageId/apply-template` (ver arriba y OpenAPI). Se
+>   sumó `personalization.primaryLink` para las plantillas cuya acción principal es un enlace.
+> - **Corrección en `blocks-renderer`**: `PageBlocks` acepta `primaryActionBar={false}` (por defecto
+>   `true`: el sitio público y el constructor no cambian). Las miniaturas lo usan: con varias en la
+>   misma pantalla, el ancla `#accion-principal` se repetía y la barra fija del teléfono aparecía
+>   duplicada sobre la miniatura.
+> - **Pruebas**: unitarias de la personalización y `slugify`; 8 e2e de API (incluye aislamiento
+>   entre organizaciones); Playwright `plantillas.spec.ts` en móvil y escritorio (onboarding completo
+>   hasta la página publicada con los datos del usuario, validaciones de nombre/dirección/WhatsApp,
+>   vista previa a 390/1280 px, sin scroll horizontal; constructor con 409, descarte, tema aplicado y
+>   deshecho). Cada prueba usa su propia cuenta: el sitio del fixture no se toca.
+> - **Decisiones menores a revisar**: (1) el tipo de cuenta, objetivo e industria se guardan en la
+>   auditoría (`page.template_applied`), no en columnas nuevas: nada los consume todavía y el modo
+>   agencia es de otra fase; (2) "Importación de redes" = pegar las direcciones (la red se reconoce
+>   sola); conectarse a las cuentas es de Integraciones (PM §9.15); (3) el filtro por **color** de PM
+>   §7.4 no está (el backlog pide industria/objetivo/estilo); (4) al aplicar una plantilla desde el
+>   constructor, el perfil vuelve al contenido de ejemplo ("Tu Nombre"): se edita en el bloque.
 
 ### PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio)
 **Criterios de aceptación:**

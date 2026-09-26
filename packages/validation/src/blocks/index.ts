@@ -60,5 +60,6 @@ export {
   parseVideoUrl,
   safeUrlSchema,
   socialNetworkSchema,
+  phoneSchema,
   type VideoProvider,
 } from "./primitives.js";

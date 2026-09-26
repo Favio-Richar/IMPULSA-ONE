@@ -9,6 +9,8 @@ interface LinkButtonProps {
   children: ReactNode;
   /** Ensancha el botón al 100% del contenedor — el bloque `link` siempre lo usa así. */
   block?: boolean;
+  /** `lg` para la acción principal de la página (PP5), que además lleva el halo. */
+  size?: "md" | "lg";
   /** Instrumentación opcional (p. ej. registrar un clic de analítica, F3.4) — nunca controla la
    *  navegación en sí: el `href`/`target` de abajo hacen todo el trabajo real, esto solo observa. */
   onClick?: () => void;
@@ -33,14 +35,22 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
  * decida la navegación. `onClick` (F3.4) es solo instrumentación opcional (analítica), nunca
  * `preventDefault`: el enlace real sigue siendo `href`/`target`, no algo que arme JavaScript.
  */
-export function LinkButton({ href, variant = "primary", children, block = false, onClick }: LinkButtonProps) {
+const SIZE_CLASSES: Record<NonNullable<LinkButtonProps["size"]>, string> = {
+  md: "px-5 py-2.5 text-sm font-medium",
+  lg: "min-h-14 px-6 py-3.5 text-base font-semibold",
+};
+
+/** Halo de la acción principal (PP5): la distingue de los demás botones sólidos sin animarse. */
+export const PRIMARY_ACTION_HALO = "ring-4 ring-[var(--site-color-primary)]/20";
+
+export function LinkButton({ href, variant = "primary", children, block = false, size = "md", onClick }: LinkButtonProps) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer nofollow"
       onClick={onClick}
-      className={`inline-flex items-center justify-center gap-2 rounded-[var(--site-radius)] px-5 py-2.5 text-sm font-medium shadow-[var(--site-shadow)] transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 ${block ? "w-full" : ""} ${VARIANT_CLASSES[variant]}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-[var(--site-radius)] ${SIZE_CLASSES[size]} ${size === "lg" ? PRIMARY_ACTION_HALO : ""} shadow-[var(--site-shadow)] transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 ${block ? "w-full" : ""} ${VARIANT_CLASSES[variant]}`}
     >
       {children}
     </a>

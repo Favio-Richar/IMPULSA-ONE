@@ -34,6 +34,10 @@ export const pageContentSnapshotSchema = z.object({
       visible: z.boolean(),
       scheduledStart: z.iso.datetime({ offset: true }).nullable(),
       scheduledEnd: z.iso.datetime({ offset: true }).nullable(),
+      // PP5: solo presente (y `true`) en el bloque principal. Omitido en el resto a propósito: así
+      // una versión publicada antes de PP5 es idéntica al estado vivo sin cambios, y la página no
+      // aparece de pronto con "cambios sin publicar".
+      isPrimary: z.literal(true).optional(),
       // Sin tipar por catálogo, mismo criterio que `BlockResponse.config`: la forma exacta depende
       // de `type` y vive en `@impulza/validation`. El snapshot no revalida contra ese catálogo al
       // restaurar — guarda y devuelve exactamente lo que ya se validó y sanitizó al publicar.

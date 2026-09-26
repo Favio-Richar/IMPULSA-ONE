@@ -213,6 +213,18 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
   },
 };
 
+/**
+ * Bloques que pueden ser la **acción principal** de una página (PP5): se destaca y, en el teléfono,
+ * queda fija abajo. Solo los que llevan a un contacto real — escribir por WhatsApp, abrir un
+ * enlace, llenar un formulario —; un texto o una galería no son una acción.
+ */
+export const PRIMARY_ACTION_BLOCK_TYPES = ["whatsapp", "link", "contact_form"] as const satisfies readonly BlockType[];
+export type PrimaryActionBlockType = (typeof PRIMARY_ACTION_BLOCK_TYPES)[number];
+
+export function isPrimaryActionBlockType(type: string): type is PrimaryActionBlockType {
+  return (PRIMARY_ACTION_BLOCK_TYPES as readonly string[]).includes(type);
+}
+
 export function isBlockType(value: string): value is BlockType {
   return Object.hasOwn(BLOCK_CATALOG, value);
 }

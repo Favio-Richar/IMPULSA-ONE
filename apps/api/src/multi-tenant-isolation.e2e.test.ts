@@ -458,6 +458,8 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         .set(CSRF_HEADERS)
         .send({ blockIds: [homeOfB] })
         .expect(404);
+      // PP5: tampoco puede elegir ni quitar la acción principal de una página de B.
+      await orgA.ownerAgent.put(`${crossPath}/primary`).set(CSRF_HEADERS).send({ blockId: null }).expect(404);
     });
 
     it("A no puede editar, duplicar ni borrar un bloque de B usando su propia página", async () => {
@@ -484,6 +486,12 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         .send({ config: { html: "<p>secuestrado</p>" } })
         .expect(404);
       await orgA.ownerAgent.post(`${attackPath}/duplicate`).set(CSRF_HEADERS).expect(404);
+      // PP5: ni marcar el bloque de B como acción principal de la página de A.
+      await orgA.ownerAgent
+        .put(`/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/pages/${homeOfA}/blocks/primary`)
+        .set(CSRF_HEADERS)
+        .send({ blockId: blockOfB.body.id })
+        .expect(404);
       await orgA.ownerAgent.delete(attackPath).set(CSRF_HEADERS).expect(404);
 
       // El bloque de B quedó exactamente como estaba.
@@ -679,7 +687,8 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       for (const block of publicPage.body.blocks) {
         // `position` (F3.6) no es un identificador: es el orden del bloque en la versión publicada,
         // lo que el sitio público informa para atribuir un clic sin conocer el id interno.
-        expect(Object.keys(block).sort()).toEqual(["config", "position", "type"]);
+        // `primary` (PP5) tampoco: es un booleano, la acción principal de la página.
+        expect(Object.keys(block).sort()).toEqual(["config", "position", "primary", "type"]);
         expect(typeof block.position).toBe("number");
       }
       expect(JSON.stringify(publicPage.body)).not.toContain(orgB.id);

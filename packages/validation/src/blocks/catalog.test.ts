@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { BLOCK_CATALOG, BLOCK_TYPES, getBlockDefinition, isBlockType, type BlockType } from "./catalog.js";
+import {
+  BLOCK_CATALOG,
+  BLOCK_TYPES,
+  getBlockDefinition,
+  isBlockType,
+  isPrimaryActionBlockType,
+  PRIMARY_ACTION_BLOCK_TYPES,
+  type BlockType,
+} from "./catalog.js";
 import { parseVideoUrl, safeUrlSchema } from "./primitives.js";
 import { collectRichTextPaths } from "./rich-text-paths.js";
 import { parseStoredBlock } from "./stored-block.js";
@@ -226,5 +234,17 @@ describe("encabezado de perfil (PP4)", () => {
     expect(
       schema.safeParse({ name: "Ana", socials: [{ network: "instagram", url: "javascript:alert(1)" }] }).success,
     ).toBe(false);
+  });
+});
+
+describe("acción principal (PP5)", () => {
+  it("solo los bloques que llevan a un contacto real pueden ser la acción principal", () => {
+    expect([...PRIMARY_ACTION_BLOCK_TYPES].sort()).toEqual(["contact_form", "link", "whatsapp"]);
+    for (const type of PRIMARY_ACTION_BLOCK_TYPES) {
+      expect(isBlockType(type)).toBe(true);
+    }
+    for (const type of ["text", "profile", "gallery", "divider", "social"]) {
+      expect(isPrimaryActionBlockType(type), type).toBe(false);
+    }
   });
 });

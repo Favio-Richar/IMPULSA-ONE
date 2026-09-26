@@ -28,7 +28,7 @@ Y todas comparten estas **reglas de la página pública**:
 | PP2 — Biblioteca de medios y selector en los bloques | Terminada (local) |
 | PP3 — Fondo premium de la página (color, degradado, imagen, video de biblioteca) | En progreso (falta el contenido de la biblioteca de videos, que aprueba Favio) |
 | PP4 — Familias de temas "Ejecutivo" y "Vibrante" y encabezado de perfil | Terminada (local) |
-| PP5 — Botón principal fijo en móvil y animaciones de entrada | Pendiente |
+| PP5 — Botón principal fijo en móvil y animaciones de entrada | Terminada (local) |
 | PP6 — Video de fondo propio (subida y transcodificación) | Pendiente |
 | PP7 — Verificación de rendimiento y navegadores internos | Pendiente |
 
@@ -242,6 +242,58 @@ Y todas comparten estas **reglas de la página pública**:
 - El dueño marca un bloque de acción (WhatsApp, enlace, formulario) como **principal**: se destaca y,
   en el teléfono, queda fijo abajo sin tapar contenido.
 - Entrada suave de los bloques (sin animación con reducir movimiento).
+
+> **Estado (2026-09-26): terminada en local.**
+>
+> - **Modelo:** `blocks.is_primary` con un **índice único parcial** (`WHERE is_primary`): a lo sumo
+>   un bloque principal por página, garantizado por la base y no solo por el código. Migración
+>   aditiva `20260926010000_block_primary_action`.
+> - **API:** `PUT .../pages/:pageId/blocks/primary` con `{ blockId }` (o `null` para quitarla),
+>   permiso `page.manage`, auditado (`page.primary_block_set`). Solo bloques de acción
+>   (`PRIMARY_ACTION_BLOCK_TYPES`: WhatsApp, enlace, formulario; 422 si no), el bloque tiene que ser
+>   de esa página y organización (404 si no), y dos cambios simultáneos terminan en 409 en vez de dos
+>   principales. `isPrimary` en cada bloque de la respuesta.
+> - **Publicación:** la marca viaja en el snapshot **solo cuando es verdadera**, así una versión
+>   publicada antes de PP5 es idéntica al estado vivo y ninguna página aparece de pronto con cambios
+>   sin publicar; restaurar una versión la recupera. La respuesta pública agrega `primary` (opcional
+>   en el contrato, para tolerar respuestas en caché anteriores) y la API vuelve a exigir que sea un
+>   bloque de acción: una marca puesta a mano en otro tipo no se publica.
+> - **Render:** el bloque principal se destaca (sólido aunque su estilo sea de contorno, más alto y
+>   con un halo del color primario) y `PrimaryActionBar` lo repite abajo en el teléfono:
+>   - `position: sticky` al final del contenido: pegada al borde al recorrer y asentada en su propio
+>     lugar al final, así que **no tapa** el último bloque;
+>   - solo en contenedores de menos de 40 rem, por *container query*: la vista previa del
+>     constructor en modo teléfono se comporta igual que un teléfono real. El contenedor es un
+>     envoltorio propio de `PageBlocks` y no la raíz del sitio, porque `container-type` crearía
+>     contención de layout y rompería el fondo `fixed` de PP3;
+>   - se esconde (e `inert`) mientras el bloque original está a la vista (`IntersectionObserver`),
+>     y sin JavaScript queda siempre visible;
+>   - un formulario principal lleva a su ancla en la misma pestaña; un formulario sin elegir no
+>     genera barra;
+>   - los clics de la barra se atribuyen al bloque principal por los mismos `data-block-*` (F3.6).
+> - **Entrada de los bloques:** subir 12 px y aparecer, escalonado 60 ms (tope 8), solo con
+>   `prefers-reduced-motion: no-preference`. Parte de opacidad 0,01 y no 0 para no sacar la foto de
+>   perfil del cálculo del LCP.
+> - **Constructor:** interruptor "Acción principal" en el panel de los bloques de acción, con
+>   actualización optimista (la casilla, el lienzo y la vista previa cambian al instante y se
+>   revierten si el servidor lo rechaza) y aviso de que reemplaza a la actual; marca "Principal" en
+>   el lienzo. El marco de la vista previa pasa de `overflow-hidden` a `overflow-clip`: recorta
+>   igual, pero no crea un contenedor de scroll que anularía el `sticky`.
+>
+> **Verificación:** 6 e2e de API (marcar, mover y quitar con auditoría; tipo no válido, bloque de
+> otra página, cuerpo inválido; el índice rechaza una escritura directa y 4 cambios simultáneos
+> dejan exactamente uno; duplicar no copia la marca; publicar, respuesta pública, borrador no
+> visible y restaurar; una marca manual en un texto no se publica) más el aislamiento
+> multi-tenant de la ruta nueva. 7 pruebas del render (barra solo con acción principal, enlace de
+> WhatsApp con mensaje, atribución, formulario por ancla, enlace de contorno forzado a sólido,
+> escalonado) y 2 del CSS (animación solo sin "reducir movimiento"; nunca desde opacidad 0).
+> Playwright en móvil y escritorio: marcar desde el constructor, barra escondida con el original a
+> la vista, pegada abajo a mitad del recorrido, debajo del último bloque al final, e inexistente en
+> un marco de 640 px o más; animación presente y ausente con `reducedMotion: reduce`. Confirmado que
+> fallan al quitar el filtro de tipo en la respuesta pública, la marca del snapshot, la *container
+> query* y el `overflow-clip`. Revisión visual con capturas (de ahí salió el halo: sin él, el
+> principal no se distinguía de otro botón sólido). `@impulza/api` 341/341, `lint`/`typecheck` 26/26,
+> `build` 15/15, Playwright 73/73. OpenAPI regenerado (117 operaciones).
 
 ### PP6 — Video de fondo propio
 **Criterios de aceptación:**

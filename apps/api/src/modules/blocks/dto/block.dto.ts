@@ -27,6 +27,12 @@ export const reorderBlocksSchema = z.object({
   blockIds: z.array(z.uuid()).min(1),
 });
 
+/** PP5: el bloque que pasa a ser la acción principal de la página, o `null` para quitarla. */
+export const setPrimaryBlockSchema = z.object({
+  blockId: z.uuid().nullable(),
+});
+
 export type CreateBlockDto = z.infer<typeof createBlockSchema>;
 export type UpdateBlockDto = z.infer<typeof updateBlockSchema>;
 export type ReorderBlocksDto = z.infer<typeof reorderBlocksSchema>;
+export type SetPrimaryBlockDto = z.infer<typeof setPrimaryBlockSchema>;

@@ -5,3 +5,30 @@
 [data-site-root] :where(h1, h2, h3, h4) {
   font-family: var(--site-font-heading, inherit);
 }
+
+/*
+ * Entrada suave de los bloques (PP5): suben 12 px y aparecen, escalonados 60 ms (tope de 8 para que
+ * una página larga no espere). Solo si el visitante no pidió reducir el movimiento: sin esa
+ * preferencia explícita no hay animación ninguna (WCAG 2.3.3).
+ *
+ * Arranca en opacidad 0.01 y no 0 a propósito: Chrome no cuenta un elemento con opacidad 0 como
+ * candidato a LCP, así que empezar invisible atrasaría la métrica justo en la foto de perfil. Con
+ * 0.01 el LCP se registra en el primer pintado, como sin animación.
+ */
+@keyframes site-block-enter {
+  from {
+    opacity: 0.01;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-site-root] .site-block-enter {
+    animation: site-block-enter 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(min(var(--site-block-index, 0), 8) * 60ms);
+  }
+}

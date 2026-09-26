@@ -44,6 +44,19 @@ export function reorderBlocks(
   });
 }
 
+/** PP5: elige la acción principal de la página (`null` la quita). Devuelve todos los bloques. */
+export function setPrimaryBlock(
+  organizationId: string,
+  siteId: string,
+  pageId: string,
+  blockId: string | null,
+): Promise<BlockResponse[]> {
+  return apiFetch<BlockResponse[]>(`${blocksPath(organizationId, siteId, pageId)}/primary`, {
+    method: "PUT",
+    body: { blockId },
+  });
+}
+
 export function duplicateBlock(
   organizationId: string,
   siteId: string,

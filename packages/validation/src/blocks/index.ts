@@ -4,6 +4,9 @@ export {
   blockTypeSchema,
   getBlockDefinition,
   isBlockType,
+  PRIMARY_ACTION_BLOCK_TYPES,
+  isPrimaryActionBlockType,
+  type PrimaryActionBlockType,
   type BlockDefinition,
   type BlockType,
   // Esquema y tipo por bloque — el render público (F2.7) y, más adelante, el constructor (F2.9)

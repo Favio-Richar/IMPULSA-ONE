@@ -1,6 +1,6 @@
 "use client";
 
-import { BLOCK_CATALOG, isBlockType, type BlockType } from "@impulza/validation";
+import { BLOCK_CATALOG, isBlockType, isPrimaryActionBlockType, type BlockType } from "@impulza/validation";
 import type { BlockResponse } from "@impulza/contracts";
 import { Button } from "@impulza/ui";
 import { useEffect, useRef, useState } from "react";
@@ -13,6 +13,7 @@ import { sameConfig } from "../../lib/block-fields/same-config";
 import { toFormConfig } from "../../lib/block-fields/to-form-value";
 import { useUpdateBlock } from "../../lib/hooks/use-blocks";
 import { ContactFormPicker } from "./contact-form-picker";
+import { PrimaryActionToggle } from "./primary-action-toggle";
 
 const AUTOSAVE_DELAY_MS = 800;
 
@@ -160,6 +161,9 @@ export function BlockConfigPanel({
             Cerrar
           </Button>
         </div>
+        {isPrimaryActionBlockType(type) ? (
+          <PrimaryActionToggle organizationId={organizationId} siteId={siteId} pageId={pageId} block={block} />
+        ) : null}
         <form className="flex flex-col gap-4" onSubmit={(event) => event.preventDefault()}>
           <FieldGroup fields={fieldSet.fields} />
           {type === "contact_form" ? (

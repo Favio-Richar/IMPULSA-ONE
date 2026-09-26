@@ -3775,7 +3775,10 @@
                           "type": {
                             "type": "string"
                           },
-                          "config": {}
+                          "config": {},
+                          "primary": {
+                            "type": "boolean"
+                          }
                         },
                         "required": [
                           "position",
@@ -5682,6 +5685,9 @@
                         "format": "date-time",
                         "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       },
+                      "isPrimary": {
+                        "type": "boolean"
+                      },
                       "config": {},
                       "degraded": {
                         "nullable": true,
@@ -5702,6 +5708,7 @@
                       "visible",
                       "scheduledStart",
                       "scheduledEnd",
+                      "isPrimary",
                       "config",
                       "degraded"
                     ],
@@ -5877,6 +5884,9 @@
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     },
+                    "isPrimary": {
+                      "type": "boolean"
+                    },
                     "config": {},
                     "degraded": {
                       "nullable": true,
@@ -5897,6 +5907,7 @@
                     "visible",
                     "scheduledStart",
                     "scheduledEnd",
+                    "isPrimary",
                     "config",
                     "degraded"
                   ],
@@ -6052,6 +6063,9 @@
                         "format": "date-time",
                         "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                       },
+                      "isPrimary": {
+                        "type": "boolean"
+                      },
                       "config": {},
                       "degraded": {
                         "nullable": true,
@@ -6072,6 +6086,7 @@
                       "visible",
                       "scheduledStart",
                       "scheduledEnd",
+                      "isPrimary",
                       "config",
                       "degraded"
                     ],
@@ -6100,6 +6115,186 @@
           }
         ],
         "summary": "Reordenar los bloques de la página",
+        "tags": [
+          "blocks"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks/primary": {
+      "put": {
+        "description": "Requiere `page.manage`. PP5: el bloque elegido (WhatsApp, enlace o formulario) se destaca y, en el teléfono, queda fijo abajo. A lo sumo uno por página: marcar otro desmarca el anterior, y `blockId: null` la quita. Es un cambio del borrador: se ve al publicar.",
+        "operationId": "BlocksController_setPrimary",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio dueño de la página.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageId",
+            "required": true,
+            "in": "path",
+            "description": "Página cuya acción principal se elige.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "blockId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "blockId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bloques de la página, con la acción principal ya marcada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "pageId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "position": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "configSchemaVersion": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "visible": {
+                        "type": "boolean"
+                      },
+                      "scheduledStart": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "scheduledEnd": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "isPrimary": {
+                        "type": "boolean"
+                      },
+                      "config": {},
+                      "degraded": {
+                        "nullable": true,
+                        "type": "string",
+                        "enum": [
+                          "unknown_type",
+                          "future_version",
+                          "invalid_config"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "pageId",
+                      "type",
+                      "position",
+                      "configSchemaVersion",
+                      "visible",
+                      "scheduledStart",
+                      "scheduledEnd",
+                      "isPrimary",
+                      "config",
+                      "degraded"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "La página o el bloque no existen en esta organización."
+          },
+          "409": {
+            "description": "Otra petición cambió la acción principal al mismo tiempo."
+          },
+          "422": {
+            "description": "El bloque no es de un tipo de acción (WhatsApp, enlace o formulario)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Elegir la acción principal de la página",
         "tags": [
           "blocks"
         ]
@@ -6237,6 +6432,9 @@
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     },
+                    "isPrimary": {
+                      "type": "boolean"
+                    },
                     "config": {},
                     "degraded": {
                       "nullable": true,
@@ -6257,6 +6455,7 @@
                     "visible",
                     "scheduledStart",
                     "scheduledEnd",
+                    "isPrimary",
                     "config",
                     "degraded"
                   ],
@@ -6480,6 +6679,9 @@
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     },
+                    "isPrimary": {
+                      "type": "boolean"
+                    },
                     "config": {},
                     "degraded": {
                       "nullable": true,
@@ -6500,6 +6702,7 @@
                     "visible",
                     "scheduledStart",
                     "scheduledEnd",
+                    "isPrimary",
                     "config",
                     "degraded"
                   ],

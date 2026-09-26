@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import type { BlockResponse } from "@impulza/contracts";
 import { isBlockType, type BlockType } from "@impulza/validation";
 import { Button, cn } from "@impulza/ui";
-import { CircleHelp, Copy, Eye, EyeOff, GripVertical, Trash2 } from "lucide-react";
+import { CircleHelp, Copy, Eye, EyeOff, GripVertical, Star, Trash2 } from "lucide-react";
 import { ConfirmButton } from "../confirm-button";
 import { BLOCK_ICONS, BLOCK_LABELS } from "../../lib/block-fields/labels";
 
@@ -130,7 +130,15 @@ function BlockRow({
       <button type="button" className="flex flex-1 items-center gap-2.5 py-1 text-left" onClick={onSelect}>
         <BlockTypeIcon type={block.type} />
         <span className="flex flex-col">
-          <span className="text-sm font-medium text-foreground">{blockLabel(block.type)}</span>
+          <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+            {blockLabel(block.type)}
+            {block.isPrimary ? (
+              <span className="inline-flex items-center gap-1 rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
+                <Star className="size-3" aria-hidden="true" />
+                Principal
+              </span>
+            ) : null}
+          </span>
           {!block.visible || block.degraded ? (
             <span className="text-sm text-muted-foreground">
               {!block.visible ? "Oculto" : null}

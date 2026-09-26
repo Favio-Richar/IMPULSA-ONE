@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import type { LinkBlockConfig } from "@impulza/validation";
+import { PRIMARY_ACTION_HALO } from "../ui/link-button.js";
 import { NetworkIcon } from "../ui/network-icon.js";
 import { SURFACE_SCOPE } from "../ui/surface.js";
 
@@ -7,16 +8,17 @@ import { SURFACE_SCOPE } from "../ui/surface.js";
  * `icon` (opcional) es una red de la lista blanca (F2.4): si viene, el enlace muestra el logo de
  * esa red; si no, el ícono genérico de enlace externo.
  */
-export function LinkBlock({ config }: { config: LinkBlockConfig }) {
-  const isOutline = config.style === "outline";
-  const isSecondary = config.style === "secondary";
+export function LinkBlock({ config, primary = false }: { config: LinkBlockConfig; primary?: boolean }) {
+  // La acción principal (PP5) siempre va sólida y más alta, sea cual sea el estilo elegido.
+  const isOutline = !primary && config.style === "outline";
+  const isSecondary = !primary && config.style === "secondary";
 
   return (
     <a
       href={config.url}
       target="_blank"
       rel="noopener noreferrer nofollow"
-      className={`flex items-center gap-3 rounded-[var(--site-radius)] px-5 py-4 shadow-[var(--site-shadow)] transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 ${
+      className={`flex items-center gap-3 rounded-[var(--site-radius)] px-5 ${primary ? `py-5 ${PRIMARY_ACTION_HALO}` : "py-4"} shadow-[var(--site-shadow)] transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 ${
         isOutline
           ? "border border-[var(--site-color-link)] bg-transparent text-[var(--site-color-link)]"
           : isSecondary
@@ -30,7 +32,7 @@ export function LinkBlock({ config }: { config: LinkBlockConfig }) {
         <ExternalLink className="h-5 w-5 shrink-0" aria-hidden="true" />
       )}
       <span className="flex-1 text-left">
-        <span className="block font-medium">{config.label}</span>
+        <span className={primary ? "block text-base font-semibold" : "block font-medium"}>{config.label}</span>
         {config.description ? (
           <span className="block text-sm opacity-80">{config.description}</span>
         ) : null}

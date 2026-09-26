@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -7,7 +8,14 @@ import {
 } from "@nestjs/common";
 import { type Block, MediaStatus, type Prisma as PrismaTypes, type PrismaClient } from "@impulza/database";
 import { parseMediaUrl, type StorageAdapter } from "@impulza/storage";
-import { findImagesWithoutAlt, getBlockDefinition, IMAGE_ALT_REQUIRED_MESSAGE, parseStoredBlock } from "@impulza/validation";
+import {
+  findImagesWithoutAlt,
+  getBlockDefinition,
+  IMAGE_ALT_REQUIRED_MESSAGE,
+  isPrimaryActionBlockType,
+  parseStoredBlock,
+} from "@impulza/validation";
+import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { STORAGE } from "../../storage/storage.module.js";
 import { AuditService } from "../audit/audit.service.js";
@@ -23,6 +31,8 @@ export interface BlockWithConfig {
   visible: boolean;
   scheduledStart: Date | null;
   scheduledEnd: Date | null;
+  /** Acción principal de la página (PP5). */
+  isPrimary: boolean;
   config: unknown;
   /** Motivo por el que el bloque no se puede renderizar, o `null` si está sano (F2.4). */
   degraded: "unknown_type" | "future_version" | "invalid_config" | null;
@@ -169,6 +179,7 @@ export class BlocksService {
       visible: block.visible,
       scheduledStart: block.scheduledStart,
       scheduledEnd: block.scheduledEnd,
+      isPrimary: block.isPrimary,
       config: rawConfig,
       degraded: parsed.renderable ? null : parsed.reason,
     };
@@ -415,6 +426,65 @@ export class BlocksService {
       targetId: pageId,
       metadata: { blockIds },
     });
+
+    return this.listBlocks(organizationId, siteId, pageId);
+  }
+
+  /**
+   * Marca la acción principal de la página (PP5), o la quita con `blockId: null`. Es un cambio del
+   * borrador como cualquier otro: el visitante lo ve al publicar.
+   *
+   * Solo un bloque de acción (`PRIMARY_ACTION_BLOCK_TYPES`) puede serlo, y a lo sumo uno por página.
+   * Se desmarca el anterior y se marca el nuevo en la misma transacción; si dos peticiones llegan a
+   * la vez, el índice único parcial (`blocks_one_primary_per_page`) rechaza la segunda — la base,
+   * no una comprobación previa que la carrera podría saltarse.
+   */
+  async setPrimaryBlock(
+    organizationId: string,
+    actorId: string,
+    siteId: string,
+    pageId: string,
+    blockId: string | null,
+  ): Promise<BlockWithConfig[]> {
+    await this.assertPageInOrganization(organizationId, siteId, pageId);
+
+    if (blockId !== null) {
+      // `getBlockOrThrow` filtra por página y organización: un bloque de otra página (o de otra
+      // organización) es 404, sin confirmar que existe.
+      const block = await this.getBlockOrThrow(organizationId, siteId, pageId, blockId);
+      if (!isPrimaryActionBlockType(block.type)) {
+        throw new UnprocessableEntityException(
+          "Solo un botón de WhatsApp, un enlace o un formulario pueden ser la acción principal.",
+        );
+      }
+    }
+
+    const previous = await this.prisma.block.findFirst({ where: { pageId, isPrimary: true }, select: { id: true } });
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.block.updateMany({ where: { pageId, isPrimary: true }, data: { isPrimary: false } });
+        if (blockId !== null) {
+          await tx.block.update({ where: { id: blockId }, data: { isPrimary: true } });
+        }
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException("Otra persona cambió la acción principal al mismo tiempo. Vuelve a intentarlo.");
+      }
+      throw error;
+    }
+
+    if ((previous?.id ?? null) !== blockId) {
+      await this.auditService.record({
+        organizationId,
+        actorId,
+        action: "page.primary_block_set",
+        targetType: "Page",
+        targetId: pageId,
+        metadata: { siteId, blockId, previousBlockId: previous?.id ?? null },
+      });
+    }
 
     return this.listBlocks(organizationId, siteId, pageId);
   }

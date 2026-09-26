@@ -1,7 +1,13 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@impulza/database";
 import type { StorageAdapter } from "@impulza/storage";
-import { parseStoredBlock, resolveSiteBackground, type ResolvedSiteBackground, themeTokensSchema } from "@impulza/validation";
+import {
+  isPrimaryActionBlockType,
+  parseStoredBlock,
+  resolveSiteBackground,
+  type ResolvedSiteBackground,
+  themeTokensSchema,
+} from "@impulza/validation";
 import { STORAGE } from "../../storage/storage.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { pageContentSnapshotSchema } from "../pages/page-content-snapshot.js";
@@ -21,7 +27,7 @@ export interface PublicPageView {
   slug: string;
   isHome: boolean;
   seo: ResolvedSeo;
-  blocks: Array<{ position: number; type: string; config: unknown }>;
+  blocks: Array<{ position: number; type: string; config: unknown; primary: boolean }>;
 }
 
 const SITE_NOT_FOUND = "Sitio no encontrado.";
@@ -151,9 +157,14 @@ export class PublicSitesService {
       // — la página pública nunca muestra un hueco roto, solo un bloque de menos.
       .map((block) => {
         const parsed = parseStoredBlock(block.type, block.configSchemaVersion, block.config);
-        return parsed.renderable ? { position: block.position, type: block.type, config: parsed.config } : null;
+        if (!parsed.renderable) {
+          return null;
+        }
+        // PP5: se vuelve a exigir que sea un bloque de acción — el snapshot no se da por bueno.
+        const primary = block.isPrimary === true && isPrimaryActionBlockType(block.type);
+        return { position: block.position, type: block.type, config: parsed.config, primary };
       })
-      .filter((block): block is { position: number; type: string; config: unknown } => block !== null);
+      .filter((block): block is { position: number; type: string; config: unknown; primary: boolean } => block !== null);
 
     const canonicalOverridePath = await this.resolveCanonicalOverride(site.id, site.slug, snapshot.seoMeta);
 

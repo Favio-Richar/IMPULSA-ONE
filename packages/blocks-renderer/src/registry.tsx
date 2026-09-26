@@ -78,7 +78,7 @@ export function RenderBlock({
     }
     case "link": {
       const parsed = linkSchema.safeParse(block.config);
-      return parsed.success ? <LinkBlock config={parsed.data} /> : null;
+      return parsed.success ? <LinkBlock config={parsed.data} primary={block.primary === true} /> : null;
     }
     case "social": {
       const parsed = socialSchema.safeParse(block.config);
@@ -99,7 +99,7 @@ export function RenderBlock({
     case "whatsapp": {
       const parsed = whatsappSchema.safeParse(block.config);
       return parsed.success ? (
-        <WhatsappBlock config={parsed.data} buttonVariant={buttonVariant} />
+        <WhatsappBlock config={parsed.data} buttonVariant={buttonVariant} primary={block.primary === true} />
       ) : null;
     }
     case "contact_actions": {

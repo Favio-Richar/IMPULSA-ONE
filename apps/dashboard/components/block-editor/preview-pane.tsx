@@ -34,7 +34,7 @@ export function PreviewPane({
   const resolvedBackground = resolvedSiteBackgroundSchema.safeParse(background).data ?? null;
   const visibleBlocks = blocks
     .filter((block) => block.visible && !block.degraded)
-    .map((block) => ({ position: block.position, type: block.type, config: block.config }));
+    .map((block) => ({ position: block.position, type: block.type, config: block.config, primary: block.isPrimary }));
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -58,7 +58,9 @@ export function PreviewPane({
       </div>
       <div className="flex flex-1 justify-center overflow-auto rounded-lg border border-border bg-surface p-4">
         <div
-          className="h-fit min-h-full overflow-hidden rounded-md border border-border shadow-sm transition-[width]"
+          // `overflow-clip` y no `hidden`: recorta igual las esquinas, pero no crea un contenedor de
+          // scroll, que dejaría sin efecto la barra `sticky` de la acción principal (PP5).
+          className="h-fit min-h-full overflow-clip rounded-md border border-border shadow-sm transition-[width]"
           style={{ width: DEVICES[device].width, maxWidth: "100%" }}
         >
           <SiteBackdrop theme={tokens} background={resolvedBackground} fixed={false} className="min-h-full">

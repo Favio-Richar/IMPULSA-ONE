@@ -152,6 +152,7 @@ export class PageVersionsService {
         visible: block.visible,
         scheduledStart: block.scheduledStart?.toISOString() ?? null,
         scheduledEnd: block.scheduledEnd?.toISOString() ?? null,
+        ...(block.isPrimary ? { isPrimary: true } : {}),
         config: block.versions[0]?.config ?? null,
       })),
     });
@@ -261,6 +262,7 @@ export class PageVersionsService {
               visible: block.visible,
               scheduledStart: block.scheduledStart ? new Date(block.scheduledStart) : null,
               scheduledEnd: block.scheduledEnd ? new Date(block.scheduledEnd) : null,
+              isPrimary: block.isPrimary === true,
             },
           });
           await tx.blockVersion.create({

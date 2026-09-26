@@ -45,6 +45,12 @@ export const publicBlockResponse = z.object({
   type: z.string(),
   /** Forma según `type`, catálogo en `@impulza/validation` — mismo criterio que `BlockResponse`. */
   config: z.unknown(),
+  /**
+   * Acción principal de la página (PP5): el render la destaca y, en el teléfono, la deja fija
+   * abajo. Opcional en el contrato a propósito: una respuesta guardada en caché antes de PP5 (o una
+   * API anterior durante un despliegue) sigue siendo válida y simplemente no tiene acción principal.
+   */
+  primary: z.boolean().optional(),
 });
 
 // Duplicado a propósito de `SEO_ROBOTS_VALUES`/`SeoRobots` de `@impulza/validation` — mismo

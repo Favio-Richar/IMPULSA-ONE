@@ -34,9 +34,11 @@ import { BlocksService } from "./blocks.service.js";
 import {
   createBlockSchema,
   reorderBlocksSchema,
+  setPrimaryBlockSchema,
   updateBlockSchema,
   type CreateBlockDto,
   type ReorderBlocksDto,
+  type SetPrimaryBlockDto,
   type UpdateBlockDto,
 } from "./dto/block.dto.js";
 
@@ -131,6 +133,32 @@ export class BlocksController {
     @Body(new ZodValidationPipe(reorderBlocksSchema)) body: ReorderBlocksDto,
   ) {
     return this.blocksService.reorderBlocks(organizationId, user.id, siteId, pageId, body.blockIds);
+  }
+
+  // Antes que `:blockId`, por la misma razón que "reorder".
+  @Put("primary")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.PAGE_MANAGE)
+  @ApiOperation({
+    summary: "Elegir la acción principal de la página",
+    description:
+      "Requiere `page.manage`. PP5: el bloque elegido (WhatsApp, enlace o formulario) se destaca y, en el teléfono, queda fijo abajo. A lo sumo uno por página: marcar otro desmarca el anterior, y `blockId: null` la quita. Es un cambio del borrador: se ve al publicar.",
+  })
+  @ApiUuidParam("siteId", "Sitio dueño de la página.")
+  @ApiUuidParam("pageId", "Página cuya acción principal se elige.")
+  @ApiZodBody(setPrimaryBlockSchema)
+  @ApiZodArrayResponse(200, blockResponse, "Bloques de la página, con la acción principal ya marcada.")
+  @ApiResponse({ status: 404, description: "La página o el bloque no existen en esta organización." })
+  @ApiResponse({ status: 409, description: "Otra petición cambió la acción principal al mismo tiempo." })
+  @ApiResponse({ status: 422, description: "El bloque no es de un tipo de acción (WhatsApp, enlace o formulario)." })
+  async setPrimary(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("pageId") pageId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(setPrimaryBlockSchema)) body: SetPrimaryBlockDto,
+  ) {
+    return this.blocksService.setPrimaryBlock(organizationId, user.id, siteId, pageId, body.blockId);
   }
 
   @Patch(":blockId")

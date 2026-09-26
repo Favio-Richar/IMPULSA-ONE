@@ -465,6 +465,11 @@ model Block {
   visible             Boolean   @default(true)
   scheduledStart      DateTime? @map("scheduled_start") @db.Timestamptz(6)
   scheduledEnd        DateTime? @map("scheduled_end") @db.Timestamptz(6)
+  // Acción principal de la página (PP5): se destaca y, en el teléfono, queda fija abajo. Solo
+  // bloques de acción (`PRIMARY_ACTION_BLOCK_TYPES`) y **a lo sumo uno por página**: lo garantiza
+  // un índice único parcial (`WHERE is_primary`) creado con SQL en la migración — Prisma no sabe
+  // expresarlo, igual que el slug de página.
+  isPrimary           Boolean   @default(false) @map("is_primary")
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 

@@ -57,6 +57,8 @@ export const blockResponse = z.object({
   visible: z.boolean(),
   scheduledStart: isoDateTime.nullable(),
   scheduledEnd: isoDateTime.nullable(),
+  /** Acción principal de la página (PP5): a lo sumo un bloque por página. Se publica con la página. */
+  isPrimary: z.boolean(),
   config: z.unknown(),
   /**
    * Motivo por el que el bloque no se puede renderizar, o `null` si está sano. Un bloque degradado

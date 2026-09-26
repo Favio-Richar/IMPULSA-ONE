@@ -430,6 +430,149 @@ describe("Blocks (e2e) — F2.4", () => {
     });
   });
 
+  describe("acción principal de la página (PP5)", () => {
+    async function createActions(agent: ReturnType<typeof request.agent>, basePath: string) {
+      const link = await agent
+        .post(basePath)
+        .set(CSRF_HEADERS)
+        .send({ type: "link", config: { label: "Ver catálogo", url: "https://ejemplo.cl" } })
+        .expect(201);
+      const whatsapp = await agent
+        .post(basePath)
+        .set(CSRF_HEADERS)
+        .send({ type: "whatsapp", config: { phone: "+56912345678", label: "Escríbenos" } })
+        .expect(201);
+      const text = await agent
+        .post(basePath)
+        .set(CSRF_HEADERS)
+        .send({ type: "text", config: { html: "<p>Hola</p>" } })
+        .expect(201);
+      expect(link.body.isPrimary).toBe(false);
+      return { link: link.body.id as string, whatsapp: whatsapp.body.id as string, text: text.body.id as string };
+    }
+
+    function primaryIds(body: Array<{ id: string; isPrimary: boolean }>): string[] {
+      return body.filter((block) => block.isPrimary).map((block) => block.id);
+    }
+
+    function primaryTypes(blocks: Array<{ type: string; primary?: boolean; isPrimary?: boolean }>): string[] {
+      return blocks.filter((block) => block.primary === true || block.isPrimary === true).map((block) => block.type);
+    }
+
+    it("se marca, se mueve a otro bloque y se quita, siempre con a lo sumo una por página", async () => {
+      const { agent, basePath, pageId } = await createPageWithOwner();
+      const ids = await createActions(agent, basePath);
+
+      const first = await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId: ids.link }).expect(200);
+      for (const block of first.body) {
+        blockResponse.parse(block);
+      }
+      expect(primaryIds(first.body)).toEqual([ids.link]);
+
+      const moved = await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId: ids.whatsapp }).expect(200);
+      expect(primaryIds(moved.body)).toEqual([ids.whatsapp]);
+
+      const cleared = await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId: null }).expect(200);
+      expect(primaryIds(cleared.body)).toEqual([]);
+
+      const audits = await prisma.auditLog.findMany({
+        where: { action: "page.primary_block_set", targetId: pageId },
+        orderBy: { createdAt: "asc" },
+      });
+      expect(audits.map((row) => (row.metadata as { blockId: string | null }).blockId)).toEqual([ids.link, ids.whatsapp, null]);
+    });
+
+    it("solo un bloque de acción de la misma página puede serlo", async () => {
+      const { agent, basePath } = await createPageWithOwner();
+      const ids = await createActions(agent, basePath);
+      const other = await createPageWithOwner();
+      const foreign = await other.agent
+        .post(other.basePath)
+        .set(CSRF_HEADERS)
+        .send({ type: "link", config: { label: "Ajeno", url: "https://ejemplo.cl" } })
+        .expect(201);
+
+      await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId: ids.text }).expect(422);
+      await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId: foreign.body.id }).expect(404);
+      await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId: "no-es-un-uuid" }).expect(400);
+      await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({}).expect(400);
+    });
+
+    it("la base garantiza una sola por página aunque dos cambios lleguen a la vez", async () => {
+      const { agent, basePath, pageId } = await createPageWithOwner();
+      const ids = await createActions(agent, basePath);
+
+      // El índice parcial es la garantía real: ni siquiera una escritura directa lo salta.
+      await prisma.block.update({ where: { id: ids.link }, data: { isPrimary: true } });
+      await expect(prisma.block.update({ where: { id: ids.whatsapp }, data: { isPrimary: true } })).rejects.toThrow();
+      await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId: null }).expect(200);
+
+      const responses = await Promise.all(
+        [ids.link, ids.whatsapp, ids.link, ids.whatsapp].map((blockId) =>
+          agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId }),
+        ),
+      );
+      for (const response of responses) {
+        expect([200, 409]).toContain(response.status);
+      }
+      expect(await prisma.block.count({ where: { pageId, isPrimary: true } })).toBe(1);
+    });
+
+    it("duplicar el bloque principal no duplica la marca", async () => {
+      const { agent, basePath } = await createPageWithOwner();
+      const ids = await createActions(agent, basePath);
+      await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId: ids.whatsapp }).expect(200);
+
+      const copy = await agent.post(`${basePath}/${ids.whatsapp}/duplicate`).set(CSRF_HEADERS).expect(201);
+      expect(copy.body.isPrimary).toBe(false);
+    });
+
+    it("se publica con la página, sale en la respuesta pública y sobrevive a restaurar una versión", async () => {
+      const { agent, basePath, organizationId, siteId, pageId } = await createPageWithOwner();
+      const ids = await createActions(agent, basePath);
+      const pagePath = `/api/v1/organizations/${organizationId}/sites/${siteId}/pages/${pageId}`;
+      const site = await agent.get(`/api/v1/organizations/${organizationId}/sites/${siteId}`).expect(200);
+      const publicPath = `/api/v1/public/sites/${site.body.slug}/pages/inicio`;
+
+      // Sin acción principal el snapshot ni siquiera lleva la clave: una versión publicada antes de
+      // PP5 es idéntica, y volver a publicar no crea una versión "fantasma".
+      const v1 = await agent.post(`${pagePath}/publish`).set(CSRF_HEADERS).expect(201);
+      const stored = await prisma.pageVersion.findUniqueOrThrow({ where: { id: v1.body.id } });
+      expect(JSON.stringify(stored.contentSnapshot)).not.toContain("isPrimary");
+      const beforePrimary = await request(httpServer).get(publicPath).expect(200);
+      expect(primaryTypes(beforePrimary.body.blocks)).toEqual([]);
+
+      // Es un cambio del borrador: el visitante no lo ve hasta publicar.
+      await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId: ids.whatsapp }).expect(200);
+      expect(primaryTypes((await request(httpServer).get(publicPath).expect(200)).body.blocks)).toEqual([]);
+
+      const v2 = await agent.post(`${pagePath}/publish`).set(CSRF_HEADERS).expect(201);
+      expect(v2.body.versionNumber).toBe(v1.body.versionNumber + 1);
+      expect(primaryTypes((await request(httpServer).get(publicPath).expect(200)).body.blocks)).toEqual(["whatsapp"]);
+
+      // Se quita y se publica; restaurar la v2 la devuelve, en el bloque recreado desde el snapshot.
+      await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId: null }).expect(200);
+      await agent.post(`${pagePath}/publish`).set(CSRF_HEADERS).expect(201);
+      await agent.post(`${pagePath}/versions/${v2.body.id}/restore`).set(CSRF_HEADERS).expect(201);
+      expect(primaryTypes((await agent.get(basePath).expect(200)).body)).toEqual(["whatsapp"]);
+    });
+
+    it("una marca en un bloque que no es de acción, si llegara al snapshot, no se publica", async () => {
+      const { agent, basePath, organizationId, siteId, pageId } = await createPageWithOwner();
+      const ids = await createActions(agent, basePath);
+      // Solo alcanzable editando la base a mano: la API nunca lo permite.
+      await prisma.block.update({ where: { id: ids.text }, data: { isPrimary: true } });
+      await agent
+        .post(`/api/v1/organizations/${organizationId}/sites/${siteId}/pages/${pageId}/publish`)
+        .set(CSRF_HEADERS)
+        .expect(201);
+      const site = await agent.get(`/api/v1/organizations/${organizationId}/sites/${siteId}`).expect(200);
+
+      const published = await request(httpServer).get(`/api/v1/public/sites/${site.body.slug}/pages/inicio`).expect(200);
+      expect(primaryTypes(published.body.blocks)).toEqual([]);
+    });
+  });
+
   describe("degradación controlada", () => {
     it("un bloque guardado con un tipo desconocido se marca degradado en vez de romper el listado", async () => {
       const { agent, basePath, pageId } = await createPageWithOwner();

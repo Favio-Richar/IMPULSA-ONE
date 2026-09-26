@@ -6,8 +6,8 @@ captación, reservas, ventas y analítica) desde una sola URL.
 **Estado actual: Fase 4 — SaaS comercial — en progreso (backlog en `docs/BACKLOG_FASE_4.md`;
 F4.1–F4.5 terminadas; F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.
 Por delante de F4.9 va la página pública premium (`docs/BACKLOG_PAGINA_PREMIUM.md`): PP1 y PP2
-(medios propios y selector de imágenes) y PP4 (temas Ejecutivo y Vibrante, encabezado de perfil)
-terminadas en local; PP3 (fondo premium) construida y probada, en espera de que se apruebe el
+(medios propios y selector de imágenes), PP4 (temas Ejecutivo y Vibrante, encabezado de perfil) y
+PP5 (acción principal fija en el teléfono y entrada de los bloques) terminadas en local; PP3 (fondo premium) construida y probada, en espera de que se apruebe el
 contenido de la biblioteca de videos.** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
@@ -1198,6 +1198,15 @@ contenido). Se aplica en vivo, como el tema, y la página pública se actualiza 
   perfiles existentes se ven igual.
 - **Al desplegar sobre una base existente**, correr `pnpm --filter @impulza/database run db:seed`
   para que aparezcan los temas nuevos (idempotente).
+
+## Acción principal y entrada de los bloques (PP5)
+
+- En el constructor, un bloque de WhatsApp, enlace o formulario se marca como **acción principal**
+  (una por página, garantizado por la base de datos). Se destaca en la página y, en el teléfono,
+  queda fija abajo mientras la persona recorre el perfil; se esconde cuando el botón original está
+  a la vista y nunca tapa el final de la página. Se ve al publicar, como cualquier cambio.
+- Los bloques entran con una animación suave y escalonada, que desaparece si el visitante pidió
+  "reducir movimiento".
 
 ## Soporte (F4.5)
 

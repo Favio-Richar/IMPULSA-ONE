@@ -80,6 +80,9 @@ Site/Page (N) ──1 Template (opcional, origen de la página)
 - **PageVersion**: id, page_id, version_number, content_snapshot, published_at, created_by.
   - Guarda el historial versionado exigido por el constructor (borrador vs. publicado, restauración).
 - **Block**: id, page_id, type, order, config_schema_version, visible, scheduled_start/end.
+  - PP5: `is_primary` (acción principal de la página). A lo sumo uno por página: índice único
+    parcial `blocks_one_primary_per_page (page_id) WHERE is_primary`. Solo tipos de acción
+    (`PRIMARY_ACTION_BLOCK_TYPES`), regla del servicio.
 - **BlockVersion**: id, block_id, version_number, config (JSON tipado por `type`), created_at.
 - **Theme**: id, organization_id (nullable si es tema global del catálogo), tokens (paleta,
   tipografía, espaciado).

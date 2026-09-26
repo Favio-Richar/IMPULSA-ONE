@@ -5,6 +5,7 @@ import { publicSlugSchema, themeTokensToCssVariables, type ThemeTokens } from "@
 import type { PageResponse, ThemeResponse } from "@impulza/contracts";
 import {
   Button,
+  buttonVariants,
   Card,
   CardContent,
   CardHeader,
@@ -96,6 +97,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
       <ThemePicker organizationId={organizationId} siteId={siteId} />
       <BackgroundPicker organizationId={organizationId} siteId={siteId} />
       <PagesSection organizationId={organizationId} siteId={siteId} />
+      <BookingShortcut siteId={siteId} />
       <CustomDomains organizationId={organizationId} siteId={siteId} />
     </div>
   );
@@ -517,5 +519,22 @@ function UndoDeleteBanner({
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Acceso a la configuración de reservas (F5.1), que tiene su propia pantalla. */
+function BookingShortcut({ siteId }: { siteId: string }): React.JSX.Element {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Reservas</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Horario de atención, servicios con su duración y días bloqueados.</p>
+        <Link href={`/sitios/${siteId}/reservas`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+          Configurar reservas
+        </Link>
+      </CardContent>
+    </Card>
   );
 }

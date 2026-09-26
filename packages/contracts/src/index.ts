@@ -24,3 +24,4 @@ export * from "./admin.js";
 export * from "./support.js";
 export * from "./media.js";
 export * from "./domains.js";
+export * from "./bookings.js";

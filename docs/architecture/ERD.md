@@ -222,6 +222,17 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 | Organization – Subscription | 1:1 activa (histórico 1:N) | |
 | Membership – Role | N:1 | rol por membresía, no por usuario global |
 
+## 9b. Reservas (F5.1, `BACKLOG_FASE_5.md`)
+
+- **BookingSettings** (1:1 con Site, PK `site_id`): organization_id, enabled, time_zone (IANA),
+  weekly_hours (JSON validado con `weeklyHoursSchema`), min_notice_minutes, max_advance_days,
+  buffer_minutes, slot_interval_minutes.
+- **BookableService** (Site 1:N): organization_id, name, description, duration_minutes,
+  price_amount + price_currency (unidad mínima + ISO), payment_url (enlace externo del negocio:
+  Impulza no cobra, decisión #6), active, position.
+- **BookingBlackout** (Site 1:N): organization_id, starts_at, ends_at (fin exclusivo), reason.
+- `Booking` (la reserva en sí) se agrega en F5.2.
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 `Booking`, `Service` (agenda), `Catalog`, `Product`, `Order`, `Payment` (comercio de negocios),

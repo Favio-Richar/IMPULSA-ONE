@@ -92,7 +92,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 
 | Requisito | Fuente | Fase |
 |---|---|---|
-| Reservas: calendario, servicios/duración/precio, profesionales, sucursales, disponibilidad, seña, cancelación/reprogramación, recordatorios, integración calendario/videollamada | PM §9.9 | Fase 5 |
+| Reservas: calendario, servicios/duración/precio, profesionales, sucursales, disponibilidad, seña, cancelación/reprogramación, recordatorios, integración calendario/videollamada | PM §9.9 | Fase 5 — `BACKLOG_FASE_5.md`: servicios, horario, bloqueos y disponibilidad en F5.1 (en revisión); reserva pública F5.2; agenda F5.3; avisos F5.4. Seña cobrada bloqueada por decisión #6 (se usa enlace de pago externo) |
 | Tienda: productos físicos/digitales, servicios, variantes, stock, cupones, carrito, checkout, pedidos, pagos, reembolsos, descargas, upsell/order bump, afiliados | PM §9.10 | Fase 5 |
 | Campañas de email: segmentos, listas, plantillas, secuencias, automatizaciones básicas, métricas, bajas | PM §9.11 | Fase 5 |
 

@@ -26,6 +26,7 @@ import { RedisModule } from "./redis/redis.module.js";
 import { StorageModule } from "./storage/storage.module.js";
 import { MediaModule } from "./modules/media/media.module.js";
 import { DomainsModule } from "./modules/domains/domains.module.js";
+import { BookingsModule } from "./modules/bookings/bookings.module.js";
 
 // Módulo raíz — los módulos de dominio (sites, forms, ...) se agregan a partir de Fase 2, uno
 // por historia del backlog. Ver docs/BACKLOG_FASE_0_1.md.
@@ -55,6 +56,7 @@ import { DomainsModule } from "./modules/domains/domains.module.js";
     SupportModule,
     MediaModule,
     DomainsModule,
+    BookingsModule,
     AdminModule,
     HealthModule,
   ],

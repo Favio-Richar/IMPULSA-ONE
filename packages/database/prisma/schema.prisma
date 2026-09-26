@@ -143,6 +143,9 @@ model Organization {
   auditLogs           AuditLog[]
   sites               Site[]
   siteDomains         SiteDomain[]
+  bookingSettings     BookingSettings[]
+  bookableServices    BookableService[]
+  bookingBlackouts    BookingBlackout[]
   themes              Theme[]
   contacts            Contact[]
   shortLinks          ShortLink[]
@@ -358,6 +361,9 @@ model Site {
   pages               Page[]
   domains             SiteDomain[]
   slugRedirects       SiteSlugRedirect[]
+  bookingSettings     BookingSettings?
+  bookableServices    BookableService[]
+  bookingBlackouts    BookingBlackout[]
   forms               Form[]
   analyticsEvents     AnalyticsEvent[]
   analyticsAggregates AnalyticsAggregate[]
@@ -918,4 +924,72 @@ model MediaAsset {
   @@index([organizationId, createdAt])
   @@index([status, createdAt])
   @@map("media_assets")
+}
+
+// --- Reservas (F5.1, BACKLOG_FASE_5.md) ---
+
+// Configuración de reservas de un sitio (1:1). `weeklyHours` se valida con `weeklyHoursSchema`
+// (`@impulza/validation`) al escribir y al leer: nunca JSON libre.
+model BookingSettings {
+  siteId              String   @id @map("site_id") @db.Uuid
+  organizationId      String   @map("organization_id") @db.Uuid
+  enabled             Boolean  @default(false)
+  // Zona horaria IANA del negocio: todo horario se calcula en ella (incluye cambios de horario).
+  timeZone            String   @default("America/Santiago") @map("time_zone")
+  weeklyHours         Json     @map("weekly_hours")
+  minNoticeMinutes    Int      @default(120) @map("min_notice_minutes")
+  maxAdvanceDays      Int      @default(60) @map("max_advance_days")
+  bufferMinutes       Int      @default(0) @map("buffer_minutes")
+  slotIntervalMinutes Int      @default(30) @map("slot_interval_minutes")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("booking_settings")
+}
+
+// Servicio que se puede reservar (corte, sesión, tour). Precio en unidad mínima + moneda ISO; el
+// pago, si lo hay, es un enlace externo del negocio (Impulza no cobra: decisión #6).
+model BookableService {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  siteId          String   @map("site_id") @db.Uuid
+  name            String
+  description     String?
+  durationMinutes Int      @map("duration_minutes")
+  priceAmount     Int?     @map("price_amount")
+  priceCurrency   String?  @map("price_currency")
+  paymentUrl      String?  @map("payment_url")
+  active          Boolean  @default(true)
+  position        Int      @default(0)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, position])
+  @@index([organizationId])
+  @@map("bookable_services")
+}
+
+// Bloqueo de agenda (feriado, vacaciones): en ese rango no se ofrece ninguna hora.
+model BookingBlackout {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  siteId         String   @map("site_id") @db.Uuid
+  startsAt       DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt         DateTime @map("ends_at") @db.Timestamptz(6)
+  reason         String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, startsAt])
+  @@index([organizationId])
+  @@map("booking_blackouts")
 }

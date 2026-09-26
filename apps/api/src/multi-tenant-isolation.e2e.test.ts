@@ -1166,6 +1166,50 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Configuración de reservas (F5.1/F5.7): ningún acceso cruzado entre organizaciones", () => {
+    it("A no lee ni cambia la configuración, los servicios ni los bloqueos de B por ninguna combinación de ids", async () => {
+      const baseB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/booking`;
+      const serviceOfB = await orgB.ownerAgent.post(`${baseB}/services`).set(CSRF_HEADERS).send({ name: "Servicio de B", durationMinutes: 30 }).expect(201);
+      const blackoutOfB = await orgB.ownerAgent
+        .post(`${baseB}/blackouts`)
+        .set(CSRF_HEADERS)
+        .send({ startsAt: "2030-01-01T10:00:00Z", endsAt: "2030-01-01T12:00:00Z" })
+        .expect(201);
+      const serviceId = serviceOfB.body.id as string;
+      const blackoutId = blackoutOfB.body.id as string;
+
+      // Con la organización de B en la URL: 403.
+      await orgA.ownerAgent.get(`${baseB}/settings`).expect(403);
+      await orgA.ownerAgent.get(`${baseB}/services`).expect(403);
+      await orgA.ownerAgent.patch(`${baseB}/services/${serviceId}`).set(CSRF_HEADERS).send({ name: "Tomado" }).expect(403);
+
+      // Organización propia de A con el sitio de B: 404.
+      const aWithSiteB = `/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/booking`;
+      await orgA.ownerAgent.get(`${aWithSiteB}/settings`).expect(404);
+      await orgA.ownerAgent.put(`${aWithSiteB}/settings`).set(CSRF_HEADERS).send({
+        enabled: true,
+        timeZone: "America/Santiago",
+        weeklyHours: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] },
+        minNoticeMinutes: 0,
+        maxAdvanceDays: 30,
+        bufferMinutes: 0,
+        slotIntervalMinutes: 30,
+      }).expect(404);
+      await orgA.ownerAgent.get(`${aWithSiteB}/services`).expect(404);
+
+      // Organización y sitio propios de A con los ids de B: 404.
+      const baseA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/booking`;
+      await orgA.ownerAgent.patch(`${baseA}/services/${serviceId}`).set(CSRF_HEADERS).send({ name: "Tomado" }).expect(404);
+      await orgA.ownerAgent.delete(`${baseA}/services/${serviceId}`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.get(`${baseA}/availability?serviceId=${serviceId}&from=2030-01-01&days=1`).expect(404);
+      await orgA.ownerAgent.delete(`${baseA}/blackouts/${blackoutId}`).set(CSRF_HEADERS).expect(404);
+
+      expect((await prisma.bookableService.findUniqueOrThrow({ where: { id: serviceId } })).name).toBe("Servicio de B");
+      expect(await prisma.bookingBlackout.count({ where: { id: blackoutId } })).toBe(1);
+      expect(await prisma.bookingSettings.count({ where: { siteId: orgB.siteId } })).toBe(0);
+    });
+  });
+
   describe("Administración (F4.4/F4.9): un usuario de organización nunca la alcanza", () => {
     it("ni el OWNER ni un ADMIN de una organización abren una ruta de administración", async () => {
       const paths = [

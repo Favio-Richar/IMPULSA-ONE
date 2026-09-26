@@ -103,6 +103,9 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/templates/{code}",
       // Login de superadministración (F4.4): abre la sesión, no puede exigirla. Contraseña + 2FA.
       "POST /api/v1/admin/auth/login",
+      // Resolución de dominios propios (F4.7): la llama el `proxy` de apps/web sin sesión en cada
+      // visita a un dominio propio. Solo devuelve el slug de un dominio verificado; límite de tasa.
+      "GET /api/v1/public/domains/{hostname}",
     ]);
 
     const sinSeguridad: string[] = [];

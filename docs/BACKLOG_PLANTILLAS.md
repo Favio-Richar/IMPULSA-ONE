@@ -43,6 +43,14 @@ Orden obligatorio: PL2 → PL5 → PL1 → PL3 → PL4. Cada entrada dice dónde
   Siguiente: PL3.
 - **2026-09-26 — PL3 terminada** (commit `feat(templates): catalogo semilla ... (PL3)`), en "Lista
   para tu revisión". 7 plantillas sembradas. Siguiente: PL4.
+- **2026-09-26 — PL4 en progreso.** Hecho el servidor (commit `d8bcef6`): `POST .../pages/:pageId/apply-template`
+  con personalización, 409 `UNPUBLISHED_CHANGES`, apariencia anterior para deshacer, auditoría y
+  e2e con aislamiento. Falta: onboarding de 11 pasos (panel) y selector en el constructor.
+- Notas de entorno de esta sesión (no son de PL1-PL4): (1) con `packages/database/.env` presente,
+  Prisma recarga variables y falla `revalidate-web.service.test.ts` ("no llama a nada si
+  WEB_APP_URL…"); sin ese archivo pasa. (2) `admin.e2e.test.ts` "quitar la marca directo en la
+  base…" falló una vez en la corrida completa y pasó en las siguientes (3/3 aislada, y la suite
+  completa después); parece depender del reloj del código 2FA. Quedan para revisar aparte.
 
 ### PL1 — Modelo `Template` y migración
 **Criterios de aceptación:**

@@ -1,3 +1,4 @@
+import type { SiteBackground } from "../backgrounds/index.js";
 import type { ThemeTokens } from "./tokens.js";
 
 // Catálogo base de temas (F2.5). Todos respetan la dirección visual obligatoria de CLAUDE.md:
@@ -9,9 +10,11 @@ import type { ThemeTokens } from "./tokens.js";
 
 /**
  * Líneas del catálogo (PP4). `clasico` son los temas de F2.5; `ejecutivo` (sobrio y formal) y
- * `vibrante` (juvenil y con más color) traen pareja tipográfica propia. El panel las agrupa así.
+ * `vibrante` (juvenil y con más color) traen pareja tipográfica propia; `oscuro` (PL2, ADR-008) es
+ * la línea de fondo oscuro de las apps de enlace en bio, con títulos en Fraunces. El panel las
+ * agrupa así.
  */
-export const THEME_FAMILIES = ["ejecutivo", "vibrante", "clasico"] as const;
+export const THEME_FAMILIES = ["oscuro", "ejecutivo", "vibrante", "clasico"] as const;
 export type ThemeFamily = (typeof THEME_FAMILIES)[number];
 
 export interface ThemeCatalogEntry {
@@ -20,6 +23,11 @@ export interface ThemeCatalogEntry {
   description: string;
   family: ThemeFamily;
   tokens: ThemeTokens;
+  /**
+   * Fondo con el que se ve el tema mientras el sitio no eligió uno propio (PL2): los oscuros van
+   * con un degradado oscuro del catálogo de fondos. Solo presentación: nunca se guarda en el sitio.
+   */
+  defaultBackground?: Extract<SiteBackground, { kind: "gradient" }>;
 }
 
 export const THEME_CATALOG: readonly ThemeCatalogEntry[] = [
@@ -264,6 +272,100 @@ export const THEME_CATALOG: readonly ThemeCatalogEntry[] = [
       fontFamily: "vibrant",
       radius: "moderate",
       density: "compact",
+      shadow: "subtle",
+      buttonStyle: "solid",
+    },
+  },
+  // --- Oscuro (PL2, ADR-008): fondo oscuro de app de enlace en bio. Texto claro con AA verificado
+  // en cada par; el primario es un color luminoso, así que el texto del botón va oscuro.
+  {
+    code: "oscuro-noche",
+    name: "Noche",
+    description: "Negro cálido con botones claros. Para creadores, fotografía y marca personal.",
+    family: "oscuro",
+    defaultBackground: { kind: "gradient", gradient: "grafito" },
+    tokens: {
+      palette: {
+        background: "#111014",
+        surface: "#1c1a22",
+        foreground: "#f3f1f5",
+        mutedForeground: "#c2bcc8",
+        primary: "#f3f1f5",
+        primaryForeground: "#131120",
+        border: "#2c2934",
+      },
+      fontFamily: "editorial",
+      radius: "moderate",
+      density: "comfortable",
+      shadow: "subtle",
+      buttonStyle: "solid",
+    },
+  },
+  {
+    code: "oscuro-indigo",
+    name: "Índigo",
+    description: "Azul noche con acento lavanda. Para música, tecnología y eventos.",
+    family: "oscuro",
+    defaultBackground: { kind: "gradient", gradient: "medianoche" },
+    tokens: {
+      palette: {
+        background: "#0f1021",
+        surface: "#1b1c35",
+        foreground: "#eef0ff",
+        mutedForeground: "#b9bddf",
+        primary: "#9f97ff",
+        primaryForeground: "#131120",
+        border: "#2a2c4a",
+      },
+      fontFamily: "editorial",
+      radius: "moderate",
+      density: "comfortable",
+      shadow: "subtle",
+      buttonStyle: "solid",
+    },
+  },
+  {
+    code: "oscuro-esmeralda",
+    name: "Esmeralda",
+    description: "Verde profundo con acento menta. Para bienestar, deporte y naturaleza.",
+    family: "oscuro",
+    defaultBackground: { kind: "gradient", gradient: "bosque" },
+    tokens: {
+      palette: {
+        background: "#0b1512",
+        surface: "#14241f",
+        foreground: "#ecfdf5",
+        mutedForeground: "#a7c4b8",
+        primary: "#34d399",
+        primaryForeground: "#062a1d",
+        border: "#1f3a31",
+      },
+      fontFamily: "editorial",
+      radius: "moderate",
+      density: "comfortable",
+      shadow: "subtle",
+      buttonStyle: "solid",
+    },
+  },
+  {
+    code: "oscuro-ciruela",
+    name: "Ciruela",
+    description: "Borgoña profundo con acento coral. Para gastronomía nocturna, moda y arte.",
+    family: "oscuro",
+    defaultBackground: { kind: "gradient", gradient: "ciruela" },
+    tokens: {
+      palette: {
+        background: "#1a1110",
+        surface: "#261a18",
+        foreground: "#fff3ef",
+        mutedForeground: "#d8b9af",
+        primary: "#ff9a78",
+        primaryForeground: "#2a0f07",
+        border: "#3a2622",
+      },
+      fontFamily: "editorial",
+      radius: "moderate",
+      density: "comfortable",
       shadow: "subtle",
       buttonStyle: "solid",
     },

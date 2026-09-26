@@ -36,6 +36,8 @@ const FONT_STACKS: Record<ThemeTokens["fontFamily"], { body: string; heading: st
   executive: { body: `"Inter Variable", ${SYSTEM_SANS}`, heading: `"Source Serif 4 Variable", ${SYSTEM_SERIF}` },
   // Juvenil: grotesca expresiva para los títulos, sans redondeada para el texto.
   vibrant: { body: `"Manrope Variable", ${SYSTEM_SANS}`, heading: `"Bricolage Grotesque Variable", ${SYSTEM_SANS}` },
+  // Editorial (PL2, ADR-008): serif con carácter para el nombre y los títulos, Inter para leer.
+  editorial: { body: `"Inter Variable", ${SYSTEM_SANS}`, heading: `"Fraunces Variable", ${SYSTEM_SERIF}` },
 };
 
 const RADIUS_VALUES: Record<ThemeTokens["radius"], string> = {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AA_NORMAL_TEXT, contrastRatio } from "../contrast.js";
 import { safeUrlSchema } from "../blocks/primitives.js";
+import { getCatalogTheme } from "../themes/catalog.js";
 import { hexColorSchema, type ThemeTokens } from "../themes/tokens.js";
 
 // Fondo premium de la página (PP3, `docs/BACKLOG_PAGINA_PREMIUM.md`). Igual que el tema (F2.5), el
@@ -257,6 +258,18 @@ export function resolveSiteBackground(
       };
     }
   }
+}
+
+/**
+ * Fondo con el que se muestra un sitio (PL2): el que eligió, o —si no eligió ninguno— el sugerido
+ * por su tema del catálogo (los oscuros van con un degradado oscuro). Solo presentación: lo guardado
+ * no cambia, y el sitio puede elegir otro fondo o volver a este en cualquier momento.
+ */
+export function backgroundForDisplay(stored: unknown, themeCode: string | null): unknown {
+  if (stored !== null && stored !== undefined) {
+    return stored;
+  }
+  return themeCode ? (getCatalogTheme(themeCode)?.defaultBackground ?? null) : null;
 }
 
 /**

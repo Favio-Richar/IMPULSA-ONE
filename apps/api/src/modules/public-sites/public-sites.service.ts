@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@impulza/database";
 import type { StorageAdapter } from "@impulza/storage";
 import {
+  backgroundForDisplay,
   isPrimaryActionBlockType,
   parseStoredBlock,
   resolveSiteBackground,
@@ -101,7 +102,8 @@ export class PublicSitesService {
       theme: { tokens: theme.tokens },
       // Ya resuelto (PP3): el render no decide nada, solo pinta. Un fondo que dejó de ser válido
       // (un video retirado de la biblioteca) cae al del tema en vez de romper la página.
-      background: resolveSiteBackground(site.background, themeTokensSchema.parse(theme.tokens), (key) =>
+      // PL2: sin fondo propio, el sugerido por el tema (los oscuros van con degradado oscuro).
+      background: resolveSiteBackground(backgroundForDisplay(site.background, theme.code), themeTokensSchema.parse(theme.tokens), (key) =>
         this.storage ? this.storage.publicUrl(key) : key,
       ),
       pages: navPages.map((page) => ({

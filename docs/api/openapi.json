@@ -1700,6 +1700,7 @@
                         "nullable": true,
                         "type": "string",
                         "enum": [
+                          "oscuro",
                           "ejecutivo",
                           "vibrante",
                           "clasico"
@@ -1837,6 +1838,7 @@
                       "nullable": true,
                       "type": "string",
                       "enum": [
+                        "oscuro",
                         "ejecutivo",
                         "vibrante",
                         "clasico"
@@ -1965,6 +1967,7 @@
                       "nullable": true,
                       "type": "string",
                       "enum": [
+                        "oscuro",
                         "ejecutivo",
                         "vibrante",
                         "clasico"
@@ -2110,6 +2113,7 @@
                       "nullable": true,
                       "type": "string",
                       "enum": [
+                        "oscuro",
                         "ejecutivo",
                         "vibrante",
                         "clasico"
@@ -2326,6 +2330,7 @@
                       "nullable": true,
                       "type": "string",
                       "enum": [
+                        "oscuro",
                         "ejecutivo",
                         "vibrante",
                         "clasico"
@@ -2990,6 +2995,7 @@
                       "nullable": true,
                       "type": "string",
                       "enum": [
+                        "oscuro",
                         "ejecutivo",
                         "vibrante",
                         "clasico"

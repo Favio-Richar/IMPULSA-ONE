@@ -30,7 +30,7 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 | Historia | Estado |
 |---|---|
 | PL1 — Modelo `Template` y migración | Pendiente |
-| PL2 — Familia de temas "Editorial oscuro" (ADR-008) | Pendiente |
+| PL2 — Familia de temas "Editorial oscuro" (ADR-008) | Lista para tu revisión (capturas mostradas en el chat) |
 | PL3 — Catálogo semilla de plantillas por rubro | Pendiente |
 | PL4 — Selector de plantillas en onboarding y constructor | Pendiente |
 | PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio) | Pendiente |
@@ -55,6 +55,28 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
   nombre, dejando un comentario que referencia ADR-008 — nunca se relaja el número de contraste.
 - Estos temas se combinan por defecto con uno de los degradados oscuros ya existentes
   (`medianoche`, `grafito`, `ciruela`) o con fondo de imagen/video + overlay oscuro (ya soportado).
+
+> **Estado (2026-09-26): lista para revisión de Favio.**
+>
+> - **Línea `oscuro`** (`THEME_FAMILIES`), 4 temas: **Noche** (negro cálido, botón principal claro
+>   como el boceto; degradado `grafito`), **Índigo** (lavanda; `medianoche`), **Esmeralda** (menta;
+>   `bosque`) y **Ciruela** (coral; `ciruela`). Márgenes de contraste amplios: texto 14,7–17,6:1,
+>   texto secundario sobre tarjeta ≥ 8,6:1, primario como texto sobre fondo ≥ 7,5:1.
+> - **Pareja tipográfica `editorial`**: Fraunces (títulos) + Inter (texto), Fraunces alojada en el
+>   propio sitio (`@fontsource-variable/fraunces`, OFL, 36 KB el subconjunto latino), nunca desde
+>   Google (decisión 3 de arriba).
+> - **Fondo por defecto del tema** (`defaultBackground` + `backgroundForDisplay`): un sitio con tema
+>   oscuro y sin fondo propio se ve con su degradado; solo presentación, nada se guarda en el sitio
+>   y el panel sigue mostrando "Del tema" como elección.
+> - **Pruebas:** "todos los fondos son claros" excluye **por nombre** la línea `oscuro` (comentario
+>   con ADR-008), sin tocar ningún umbral; prueba nueva de que la línea oscura es realmente oscura,
+>   con títulos editoriales y degradado. **Matriz tema × fondo** (`theme-background-matrix.test.ts`):
+>   los 15 temas sobre los 13 fondos ofrecidos (del tema, 8 degradados, color claro y oscuro, foto
+>   con capa oscura y clara) = 195 combinaciones, verificando AA para el texto directo sobre cada
+>   color del fondo (ambos extremos de un degradado; el peor tono de una foto bajo su capa) y para
+>   tarjetas y botones; más la consistencia de las capas aceptadas sobre una foto desconocida.
+>   Confirmado que la matriz falla (16 casos) si un degradado oscuro se marca con texto oscuro.
+> - **Panel:** la sección "Apariencia" muestra la línea "Oscuro" primero.
 
 ### PL3 — Catálogo semilla de plantillas por rubro
 **Criterios de aceptación:**

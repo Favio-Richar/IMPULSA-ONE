@@ -9,6 +9,7 @@ import {
   isOverlayLegible,
   legibleStrengths,
   mediaVariantsSchema,
+  backgroundForDisplay,
   resolveSiteBackground,
   siteBackgroundSchema,
   type SiteBackground,
@@ -264,10 +265,13 @@ export class SitesService {
   /** Fondo de la página (PP3): lo guardado, lo que pinta el render y los videos curados disponibles. */
   async getSiteBackground(organizationId: string, siteId: string): Promise<SiteBackgroundResponse> {
     const site = await this.getSiteOrThrow(organizationId, siteId);
-    const theme = themeTokensSchema.parse((await this.getSiteTheme(organizationId, siteId)).tokens);
+    const siteTheme = await this.getSiteTheme(organizationId, siteId);
+    const theme = themeTokensSchema.parse(siteTheme.tokens);
     return {
       background: site.background ?? null,
-      resolved: resolveSiteBackground(site.background, theme, this.videoUrl),
+      // Lo que se ve (PL2): sin fondo propio, el sugerido por el tema. `background` sigue siendo
+      // lo guardado, así el panel muestra "Del tema" como elección actual.
+      resolved: resolveSiteBackground(backgroundForDisplay(site.background, siteTheme.code), theme, this.videoUrl),
       // Sin almacenamiento configurado no hay de dónde servir los videos.
       videos: this.storage
         ? BACKGROUND_VIDEOS.map((video) => ({ code: video.code, name: video.name, posterUrl: this.videoUrl(video.posterKey) }))

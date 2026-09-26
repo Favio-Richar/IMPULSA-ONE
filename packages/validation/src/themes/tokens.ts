@@ -33,10 +33,11 @@ const paletteSchema = z.object({
  *
  * Las cuatro primeras usan fuentes del sistema. `executive` y `vibrant` (PP4) son parejas reales
  * —una fuente para títulos y otra para el texto— **alojadas en el propio sitio** (paquetes
- * `@fontsource-variable/*` con licencia OFL, empaquetados por cada app): ver
+ * `@fontsource-variable/*` con licencia OFL, empaquetados por cada app); `editorial` (PL2, ADR-008)
+ * es Fraunces en títulos + Inter en texto, la pareja de los temas oscuros. Ver
  * `themeTokensToCssVariables` y `packages/blocks-renderer/src/styles/fonts.css`.
  */
-export const FONT_FAMILIES = ["system", "serif", "geometric", "humanist", "executive", "vibrant"] as const;
+export const FONT_FAMILIES = ["system", "serif", "geometric", "humanist", "executive", "vibrant", "editorial"] as const;
 
 // "Bordes moderados, nada excesivamente redondo" es dirección visual obligatoria (CLAUDE.md), así
 // que no existe una opción "pill" para el marco general del tema.

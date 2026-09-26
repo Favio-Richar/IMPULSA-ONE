@@ -66,7 +66,7 @@ describe("catálogo de temas (F2.5)", () => {
     }
   });
 
-  it("las líneas Ejecutivo y Vibrante (PP4) tienen al menos tres temas con su pareja tipográfica", () => {
+  it("cada línea del catálogo (PP4, PL2) tiene al menos tres temas con su pareja tipográfica", () => {
     for (const family of THEME_FAMILIES) {
       expect(THEME_CATALOG.filter((theme) => theme.family === family).length, family).toBeGreaterThanOrEqual(3);
     }
@@ -83,10 +83,24 @@ describe("catálogo de temas (F2.5)", () => {
     expect(getCatalogTheme(DEFAULT_THEME_CODE)?.family).toBe("clasico");
   });
 
-  it("todos los fondos son claros, como exige la dirección visual del proyecto", () => {
-    for (const { code, tokens } of THEME_CATALOG) {
+  it("todos los fondos son claros, salvo la línea oscura de ADR-008", () => {
+    // ADR-008 (2026-09-26): la página pública adopta el patrón de las apps de enlace en bio, con una
+    // línea de fondo oscuro. Se excluye **por nombre** solo esa línea; el resto del catálogo sigue
+    // exigiendo fondo claro, y ningún umbral de contraste cambia.
+    for (const { code, family, tokens } of THEME_CATALOG.filter((theme) => theme.family !== "oscuro")) {
       // Fondo blanco o muy claro (CLAUDE.md). Contra negro, un fondo claro da un contraste alto.
-      expect(contrastRatio(tokens.palette.background, "#000000"), `${code}: fondo no es claro`).toBeGreaterThan(15);
+      expect(contrastRatio(tokens.palette.background, "#000000"), `${code} (${family}): fondo no es claro`).toBeGreaterThan(15);
+    }
+  });
+
+  it("la línea oscura (PL2) tiene al menos tres temas de fondo realmente oscuro, con títulos editoriales y su degradado", () => {
+    const dark = THEME_CATALOG.filter((theme) => theme.family === "oscuro");
+    expect(dark.length).toBeGreaterThanOrEqual(3);
+    for (const theme of dark) {
+      // Contra blanco, un fondo oscuro da un contraste alto (el reflejo de la regla de arriba).
+      expect(contrastRatio(theme.tokens.palette.background, "#ffffff"), `${theme.code}: fondo no es oscuro`).toBeGreaterThan(15);
+      expect(theme.tokens.fontFamily, theme.code).toBe("editorial");
+      expect(theme.defaultBackground?.kind, theme.code).toBe("gradient");
     }
   });
 

@@ -87,7 +87,8 @@ Site/Page (N) ──1 Template (opcional, origen de la página)
 - **Theme**: id, organization_id (nullable si es tema global del catálogo), tokens (paleta,
   tipografía, espaciado).
   - PP4: `tokens.fontFamily` admite además las parejas `executive` y `vibrant` (títulos + texto,
-    fuentes alojadas en el propio sitio). La línea del catálogo (`ejecutivo`/`vibrante`/`clasico`)
+    fuentes alojadas en el propio sitio); PL2 suma `editorial` (Fraunces + Inter) y la línea
+    `oscuro`, cuyo fondo sugerido (`defaultBackground`, degradado) vive en el catálogo, no en `Site`. La línea del catálogo (`ejecutivo`/`vibrante`/`clasico`)
     no es columna: la API la deriva de `code` con `THEME_CATALOG`.
 - **Template**: id, name, industry, objective, style, preview_url, blocks_seed.
 

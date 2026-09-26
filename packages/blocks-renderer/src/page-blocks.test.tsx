@@ -262,3 +262,30 @@ describe("PageBlocks — compartir (PL8)", () => {
     expect(html.match(/role="status" aria-live="polite"/g)).toHaveLength(2);
   });
 });
+
+describe("PageBlocks — reservar (F5.2)", () => {
+  const booking: PublicBlockResponse = { position: 0, type: "booking", config: { label: "Reserva tu hora" } };
+
+  it("es un botón de la pila que se despliega, sin pedir nada hasta abrirlo", () => {
+    const html = renderToStaticMarkup(<PageBlocks blocks={[booking]} buttonStyle="solid" siteSlug="barberia" />);
+    expect(html).toMatch(/<details[^>]*>\s*<summary[^>]*min-h-14/);
+    expect(html).toContain("Reserva tu hora");
+    expect(html).toContain('data-stack=""');
+    // El flujo se monta al abrir: el HTML inicial no trae el paso de servicios.
+    expect(html).not.toContain("¿Qué quieres reservar?");
+  });
+
+  it("en la vista previa del constructor explica que no se reserva nada", () => {
+    const html = renderToStaticMarkup(<PageBlocks blocks={[booking]} buttonStyle="solid" mode="preview" />);
+    expect(html).toContain("Vista previa");
+    expect(html).toContain("Sitios → Reservas");
+  });
+
+  it("puede ser la acción principal: la barra fija del teléfono lleva al flujo", () => {
+    const html = renderToStaticMarkup(<PageBlocks blocks={[{ ...booking, primary: true }]} buttonStyle="solid" siteSlug="barberia" />);
+    expect(html).toMatch(/id="accion-principal"[^>]*data-block-type="booking"/);
+    const bar = /<div data-primary-action-bar=""[^>]*>[\s\S]*?<\/div>/.exec(html)?.[0] ?? "";
+    expect(bar).toContain('href="#accion-principal"');
+    expect(bar).toContain("Reserva tu hora");
+  });
+});

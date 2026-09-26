@@ -106,6 +106,10 @@ describe("Documento OpenAPI", () => {
       // Resolución de dominios propios (F4.7): la llama el `proxy` de apps/web sin sesión en cada
       // visita a un dominio propio. Solo devuelve el slug de un dominio verificado; límite de tasa.
       "GET /api/v1/public/domains/{hostname}",
+      // Reserva pública (F5.2): el visitante no tiene sesión. CSRF, límite de tasa y antispam.
+      "GET /api/v1/public/sites/{siteSlug}/booking",
+      "GET /api/v1/public/sites/{siteSlug}/booking/availability",
+      "POST /api/v1/public/sites/{siteSlug}/booking",
     ]);
 
     const sinSeguridad: string[] = [];

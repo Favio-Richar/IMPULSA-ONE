@@ -9,6 +9,7 @@ import type { BookableService, BookingBlackout, BookingSettings, Prisma, PrismaC
 import {
   availableSlots,
   bookableServiceSchema,
+  type BusyInterval,
   DEFAULT_BOOKING_SETTINGS,
   MAX_SERVICES_PER_SITE,
   weeklyHoursSchema,
@@ -24,6 +25,9 @@ import { AuditService } from "../audit/audit.service.js";
 
 export const SERVICE_NOT_FOUND = "Servicio no encontrado: no existe, o pertenece a otro sitio u organización (ADR-002).";
 export const BLACKOUT_NOT_FOUND = "Bloqueo no encontrado: no existe, o pertenece a otro sitio u organización (ADR-002).";
+
+/** El cliente normal o el de una transacción en curso. */
+type Db = PrismaClient | Prisma.TransactionClient;
 
 /** Días hacia atrás que se siguen mostrando en la lista de bloqueos. */
 const PAST_BLACKOUT_DAYS = 30;
@@ -278,19 +282,33 @@ export class BookingSetupService {
   // --- Horarios libres ---
 
   /**
-   * Horarios libres de un servicio (vista previa del panel; F5.2 usa el mismo cálculo para el
-   * visitante). Descuenta bloqueos; desde F5.2, también las reservas.
+   * Lo que ocupa la agenda entre `from` y `to`: bloqueos y reservas confirmadas. Única regla, usada
+   * por la vista previa del panel, la página pública y la creación de una reserva (esta última con
+   * el cliente de su transacción, `db`).
    */
-  async availability(organizationId: string, siteId: string, query: BookingAvailabilityQuery, now = new Date()): Promise<BookingAvailabilityResponse> {
-    const service = await this.getServiceOrThrow(organizationId, siteId, query.serviceId);
-    const settings = this.toSettingsResponse(siteId, await this.prisma.bookingSettings.findFirst({ where: { siteId, organizationId } }));
-    const rangeStart = new Date(`${query.from}T00:00:00Z`).getTime() - 24 * 3_600_000;
-    const rangeEnd = rangeStart + (query.days + 2) * 24 * 3_600_000;
-    const blackouts = await this.prisma.bookingBlackout.findMany({
-      where: { siteId, organizationId, startsAt: { lt: new Date(rangeEnd) }, endsAt: { gt: new Date(rangeStart) } },
-      select: { startsAt: true, endsAt: true },
-    });
-    const days = availableSlots({
+  async busyIntervals(siteId: string, from: Date, to: Date, db: Db = this.prisma): Promise<BusyInterval[]> {
+    const [blackouts, bookings] = await Promise.all([
+      db.bookingBlackout.findMany({ where: { siteId, startsAt: { lt: to }, endsAt: { gt: from } }, select: { startsAt: true, endsAt: true } }),
+      db.booking.findMany({ where: { siteId, status: "CONFIRMED", startsAt: { lt: to }, endsAt: { gt: from } }, select: { startsAt: true, endsAt: true } }),
+    ]);
+    return [...blackouts, ...bookings].map((interval) => ({ start: interval.startsAt, end: interval.endsAt }));
+  }
+
+  /** Horarios libres de `service` según `settings` (ambos ya leídos y validados). */
+  async computeAvailability(
+    siteId: string,
+    settings: BookingSettingsResponse,
+    service: { durationMinutes: number },
+    fromDate: string,
+    days: number,
+    now: Date,
+    db: Db = this.prisma,
+  ): Promise<BookingAvailabilityResponse> {
+    // Un día de holgura a cada lado: la fecha local y la UTC no coinciden en los bordes.
+    const rangeStart = new Date(`${fromDate}T00:00:00Z`).getTime() - 24 * 3_600_000;
+    const rangeEnd = rangeStart + (days + 2) * 24 * 3_600_000;
+    const busy = await this.busyIntervals(siteId, new Date(rangeStart), new Date(rangeEnd), db);
+    const result = availableSlots({
       timeZone: settings.timeZone,
       weeklyHours: settings.weeklyHours,
       durationMinutes: service.durationMinutes,
@@ -299,10 +317,22 @@ export class BookingSetupService {
       minNoticeMinutes: settings.minNoticeMinutes,
       maxAdvanceDays: settings.maxAdvanceDays,
       now,
-      fromDate: query.from,
-      days: query.days,
-      busy: blackouts.map((blackout) => ({ start: blackout.startsAt, end: blackout.endsAt })),
+      fromDate,
+      days,
+      busy,
     });
-    return { timeZone: settings.timeZone, days };
+    return { timeZone: settings.timeZone, days: result };
+  }
+
+  /** Configuración de un sitio ya validada (o la de por defecto si no hay). */
+  async settingsFor(siteId: string, db: Db = this.prisma): Promise<BookingSettingsResponse> {
+    return this.toSettingsResponse(siteId, await db.bookingSettings.findUnique({ where: { siteId } }));
+  }
+
+  /** Horarios libres de un servicio para la vista previa del panel. */
+  async availability(organizationId: string, siteId: string, query: BookingAvailabilityQuery, now = new Date()): Promise<BookingAvailabilityResponse> {
+    const service = await this.getServiceOrThrow(organizationId, siteId, query.serviceId);
+    const settings = await this.settingsFor(siteId);
+    return this.computeAvailability(siteId, settings, service, query.from, query.days, now);
   }
 }

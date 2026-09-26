@@ -10,6 +10,8 @@ export const ANALYTICS_EVENT_TYPES = [
   "lead_created",
   "qr_visit",
   "short_link_click",
+  // F5.2: una reserva confirmada desde la página pública. Solo la emite el servidor.
+  "booking_created",
 ] as const;
 
 export type AnalyticsEventType = (typeof ANALYTICS_EVENT_TYPES)[number];

@@ -24,7 +24,7 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
 | Historia | Estado |
 |---|---|
 | F5.1 — Servicios reservables y disponibilidad | Lista para tu revisión (capturas en `docs/design/capturas/f51/`) |
-| F5.2 — Reserva pública desde la página (bloque "Reservar") | Pendiente |
+| F5.2 — Reserva pública desde la página (bloque "Reservar") | Lista para tu revisión (capturas en `docs/design/capturas/f52/`) |
 | F5.3 — Agenda del negocio en el panel | Pendiente |
 | F5.4 — Confirmaciones, cancelación/reprogramación y recordatorios | Pendiente |
 | F5.5 — Catálogo y pedidos (productos físicos, digitales y servicios) con pago externo | Pendiente |
@@ -58,6 +58,31 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
     `apps/web/app/page.tsx:324` (sitio comercial en progreso de otra sesión); Playwright se corrió
     con un servidor provisional en el 3390 solo para estas pruebas, que no usan el sitio público.
   - Siguiente: F5.2 (reserva pública desde la página).
+- **2026-09-26 — F5.2 terminada**, en "Lista para tu revisión".
+  - Migración `20260926220000_f52_bookings`: tabla `bookings` (copia del servicio al reservar,
+    datos del cliente, estado, origen) y **restricción de exclusión** `bookings_no_overlap`
+    (`btree_gist`: mismo sitio + rangos que se pisan, solo `CONFIRMED`). Probada en la base:
+    rechaza la que se pisa, admite una cancelada en el mismo horario y una contigua. Requiere la
+    extensión `btree_gist` en el Postgres de producción (disponible en RDS, Neon, Supabase).
+  - API pública `public/sites/:slug/booking` (servicios, horarios libres, reservar): CSRF, límite
+    de tasa (10 reservas cada 10 min por visitante), trampa antispam, consentimiento obligatorio.
+    Alta bajo bloqueo por sitio que revalida la hora con el mismo cálculo (incluye el margen); la
+    restricción es la última garantía. Crea o actualiza el contacto (`booking:<sitio>`), su evento
+    `BOOKING` y los eventos de analítica `booking_created` (nuevo en la taxonomía) y `lead_created`.
+    Nunca cobra: la confirmación trae el enlace de pago del negocio si existe (decisión #6).
+  - Bloque `booking` (16.º tipo): botón de la pila que despliega servicio → día y hora → datos →
+    confirmación con "Pagar ahora" y "Agregar a mi calendario" (`.ics` generado en el navegador,
+    con escape contra inyección de campos). Puede ser la acción principal (barra fija del
+    teléfono). Errores en el color de texto del tema (AA), foco al título de cada paso.
+    `apps/web/app/api/bookings/...` reenvía al API (el navegador nunca la llama directo).
+  - Pruebas: API 391/391 (12 de reservas, con una carrera de 5 pedidos simultáneos → 1 reserva),
+    suite central con el caso público, validación 475, renderer 53+, web 24; Playwright
+    `reserva-publica.spec.ts` (móvil y escritorio) y `reservas.spec.ts`. Recorrido real en la demo
+    de la barbería: reserva guardada, teléfono normalizado, contacto enlazado.
+  - **Aviso**: `reserva-publica.spec.ts` se verificó con el servidor de desarrollo del 3300,
+    porque el build de producción de `apps/web` sigue roto por `app/page.tsx` (sitio comercial en
+    progreso de otra sesión). En CI corre contra el build de producción como las demás.
+  - Siguiente: F5.3 (agenda del negocio en el panel).
 
 ---
 

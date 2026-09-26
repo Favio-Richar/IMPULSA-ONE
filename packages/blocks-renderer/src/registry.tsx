@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import type { PublicBlockResponse, PublicFormResponse } from "@impulza/contracts";
 import {
+  bookingBlockSchema,
   contactActionsSchema,
   contactFormSchema,
   dividerSchema,
@@ -19,6 +20,7 @@ import {
 } from "@impulza/validation";
 import type { ButtonVariant } from "./ui/link-button.js";
 import { ContactActionsBlock } from "./blocks/contact-actions.js";
+import { BookingBlock } from "./blocks/booking.js";
 import { ContactFormBlock } from "./blocks/contact-form.js";
 import { DividerBlock } from "./blocks/divider.js";
 import { FaqBlock } from "./blocks/faq.js";
@@ -136,6 +138,12 @@ export function RenderBlock({
     case "testimonials": {
       const parsed = testimonialsSchema.safeParse(block.config);
       return parsed.success ? <TestimonialsBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
+    }
+    case "booking": {
+      const parsed = bookingBlockSchema.safeParse(block.config);
+      return parsed.success ? (
+        <BookingBlock config={parsed.data} siteSlug={siteSlug} mode={mode} primary={block.primary === true} glass={buttonVariant === "glass"} mono={mono} />
+      ) : null;
     }
     default:
       return null;

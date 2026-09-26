@@ -285,6 +285,20 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
     seedConfig: () => ({}),
   },
 
+  // F5.2: botón de la pila que abre el flujo de reserva. Horario y servicios se configuran en
+  // Sitios → Reservas; acá solo el texto del botón.
+  booking: {
+    fields: [
+      {
+        name: "label",
+        label: "Texto del botón",
+        helperText: "Tus horarios y servicios se configuran en el sitio, sección Reservas.",
+        control: { kind: "text", maxLength: 80 },
+      },
+    ],
+    seedConfig: () => ({ label: "Reservar hora" }),
+  },
+
   service: {
     fields: [
       { name: "name", label: "Nombre", control: { kind: "text", maxLength: 120 } },

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { plainTextSchema, safeUrlSchema } from "../blocks/primitives.js";
+import { phoneSchema, plainTextSchema, safeUrlSchema } from "../blocks/primitives.js";
 import { isValidTimeZone } from "./timezone.js";
 
 export * from "./timezone.js";
@@ -176,3 +176,23 @@ export function currencyFractionDigits(currency: string): number {
     return 2;
   }
 }
+
+/** Campo trampa de la reserva pública (mismo criterio que los formularios, F3.2). */
+export const BOOKING_HONEYPOT_FIELD = "website";
+
+/**
+ * Reserva desde la página pública (F5.2). Los datos del cliente son los necesarios para la cita; el
+ * consentimiento es obligatorio porque la reserva crea (o actualiza) su ficha en el mini-CRM del
+ * negocio (ADR-004: sin consentimiento, no hay contacto).
+ */
+export const publicBookingRequestSchema = z.object({
+  serviceId: z.uuid(),
+  startsAt: z.iso.datetime({ offset: true }),
+  name: plainTextSchema(120),
+  email: z.email("Escribe un correo válido.").max(254),
+  phone: phoneSchema.optional(),
+  note: plainTextSchema(500).optional(),
+  consent: z.literal(true, { message: "Necesitamos tu autorización para guardar la reserva." }),
+  [BOOKING_HONEYPOT_FIELD]: z.string().max(200).optional(),
+});
+export type PublicBookingRequest = z.infer<typeof publicBookingRequestSchema>;

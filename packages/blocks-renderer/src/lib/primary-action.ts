@@ -1,10 +1,10 @@
 import type { PublicBlockResponse } from "@impulza/contracts";
-import { contactFormSchema, linkSchema, type SocialBlockConfig, whatsappSchema } from "@impulza/validation";
+import { bookingBlockSchema, contactFormSchema, linkSchema, type SocialBlockConfig, whatsappSchema } from "@impulza/validation";
 
 /** `id` del bloque principal en la página: ancla del formulario y objetivo del observador. */
 export const PRIMARY_ACTION_ANCHOR = "accion-principal";
 
-export type PrimaryActionIcon = "whatsapp" | "form" | "link" | { network: SocialBlockConfig["links"][number]["network"] };
+export type PrimaryActionIcon = "whatsapp" | "form" | "link" | "booking" | { network: SocialBlockConfig["links"][number]["network"] };
 
 /** Lo que la barra fija del teléfono necesita para repetir la acción principal (PP5). */
 export interface PrimaryAction {
@@ -52,6 +52,11 @@ export function primaryActionOf(block: PublicBlockResponse): PrimaryAction | nul
         return null;
       }
       return { href: `#${PRIMARY_ACTION_ANCHOR}`, label: parsed.data.title ?? "Escríbenos", external: false, icon: "form" };
+    }
+    case "booking": {
+      // F5.2: como el formulario, un flujo plegado dentro de la página; la barra lleva hasta él y lo abre.
+      const parsed = bookingBlockSchema.safeParse(block.config);
+      return parsed.success ? { href: `#${PRIMARY_ACTION_ANCHOR}`, label: parsed.data.label, external: false, icon: "booking" } : null;
     }
     default:
       return null;

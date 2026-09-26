@@ -23,7 +23,8 @@ function formatRange(startsAt: string, endsAt: string, timeZone: string): string
   const first = localDateOf(new Date(startsAt), timeZone);
   // El fin es exclusivo (medianoche del día siguiente): se muestra el último día bloqueado.
   const last = localDateOf(new Date(new Date(endsAt).getTime() - 1), timeZone);
-  return first === last ? day.format(new Date(startsAt)) : `${day.format(new Date(startsAt))} al ${day.format(new Date(new Date(endsAt).getTime() - 1))}`;
+  const text = first === last ? day.format(new Date(startsAt)) : `${day.format(new Date(startsAt))} al ${day.format(new Date(new Date(endsAt).getTime() - 1))}`;
+  return text.charAt(0).toLocaleUpperCase("es-CL") + text.slice(1);
 }
 
 export function BookingBlackouts({ organizationId, siteId, timeZone }: { organizationId: string; siteId: string; timeZone: string }): React.JSX.Element {
@@ -89,7 +90,7 @@ export function BookingBlackouts({ organizationId, siteId, timeZone }: { organiz
               <li key={blackout.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
                 <p className="flex items-center gap-2 text-sm text-foreground">
                   <CalendarOff className="size-4 text-muted-foreground" aria-hidden="true" />
-                  <span className="capitalize">{formatRange(blackout.startsAt, blackout.endsAt, timeZone)}</span>
+                  <span>{formatRange(blackout.startsAt, blackout.endsAt, timeZone)}</span>
                   {blackout.reason ? <span className="text-muted-foreground">· {blackout.reason}</span> : null}
                 </p>
                 <ConfirmButton variant="ghost" size="sm" confirmLabel="¿Quitar?" loading={deleteMutation.isPending} onConfirm={() => deleteMutation.mutate(blackout.id)}>

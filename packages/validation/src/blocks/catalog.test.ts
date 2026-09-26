@@ -15,9 +15,10 @@ import { collectRichTextPaths } from "./rich-text-paths.js";
 import { parseStoredBlock } from "./stored-block.js";
 
 describe("catálogo de bloques (F2.4)", () => {
-  it("cubre exactamente los 15 bloques del MVP de ST §9", () => {
-    expect(BLOCK_TYPES).toHaveLength(15);
-    expect(new Set(BLOCK_TYPES).size).toBe(15);
+  it("cubre los 15 bloques del MVP de ST §9 más el de reservas (F5.2), sin repetir", () => {
+    expect(BLOCK_TYPES).toHaveLength(16);
+    expect(new Set(BLOCK_TYPES).size).toBe(16);
+    expect(BLOCK_TYPES).toContain("booking");
   });
 
   it("cada tipo tiene su entrada, con el mismo `type` que su clave y una versión válida", () => {
@@ -80,6 +81,7 @@ describe("catálogo de bloques (F2.4)", () => {
       divider: {},
       faq: { items: [{ question: "¿?", answer: "<p>sí</p>" }] },
       testimonials: { items: [{ quote: "Bien", author: "Ana" }] },
+      booking: { label: "Reservar hora" },
     };
 
     for (const type of BLOCK_TYPES) {
@@ -291,7 +293,7 @@ describe("redes (ADR-008)", () => {
 
 describe("acción principal (PP5)", () => {
   it("solo los bloques que llevan a un contacto real pueden ser la acción principal", () => {
-    expect([...PRIMARY_ACTION_BLOCK_TYPES].sort()).toEqual(["contact_form", "link", "whatsapp"]);
+    expect([...PRIMARY_ACTION_BLOCK_TYPES].sort()).toEqual(["booking", "contact_form", "link", "whatsapp"]);
     for (const type of PRIMARY_ACTION_BLOCK_TYPES) {
       expect(isBlockType(type)).toBe(true);
     }

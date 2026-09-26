@@ -59,3 +59,34 @@ export const bookingAvailabilityResponse = z.object({
   days: z.array(z.object({ date: z.string(), slots: z.array(z.string()) })),
 });
 export type BookingAvailabilityResponse = z.infer<typeof bookingAvailabilityResponse>;
+
+/** Lo que la página pública necesita para ofrecer reservas (F5.2). */
+export const publicBookingInfoResponse = z.object({
+  timeZone: z.string(),
+  maxAdvanceDays: z.number().int(),
+  services: z.array(
+    z.object({
+      id: uuid,
+      name: z.string(),
+      description: z.string().nullable(),
+      durationMinutes: z.number().int(),
+      priceAmount: z.number().int().nullable(),
+      priceCurrency: z.string().nullable(),
+      hasPaymentLink: z.boolean(),
+    }),
+  ),
+});
+export type PublicBookingInfoResponse = z.infer<typeof publicBookingInfoResponse>;
+
+/** Confirmación de una reserva pública: lo que el visitante ve (nunca ids internos del negocio). */
+export const publicBookingConfirmationResponse = z.object({
+  serviceName: z.string(),
+  startsAt: isoDateTime,
+  endsAt: isoDateTime,
+  timeZone: z.string(),
+  priceAmount: z.number().int().nullable(),
+  priceCurrency: z.string().nullable(),
+  /** Enlace de pago del propio negocio, si lo configuró (Impulza no cobra: decisión #6). */
+  paymentUrl: z.string().nullable(),
+});
+export type PublicBookingConfirmationResponse = z.infer<typeof publicBookingConfirmationResponse>;

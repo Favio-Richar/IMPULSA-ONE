@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, MessageSquareText } from "lucide-react";
+import { ArrowUpRight, CalendarCheck, MessageSquareText } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { PrimaryAction } from "../lib/primary-action.js";
 import { NetworkIcon } from "./network-icon.js";
@@ -86,6 +86,9 @@ function ActionIcon({ icon }: { icon: PrimaryAction["icon"] }) {
   }
   if (icon === "form") {
     return <MessageSquareText className="h-5 w-5 shrink-0" aria-hidden="true" />;
+  }
+  if (icon === "booking") {
+    return <CalendarCheck className="h-5 w-5 shrink-0" aria-hidden="true" />;
   }
   if (icon === "link") {
     return <ArrowUpRight className="h-5 w-5 shrink-0" aria-hidden="true" />;

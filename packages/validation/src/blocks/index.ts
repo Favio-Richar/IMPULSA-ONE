@@ -18,6 +18,7 @@ export {
   socialSchema,
   imageBlockSchema,
   gallerySchema,
+  bookingBlockSchema,
   videoSchema,
   whatsappSchema,
   contactActionsSchema,
@@ -40,6 +41,7 @@ export {
   type ServiceBlockConfig,
   type DividerBlockConfig,
   type FaqBlockConfig,
+  type BookingBlockConfig,
   type TestimonialsBlockConfig,
 } from "./catalog.js";
 export { parseStoredBlock, type StoredBlockResult } from "./stored-block.js";

@@ -30,6 +30,7 @@ export const BLOCK_TYPES = [
   "divider",
   "faq",
   "testimonials",
+  "booking",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -134,6 +135,13 @@ export const contactFormSchema = z.object({
   formId: z.string().uuid().nullable().default(null),
 });
 
+// Reservas (F5.2): un botón de la pila que abre el flujo propio de reserva (PL5). Sin
+// `serviceIds`, ofrece todos los servicios activos del sitio; con ellos, solo esos.
+export const bookingBlockSchema = z.object({
+  label: plainTextSchema(80).default("Reservar hora"),
+  serviceIds: z.array(z.uuid()).max(50).optional(),
+});
+
 export const serviceSchema = z.object({
   name: plainTextSchema(120),
   description: richTextSchema.optional(),
@@ -226,14 +234,15 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
     schema: testimonialsSchema,
     richTextPaths: [],
   },
+  booking: { type: "booking", version: 1, schema: bookingBlockSchema, richTextPaths: [] },
 };
 
 /**
  * Bloques que pueden ser la **acción principal** de una página (PP5): se destaca y, en el teléfono,
  * queda fija abajo. Solo los que llevan a un contacto real — escribir por WhatsApp, abrir un
- * enlace, llenar un formulario —; un texto o una galería no son una acción.
+ * enlace, llenar un formulario, reservar (F5.2) —; un texto o una galería no son una acción.
  */
-export const PRIMARY_ACTION_BLOCK_TYPES = ["whatsapp", "link", "contact_form"] as const satisfies readonly BlockType[];
+export const PRIMARY_ACTION_BLOCK_TYPES = ["whatsapp", "link", "contact_form", "booking"] as const satisfies readonly BlockType[];
 export type PrimaryActionBlockType = (typeof PRIMARY_ACTION_BLOCK_TYPES)[number];
 
 export function isPrimaryActionBlockType(type: string): type is PrimaryActionBlockType {
@@ -268,4 +277,5 @@ export type ContactFormBlockConfig = z.infer<typeof contactFormSchema>;
 export type ServiceBlockConfig = z.infer<typeof serviceSchema>;
 export type DividerBlockConfig = z.infer<typeof dividerSchema>;
 export type FaqBlockConfig = z.infer<typeof faqSchema>;
+export type BookingBlockConfig = z.infer<typeof bookingBlockSchema>;
 export type TestimonialsBlockConfig = z.infer<typeof testimonialsSchema>;

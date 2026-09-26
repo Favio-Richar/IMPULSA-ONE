@@ -231,7 +231,13 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   price_amount + price_currency (unidad mínima + ISO), payment_url (enlace externo del negocio:
   Impulza no cobra, decisión #6), active, position.
 - **BookingBlackout** (Site 1:N): organization_id, starts_at, ends_at (fin exclusivo), reason.
-- `Booking` (la reserva en sí) se agrega en F5.2.
+- **Booking** (F5.2; Site 1:N, BookableService 1:N con `SET NULL`, Contact 1:N con `SET NULL`):
+  organization_id, copia del servicio al reservar (service_name, duration_minutes, price_amount,
+  price_currency, payment_url), starts_at/ends_at, time_zone, datos del cliente (customer_name,
+  customer_email, customer_phone, note), status (`CONFIRMED`/`CANCELLED`/`COMPLETED`/`NO_SHOW`),
+  source (`PUBLIC`/`MANUAL`), cancelled_at. Sin doble reserva: restricción de exclusión
+  `bookings_no_overlap` (`btree_gist`) sobre `(site_id =, tstzrange(starts_at, ends_at) &&)` de las
+  `CONFIRMED`.
 
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 

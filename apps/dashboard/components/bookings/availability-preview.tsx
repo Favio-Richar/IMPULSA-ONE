@@ -10,6 +10,11 @@ import { durationLabel } from "./bookable-services";
 
 const DAYS = 7;
 
+/** Mayúscula solo en la primera letra ("Sáb, 26 sept"). */
+function sentenceCase(text: string): string {
+  return text.charAt(0).toLocaleUpperCase("es-CL") + text.slice(1);
+}
+
 /**
  * Lo que verá el cliente (F5.1): las horas libres de un servicio, calculadas en el servidor con el
  * horario, los bloqueos, la anticipación y el margen. Las horas se muestran en la zona del negocio.
@@ -72,7 +77,7 @@ export function AvailabilityPreview({
               <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Horarios libres por día">
                 {availabilityQuery.data.days.map((day) => (
                   <li key={day.date} className="flex flex-col gap-2 rounded-lg border border-border p-3" data-date={day.date}>
-                    <p className="text-sm font-medium capitalize text-foreground">{dayFormat.format(new Date(`${day.date}T12:00:00Z`))}</p>
+                    <p className="text-sm font-medium text-foreground">{sentenceCase(dayFormat.format(new Date(`${day.date}T12:00:00Z`)))}</p>
                     {day.slots.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Sin horas libres</p>
                     ) : (

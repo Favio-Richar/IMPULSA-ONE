@@ -1210,6 +1210,37 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Reserva pública (F5.2/F5.7): no cruza sitios ni organizaciones", () => {
+    it("un servicio de B no se ofrece ni se reserva a través del sitio de A", async () => {
+      const settings = {
+        enabled: true,
+        timeZone: "America/Santiago",
+        weeklyHours: { mon: [{ start: "09:00", end: "18:00" }], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] },
+        minNoticeMinutes: 0,
+        maxAdvanceDays: 365,
+        bufferMinutes: 0,
+        slotIntervalMinutes: 30,
+      };
+      const baseA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/booking`;
+      const baseB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/booking`;
+      await orgA.ownerAgent.put(`${baseA}/settings`).set(CSRF_HEADERS).send(settings).expect(200);
+      await orgB.ownerAgent.put(`${baseB}/settings`).set(CSRF_HEADERS).send(settings).expect(200);
+      const serviceOfB = await orgB.ownerAgent.post(`${baseB}/services`).set(CSRF_HEADERS).send({ name: "Servicio privado de B", durationMinutes: 30 }).expect(201);
+      const siteA = await prisma.site.findUniqueOrThrow({ where: { id: orgA.siteId } });
+      const publicA = `/api/v1/public/sites/${siteA.slug}/booking`;
+
+      const infoA = await request(httpServer).get(publicA).expect(200);
+      expect(JSON.stringify(infoA.body)).not.toContain(serviceOfB.body.id);
+      await request(httpServer).get(`${publicA}/availability?serviceId=${serviceOfB.body.id}&from=2030-01-07&days=1`).expect(404);
+      await request(httpServer)
+        .post(publicA)
+        .set(CSRF_HEADERS)
+        .send({ serviceId: serviceOfB.body.id, startsAt: "2030-01-07T13:00:00Z", name: "Intruso", email: `x${TEST_EMAIL_DOMAIN}`, consent: true })
+        .expect(404);
+      expect(await prisma.booking.count({ where: { serviceId: serviceOfB.body.id } })).toBe(0);
+    });
+  });
+
   describe("Administración (F4.4/F4.9): un usuario de organización nunca la alcanza", () => {
     it("ni el OWNER ni un ADMIN de una organización abren una ruta de administración", async () => {
       const paths = [

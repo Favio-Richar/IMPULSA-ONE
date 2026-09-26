@@ -1,6 +1,7 @@
 import type { BlockType } from "@impulza/validation";
 import {
   Briefcase,
+  CalendarCheck,
   Contact,
   HelpCircle,
   Images,
@@ -34,6 +35,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   divider: "Separador",
   faq: "Preguntas frecuentes",
   testimonials: "Testimonios",
+  booking: "Reservas",
 };
 
 /** Un ícono lineal por tipo (no-negociable de UI/UX del proyecto) — la misma biblioteca
@@ -54,4 +56,5 @@ export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   divider: Minus,
   faq: HelpCircle,
   testimonials: Quote,
+  booking: CalendarCheck,
 };

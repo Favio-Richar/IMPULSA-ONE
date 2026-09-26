@@ -146,6 +146,7 @@ model Organization {
   bookingSettings     BookingSettings[]
   bookableServices    BookableService[]
   bookingBlackouts    BookingBlackout[]
+  bookings            Booking[]
   themes              Theme[]
   contacts            Contact[]
   shortLinks          ShortLink[]
@@ -364,6 +365,7 @@ model Site {
   bookingSettings     BookingSettings?
   bookableServices    BookableService[]
   bookingBlackouts    BookingBlackout[]
+  bookings            Booking[]
   forms               Form[]
   analyticsEvents     AnalyticsEvent[]
   analyticsAggregates AnalyticsAggregate[]
@@ -724,6 +726,7 @@ model Contact {
   @@index([organizationId])
   @@index([organizationId, retentionReviewAt])
   @@map("contacts")
+  bookings  Booking[]
 }
 
 model ContactEvent {
@@ -971,6 +974,8 @@ model BookableService {
   site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  bookings     Booking[]
+
   @@index([siteId, position])
   @@index([organizationId])
   @@map("bookable_services")
@@ -992,4 +997,56 @@ model BookingBlackout {
   @@index([siteId, startsAt])
   @@index([organizationId])
   @@map("booking_blackouts")
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum BookingSource {
+  PUBLIC
+  MANUAL
+}
+
+// Reserva (F5.2). Guarda una copia del servicio (nombre, duración, precio, enlace de pago) tal como
+// era al reservar: editar o borrar el servicio después no cambia lo que se reservó. Sin doble
+// reserva: restricción de exclusión `bookings_no_overlap` (en la migración, Prisma no la expresa)
+// sobre `tstzrange(starts_at, ends_at)` de las reservas CONFIRMED de un mismo sitio.
+model Booking {
+  id              String        @id @default(uuid()) @db.Uuid
+  organizationId  String        @map("organization_id") @db.Uuid
+  siteId          String        @map("site_id") @db.Uuid
+  serviceId       String?       @map("service_id") @db.Uuid
+  contactId       String?       @map("contact_id") @db.Uuid
+  serviceName     String        @map("service_name")
+  durationMinutes Int           @map("duration_minutes")
+  priceAmount     Int?          @map("price_amount")
+  priceCurrency   String?       @map("price_currency")
+  paymentUrl      String?       @map("payment_url")
+  startsAt        DateTime      @map("starts_at") @db.Timestamptz(6)
+  endsAt          DateTime      @map("ends_at") @db.Timestamptz(6)
+  // Zona del negocio al reservar: los avisos muestran la hora en ella.
+  timeZone        String        @map("time_zone")
+  customerName    String        @map("customer_name")
+  customerEmail   String        @map("customer_email")
+  customerPhone   String?       @map("customer_phone")
+  note            String?
+  status          BookingStatus @default(CONFIRMED)
+  source          BookingSource @default(PUBLIC)
+  cancelledAt     DateTime?     @map("cancelled_at") @db.Timestamptz(6)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  service      BookableService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  contact      Contact?         @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([siteId, startsAt])
+  @@index([organizationId, startsAt])
+  @@index([contactId])
+  @@map("bookings")
 }

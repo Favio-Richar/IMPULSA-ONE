@@ -105,7 +105,7 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://ci:ci@localhost:5432/impulza
       REDIS_URL: redis://localhost:6379
-      CORS_ORIGINS: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3300
       AUTH_ENCRYPTION_KEY: MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
       APP_BASE_URL: http://localhost:3100
       # Requeridas por apps/api desde F3.4 (sal del visitante anonimizado) y F3.6 (secreto del
@@ -117,7 +117,7 @@ jobs:
       # también necesita valores, aunque ninguno apunte a un servicio real.
       API_BASE_URL: http://localhost:4000/api/v1
       REVALIDATE_SECRET: ci-test-placeholder-secret-not-a-real-value
-      PUBLIC_WEB_BASE_URL: http://localhost:3000
+      PUBLIC_WEB_BASE_URL: http://localhost:3300
       # Almacenamiento de medios (ADR-006): MinIO, el mismo protocolo que Cloudflare R2. Así el
       # adaptador S3 real se prueba en CI (sus pruebas se omiten si faltan estas variables).
       STORAGE_ENDPOINT: http://localhost:9000
@@ -181,13 +181,13 @@ jobs:
       NODE_ENV: development
       DATABASE_URL: postgresql://ci:ci@localhost:5432/impulza
       REDIS_URL: redis://localhost:6379
-      CORS_ORIGINS: http://localhost:3000,http://localhost:3100
+      CORS_ORIGINS: http://localhost:3300,http://localhost:3100
       AUTH_ENCRYPTION_KEY: MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
       APP_BASE_URL: http://localhost:3100
       ANALYTICS_SALT_SECRET: ci-test-placeholder-analytics-salt-not-real
       INTERNAL_PROXY_SECRET: ci-test-placeholder-proxy-secret-not-real-value
       NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
-      NEXT_PUBLIC_WEB_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_WEB_BASE_URL: http://localhost:3300
       # Medios (PP2): la subida real pasa por MinIO y el worker genera las variantes.
       STORAGE_ENDPOINT: http://localhost:9000
       STORAGE_REGION: auto
@@ -241,9 +241,9 @@ jobs:
       NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
       API_BASE_URL: http://localhost:4000/api/v1
       REVALIDATE_SECRET: ci-build-placeholder-secret-not-a-real-value
-      PUBLIC_WEB_BASE_URL: http://localhost:3000
+      PUBLIC_WEB_BASE_URL: http://localhost:3300
       # Faltaba desde F3.5 (el panel la valida al compilar) y F3.6 (apps/web).
-      NEXT_PUBLIC_WEB_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_WEB_BASE_URL: http://localhost:3300
       INTERNAL_PROXY_SECRET: ci-build-placeholder-proxy-secret-not-real-value
     steps:
       - uses: actions/checkout@v5

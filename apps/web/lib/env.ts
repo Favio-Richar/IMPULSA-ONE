@@ -13,7 +13,7 @@ const envSchema = z.object({
   // `WEB_REVALIDATE_SECRET` en apps/api/src/env.ts.
   REVALIDATE_SECRET: z.string().min(32),
   // Origen público de este mismo proceso (F2.8), p. ej. https://impulza.one o
-  // http://localhost:3000 en desarrollo — sin path ni slash final. Todo lo que sirve una URL
+  // http://localhost:3300 en desarrollo — sin path ni slash final. Todo lo que sirve una URL
   // absoluta a un visitante o a un crawler (canonical, Open Graph, `sitemap.xml`, el `Sitemap:` de
   // `robots.txt`) se arma con esta base, nunca adivinándola del header `Host` de la petición: ese
   // header lo controla quien lo manda, y una URL de SEO mal armada es una vía de manipulación, no

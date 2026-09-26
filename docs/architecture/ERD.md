@@ -91,6 +91,16 @@ Site/Page (N) ──1 Template (opcional, origen de la página)
     `oscuro`, cuyo fondo sugerido (`defaultBackground`, degradado) vive en el catálogo, no en `Site`. La línea del catálogo (`ejecutivo`/`vibrante`/`clasico`)
     no es columna: la API la deriva de `code` con `THEME_CATALOG`.
 - **Template**: id, name, industry, objective, style, preview_url, blocks_seed.
+  - **Implementado en PL1** (tabla `templates`, catálogo global sin `organization_id`): code (único,
+    hace idempotente el seed), name, description, industry_tags[] (`TEMPLATE_INDUSTRIES`),
+    objective_tags[] (`TEMPLATE_OBJECTIVES`: captar/vender/reservar/mostrar/compartir), theme_code
+    (FK lógica a `THEME_CATALOG`), family (= "style", siempre la línea del tema), background (JSON,
+    `siteBackgroundSchema` limitado a color/degradado), preview_image_url, blocks_seed (JSON, formato
+    del snapshot de `PageVersion`), sort_order. Validado con `templateSchema` al sembrar y al leer.
+  - **Sin FK desde `Site`/`Page`** (la línea "Site/Page (N) ──1 Template" de arriba queda como
+    referencia histórica): el criterio de PL1 exige no tocar `Site`/`Page`/`Block`, y aplicar una
+    plantilla (PL4) **copia** tema, fondo y bloques al sitio, que nunca queda atado a ella. El origen
+    queda en la auditoría de la aplicación, no en una columna.
 
 ## 4. Media
 

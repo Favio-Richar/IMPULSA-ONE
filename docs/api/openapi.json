@@ -2391,6 +2391,398 @@
         ]
       }
     },
+    "/api/v1/templates": {
+      "get": {
+        "description": "Plantillas en orden de galería, con su tema (tokens incluidos), fondo y bloques de ejemplo. Filtros opcionales y combinables por industria, objetivo y línea de estilo.",
+        "operationId": "TemplatesController_list",
+        "parameters": [
+          {
+            "name": "family",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "oscuro",
+                "ejecutivo",
+                "vibrante",
+                "clasico"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "objective",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "captar",
+                "vender",
+                "reservar",
+                "mostrar",
+                "compartir"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "industry",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "profesional",
+                "servicios-locales",
+                "belleza-bienestar",
+                "salud",
+                "gastronomia",
+                "turismo",
+                "eventos",
+                "comercio",
+                "creador",
+                "emprendimiento"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plantillas que cumplen los filtros (puede ser una lista vacía).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "industryTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "profesional",
+                            "servicios-locales",
+                            "belleza-bienestar",
+                            "salud",
+                            "gastronomia",
+                            "turismo",
+                            "eventos",
+                            "comercio",
+                            "creador",
+                            "emprendimiento"
+                          ]
+                        }
+                      },
+                      "objectiveTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "captar",
+                            "vender",
+                            "reservar",
+                            "mostrar",
+                            "compartir"
+                          ]
+                        }
+                      },
+                      "family": {
+                        "type": "string",
+                        "enum": [
+                          "oscuro",
+                          "ejecutivo",
+                          "vibrante",
+                          "clasico"
+                        ]
+                      },
+                      "theme": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "tokens": {}
+                        },
+                        "required": [
+                          "code",
+                          "name",
+                          "tokens"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "background": {
+                        "nullable": true
+                      },
+                      "previewImageUrl": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "blocks": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string"
+                            },
+                            "configSchemaVersion": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "isPrimary": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            },
+                            "config": {}
+                          },
+                          "required": [
+                            "type",
+                            "configSchemaVersion",
+                            "config"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "code",
+                      "name",
+                      "description",
+                      "industryTags",
+                      "objectiveTags",
+                      "family",
+                      "theme",
+                      "background",
+                      "previewImageUrl",
+                      "blocks"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Un filtro con un valor fuera del catálogo."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Catálogo de plantillas",
+        "tags": [
+          "templates"
+        ]
+      }
+    },
+    "/api/v1/templates/{code}": {
+      "get": {
+        "operationId": "TemplatesController_getOne",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "description": "Código estable de la plantilla (`profesional-servicios`, …).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La plantilla solicitada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "industryTags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "profesional",
+                          "servicios-locales",
+                          "belleza-bienestar",
+                          "salud",
+                          "gastronomia",
+                          "turismo",
+                          "eventos",
+                          "comercio",
+                          "creador",
+                          "emprendimiento"
+                        ]
+                      }
+                    },
+                    "objectiveTags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "captar",
+                          "vender",
+                          "reservar",
+                          "mostrar",
+                          "compartir"
+                        ]
+                      }
+                    },
+                    "family": {
+                      "type": "string",
+                      "enum": [
+                        "oscuro",
+                        "ejecutivo",
+                        "vibrante",
+                        "clasico"
+                      ]
+                    },
+                    "theme": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "tokens": {}
+                      },
+                      "required": [
+                        "code",
+                        "name",
+                        "tokens"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "background": {
+                      "nullable": true
+                    },
+                    "previewImageUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "blocks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string"
+                          },
+                          "configSchemaVersion": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "isPrimary": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "config": {}
+                        },
+                        "required": [
+                          "type",
+                          "configSchemaVersion",
+                          "config"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "code",
+                    "name",
+                    "description",
+                    "industryTags",
+                    "objectiveTags",
+                    "family",
+                    "theme",
+                    "background",
+                    "previewImageUrl",
+                    "blocks"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plantilla no encontrada."
+          },
+          "429": {
+            "description": "Más de 120 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Leer una plantilla por código",
+        "tags": [
+          "templates"
+        ]
+      }
+    },
     "/api/v1/organizations/{organizationId}/sites": {
       "post": {
         "description": "Requiere el permiso `site.create`. El slug es la identidad pública del sitio (`slug.dominio`) y es único en toda la plataforma, no solo dentro de la organización.",
@@ -18233,6 +18625,10 @@
     {
       "name": "themes",
       "description": "Catálogo de temas y temas propios de la organización."
+    },
+    {
+      "name": "templates",
+      "description": "Catálogo de plantillas por rubro y objetivo (PL1). Sin autenticación."
     },
     {
       "name": "public-sites",

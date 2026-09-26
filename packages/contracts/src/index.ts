@@ -14,6 +14,7 @@ export * from "./organizations.js";
 export * from "./public.js";
 export * from "./sites.js";
 export * from "./themes.js";
+export * from "./templates.js";
 export * from "./forms.js";
 export * from "./contacts.js";
 export * from "./short-links.js";

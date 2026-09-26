@@ -64,6 +64,7 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     .addTag("pages", "Páginas de un sitio: orden, visibilidad y papelera.")
     .addTag("blocks", "Bloques tipados de una página.")
     .addTag("themes", "Catálogo de temas y temas propios de la organización.")
+    .addTag("templates", "Catálogo de plantillas por rubro y objetivo (PL1). Sin autenticación.")
     .addTag(
       "public-sites",
       "Render público (F2.7): sitios y páginas publicadas, por slug. Sin autenticación.",

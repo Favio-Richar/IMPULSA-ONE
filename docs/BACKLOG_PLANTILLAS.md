@@ -29,11 +29,18 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 
 | Historia | Estado |
 |---|---|
-| PL1 — Modelo `Template` y migración | Pendiente |
+| PL1 — Modelo `Template` y migración | Lista para tu revisión (sin UI: se revisa por API y pruebas) |
 | PL2 — Familia de temas "Editorial oscuro" (ADR-008) | Lista para tu revisión (capturas mostradas en el chat) |
 | PL3 — Catálogo semilla de plantillas por rubro | Pendiente |
 | PL4 — Selector de plantillas en onboarding y constructor | Pendiente |
 | PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio) | Lista para tu revisión (capturas mostradas en el chat) |
+
+### Bitácora de avance (para retomar)
+
+Orden obligatorio: PL2 → PL5 → PL1 → PL3 → PL4. Cada entrada dice dónde quedó el trabajo.
+
+- **2026-09-26 — PL1 terminada** (commit `feat(templates): ... (PL1)`), en "Lista para tu revisión".
+  Siguiente: PL3.
 
 ### PL1 — Modelo `Template` y migración
 **Criterios de aceptación:**
@@ -45,6 +52,32 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 - Migración reversible, sin tocar `Site`/`Page`/`Block` existentes.
 - `blocksSeed` se valida con los mismos esquemas Zod de bloques que usa el constructor — una
   plantilla con un bloque inválido no puede guardarse.
+
+> **Estado (2026-09-26): lista para revisión de Favio.** No tiene pantalla: se revisa por la API
+> (`GET /api/v1/templates`) y las pruebas.
+>
+> - **Esquema** `templateSchema` (`packages/validation/src/templates/index.ts`): los campos pedidos
+>   más `sortOrder` (orden de galería). `blocksSeed` pasa por `BLOCK_CATALOG` (tipo conocido, versión
+>   vigente, config válida), la regla de texto alternativo de PP2, a lo sumo una acción principal y
+>   solo en un bloque de acción (PP5), y un formulario siempre sin conectar (`formId: null`).
+>   `family` tiene que ser la del tema. Etiquetas cerradas: `TEMPLATE_INDUSTRIES` (segmentos de PM
+>   §4) y `TEMPLATE_OBJECTIVES`.
+> - **Fondo limitado a color o degradado** (`templateBackgroundSchema`): una foto o un video
+>   necesitan un archivo de la biblioteca de la organización y sus tonos medidos para verificar AA;
+>   una plantilla no puede traer medios de nadie.
+> - **Modelo** `Template` / tabla `templates`, catálogo global sin `organizationId`. Migración
+>   `20260926060434_pl1_templates` solo aditiva, con `down.sql`; probado aplicar → revertir →
+>   reaplicar en Postgres 18. Sin FK desde `Site`/`Page` (ver nota en `ERD.md`): aplicar copia.
+> - **API** `GET /api/v1/templates` (filtros `industry`, `objective`, `family`, combinables; valor
+>   fuera del catálogo = 400) y `GET /api/v1/templates/:code`. Sin sesión, como el catálogo de
+>   planes (la galería del onboarding se ve antes de tener organización); límite de tasa por IP
+>   (60/120 por minuto). Cada fila se revalida al leer: una rota se omite de la lista, responde
+>   404 en el detalle y deja un log estructurado `error` con el campo exacto. La respuesta trae el
+>   tema con sus tokens para pintar la vista previa sin otra petición. OpenAPI regenerado.
+> - **Seed**: `TEMPLATE_CATALOG` + `templateSchema.parse` antes de cada upsert (una plantilla
+>   inválida detiene el seed); nunca borra filas. El catálogo se llena en PL3.
+> - **Pruebas**: 16 unitarias del esquema y 6 e2e (contrato, orden, filtros, 400, 404, fila rota
+>   omitida, límite de tasa). Aislamiento entre organizaciones: no aplica, no hay datos de tenant.
 
 ### PL2 — Familia de temas "Editorial oscuro" (ADR-008)
 **Criterios de aceptación:**

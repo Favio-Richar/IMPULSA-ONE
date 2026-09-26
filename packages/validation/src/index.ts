@@ -40,3 +40,5 @@ export * from "./short-links/index.js";
 export * from "./plans/index.js";
 export * from "./media/index.js";
 export * from "./backgrounds/index.js";
+export * from "./templates/index.js";
+export { TEMPLATE_CATALOG } from "./templates/catalog.js";

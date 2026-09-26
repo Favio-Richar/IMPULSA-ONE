@@ -31,7 +31,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 |---|---|---|
 | Registro, verificación de email, login, Google opcional, recuperación de contraseña, 2FA, sesiones/dispositivos | PM §8.1, ST §7 | Fase 1 |
 | Rate limiting y bloqueo temporal por abuso | ST §7, §15 | Fase 1 |
-| Onboarding guiado de 11 pasos (tipo de cuenta → objetivo → industria → nombre → slug → import redes → plantilla → perfil/CTA → preview → publicar → checklist) | PM §8.2 | Fase 2 |
+| Onboarding guiado de 11 pasos (tipo de cuenta → objetivo → industria → nombre → slug → import redes → plantilla → perfil/CTA → preview → publicar → checklist) | PM §8.2 | Fase 2 — se construye en PL4 (`BACKLOG_PLANTILLAS.md`, decisión 2 de Favio) |
 
 ## 4. Constructor visual y sitio público
 
@@ -51,7 +51,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Requisito | Fuente | Fase |
 |---|---|---|
 | Temas, paleta, tipografía, fondos, botones, espaciado, densidad, accesibilidad | PM §9.4 | Fase 2 |
-| Buscador/filtros de plantillas por industria, objetivo, estilo, color; preview móvil/escritorio | PM §7.4 | Fase 2 (comercial) |
+| Buscador/filtros de plantillas por industria, objetivo, estilo, color; preview móvil/escritorio | PM §7.4 | Fase 2 (comercial) — backlog `BACKLOG_PLANTILLAS.md`: modelo y API de lectura en PL1 (`GET /api/v1/templates`, filtros industria/objetivo/estilo), catálogo en PL3, galería en PL4 |
 | Dirección visual obligatoria: fondo claro, profesional, iconos lineales, sombras discretas, bordes moderados, sin exceso de tarjetas, WCAG 2.2 AA | PM §15, ST §14 | Transversal, desde design system (Fase 1) |
 | No copiar interfaz visual de competidores | ST §14, §22 | Restricción permanente |
 

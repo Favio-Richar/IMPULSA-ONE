@@ -97,6 +97,10 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/qr/{qrCodeId}",
       // Catálogo de planes (F4.1): los precios de un SaaS son públicos (página de precios).
       "GET /api/v1/plans",
+      // Catálogo de plantillas (PL1): contenido de la plataforma, sin datos de tenant; lo lee la
+      // galería del onboarding antes de que exista una organización. Con límite de tasa por IP.
+      "GET /api/v1/templates",
+      "GET /api/v1/templates/{code}",
       // Login de superadministración (F4.4): abre la sesión, no puede exigirla. Contraseña + 2FA.
       "POST /api/v1/admin/auth/login",
     ]);

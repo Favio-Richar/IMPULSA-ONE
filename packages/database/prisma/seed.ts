@@ -1,6 +1,6 @@
 import path from "node:path";
-import { PrismaClient } from "@prisma/client";
-import { PLAN_CATALOG, THEME_CATALOG } from "@impulza/validation";
+import { Prisma, PrismaClient } from "@prisma/client";
+import { PLAN_CATALOG, TEMPLATE_CATALOG, templateSchema, THEME_CATALOG } from "@impulza/validation";
 import { PERMISSION_CATALOG, ROLE_PERMISSIONS } from "../src/permissions.js";
 
 try {
@@ -80,10 +80,32 @@ async function main(): Promise<void> {
     });
   }
 
+  // Catálogo de plantillas (PL1/PL3): contenido global, organizationId no aplica. Cada entrada se
+  // valida con `templateSchema` (los mismos esquemas de bloques que el constructor) antes de
+  // escribirse — una plantilla inválida detiene el seed. Idempotente por `code`: ajustar una
+  // plantilla acá se propaga al volver a sembrar. Nunca se borran filas: retirar una plantilla es
+  // una decisión explícita, no un efecto de sacarla del código.
+  for (const entry of TEMPLATE_CATALOG) {
+    const template = templateSchema.parse(entry);
+    const data = {
+      name: template.name,
+      description: template.description,
+      industryTags: [...template.industryTags],
+      objectiveTags: [...template.objectiveTags],
+      themeCode: template.themeCode,
+      family: template.family,
+      background: template.background === null ? Prisma.DbNull : (template.background as Prisma.InputJsonValue),
+      previewImageUrl: template.previewImageUrl,
+      blocksSeed: template.blocksSeed as Prisma.InputJsonValue,
+      sortOrder: template.sortOrder,
+    };
+    await prisma.template.upsert({ where: { code: template.code }, update: data, create: { code: template.code, ...data } });
+  }
+
   console.log(
     `Seed OK: ${ROLES.length} roles, ${PERMISSION_CATALOG.length} permisos, ` +
       `${rolePermissionCount} asignaciones rol-permiso, ${PLAN_CATALOG.length} planes, ` +
-      `${THEME_CATALOG.length} temas de catálogo.`,
+      `${THEME_CATALOG.length} temas de catálogo, ${TEMPLATE_CATALOG.length} plantillas.`,
   );
 }
 

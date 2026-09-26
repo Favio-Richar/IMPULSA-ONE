@@ -516,6 +516,41 @@ model Theme {
   @@map("themes")
 }
 
+// Plantilla del catálogo global (PL1, PM §7.4, ERD `Template`): tema + fondo + bloques iniciales
+// con contenido de ejemplo por rubro. Contenido de la plataforma, no de un tenant: sin
+// `organizationId`, solo lectura para los clientes, sembrada por `prisma/seed.ts` desde
+// `TEMPLATE_CATALOG`. Cada columna JSON y cada etiqueta se valida con `templateSchema` de
+// `@impulza/validation` al sembrar y otra vez al leer (los mismos esquemas de bloques que el
+// constructor). Aplicarla copia su contenido al sitio (PL4): el sitio nunca queda atado a ella, por
+// eso no hay FK desde `Site`/`Page`.
+model Template {
+  id              String   @id @default(uuid()) @db.Uuid
+  // Identificador estable (`profesional-servicios`, …): hace idempotente el seed.
+  code            String   @unique
+  name            String
+  description     String
+  // Etiquetas cerradas (`TEMPLATE_INDUSTRIES`, `TEMPLATE_OBJECTIVES`): filtros de la galería.
+  industryTags    String[] @map("industry_tags")
+  objectiveTags   String[] @map("objective_tags")
+  // FK lógica a `THEME_CATALOG` (código, no id): el catálogo de temas vive en código y el id de la
+  // fila `themes` cambia entre entornos.
+  themeCode       String   @map("theme_code")
+  // Línea de estilo (`THEME_FAMILIES`); siempre la del tema.
+  family          String
+  // Mismo esquema que `Site.background`, solo color o degradado. `null` = el fondo del tema.
+  background      Json?
+  previewImageUrl String?  @map("preview_image_url")
+  // Lista ordenada de bloques con su configuración de ejemplo, formato del snapshot de
+  // `PageVersion` (`type`, `configSchemaVersion`, `isPrimary`, `config`).
+  blocksSeed      Json     @map("blocks_seed")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([sortOrder])
+  @@map("templates")
+}
+
 // ---------------------------------------------------------------------------------------------
 // Fase 3 — Conversión: formularios, contactos, QR/enlaces cortos y analítica (ERD.md §5/§6/§7).
 //

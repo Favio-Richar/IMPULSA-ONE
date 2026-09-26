@@ -21,6 +21,7 @@ import { ShortLinksModule } from "./modules/short-links/short-links.module.js";
 import { SitesModule } from "./modules/sites/sites.module.js";
 import { SupportModule } from "./modules/support/support.module.js";
 import { ThemesModule } from "./modules/themes/themes.module.js";
+import { TemplatesModule } from "./modules/templates/templates.module.js";
 import { RedisModule } from "./redis/redis.module.js";
 import { StorageModule } from "./storage/storage.module.js";
 import { MediaModule } from "./modules/media/media.module.js";
@@ -36,6 +37,7 @@ import { MediaModule } from "./modules/media/media.module.js";
     AuthModule,
     OrganizationsModule,
     ThemesModule,
+    TemplatesModule,
     SitesModule,
     PagesModule,
     BlocksModule,

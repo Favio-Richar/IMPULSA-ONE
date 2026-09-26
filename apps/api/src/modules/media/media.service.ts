@@ -3,25 +3,31 @@ import type { MediaAssetResponse, MediaLibraryResponse, MediaUploadResponse } fr
 import { type MediaAsset, MediaKind, MediaStatus, type PrismaClient, type User } from "@impulza/database";
 import {
   detectImageType,
+  detectVideoType,
   MAGIC_BYTES_LENGTH,
   type MediaProcessJob,
   originalKey,
   type StorageAdapter,
+  type VideoToolsConfig,
 } from "@impulza/storage";
-import { imageTonesSchema, mediaVariantsSchema, type RequestImageUploadInput } from "@impulza/validation";
+import { imageTonesSchema, isVideoMimeType, mediaVariantsSchema, type RequestMediaUploadInput } from "@impulza/validation";
 import type { Queue } from "bullmq";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
-import { STORAGE } from "../../storage/storage.module.js";
+import { STORAGE, VIDEO_TOOLS } from "../../storage/storage.module.js";
 import { AuditService } from "../audit/audit.service.js";
 import { PlansService } from "../plans/plans.service.js";
-import { MEDIA_QUEUE } from "./media.tokens.js";
+import { MEDIA_QUEUE, MEDIA_VIDEO_QUEUE_TOKEN } from "./media.tokens.js";
 
 const ASSET_NOT_FOUND = "Archivo no encontrado.";
 const UPLOAD_URL_TTL_SECONDS = 10 * 60;
 const BYTES_PER_MB = 1024 * 1024;
 
 export const STORAGE_NOT_CONFIGURED = "STORAGE_NOT_CONFIGURED";
+export const VIDEO_NOT_CONFIGURED = "VIDEO_NOT_CONFIGURED";
+
+/** El video convertido se guarda como una variante más; las demás son el póster en WebP (PP6). */
+const isVideoVariantKey = (key: string) => key.endsWith(".mp4");
 export const MEDIA_IN_USE = "MEDIA_IN_USE";
 
 /** Un lugar donde se usa un asset: una página (bloque o versión publicada) o el fondo de un sitio. */
@@ -39,6 +45,8 @@ export class MediaService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(STORAGE) private readonly storage: StorageAdapter | null,
     @Inject(MEDIA_QUEUE) private readonly queue: Queue<MediaProcessJob>,
+    @Inject(MEDIA_VIDEO_QUEUE_TOKEN) private readonly videoQueue: Queue<MediaProcessJob>,
+    @Inject(VIDEO_TOOLS) private readonly videoTools: VideoToolsConfig | null,
     @Inject(PlansService) private readonly plansService: PlansService,
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
@@ -60,9 +68,13 @@ export class MediaService {
   toResponse(asset: MediaAsset): MediaAssetResponse {
     const variants = mediaVariantsSchema.safeParse(asset.variants);
     const ready = asset.status === MediaStatus.READY && variants.success && variants.data.length > 0 && this.storage;
-    const publicVariants = ready
-      ? [...variants.data].sort((a, b) => a.width - b.width).map((variant) => ({ width: variant.width, url: this.storage!.publicUrl(variant.key) }))
-      : [];
+    const all = ready ? variants.data : [];
+    // Imagen: sus variantes. Video: las del póster (miniatura, `srcset`) y aparte el MP4.
+    const publicVariants = all
+      .filter((variant) => !isVideoVariantKey(variant.key))
+      .sort((a, b) => a.width - b.width)
+      .map((variant) => ({ width: variant.width, url: this.storage!.publicUrl(variant.key) }));
+    const video = all.find((variant) => isVideoVariantKey(variant.key));
     return {
       id: asset.id,
       kind: asset.kind,
@@ -74,6 +86,7 @@ export class MediaService {
       height: asset.height,
       url: publicVariants.at(-1)?.url ?? null,
       variants: publicVariants,
+      videoUrl: video ? this.storage!.publicUrl(video.key) : null,
       failureReason: asset.failureReason,
       tones: imageTonesSchema.safeParse(asset.tones).data ?? null,
       createdAt: asset.createdAt.toISOString(),
@@ -96,6 +109,7 @@ export class MediaService {
       items: assets.map((asset) => this.toResponse(asset)),
       usage: { usedBytes, limitBytes: limitMb === null ? null : limitMb * BYTES_PER_MB },
       storageConfigured: this.storage !== null,
+      videoConfigured: this.storage !== null && this.videoTools !== null,
     };
   }
 
@@ -112,8 +126,21 @@ export class MediaService {
   }
 
   /** Reserva cuota y emite la URL prefirmada. La clave la decide el servidor (ADR-006 §2). */
-  async requestUpload(organizationId: string, user: User, input: RequestImageUploadInput): Promise<MediaUploadResponse> {
+  async requestUpload(organizationId: string, user: User, input: RequestMediaUploadInput): Promise<MediaUploadResponse> {
     const storage = this.requireStorage();
+    const isVideo = isVideoMimeType(input.contentType);
+    if (isVideo && !this.videoTools) {
+      // Mismo criterio que el almacenamiento: sin ffmpeg el worker no podría convertirlo, así que no
+      // se acepta un archivo que quedaría ocupando cuota sin poder usarse.
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+          code: VIDEO_NOT_CONFIGURED,
+          message: "La subida de videos todavía no está habilitada en esta instalación.",
+        },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
 
     const asset = await this.prisma.$transaction(async (tx) => {
       await this.plansService.assertStorageAvailable(tx, organizationId, input.sizeBytes);
@@ -121,7 +148,7 @@ export class MediaService {
         data: {
           organizationId,
           uploadedById: user.id,
-          kind: MediaKind.IMAGE,
+          kind: isVideo ? MediaKind.VIDEO : MediaKind.IMAGE,
           fileName: input.fileName,
           mimeType: input.contentType,
           sizeBytes: input.sizeBytes,
@@ -170,17 +197,28 @@ export class MediaService {
     if (stored.sizeBytes !== asset.sizeBytes) {
       return this.reject(storage, asset, "El archivo subido no coincide con el tamaño declarado.");
     }
-    const detected = detectImageType(await storage.readStart(key, MAGIC_BYTES_LENGTH));
+    const start = await storage.readStart(key, MAGIC_BYTES_LENGTH);
+    const isVideo = asset.kind === MediaKind.VIDEO;
+    const detected = isVideo ? detectVideoType(start) : detectImageType(start);
     if (!detected || detected !== asset.mimeType) {
-      return this.reject(storage, asset, "El archivo no es una imagen válida del formato indicado.");
+      return this.reject(
+        storage,
+        asset,
+        isVideo ? "El archivo no es un video válido del formato indicado." : "El archivo no es una imagen válida del formato indicado.",
+      );
     }
 
     const processing = await this.prisma.mediaAsset.update({
       where: { id: asset.id },
       data: { status: MediaStatus.PROCESSING, mimeType: detected },
     });
-    // `jobId` = id del asset: confirmar dos veces nunca encola dos procesamientos.
-    await this.queue.add("process", { assetId: asset.id }, { jobId: asset.id, attempts: 3, backoff: { type: "exponential", delay: 2000 } });
+    // `jobId` = id del asset: confirmar dos veces nunca encola dos procesamientos. El video va a su
+    // propia cola (PP6): convertirlo es pesado y no debe demorar las fotos.
+    await (isVideo ? this.videoQueue : this.queue).add(
+      "process",
+      { assetId: asset.id },
+      { jobId: asset.id, attempts: 3, backoff: { type: "exponential", delay: 2000 } },
+    );
     logger.info("medio confirmado y en cola de procesamiento", { organizationId, assetId: asset.id, sizeBytes: asset.sizeBytes });
     return this.toResponse(processing);
   }
@@ -231,7 +269,9 @@ export class MediaService {
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
         code: MEDIA_IN_USE,
-        message: "Esta imagen se está usando. Quítala de ahí antes de borrarla.",
+        message: asset.kind === MediaKind.VIDEO
+          ? "Este video se está usando. Quítalo de ahí antes de borrarlo."
+          : "Esta imagen se está usando. Quítala de ahí antes de borrarla.",
         usages,
       });
     }

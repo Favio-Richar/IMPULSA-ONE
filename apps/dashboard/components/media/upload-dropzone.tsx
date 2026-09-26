@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, cn } from "@impulza/ui";
-import { IMAGE_MIME_TYPES } from "@impulza/validation";
+import { IMAGE_MIME_TYPES, VIDEO_MIME_TYPES } from "@impulza/validation";
 import { ImageUp } from "lucide-react";
 import { useRef, useState } from "react";
 
@@ -14,11 +14,14 @@ export function UploadDropzone({
   disabled,
   compact = false,
   multiple = true,
+  allowVideo = false,
 }: {
   onFiles: (files: File[]) => void;
   disabled?: boolean;
   compact?: boolean;
   multiple?: boolean;
+  /** Biblioteca con ffmpeg configurado (PP6): también acepta video para el fondo de la página. */
+  allowVideo?: boolean;
 }): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -51,8 +54,15 @@ export function UploadDropzone({
     >
       <ImageUp className="size-6 text-muted-foreground" aria-hidden="true" />
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-foreground">{compact ? "Sube una imagen nueva" : "Arrastra tus imágenes aquí"}</p>
+        <p className="text-sm font-medium text-foreground">
+          {compact ? "Sube una imagen nueva" : allowVideo ? "Arrastra tus imágenes o videos aquí" : "Arrastra tus imágenes aquí"}
+        </p>
         <p className="text-xs text-muted-foreground">JPG, PNG, WebP o AVIF · hasta 8 MB. Las optimizamos y quitamos la ubicación de la foto.</p>
+        {allowVideo ? (
+          <p className="text-xs text-muted-foreground">
+            Video para el fondo: MP4, WebM o MOV · hasta 30 MB y 15 segundos. Lo dejamos listo para cualquier teléfono, sin sonido.
+          </p>
+        ) : null}
       </div>
       <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => inputRef.current?.click()}>
         Elegir {multiple ? "archivos" : "archivo"}
@@ -63,7 +73,7 @@ export function UploadDropzone({
         className="sr-only"
         tabIndex={-1}
         aria-hidden="true"
-        accept={IMAGE_MIME_TYPES.join(",")}
+        accept={[...IMAGE_MIME_TYPES, ...(allowVideo ? VIDEO_MIME_TYPES : [])].join(",")}
         multiple={multiple}
         onChange={(event) => {
           take(event.target.files);

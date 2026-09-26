@@ -21,6 +21,8 @@ export const mediaAssetResponse = z.object({
   url: z.string().nullable(),
   /** Para `srcset`: de menor a mayor ancho. */
   variants: z.array(z.object({ width: z.number().int(), url: z.string() })),
+  /** Solo en un video listo (PP6): el MP4 convertido. `url`/`variants` son entonces su póster. */
+  videoUrl: z.string().nullable(),
   failureReason: z.string().nullable(),
   /** Tonos extremos `{ darkest, lightest }` (PP3): con ellos el panel ofrece solo las capas de
    *  legibilidad que alcanzan AA sobre esta imagen. `null` en imágenes procesadas antes de PP3. */
@@ -48,6 +50,8 @@ export const mediaLibraryResponse = z.object({
   }),
   /** `false` mientras no haya credenciales del proveedor: el panel explica en vez de fallar. */
   storageConfigured: z.boolean(),
+  /** `false` mientras no haya ffmpeg configurado (PP6, ADR-007): el panel no ofrece subir video. */
+  videoConfigured: z.boolean(),
 });
 
 export type MediaAssetResponse = z.infer<typeof mediaAssetResponse>;

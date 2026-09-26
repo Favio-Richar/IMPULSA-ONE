@@ -29,7 +29,7 @@ Y todas comparten estas **reglas de la página pública**:
 | PP3 — Fondo premium de la página (color, degradado, imagen, video de biblioteca) | En progreso (falta el contenido de la biblioteca de videos, que aprueba Favio) |
 | PP4 — Familias de temas "Ejecutivo" y "Vibrante" y encabezado de perfil | Terminada (local) |
 | PP5 — Botón principal fijo en móvil y animaciones de entrada | Terminada (local) |
-| PP6 — Video de fondo propio (subida y transcodificación) | Pendiente |
+| PP6 — Video de fondo propio (subida y transcodificación) | Terminada (local; licencias a revisar antes de producción, ADR-007) |
 | PP7 — Verificación de rendimiento y navegadores internos | Pendiente |
 
 ### PP1 — Almacenamiento y subida de imágenes
@@ -299,6 +299,56 @@ Y todas comparten estas **reglas de la página pública**:
 **Criterios de aceptación:**
 - Subida de MP4 o WebM (≤ 30 MB, ≤ 15 s), transcodificación en el worker a MP4 H.264 720p sin audio,
   más póster, dentro de la cuota del plan.
+
+> **Estado (2026-09-26): terminada en local.** Decisión técnica en
+> `docs/decisions/ADR-007-procesamiento-video.md`.
+>
+> - **ffmpeg del sistema** por `FFMPEG_PATH`/`FFPROBE_PATH`, todo o nada: sin ellas, todo funciona y la
+>   subida de video responde `503 VIDEO_NOT_CONFIGURED` (el panel ni la ofrece); a medias o con una
+>   ruta inexistente, la API y el worker no arrancan. Se descartaron los binarios empaquetados en npm
+>   (`@ffmpeg-installer` trae ffmpeg 4.1 de 2018; `ffmpeg-static` descarga un binario al instalar).
+>   En desarrollo: ffmpeg 9.0.2 portable oficial, verificado por SHA-256, fuera del repo. En CI:
+>   `apt-get install ffmpeg`. En producción: el paquete de la distribución en la imagen del worker.
+> - **Formatos:** MP4, WebM y **también MOV** (`video/quicktime`), que es lo que graba un iPhone
+>   (ampliación sobre el criterio, anotada en el ADR). Hasta 30 MB y 15 s, dentro de la cuota.
+>   Verificados por bytes mágicos al confirmar (una imagen AVIF/HEIC o un HTML no pasan).
+> - **Invocación endurecida:** sin shell, demuxer **forzado** según el tipo verificado,
+>   `-protocol_whitelist file`, `-nostdin`, límite de tiempo. Se comprobó que sin el demuxer forzado
+>   una lista `ffconcat` con nombre `.mp4` hacía que ffmpeg leyera **otro archivo del servidor**
+>   como si fuera el subido: la prueba lo cubre.
+> - **Salida:** MP4 H.264 `yuv420p` con lado corto hasta 720 px (sin agrandar, dimensiones pares),
+>   hasta 30 cuadros por segundo, tasa acotada, **sin audio ni metadatos** (la ubicación del teléfono
+>   se elimina) y `faststart`. Póster (primer cuadro) en las mismas variantes WebP que una imagen. El
+>   original se borra.
+> - **Legibilidad sobre todo el video:** los tonos se miden en un cuadro por segundo, no solo en el
+>   póster; la API solo acepta la capa que alcanza AA en la escena más exigente.
+> - **Worker:** cola propia `media-video` con concurrencia 1 y bloqueo de 5 min (una conversión larga
+>   nunca se ejecuta dos veces); el error técnico de ffmpeg queda en el log estructurado y el usuario
+>   ve un motivo legible.
+> - **Fondo `own_video`:** solo un video listo de la misma organización, con URLs canónicas del MP4 y
+>   del póster que decide el servidor; se resuelve al mismo `video` que ya pinta `SiteBackdrop`
+>   (póster primero; sin reproducción con "reducir movimiento" o "ahorro de datos"). No se puede
+>   borrar mientras sea fondo. Un video tampoco se acepta como imagen dentro de un bloque.
+> - **Panel:** `/medios` acepta video (marca "Video" en la grilla, estado "Convirtiendo el video…");
+>   "Fondo de la página → Video" lista los videos propios y los curados, con la vista previa en
+>   movimiento y las intensidades ilegibles desactivadas; sin videos, enlaza a Medios. El selector de
+>   imágenes de los bloques sigue mostrando solo imágenes.
+>
+> **Verificación:** 7 pruebas unitarias (bytes mágicos de MP4/MOV/WebM y disfraces, tonos
+> combinados, configuración todo o nada) y 4 de integración con ffmpeg real (720p H.264 sin audio,
+> sin ubicación, ≤ 30 cps y con `faststart`; video chico sin agrandar y con dimensiones pares; más de
+> 15 s rechazado; `ffconcat` disfrazado frenado). 6 e2e de API de punta a punta (subida, conversión y
+> cola propia; HTML disfrazado y video largo rechazados; tamaño y formato; fondo con capa verificada,
+> URLs canónicas, respuesta pública y borrado bloqueado; aislamiento y tipos; instalación sin
+> ffmpeg). Playwright en móvil y escritorio: subir un video, verlo convertido, elegirlo de fondo con
+> la capa suave desactivada y verlo en el constructor con el texto aclarado. Confirmado que fallan al
+> quitar `-map_metadata`, el demuxer forzado, la verificación de legibilidad del video y la
+> restricción de imágenes en bloques. Revisión visual con capturas (de ahí salió la marca de video
+> legible en el selector). `@impulza/api` 347/347, `@impulza/storage` 30/30, `lint`/`typecheck` 26/26,
+> `build` 15/15, Playwright 75/75. OpenAPI regenerado.
+>
+> **Pendiente antes de producción (no de código):** confirmar con asesoría legal el uso comercial de
+> ffmpeg con `libx264` (GPL, como programa aparte) y de H.264 (ADR-007, "Consecuencias").
 
 ### PP7 — Verificación
 **Criterios de aceptación:**

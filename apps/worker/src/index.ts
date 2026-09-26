@@ -2,7 +2,7 @@ import "./load-dotenv.js";
 import { prisma } from "@impulza/database";
 import { initSentry } from "@impulza/observability";
 import { Redis } from "ioredis";
-import { parseStorageConfig, S3StorageAdapter } from "@impulza/storage";
+import { parseStorageConfig, parseVideoToolsConfig, S3StorageAdapter } from "@impulza/storage";
 import { startAnalyticsWorkers } from "./analytics-workers.js";
 import { env } from "./env.js";
 import { createHealthServer } from "./health-server.js";
@@ -30,15 +30,20 @@ const workers = await startAnalyticsWorkers({
 // Medios (ADR-006): solo si hay almacenamiento configurado. Una configuración a medias lanza acá y el
 // worker no arranca, igual que la API.
 const storageConfig = parseStorageConfig(process.env);
+// Video (PP6, ADR-007): ffmpeg y ffprobe del sistema, todo o nada. A medias, el worker no arranca.
+const videoTools = parseVideoToolsConfig(process.env);
 const mediaWorkers = storageConfig
   ? await startMediaWorkers({
       prisma,
       storage: new S3StorageAdapter(storageConfig),
       connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+      videoTools,
     })
   : null;
 if (!mediaWorkers) {
   logger.warn("almacenamiento no configurado: el procesamiento de medios no se inicia");
+} else if (!videoTools) {
+  logger.warn("ffmpeg no configurado: la cola de video no se inicia (FFMPEG_PATH/FFPROBE_PATH)");
 }
 
 const healthServer = createHealthServer([

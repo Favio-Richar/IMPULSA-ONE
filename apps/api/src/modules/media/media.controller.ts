@@ -22,7 +22,7 @@ import { OrganizationMembershipGuard } from "../organizations/guards/organizatio
 import type { RequestWithMembership } from "../organizations/request-with-membership.js";
 import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
-import { requestImageUploadSchema, type RequestImageUploadInput } from "./dto/media.dto.js";
+import { requestMediaUploadSchema, type RequestMediaUploadInput } from "./dto/media.dto.js";
 import { MediaService } from "./media.service.js";
 
 /**
@@ -53,18 +53,22 @@ export class MediaController {
   @ApiOperation({
     summary: "Pedir una URL de subida",
     description:
-      "Requiere `media.manage`. Solo JPG, PNG, WebP o AVIF de hasta 8 MB (nunca SVG). Reserva la cuota de almacenamiento del plan y devuelve una URL prefirmada de 10 minutos con el tipo y el tamaño firmados.",
+      "Requiere `media.manage`. Imágenes JPG, PNG, WebP o AVIF de hasta 8 MB (nunca SVG) y, si la instalación tiene ffmpeg (PP6, ADR-007), videos MP4, WebM o MOV de hasta 30 MB y 15 s. Reserva la cuota de almacenamiento del plan y devuelve una URL prefirmada de 10 minutos con el tipo y el tamaño firmados.",
   })
-  @ApiZodBody(requestImageUploadSchema)
+  @ApiZodBody(requestMediaUploadSchema)
   @ApiZodResponse(201, mediaUploadResponse, "El archivo reservado y cómo subirlo.")
   @ApiResponse({ status: 400, description: "Formato, tamaño o nombre inválido (detalle en `issues`)." })
-  @ApiResponse({ status: 503, description: "`STORAGE_NOT_CONFIGURED`: la instalación todavía no tiene proveedor de almacenamiento." })
+  @ApiResponse({
+    status: 503,
+    description:
+      "`STORAGE_NOT_CONFIGURED`: la instalación todavía no tiene proveedor de almacenamiento. `VIDEO_NOT_CONFIGURED`: se pidió subir un video y no hay ffmpeg configurado.",
+  })
   @ApiPlanLimited("storageMb")
   @ApiRateLimited(60, 3600)
   requestUpload(
     @Param("organizationId") organizationId: string,
     @Req() req: RequestWithMembership,
-    @Body(new ZodValidationPipe(requestImageUploadSchema)) body: RequestImageUploadInput,
+    @Body(new ZodValidationPipe(requestMediaUploadSchema)) body: RequestMediaUploadInput,
   ) {
     return this.mediaService.requestUpload(organizationId, req.user, body);
   }

@@ -13731,6 +13731,10 @@
                               "additionalProperties": false
                             }
                           },
+                          "videoUrl": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "failureReason": {
                             "nullable": true,
                             "type": "string"
@@ -13769,6 +13773,7 @@
                           "height",
                           "url",
                           "variants",
+                          "videoUrl",
                           "failureReason",
                           "tones",
                           "createdAt"
@@ -13799,12 +13804,16 @@
                     },
                     "storageConfigured": {
                       "type": "boolean"
+                    },
+                    "videoConfigured": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
                     "items",
                     "usage",
-                    "storageConfigured"
+                    "storageConfigured",
+                    "videoConfigured"
                   ],
                   "additionalProperties": false
                 }
@@ -13834,7 +13843,7 @@
     },
     "/api/v1/organizations/{organizationId}/media/uploads": {
       "post": {
-        "description": "Requiere `media.manage`. Solo JPG, PNG, WebP o AVIF de hasta 8 MB (nunca SVG). Reserva la cuota de almacenamiento del plan y devuelve una URL prefirmada de 10 minutos con el tipo y el tamaño firmados.",
+        "description": "Requiere `media.manage`. Imágenes JPG, PNG, WebP o AVIF de hasta 8 MB (nunca SVG) y, si la instalación tiene ffmpeg (PP6, ADR-007), videos MP4, WebM o MOV de hasta 30 MB y 15 s. Reserva la cuota de almacenamiento del plan y devuelve una URL prefirmada de 10 minutos con el tipo y el tamaño firmados.",
         "operationId": "MediaController_requestUpload",
         "parameters": [
           {
@@ -13879,13 +13888,16 @@
                       "image/jpeg",
                       "image/png",
                       "image/webp",
-                      "image/avif"
+                      "image/avif",
+                      "video/mp4",
+                      "video/webm",
+                      "video/quicktime"
                     ]
                   },
                   "sizeBytes": {
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 8388608
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
@@ -13977,6 +13989,10 @@
                             "additionalProperties": false
                           }
                         },
+                        "videoUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "failureReason": {
                           "nullable": true,
                           "type": "string"
@@ -14015,6 +14031,7 @@
                         "height",
                         "url",
                         "variants",
+                        "videoUrl",
                         "failureReason",
                         "tones",
                         "createdAt"
@@ -14079,7 +14096,7 @@
             "description": "Más de 60 peticiones en 3600 s desde la misma IP. Reintentar después de la ventana."
           },
           "503": {
-            "description": "`STORAGE_NOT_CONFIGURED`: la instalación todavía no tiene proveedor de almacenamiento."
+            "description": "`STORAGE_NOT_CONFIGURED`: la instalación todavía no tiene proveedor de almacenamiento. `VIDEO_NOT_CONFIGURED`: se pidió subir un video y no hay ffmpeg configurado."
           }
         },
         "security": [
@@ -14208,6 +14225,10 @@
                         "additionalProperties": false
                       }
                     },
+                    "videoUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "failureReason": {
                       "nullable": true,
                       "type": "string"
@@ -14246,6 +14267,7 @@
                     "height",
                     "url",
                     "variants",
+                    "videoUrl",
                     "failureReason",
                     "tones",
                     "createdAt"
@@ -14400,6 +14422,10 @@
                         "additionalProperties": false
                       }
                     },
+                    "videoUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "failureReason": {
                       "nullable": true,
                       "type": "string"
@@ -14438,6 +14464,7 @@
                     "height",
                     "url",
                     "variants",
+                    "videoUrl",
                     "failureReason",
                     "tones",
                     "createdAt"

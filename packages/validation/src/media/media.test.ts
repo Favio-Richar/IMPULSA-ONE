@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mediaSrcSet, planVariantWidths, requestImageUploadSchema } from "./index.js";
+import { mediaSrcSet, planVariantWidths, requestImageUploadSchema, requestMediaUploadSchema } from "./index.js";
 
 describe("planVariantWidths", () => {
   it("una imagen grande recibe los tres anchos fijos", () => {
@@ -40,5 +40,27 @@ describe("mediaSrcSet", () => {
   it("una URL externa no tiene srcset", () => {
     expect(mediaSrcSet("https://ejemplo.com/foto.webp")).toBeNull();
     expect(mediaSrcSet("https://ejemplo.com/org/x/y/w400.webp")).toBeNull();
+  });
+});
+
+describe("requestMediaUploadSchema (PP6)", () => {
+  const video = { fileName: "local.mp4", contentType: "video/mp4", sizeBytes: 20 * 1024 * 1024 };
+
+  it("acepta video MP4, WebM y MOV hasta 30 MB, e imágenes hasta 8 MB", () => {
+    for (const contentType of ["video/mp4", "video/webm", "video/quicktime"]) {
+      expect(requestMediaUploadSchema.safeParse({ ...video, contentType }).success, contentType).toBe(true);
+    }
+    expect(requestMediaUploadSchema.safeParse({ ...video, sizeBytes: 30 * 1024 * 1024 + 1 }).success).toBe(false);
+    expect(requestMediaUploadSchema.safeParse({ fileName: "a.jpg", contentType: "image/jpeg", sizeBytes: 9 * 1024 * 1024 }).success).toBe(false);
+  });
+
+  it("rechaza otros formatos de video y nombres peligrosos", () => {
+    expect(requestMediaUploadSchema.safeParse({ ...video, contentType: "video/x-msvideo" }).success).toBe(false);
+    expect(requestMediaUploadSchema.safeParse({ ...video, contentType: "image/svg+xml" }).success).toBe(false);
+    expect(requestMediaUploadSchema.safeParse({ ...video, fileName: "../../etc/passwd" }).success).toBe(false);
+  });
+
+  it("el selector de imágenes de los bloques sigue sin aceptar video", () => {
+    expect(requestImageUploadSchema.safeParse(video).success).toBe(false);
   });
 });

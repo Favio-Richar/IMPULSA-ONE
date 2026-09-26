@@ -1,7 +1,8 @@
-import type { ImageMimeType } from "@impulza/validation";
+import type { ImageMimeType, VideoMimeType } from "@impulza/validation";
 
-/** Bytes necesarios para reconocer cualquiera de los formatos permitidos. */
-export const MAGIC_BYTES_LENGTH = 32;
+/** Bytes necesarios para reconocer cualquiera de los formatos permitidos (el tipo de documento de un
+ *  WebM puede aparecer pasados los primeros 32 bytes de su cabecera EBML). */
+export const MAGIC_BYTES_LENGTH = 64;
 
 function ascii(bytes: Uint8Array, start: number, end: number): string {
   return String.fromCharCode(...bytes.slice(start, end));
@@ -28,6 +29,33 @@ export function detectImageType(bytes: Uint8Array): ImageMimeType | null {
     if (brands.includes("avif") || brands.includes("avis")) {
       return "image/avif";
     }
+  }
+  return null;
+}
+
+/** Marcas ISO-BMFF de imagen: con ellas, un `ftyp` es AVIF/HEIF y no un video. */
+const IMAGE_BRANDS = ["avif", "avis", "heic", "heix", "mif1", "msf1"];
+
+/**
+ * Tipo real de un video por su firma binaria (PP6, ADR-007). El resultado decide también el demuxer
+ * que usa ffmpeg (nunca autodetectado), así que un archivo que no es lo que dice no llega a él.
+ *
+ * - MP4 y MOV son ISO-BMFF (`ftyp` en el byte 4): la marca `qt  ` es un MOV de iPhone; cualquier otra
+ *   que no sea de imagen, un MP4.
+ * - WebM es Matroska (cabecera EBML `1A 45 DF A3`) con tipo de documento `webm`.
+ */
+export function detectVideoType(bytes: Uint8Array): VideoMimeType | null {
+  if (bytes.length >= 12 && ascii(bytes, 4, 8) === "ftyp") {
+    const major = ascii(bytes, 8, 12);
+    const brands = ascii(bytes, 8, Math.min(bytes.length, MAGIC_BYTES_LENGTH));
+    if (IMAGE_BRANDS.some((brand) => brands.includes(brand))) {
+      return null;
+    }
+    return major === "qt  " ? "video/quicktime" : "video/mp4";
+  }
+  const ebml = [0x1a, 0x45, 0xdf, 0xa3];
+  if (bytes.length >= 4 && ebml.every((value, index) => bytes[index] === value)) {
+    return ascii(bytes, 4, Math.min(bytes.length, MAGIC_BYTES_LENGTH)).includes("webm") ? "video/webm" : null;
   }
   return null;
 }

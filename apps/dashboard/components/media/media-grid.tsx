@@ -2,7 +2,7 @@
 
 import type { MediaAssetResponse } from "@impulza/contracts";
 import { cn } from "@impulza/ui";
-import { Check, CircleAlert, Loader2 } from "lucide-react";
+import { Check, CircleAlert, Loader2, Play } from "lucide-react";
 
 function formatSize(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -54,11 +54,18 @@ export function MediaGrid({
                 ) : (
                   <>
                     <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-                    Optimizando…
+                    {asset.kind === "VIDEO" ? "Convirtiendo…" : "Optimizando…"}
                   </>
                 )}
               </div>
             )}
+            {asset.kind === "VIDEO" ? (
+              // La miniatura de un video es su póster: la marca dice que es un video, no una foto.
+              <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-sm bg-foreground/80 px-1.5 py-0.5 text-xs font-medium text-background">
+                <Play className="size-3" aria-hidden="true" />
+                Video
+              </span>
+            ) : null}
             {selected ? (
               <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
                 <Check className="size-4" aria-hidden="true" />
@@ -83,7 +90,7 @@ export function MediaGrid({
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                aria-label={asset.fileName}
+                aria-label={asset.kind === "VIDEO" ? `${asset.fileName} (video)` : asset.fileName}
                 disabled={!selectable}
                 onClick={() => onSelect(asset)}
                 className="flex flex-col gap-1.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed"

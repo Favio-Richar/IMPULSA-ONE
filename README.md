@@ -7,7 +7,8 @@ captación, reservas, ventas y analítica) desde una sola URL.
 F4.1–F4.5 terminadas; F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.
 Por delante de F4.9 va la página pública premium (`docs/BACKLOG_PAGINA_PREMIUM.md`): PP1 y PP2
 (medios propios y selector de imágenes), PP4 (temas Ejecutivo y Vibrante, encabezado de perfil) y
-PP5 (acción principal fija en el teléfono y entrada de los bloques) terminadas en local; PP3 (fondo premium) construida y probada, en espera de que se apruebe el
+PP5 (acción principal fija en el teléfono y entrada de los bloques) y PP6 (video de fondo propio)
+terminadas en local; PP3 (fondo premium) construida y probada, en espera de que se apruebe el
 contenido de la biblioteca de videos.** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
@@ -1207,6 +1208,16 @@ contenido). Se aplica en vivo, como el tema, y la página pública se actualiza 
   a la vista y nunca tapa el final de la página. Se ve al publicar, como cualquier cambio.
 - Los bloques entran con una animación suave y escalonada, que desaparece si el visitante pidió
   "reducir movimiento".
+
+## Video de fondo propio (PP6, ADR-007)
+
+- En `/medios` se sube un video (MP4, WebM o MOV de iPhone, hasta 30 MB y 15 s). El worker lo deja
+  listo para cualquier teléfono —incluidos los navegadores de Instagram y TikTok—: H.264 de 720p,
+  **sin sonido y sin la ubicación** que graba el teléfono, con póster para que la página cargue rápido.
+- En "Fondo de la página → Video" se elige como fondo. La capa de oscurecido o aclarado se verifica
+  sobre todas las escenas del video, no solo la primera.
+- Necesita ffmpeg en el worker: `FFMPEG_PATH` y `FFPROBE_PATH` (ver `.env.example`). Sin ellas todo
+  funciona y la subida de video simplemente no se ofrece.
 
 ## Soporte (F4.5)
 

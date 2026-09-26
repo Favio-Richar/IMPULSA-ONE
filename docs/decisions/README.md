@@ -40,3 +40,4 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 | [ADR-004](./ADR-004-privacidad-retencion-datos.md) | Privacidad y retención de datos para conversión y analítica (Ley 21.719) | Aceptado |
 | [ADR-005](./ADR-005-superadministracion.md) | Modelo de superadministrador | Aceptado |
 | [ADR-006](./ADR-006-almacenamiento-medios.md) | Almacenamiento y entrega de medios (Cloudflare R2) | Aceptado |
+| [ADR-007](./ADR-007-procesamiento-video.md) | Procesamiento de video propio con ffmpeg | Aceptado |

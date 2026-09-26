@@ -21,7 +21,8 @@ import {
   themeTokensSchema,
 } from "@impulza/validation";
 import { Button, Card, CardContent, CardHeader, CardTitle, cn, ErrorState, LoadingState } from "@impulza/ui";
-import { Check, ImagePlus } from "lucide-react";
+import { Check, ImagePlus, Play } from "lucide-react";
+import Link from "next/link";
 import { useId, useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import { sameConfig } from "../../lib/block-fields/same-config";
@@ -29,7 +30,18 @@ import { useMediaLibrary } from "../../lib/hooks/use-media";
 import { useSetSiteBackground, useSiteBackground, useSiteTheme } from "../../lib/hooks/use-sites";
 import { MediaPicker } from "../media/media-picker";
 
-type Kind = "theme" | SiteBackground["kind"];
+/** Tipos que ve el usuario: "Video" agrupa los propios (PP6) y los de la biblioteca curada (PP3). */
+type Kind = "theme" | Exclude<SiteBackground["kind"], "own_video">;
+
+/** Video elegido: uno curado (por código) o uno propio de la biblioteca (por su URL y tonos). */
+type VideoChoice =
+  | { source: "curated"; code: string; posterUrl: string }
+  | { source: "own"; src: string; posterUrl: string; tones: ImageTones | null };
+
+function sameVideo(a: VideoChoice | null, b: VideoChoice): boolean {
+  if (!a || a.source !== b.source) return false;
+  return a.source === "curated" ? a.code === (b as Extract<VideoChoice, { source: "curated" }>).code : a.src === (b as Extract<VideoChoice, { source: "own" }>).src;
+}
 
 const KIND_LABELS: Record<Kind, string> = {
   theme: "Del tema",
@@ -54,10 +66,11 @@ function errorMessage(error: unknown): string {
 }
 
 /**
- * Fondo de la página (PP3): del tema, color, degradado curado, imagen de la biblioteca o video de la
- * biblioteca curada (solo si hay alguno aprobado). Todo lo que se ofrece ya alcanza AA: el color se
- * revisa al escribirlo y, sobre una imagen, solo se habilitan las intensidades de capa que se leen
- * bien sobre esa foto. El servidor vuelve a verificarlo todo al guardar.
+ * Fondo de la página (PP3): del tema, color, degradado curado, imagen de la biblioteca o video —uno
+ * propio de la biblioteca (PP6) o de la biblioteca curada—. Todo lo que se ofrece ya alcanza AA: el
+ * color se revisa al escribirlo y, sobre una imagen o un video propio, solo se habilitan las
+ * intensidades de capa que se leen bien sobre sus tonos (en un video, medidos en todas sus escenas).
+ * El servidor vuelve a verificarlo todo al guardar.
  */
 export function BackgroundPicker({ organizationId, siteId }: { organizationId: string; siteId: string }): React.JSX.Element {
   const backgroundQuery = useSiteBackground(organizationId, siteId);
@@ -102,15 +115,21 @@ function BackgroundEditor({
 }): React.JSX.Element {
   const setMutation = useSetSiteBackground(organizationId, siteId);
   const library = useMediaLibrary(organizationId);
-  const [kind, setKind] = useState<Kind>(saved?.kind ?? "theme");
+  const [kind, setKind] = useState<Kind>(saved?.kind === "own_video" ? "video" : (saved?.kind ?? "theme"));
   const [color, setColor] = useState(saved?.kind === "color" ? saved.color : "#0f172a");
   const [gradient, setGradient] = useState<string>(saved?.kind === "gradient" ? saved.gradient : BACKGROUND_GRADIENTS[0].code);
   const [image, setImage] = useState<{ url: string; tones: ImageTones | null } | null>(
     saved?.kind === "image" ? { url: saved.image.url, tones: null } : null,
   );
-  const [video, setVideo] = useState<string | null>(saved?.kind === "video" ? saved.video : (videos[0]?.code ?? null));
+  const [video, setVideo] = useState<VideoChoice | null>(() => {
+    if (saved?.kind === "own_video" && saved.video.posterUrl) {
+      return { source: "own", src: saved.video.src, posterUrl: saved.video.posterUrl, tones: null };
+    }
+    const curated = videos.find((item) => saved?.kind === "video" && item.code === saved.video) ?? null;
+    return curated ? { source: "curated", code: curated.code, posterUrl: curated.posterUrl } : null;
+  });
   const [overlay, setOverlay] = useState<{ tone: OverlayTone; strength: OverlayStrength }>(
-    saved?.kind === "image" || saved?.kind === "video" ? saved.overlay : DEFAULT_OVERLAY,
+    saved?.kind === "image" || saved?.kind === "video" || saved?.kind === "own_video" ? saved.overlay : DEFAULT_OVERLAY,
   );
   const [pickerOpen, setPickerOpen] = useState(false);
   const [done, setDone] = useState(false);
@@ -119,10 +138,21 @@ function BackgroundEditor({
   // Los tonos de la imagen guardada salen de la biblioteca (el fondo guarda solo la URL). Sin ellos
   // (aún cargando, o una imagen de antes de PP3), se asume el peor caso: solo la capa fuerte.
   const imageTones = image?.tones ?? library.data?.items.find((item) => item.url === image?.url)?.tones ?? null;
+  // Videos propios listos (PP6). Sus tonos cubren todas las escenas, no solo el póster.
+  const ownVideos = (library.data?.items ?? []).filter((item) => item.kind === "VIDEO" && item.status === "READY" && item.videoUrl && item.url);
+  const ownVideoTones =
+    video?.source === "own" ? (video.tones ?? ownVideos.find((item) => item.videoUrl === video.src)?.tones ?? null) : null;
+  const videoConfigured = library.data?.videoConfigured ?? false;
 
   const colorValid = HEX_COLOR_PATTERN.test(color) && colorTextPalette(color.toLowerCase(), null) !== null;
-  const allowedStrengths = kind === "image" ? legibleStrengths(imageTones, overlay.tone) : [...OVERLAY_STRENGTHS];
-  // Un video curado se aprueba con tonos que alcanzan AA en toda intensidad fuerte; la API igual verifica.
+  // Un video curado se aprueba con tonos que alcanzan AA en toda intensidad; la API igual verifica.
+  const strengthsFor = (tone: OverlayTone): OverlayStrength[] =>
+    kind === "image"
+      ? legibleStrengths(imageTones, tone)
+      : kind === "video" && video?.source === "own"
+        ? legibleStrengths(ownVideoTones, tone)
+        : [...OVERLAY_STRENGTHS];
+  const allowedStrengths = strengthsFor(overlay.tone);
 
   function draft(): SiteBackground | null {
     switch (kind) {
@@ -135,7 +165,10 @@ function BackgroundEditor({
       case "image":
         return image ? { kind: "image", image: { url: image.url }, overlay } : null;
       case "video":
-        return video ? { kind: "video", video, overlay } : null;
+        if (!video) return null;
+        return video.source === "own"
+          ? { kind: "own_video", video: { src: video.src, posterUrl: video.posterUrl }, overlay }
+          : { kind: "video", video: video.code, overlay };
     }
   }
 
@@ -145,24 +178,30 @@ function BackgroundEditor({
     (kind === "color" && colorValid) ||
     kind === "gradient" ||
     (kind === "image" && image !== null && allowedStrengths.includes(overlay.strength)) ||
-    (kind === "video" && video !== null);
+    (kind === "video" && video !== null && allowedStrengths.includes(overlay.strength));
   // Por valor: lo guardado vuelve de JSONB con las claves en otro orden.
   const unchanged = sameConfig(current, saved);
 
-  // Vista previa: lo que resolvería el servidor. Un video se muestra con su póster.
-  const previewVideo = videos.find((item) => item.code === video);
+  // Vista previa: lo que resolvería el servidor. Un video propio se ve en movimiento (póster
+  // primero, como en la página); uno curado, con su póster.
   const preview: ResolvedSiteBackground | null =
     !ready || current === null
       ? null
-      : current.kind === "video"
-        ? previewVideo
-          ? { kind: "video", video: { posterUrl: previewVideo.posterUrl, src: "" }, overlay, text: overlay.tone === "dark" ? "light" : "dark" }
-          : null
+      : current.kind === "video" && video?.source === "curated"
+        ? { kind: "video", video: { posterUrl: video.posterUrl, src: "" }, overlay, text: overlay.tone === "dark" ? "light" : "dark" }
         : resolveSiteBackground(current, theme, (key) => key);
 
   function chooseTone(tone: OverlayTone): void {
-    const allowed = kind === "image" ? legibleStrengths(imageTones, tone) : [...OVERLAY_STRENGTHS];
+    const allowed = strengthsFor(tone);
     setOverlay({ tone, strength: allowed.includes(overlay.strength) ? overlay.strength : (allowed[0] ?? "strong") });
+  }
+
+  function chooseVideo(choice: VideoChoice): void {
+    setVideo(choice);
+    const allowed = choice.source === "own" ? legibleStrengths(choice.tones, overlay.tone) : [...OVERLAY_STRENGTHS];
+    if (!allowed.includes(overlay.strength)) {
+      setOverlay({ tone: overlay.tone, strength: allowed[0] ?? "strong" });
+    }
   }
 
   function chooseImage(asset: MediaAssetResponse): void {
@@ -182,7 +221,16 @@ function BackgroundEditor({
     );
   }
 
-  const kinds: Kind[] = ["theme", "color", "gradient", "image", ...(videos.length > 0 ? (["video"] as const) : [])];
+  const offerVideo = videos.length > 0 || ownVideos.length > 0 || videoConfigured;
+  const kinds: Kind[] = ["theme", "color", "gradient", "image", ...(offerVideo ? (["video"] as const) : [])];
+  const videoOptions: Array<{ key: string; label: string; choice: VideoChoice }> = [
+    ...ownVideos.map((item) => ({
+      key: item.id,
+      label: item.fileName,
+      choice: { source: "own" as const, src: item.videoUrl!, posterUrl: item.url!, tones: item.tones },
+    })),
+    ...videos.map((item) => ({ key: item.code, label: item.name, choice: { source: "curated" as const, code: item.code, posterUrl: item.posterUrl } })),
+  ];
 
   return (
     <Card>
@@ -298,25 +346,51 @@ function BackgroundEditor({
             ) : null}
 
             {kind === "video" ? (
-              <fieldset>
-                <legend className="mb-2 text-sm font-medium text-foreground">Video</legend>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {videos.map((option) => (
-                    <label
-                      key={option.code}
-                      className={cn(
-                        "flex cursor-pointer flex-col gap-1.5 rounded-md border p-1.5 text-xs has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-focus-ring)]",
-                        video === option.code ? "border-primary ring-1 ring-primary" : "border-border hover:border-border-strong",
-                      )}
-                    >
-                      <input type="radio" name={`${colorId}-video`} value={option.code} checked={video === option.code} onChange={() => setVideo(option.code)} className="sr-only" />
-                      {/* eslint-disable-next-line @next/next/no-img-element -- póster de la biblioteca curada */}
-                      <img src={option.posterUrl} alt="" className="h-16 w-full rounded-sm object-cover" />
-                      <span className="font-medium text-foreground">{option.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
+              videoOptions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Todavía no tienes videos.{" "}
+                  <Link href="/medios" className="font-medium text-primary underline-offset-2 hover:underline">
+                    Sube uno en Medios
+                  </Link>{" "}
+                  (MP4, WebM o MOV, hasta 15 segundos) y vuelve a elegirlo acá.
+                </p>
+              ) : (
+                <fieldset>
+                  <legend className="mb-2 text-sm font-medium text-foreground">Video</legend>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {videoOptions.map((option) => {
+                      const checked = sameVideo(video, option.choice);
+                      return (
+                        <label
+                          key={option.key}
+                          className={cn(
+                            "flex min-w-0 cursor-pointer flex-col gap-1.5 rounded-md border p-1.5 text-xs has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-focus-ring)]",
+                            checked ? "border-primary ring-1 ring-primary" : "border-border hover:border-border-strong",
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name={`${colorId}-video`}
+                            value={option.key}
+                            checked={checked}
+                            onChange={() => chooseVideo(option.choice)}
+                            className="sr-only"
+                          />
+                          <span className="relative block">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- póster ya optimizado por el worker */}
+                            <img src={option.choice.posterUrl} alt="" className="h-16 w-full rounded-sm object-cover" />
+                            {/* Misma marca que en la biblioteca: legible sobre un póster claro u oscuro. */}
+                            <span className="absolute bottom-1 left-1 inline-flex items-center rounded-sm bg-foreground/80 p-0.5 text-background">
+                              <Play className="size-3" aria-hidden="true" />
+                            </span>
+                          </span>
+                          <span className="truncate font-medium text-foreground">{option.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )
             ) : null}
 
             {kind === "image" || kind === "video" ? (
@@ -335,8 +409,10 @@ function BackgroundEditor({
                   value={overlay.strength}
                   onChange={(strength) => setOverlay({ ...overlay, strength })}
                 />
-                {kind === "image" && image && allowedStrengths.length < OVERLAY_STRENGTHS.length ? (
-                  <p className="text-xs text-muted-foreground">Las intensidades desactivadas no dejarían leer bien el texto sobre esta imagen.</p>
+                {((kind === "image" && image) || (kind === "video" && video?.source === "own")) && allowedStrengths.length < OVERLAY_STRENGTHS.length ? (
+                  <p className="text-xs text-muted-foreground">
+                    Las intensidades desactivadas no dejarían leer bien el texto sobre {kind === "image" ? "esta imagen" : "algunas escenas de este video"}.
+                  </p>
                 ) : null}
               </div>
             ) : null}

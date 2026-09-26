@@ -36,7 +36,7 @@ export function UploadList({ items, onDismiss }: { items: UploadItem[]; onDismis
               )}
               <span className="min-w-0 flex-1 truncate font-medium text-foreground">{item.fileName}</span>
               <span className={cn("shrink-0 text-xs", phase === "failed" ? "text-danger" : "text-muted-foreground")}>
-                {PHASE_TEXT[phase]}
+                {phase === "processing" && item.isVideo ? "Convirtiendo el video…" : PHASE_TEXT[phase]}
                 {phase === "uploading" ? ` ${percent} %` : ""}
               </span>
               {!busy ? (

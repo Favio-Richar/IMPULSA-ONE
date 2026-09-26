@@ -30,7 +30,8 @@ function formatBytes(bytes: number): string {
 
 function MediaLibrary({ organizationId }: { organizationId: string }): React.JSX.Element {
   const libraryQuery = useMediaLibrary(organizationId);
-  const uploads = useImageUploads(organizationId);
+  const videoConfigured = libraryQuery.data?.videoConfigured ?? false;
+  const uploads = useImageUploads(organizationId, undefined, { allowVideo: videoConfigured });
   const deleteMutation = useDeleteMediaAsset(organizationId);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<{ assetId: string; message: string } | null>(null);
@@ -49,8 +50,8 @@ function MediaLibrary({ organizationId }: { organizationId: string }): React.JSX
         body?.code === "MEDIA_IN_USE" && body.usages
           ? `Se usa en: ${body.usages
               .map((usage) => (usage.kind === "background" ? `${usage.siteName} (fondo de la página)` : `${usage.siteName} /${usage.pageSlug}`))
-              .join(", ")}. Quítala de ahí primero.`
-          : "No pudimos borrar la imagen. Intenta de nuevo.";
+              .join(", ")}. Quítalo de ahí primero.`
+          : "No pudimos borrar el archivo. Intenta de nuevo.";
       setDeleteError({ assetId, message });
       setConfirmingId(null);
     }
@@ -64,7 +65,10 @@ function MediaLibrary({ organizationId }: { organizationId: string }): React.JSX
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-foreground">Medios</h1>
-          <p className="text-sm text-muted-foreground">Tus fotos y logos, listos para usar en cualquier página. Los optimizamos para que carguen rápido en el celular.</p>
+          <p className="text-sm text-muted-foreground">
+            Tus fotos, logos{videoConfigured ? " y videos de fondo" : ""}, listos para usar en cualquier página. Los optimizamos para que carguen
+            rápido en el celular.
+          </p>
         </div>
         {usage ? (
           <div className="flex min-w-56 flex-col gap-1.5 text-sm" aria-label="Uso de almacenamiento">
@@ -102,7 +106,7 @@ function MediaLibrary({ organizationId }: { organizationId: string }): React.JSX
         </p>
       ) : (
         <>
-          <UploadDropzone onFiles={(files) => void uploads.addFiles(files)} />
+          <UploadDropzone allowVideo={videoConfigured} onFiles={(files) => void uploads.addFiles(files)} />
           <UploadList items={uploads.items} onDismiss={uploads.dismiss} />
         </>
       )}

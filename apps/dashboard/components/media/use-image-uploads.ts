@@ -3,11 +3,14 @@
 import type { MediaAssetResponse } from "@impulza/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import { type UploadProgress, uploadImage, UploadError } from "../../lib/upload-image";
+import { isVideoMimeType } from "@impulza/validation";
+import { type UploadProgress, uploadMedia, UploadError } from "../../lib/upload-image";
 
 export interface UploadItem {
   id: string;
   fileName: string;
+  /** Video (PP6): el paso del servidor es convertirlo, no optimizarlo. */
+  isVideo: boolean;
   progress: UploadProgress;
   error: string | null;
   /** Causa original (p. ej. el 402 de límite de plan) para mostrar el aviso correcto. */
@@ -19,7 +22,12 @@ export interface UploadItem {
  * Cola de subidas de la biblioteca de medios. Sube de a una a propósito: con varias fotos grandes en
  * una conexión móvil, subir en paralelo solo hace que todas tarden más y compitan con la página.
  */
-export function useImageUploads(organizationId: string, onUploaded?: (asset: MediaAssetResponse) => void) {
+export function useImageUploads(
+  organizationId: string,
+  onUploaded?: (asset: MediaAssetResponse) => void,
+  options: { allowVideo?: boolean } = {},
+) {
+  const allowVideo = options.allowVideo ?? false;
   const queryClient = useQueryClient();
   const [items, setItems] = useState<UploadItem[]>([]);
 
@@ -34,6 +42,7 @@ export function useImageUploads(organizationId: string, onUploaded?: (asset: Med
         item: {
           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
           fileName: file.name,
+          isVideo: isVideoMimeType(file.type),
           progress: { phase: "validating" as const, percent: 0 },
           error: null,
           cause: null,
@@ -44,12 +53,12 @@ export function useImageUploads(organizationId: string, onUploaded?: (asset: Med
 
       for (const { file, item } of queued) {
         try {
-          const asset = await uploadImage(organizationId, file, (progress) => update(item.id, { progress }));
+          const asset = await uploadMedia(organizationId, file, (progress) => update(item.id, { progress }), { allowVideo });
           update(item.id, { asset });
           onUploaded?.(asset);
         } catch (error) {
           update(item.id, {
-            error: error instanceof UploadError ? error.message : "No pudimos subir la imagen.",
+            error: error instanceof UploadError ? error.message : "No pudimos subir el archivo.",
             cause: error instanceof UploadError ? error.origin : error,
             progress: { phase: "failed", percent: 0 },
           });
@@ -59,7 +68,7 @@ export function useImageUploads(organizationId: string, onUploaded?: (asset: Med
         }
       }
     },
-    [organizationId, onUploaded, queryClient, update],
+    [organizationId, onUploaded, queryClient, update, allowVideo],
   );
 
   const dismiss = useCallback((id: string) => setItems((current) => current.filter((item) => item.id !== id)), []);

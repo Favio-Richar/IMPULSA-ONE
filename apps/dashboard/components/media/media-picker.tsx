@@ -32,7 +32,9 @@ export function MediaPicker({
   const handleUploaded = useCallback((asset: MediaAssetResponse) => setSelectedId(asset.id), []);
   const uploads = useImageUploads(organizationId, handleUploaded);
 
-  const selected = libraryQuery.data?.items.find((item) => item.id === selectedId && item.status === "READY") ?? null;
+  // Solo imágenes: los videos de la biblioteca (PP6) son para el fondo de la página, no para un bloque.
+  const images = (libraryQuery.data?.items ?? []).filter((item) => item.kind === "IMAGE");
+  const selected = images.find((item) => item.id === selectedId && item.status === "READY") ?? null;
   const configured = libraryQuery.data?.storageConfigured ?? true;
 
   return (
@@ -78,10 +80,10 @@ export function MediaPicker({
           <LoadingState label="Cargando tu biblioteca…" />
         ) : libraryQuery.isError ? (
           <ErrorState onRetry={() => libraryQuery.refetch()} />
-        ) : libraryQuery.data.items.length === 0 ? (
+        ) : images.length === 0 ? (
           <EmptyState title="Tu biblioteca está vacía" description="Las imágenes que subas quedan aquí para usarlas en cualquier página." />
         ) : (
-          <MediaGrid items={libraryQuery.data.items} selectedId={selectedId} onSelect={(asset) => setSelectedId(asset.id)} />
+          <MediaGrid items={images} selectedId={selectedId} onSelect={(asset) => setSelectedId(asset.id)} />
         )}
       </div>
     </Dialog>

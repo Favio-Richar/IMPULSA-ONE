@@ -117,3 +117,27 @@ describe("resolveSiteBackground", () => {
     expect(backgroundTextCssVariables("light")).toMatchObject({ "--site-color-foreground": "#ffffff", "--site-color-link": "#ffffff" });
   });
 });
+
+describe("video propio de fondo (PP6)", () => {
+  const overlay = { tone: "dark", strength: "medium" } as const;
+  const src = "https://media.impulza.cl/org/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222/video.mp4";
+  const posterUrl = "https://media.impulza.cl/org/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222/w1280.webp";
+
+  it("se resuelve al mismo video de fondo que uno curado, con la paleta de su capa", () => {
+    expect(resolveSiteBackground({ kind: "own_video", video: { src, posterUrl }, overlay }, theme, noVideo)).toEqual({
+      kind: "video",
+      video: { src, posterUrl },
+      overlay,
+      text: "light",
+    });
+  });
+
+  it("sin póster (nunca lo guarda el servidor así) cae al fondo del tema", () => {
+    expect(resolveSiteBackground({ kind: "own_video", video: { src }, overlay }, theme, noVideo)).toBeNull();
+  });
+
+  it("no acepta un enlace que no sea http(s)", () => {
+    expect(siteBackgroundSchema.safeParse({ kind: "own_video", video: { src: "javascript:alert(1)" }, overlay }).success).toBe(false);
+    expect(siteBackgroundSchema.safeParse({ kind: "own_video", video: { src: "data:video/mp4;base64,AAAA" }, overlay }).success).toBe(false);
+  });
+});

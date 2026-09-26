@@ -127,6 +127,9 @@ jobs:
       STORAGE_SECRET_ACCESS_KEY: ci-minio-secret-not-real
       STORAGE_PUBLIC_BASE_URL: http://localhost:9000/impulza-media
       STORAGE_FORCE_PATH_STYLE: "true"
+      # PP6 (ADR-007): ffmpeg de la distribución, instalado en un paso de este job.
+      FFMPEG_PATH: /usr/bin/ffmpeg
+      FFPROBE_PATH: /usr/bin/ffprobe
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -139,6 +142,8 @@ jobs:
         run: |
           docker run -d --name minio -p 9000:9000             -e MINIO_ROOT_USER=ci-minio -e MINIO_ROOT_PASSWORD=ci-minio-secret-not-real             minio/minio:latest server /data
           for i in $(seq 1 30); do curl -sf http://localhost:9000/minio/health/live && break; sleep 1; done
+      - name: Install ffmpeg (video de fondo propio, ADR-007)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg && ffmpeg -hide_banner -version | head -1
       - name: Prepare media bucket
         run: pnpm --filter @impulza/storage run setup:local
       - name: Apply database migrations
@@ -196,6 +201,9 @@ jobs:
       STORAGE_SECRET_ACCESS_KEY: ci-minio-secret-not-real
       STORAGE_PUBLIC_BASE_URL: http://localhost:9000/impulza-media
       STORAGE_FORCE_PATH_STYLE: "true"
+      # PP6 (ADR-007): ffmpeg de la distribución, instalado en un paso de este job.
+      FFMPEG_PATH: /usr/bin/ffmpeg
+      FFPROBE_PATH: /usr/bin/ffprobe
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -207,6 +215,8 @@ jobs:
         run: |
           docker run -d --name minio -p 9000:9000 -e MINIO_ROOT_USER=ci-minio -e MINIO_ROOT_PASSWORD=ci-minio-secret-not-real minio/minio:latest server /data
           for i in $(seq 1 30); do curl -sf http://localhost:9000/minio/health/live && break; sleep 1; done
+      - name: Install ffmpeg (video de fondo propio, ADR-007)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg && ffmpeg -hide_banner -version | head -1
       - name: Prepare media bucket
         run: pnpm --filter @impulza/storage run setup:local
       - name: Apply database migrations

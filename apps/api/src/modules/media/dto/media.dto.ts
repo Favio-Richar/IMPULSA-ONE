@@ -1,1 +1,1 @@
-export { requestImageUploadSchema, type RequestImageUploadInput } from "@impulza/validation";
+export { requestMediaUploadSchema, type RequestMediaUploadInput } from "@impulza/validation";

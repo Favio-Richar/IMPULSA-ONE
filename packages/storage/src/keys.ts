@@ -13,6 +13,11 @@ export function variantKey(organizationId: string, assetId: string, width: numbe
   return `${assetPrefix(organizationId, assetId)}w${width}.webp`;
 }
 
+/** Video convertido (PP6). El póster usa las mismas claves `wN.webp` que una imagen. */
+export function videoKey(organizationId: string, assetId: string): string {
+  return `${assetPrefix(organizationId, assetId)}video.mp4`;
+}
+
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const MEDIA_PATH = new RegExp(`^org/(${UUID})/(${UUID})/`, "i");
 

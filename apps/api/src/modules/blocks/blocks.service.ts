@@ -6,7 +6,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from "@nestjs/common";
-import { type Block, MediaStatus, type Prisma as PrismaTypes, type PrismaClient } from "@impulza/database";
+import { type Block, MediaKind, MediaStatus, type Prisma as PrismaTypes, type PrismaClient } from "@impulza/database";
 import { parseMediaUrl, type StorageAdapter } from "@impulza/storage";
 import {
   findImagesWithoutAlt,
@@ -77,11 +77,13 @@ export class BlocksService {
       throw new UnprocessableEntityException("Esa imagen pertenece a otra organización.");
     }
     const assetIds = [...new Set(references.map((ref) => ref.assetId))];
+    // Solo imágenes: un video de la biblioteca (PP6) se usa como fondo de la página, no dentro de un
+    // bloque, que lo pintaría con `<img>`.
     const ready = await this.prisma.mediaAsset.count({
-      where: { id: { in: assetIds }, organizationId, status: MediaStatus.READY },
+      where: { id: { in: assetIds }, organizationId, status: MediaStatus.READY, kind: MediaKind.IMAGE },
     });
     if (ready !== assetIds.length) {
-      throw new UnprocessableEntityException("La imagen ya no existe o todavía se está procesando.");
+      throw new UnprocessableEntityException("La imagen ya no existe, todavía se está procesando o es un video.");
     }
   }
 

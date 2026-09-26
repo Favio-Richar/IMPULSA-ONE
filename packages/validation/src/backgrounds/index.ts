@@ -186,6 +186,13 @@ export const siteBackgroundSchema = z.discriminatedUnion("kind", [
     video: z.string().refine((code) => getBackgroundVideo(code) !== undefined, { message: "Ese video no está disponible." }),
     overlay: overlaySchema,
   }),
+  // Video propio (PP6): el cliente manda la URL del video de su biblioteca; el servidor verifica que
+  // sea suyo y esté listo, y guarda las URLs canónicas del video y de su póster.
+  z.object({
+    kind: z.literal("own_video"),
+    video: z.object({ src: safeUrlSchema, posterUrl: safeUrlSchema.optional() }),
+    overlay: overlaySchema,
+  }),
 ]);
 export type SiteBackground = z.infer<typeof siteBackgroundSchema>;
 
@@ -232,6 +239,19 @@ export function resolveSiteBackground(
       return {
         kind: "video",
         video: { posterUrl: videoUrl(video.posterKey), src: videoUrl(video.videoKey) },
+        overlay: background.overlay,
+        text: overlayTextPalette(background.overlay.tone),
+      };
+    }
+    case "own_video": {
+      // Sin póster no se guarda nunca (lo completa el servidor); si faltara, el fondo del tema.
+      if (!background.video.posterUrl) {
+        return null;
+      }
+      // Para el render es el mismo video de fondo que uno curado: póster primero, video después.
+      return {
+        kind: "video",
+        video: { posterUrl: background.video.posterUrl, src: background.video.src },
         overlay: background.overlay,
         text: overlayTextPalette(background.overlay.tone),
       };

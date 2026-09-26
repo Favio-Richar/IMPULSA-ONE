@@ -1,6 +1,6 @@
 import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import type { SiteBackgroundResponse } from "@impulza/contracts";
-import { MediaStatus, Prisma, type PrismaClient, type Site, SiteStatus } from "@impulza/database";
+import { MediaKind, MediaStatus, Prisma, type PrismaClient, type Site, SiteStatus } from "@impulza/database";
 import { parseMediaUrl, type StorageAdapter } from "@impulza/storage";
 import {
   BACKGROUND_VIDEOS,
@@ -291,7 +291,9 @@ export class SitesService {
     }
     const asset =
       reference.organizationId === organizationId
-        ? await this.prisma.mediaAsset.findFirst({ where: { id: reference.assetId, organizationId, status: MediaStatus.READY } })
+        ? await this.prisma.mediaAsset.findFirst({
+            where: { id: reference.assetId, organizationId, status: MediaStatus.READY, kind: MediaKind.IMAGE },
+          })
         : null;
     if (!asset) {
       throw new UnprocessableEntityException("Esa imagen no está disponible en tu biblioteca.");
@@ -306,6 +308,48 @@ export class SitesService {
     const variants = mediaVariantsSchema.parse(asset.variants);
     const largest = [...variants].sort((a, b) => b.width - a.width)[0]!;
     return { ...background, image: { url: this.storage.publicUrl(largest.key) } };
+  }
+
+  /**
+   * Video propio de fondo (PP6): mismas reglas que la imagen — un video **listo** de la biblioteca de
+   * **esta** organización, y la capa elegida tiene que alcanzar AA sobre sus tonos, que el worker mide
+   * en un cuadro por segundo (no solo en el póster). Se guardan las URLs canónicas del MP4 y del
+   * póster más grande, no las que envió el cliente.
+   */
+  private async checkOwnVideoBackground(
+    organizationId: string,
+    background: Extract<SiteBackground, { kind: "own_video" }>,
+  ): Promise<SiteBackground> {
+    if (!this.storage) {
+      throw new UnprocessableEntityException("Los videos de fondo todavía no están disponibles en esta instalación.");
+    }
+    const reference = parseMediaUrl(background.video.src, this.storage.publicUrl(""));
+    const asset =
+      reference && reference.organizationId === organizationId
+        ? await this.prisma.mediaAsset.findFirst({
+            where: { id: reference.assetId, organizationId, status: MediaStatus.READY, kind: MediaKind.VIDEO },
+          })
+        : null;
+    if (!asset) {
+      throw new UnprocessableEntityException("Ese video no está disponible en tu biblioteca.");
+    }
+    const tones = imageTonesSchema.safeParse(asset.tones).data ?? null;
+    if (!isOverlayLegible(tones, background.overlay)) {
+      throw new UnprocessableEntityException({
+        message: "Con esa intensidad el texto no se leería bien sobre este video. Elige una capa más intensa.",
+        legibleStrengths: legibleStrengths(tones, background.overlay.tone),
+      });
+    }
+    const variants = mediaVariantsSchema.parse(asset.variants);
+    const video = variants.find((variant) => variant.key.endsWith(".mp4"));
+    const poster = variants.filter((variant) => !variant.key.endsWith(".mp4")).sort((a, b) => b.width - a.width)[0];
+    if (!video || !poster) {
+      throw new UnprocessableEntityException("Ese video no está disponible en tu biblioteca.");
+    }
+    return {
+      ...background,
+      video: { src: this.storage.publicUrl(video.key), posterUrl: this.storage.publicUrl(poster.key) },
+    };
   }
 
   /**
@@ -324,7 +368,12 @@ export class SitesService {
           issues: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
         });
       }
-      background = parsed.data.kind === "image" ? await this.checkImageBackground(organizationId, parsed.data) : parsed.data;
+      background =
+        parsed.data.kind === "image"
+          ? await this.checkImageBackground(organizationId, parsed.data)
+          : parsed.data.kind === "own_video"
+            ? await this.checkOwnVideoBackground(organizationId, parsed.data)
+            : parsed.data;
       if (background.kind === "video" && !this.storage) {
         throw new UnprocessableEntityException("Los videos de fondo todavía no están disponibles en esta instalación.");
       }

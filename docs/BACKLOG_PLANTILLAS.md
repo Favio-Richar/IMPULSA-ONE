@@ -34,6 +34,7 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 | PL3 — Catálogo semilla de plantillas por rubro | Lista para tu revisión (capturas en la galería de PL4) |
 | PL4 — Selector de plantillas en onboarding y constructor | Lista para tu revisión (capturas en `docs/design/capturas/pl4/`) |
 | PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio) | Lista para tu revisión (capturas mostradas en el chat) |
+| PL6 — Extender ADR-008 a `service`, `testimonials` y `gallery` (sacar las tarjetas grandes) | Pendiente |
 
 ### Bitácora de avance (para retomar)
 
@@ -57,11 +58,36 @@ Orden obligatorio: PL2 → PL5 → PL1 → PL3 → PL4. Cada entrada dice dónde
   `packages/storage` y las Playwright que suben archivos (`medios.spec.ts`, `fondo.spec.ts` "foto
   clara"): la imagen de MinIO no se pudo descargar; y las que piden `FFMPEG_PATH` quedaron omitidas.
   Todas las demás pasan (71 Playwright en móvil y escritorio).
+- **2026-09-26 — PL6 agregada al backlog** (feedback de Favio en el chat, sin commit todavía): las tarjetas de `service`/`testimonials`/`gallery` deben seguir la misma línea visual del encabezado de perfil y los botones (PL5), no el diseño de tarjeta grande anterior. Ver sección PL6 más abajo.
 - Notas de entorno de esta sesión (no son de PL1-PL4): (1) con `packages/database/.env` presente,
   Prisma recarga variables y falla `revalidate-web.service.test.ts` ("no llama a nada si
   WEB_APP_URL…"); sin ese archivo pasa. (2) `admin.e2e.test.ts` "quitar la marca directo en la
   base…" falló una vez en la corrida completa y pasó en las siguientes (3/3 aislada, y la suite
   completa después); parece depender del reloj del código 2FA. Quedan para revisar aparte.
+
+### PL6 — Extender el patrón de ADR-008 a `service`, `testimonials` y `gallery`
+
+**Origen:** feedback de Favio el 2026-09-26 revisando la plantilla `belleza-barberia` en el
+navegador: el encabezado de perfil y los botones (PL5) ya siguen el patrón de enlace en bio, pero
+`ServiceBlock` y `TestimonialsBlock` se quedaron con tarjetas grandes de borde y fondo gris — el
+`CLAUDE.md` prohíbe expresamente "paneles hechos solo de tarjetas grandes", y la página se ve mitad
+app de enlace en bio, mitad sitio genérico. Sin ADR nuevo: es una corrección de consistencia dentro
+de la misma dirección visual ya aprobada (ADR-008), no un cambio de rumbo.
+
+**Criterios de aceptación:**
+- `ServiceBlock` y `GalleryBlock` (`packages/blocks-renderer/src/blocks/service.tsx`,
+  `gallery.tsx`) usan el mismo lenguaje de superficie que `link-button.tsx`/`stack-button.tsx`
+  (incluida la variante `glass` sobre fondo oscuro/foto) en vez de una tarjeta con borde y fondo
+  gris plano — sin perder imagen, precio y botón "Reservar"/"Ver" de cada tarjeta.
+- `TestimonialsBlock` dejar de leerse como una caja suelta en medio de la pila cuando hay una sola
+  reseña (caso común en las plantillas semilla): evaluar un formato más compacto por defecto (por
+  ejemplo una línea con estrellas + cita corta dentro de un botón/franja, en vez de la tarjeta
+  `w-64` completa) y reservar el carrusel horizontal actual para cuando hay 3 o más reseñas.
+- Ninguna combinación tema + fondo baja de AA (correr de nuevo `theme-background-matrix.test.ts`
+  sobre los bloques tocados).
+- Probado visualmente sobre las 7 plantillas de PL3 (no solo `belleza-barberia`), en móvil y
+  escritorio, con captura mostrada a Favio antes de darse por terminada — no alcanza con que pasen
+  las pruebas automáticas, según la Definición de Terminado de `CLAUDE.md`.
 
 ### PL1 — Modelo `Template` y migración
 **Criterios de aceptación:**

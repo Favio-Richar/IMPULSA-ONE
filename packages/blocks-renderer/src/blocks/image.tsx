@@ -1,4 +1,5 @@
 import type { ImageBlockConfig } from "@impulza/validation";
+import { OUTBOUND_LINK } from "../ui/outbound.js";
 import { SiteImage } from "../ui/site-image.js";
 
 export function ImageBlock({ config }: { config: ImageBlockConfig }) {
@@ -21,7 +22,7 @@ export function ImageBlock({ config }: { config: ImageBlockConfig }) {
   }
 
   return (
-    <a href={config.link} target="_blank" rel="noopener noreferrer nofollow" className="block">
+    <a href={config.link} {...OUTBOUND_LINK} className="block">
       {figure}
     </a>
   );

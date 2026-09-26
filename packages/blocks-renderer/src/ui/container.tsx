@@ -1,6 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
 
-/** Ancho de lectura cómodo y el relleno horizontal fijo de toda la página (F2.7). */
+/**
+ * Relleno horizontal fijo de toda la página (F2.7) y su ancho. Desde PP8 es una **columna angosta**
+ * (34 rem): la página de enlaces se lee igual en el teléfono y en una pantalla grande, centrada
+ * sobre el fondo, en vez de estirarse como un sitio web.
+ */
 export function Container({
   children,
   className = "",
@@ -11,7 +15,7 @@ export function Container({
   style?: CSSProperties;
 }) {
   return (
-    <div className={`mx-auto w-full max-w-3xl px-4 sm:px-6 ${className}`} style={style}>
+    <div className={`mx-auto w-full max-w-[34rem] px-4 sm:px-6 ${className}`} style={style}>
       {children}
     </div>
   );

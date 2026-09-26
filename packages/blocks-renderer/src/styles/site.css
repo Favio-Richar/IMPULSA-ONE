@@ -32,3 +32,11 @@
     animation-delay: calc(min(var(--site-block-index, 0), 8) * 60ms);
   }
 }
+
+/*
+ * Pila de enlaces (PP8): dos botones seguidos quedan más juntos que el resto de los bloques, así la
+ * lista se lee como un solo grupo. El contenedor separa con `gap`; el margen negativo lo acorta.
+ */
+[data-site-root] [data-stack] + [data-stack] {
+  margin-top: calc(0.75rem - var(--site-gap));
+}

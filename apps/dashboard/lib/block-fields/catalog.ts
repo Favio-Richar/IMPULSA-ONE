@@ -1,7 +1,7 @@
-import { SOCIAL_NETWORKS, type BlockType } from "@impulza/validation";
+import { SOCIAL_NETWORK_LABELS, SOCIAL_NETWORKS, type BlockType } from "@impulza/validation";
 import type { BlockFieldSet, FieldDescriptor } from "./types.js";
 
-const SOCIAL_NETWORK_OPTIONS = SOCIAL_NETWORKS.map((network) => ({ value: network, label: network }));
+const SOCIAL_NETWORK_OPTIONS = SOCIAL_NETWORKS.map((network) => ({ value: network, label: SOCIAL_NETWORK_LABELS[network] }));
 
 const ALIGNMENT_OPTIONS = [
   { value: "left", label: "Izquierda" },
@@ -85,8 +85,13 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
 
   link: {
     fields: [
-      { name: "label", label: "Texto del enlace", control: { kind: "text", maxLength: 80 } },
-      { name: "url", label: "Enlace", control: { kind: "url" } },
+      { name: "label", label: "Título", control: { kind: "text", maxLength: 80 } },
+      {
+        name: "url",
+        label: "Enlace",
+        helperText: "Pega el enlace de tu red, tu web, tu tienda o lo que quieras mostrar.",
+        control: { kind: "url" },
+      },
       { name: "description", label: "Descripción", optional: true, control: { kind: "text", maxLength: 160 } },
       {
         name: "style",
@@ -100,9 +105,15 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
           ],
         },
       },
-      { name: "icon", label: "Ícono de red", optional: true, control: { kind: "select", options: SOCIAL_NETWORK_OPTIONS } },
+      {
+        name: "icon",
+        label: "Ícono",
+        optional: true,
+        helperText: "Si lo dejas vacío, se usa el logo de la plataforma del enlace (Instagram, TikTok, YouTube…).",
+        control: { kind: "select", options: SOCIAL_NETWORK_OPTIONS },
+      },
     ],
-    seedConfig: () => ({ label: "Ver más", url: "https://ejemplo.com", style: "primary" }),
+    seedConfig: () => ({ label: "Mi enlace", url: "https://ejemplo.com", style: "primary" }),
   },
 
   social: {

@@ -4,6 +4,13 @@ import { RichText } from "../ui/rich-text.js";
 import { SiteImage } from "../ui/site-image.js";
 import { SocialIconLinks } from "../ui/social-icon-links.js";
 
+/** Hasta dos iniciales del nombre ("Café Aroma" → "CA"), para el monograma sin foto (PP8). */
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const letters = (words.length > 1 ? [words[0]!, words[words.length - 1]!] : words.slice(0, 1)).map((word) => [...word][0] ?? "");
+  return letters.join("").toLocaleUpperCase("es");
+}
+
 /**
  * Encabezado de perfil (PP4): portada, avatar montado sobre su borde inferior, nombre con
  * verificación, frase, bio y fila de redes. Todo es opcional salvo el nombre, así que un perfil
@@ -40,9 +47,22 @@ export function ProfileBlock({ config }: { config: ProfileBlockConfig }) {
               : "border border-[var(--site-color-border)]"
           }`}
         />
-      ) : null}
+      ) : (
+        // PP8: sin foto, las iniciales en el color del tema (par primario/texto verificado AA). La
+        // cabecera de una página de enlaces siempre tiene un "rostro" arriba.
+        <span
+          aria-hidden="true"
+          data-profile-monogram=""
+          className={`relative flex h-24 w-24 items-center justify-center rounded-full bg-[var(--site-color-primary)] text-3xl font-semibold text-[var(--site-color-primary-foreground)] shadow-[var(--site-shadow)] ${
+            hasCover ? "-mt-12 border-4 border-[var(--site-color-background)]" : ""
+          }`}
+          style={{ fontFamily: "var(--site-font-heading)" }}
+        >
+          {initials(config.name)}
+        </span>
+      )}
 
-      <div className={`flex flex-col items-center gap-3 ${config.avatar || hasCover ? "mt-4" : ""}`}>
+      <div className="mt-4 flex flex-col items-center gap-3">
         <div className="flex items-center gap-1.5">
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--site-color-foreground)] sm:text-3xl">
             {config.name}

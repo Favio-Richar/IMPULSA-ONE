@@ -4,6 +4,7 @@ import { ArrowUpRight, MessageSquareText } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { PrimaryAction } from "../lib/primary-action.js";
 import { NetworkIcon } from "./network-icon.js";
+import { OUTBOUND_LINK } from "./outbound.js";
 
 /**
  * Acción principal fija abajo en el teléfono (PP5).
@@ -59,7 +60,9 @@ export function PrimaryActionBar({
     >
       <a
         href={action.href}
-        {...(action.external ? { target: "_blank", rel: "noopener noreferrer nofollow" } : {})}
+        {...(action.external ? OUTBOUND_LINK : {})}
+        // Un formulario principal está plegado (PP8): además de llevar hasta él, se abre.
+        onClick={action.external ? undefined : () => document.getElementById(targetId)?.querySelector("details")?.setAttribute("open", "")}
         className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--site-radius)] border border-transparent bg-[var(--site-color-primary)] px-5 py-3 text-base font-semibold text-[var(--site-color-primary-foreground)] shadow-[0_6px_20px_-6px_rgb(15_23_42/0.35)] focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         <ActionIcon icon={action.icon} />

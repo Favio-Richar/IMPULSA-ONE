@@ -1,7 +1,9 @@
-import { NetworkIcon } from "../ui/network-icon.js";
 import type { WhatsappBlockConfig } from "@impulza/validation";
 import { whatsappHref } from "../lib/primary-action.js";
-import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
+import type { ButtonVariant } from "../ui/link-button.js";
+import { NetworkIcon } from "../ui/network-icon.js";
+import { OUTBOUND_LINK } from "../ui/outbound.js";
+import { StackButtonContent, stackButtonClass } from "../ui/stack-button.js";
 
 /**
  * F3.4: el clic a WhatsApp se mide como `whatsapp_click`. Desde F3.6 lo registra el rastreador
@@ -9,6 +11,8 @@ import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
  * `data-block-type="whatsapp"`), no este componente — un solo lugar que decide qué es un clic,
  * con idempotencia y atribución al bloque, en vez de un `fetch` propio por tipo de bloque. Sigue
  * siendo un `<a href>` de verdad: nunca `preventDefault` ni una redirección por JavaScript.
+ *
+ * PP8: un botón más de la pila de enlaces, con la misma geometría que los demás.
  */
 export function WhatsappBlock({
   config,
@@ -17,7 +21,7 @@ export function WhatsappBlock({
 }: {
   config: WhatsappBlockConfig;
   buttonVariant: ButtonVariant;
-  /** Acción principal de la página (PP5): botón sólido y más grande, sin importar el tema. */
+  /** Acción principal de la página (PP5): botón sólido, más alto y con halo, sin importar el tema. */
   primary?: boolean;
 }) {
   // El verde oficial de WhatsApp (#25D366) con texto blanco da 1.98:1 de contraste — muy por
@@ -25,14 +29,12 @@ export function WhatsappBlock({
   // negocia por reconocimiento de marca: se usa el color del tema (ya verificado en servidor
   // contra AA, F2.5), y el ícono hace el trabajo de reconocimiento.
   return (
-    <LinkButton
+    <a
       href={whatsappHref(config.phone, config.prefilledMessage)}
-      variant={primary ? "primary" : buttonVariant}
-      size={primary ? "lg" : "md"}
-      block
+      {...OUTBOUND_LINK}
+      className={stackButtonClass(primary ? "primary" : buttonVariant, primary)}
     >
-      <NetworkIcon network="whatsapp" className="h-5 w-5 shrink-0" />
-      {config.label}
-    </LinkButton>
+      <StackButtonContent primary={primary} icon={<NetworkIcon network="whatsapp" className="h-5 w-5 shrink-0" />} label={config.label} />
+    </a>
   );
 }

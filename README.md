@@ -1219,6 +1219,17 @@ contenido). Se aplica en vivo, como el tema, y la página pública se actualiza 
 - Necesita ffmpeg en el worker: `FFMPEG_PATH` y `FFPROBE_PATH` (ver `.env.example`). Sin ellas todo
   funciona y la subida de video simplemente no se ofrece.
 
+## Página de enlaces (PP8)
+
+Lo que ve quien toca el enlace de una biografía de Instagram o TikTok: la foto (o las iniciales),
+el nombre y una frase, la fila de redes y **una pila de botones con todo lo que la persona tenga**
+—web, portafolio, tienda, YouTube, Spotify, OnlyFans, WhatsApp…—, cada uno con el logo de su
+plataforma, reconocido solo a partir del enlace. Cada botón abre ahí mismo. Los bloques de negocio
+(formulario, servicios, testimonios, preguntas) siguen disponibles como opcionales.
+
+Para ver un ejemplo con la API corriendo: `pnpm --filter @impulza/api run demo:perfil` y abrir
+http://localhost:3300/ana-rojas (la cuenta de ejemplo se imprime al terminar; solo desarrollo).
+
 ## Verificación de la página pública (PP7)
 
 `pnpm test:e2e` levanta además el sitio público **en modo producción** (puerto 3390) y comprueba lo

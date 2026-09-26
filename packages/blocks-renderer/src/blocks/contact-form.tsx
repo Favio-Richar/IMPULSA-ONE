@@ -1,9 +1,11 @@
 "use client";
 
+import { MessageSquareText } from "lucide-react";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { PublicFormResponse } from "@impulza/contracts";
 import type { ContactFormBlockConfig } from "@impulza/validation";
+import { StackButtonContent, stackButtonClass } from "../ui/stack-button.js";
 import { SURFACE_SCOPE } from "../ui/surface.js";
 
 type Status = "idle" | "submitting" | "success" | "error";
@@ -28,11 +30,14 @@ export function ContactFormBlock({
   form,
   siteSlug,
   mode = "public",
+  primary = false,
 }: {
   config: ContactFormBlockConfig;
   form: PublicFormResponse | null;
   siteSlug?: string;
   mode?: "public" | "preview";
+  /** Acción principal de la página (PP5): el botón que despliega el formulario va destacado. */
+  primary?: boolean;
 }) {
   const [values, setValues] = useState<Record<string, string | boolean>>({});
   const [status, setStatus] = useState<Status>("idle");
@@ -100,23 +105,30 @@ export function ContactFormBlock({
     }
   }
 
-  if (status === "success" && ack) {
-    return (
-      <div className={`${SURFACE_SCOPE} rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-6 shadow-[var(--site-shadow)]`}>
-        <p className="text-sm text-[var(--site-color-foreground)]">{ack.message}</p>
-      </div>
-    );
-  }
+  const panelClass = `${SURFACE_SCOPE} mt-3 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-6 shadow-[var(--site-shadow)]`;
 
+  // PP8: en la página de enlaces, el formulario es un botón más de la pila ("Reserva tu mesa") que
+  // se despliega al tocarlo. `<details>` es nativo: funciona con teclado y lector de pantalla y sin
+  // JavaScript. La barra de acción principal (PP5) lo abre al llevar hasta él.
   return (
+    <details className="group" open={status === "success" ? true : undefined}>
+      <summary className={`${stackButtonClass(primary ? "primary" : "secondary", primary)} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
+        <StackButtonContent
+          primary={primary}
+          icon={<MessageSquareText className="h-5 w-5 shrink-0" aria-hidden="true" />}
+          label={config.title ?? "Escríbenos"}
+        />
+      </summary>
+      {status === "success" && ack ? (
+        <div className={panelClass}>
+          <p className="text-sm text-[var(--site-color-foreground)]">{ack.message}</p>
+        </div>
+      ) : (
     <form
-      className={`${SURFACE_SCOPE} rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-6 shadow-[var(--site-shadow)]`}
+      className={panelClass}
       onSubmit={handleSubmit}
       noValidate
     >
-      {config.title ? (
-        <h2 className="mb-4 text-lg font-semibold text-[var(--site-color-foreground)]">{config.title}</h2>
-      ) : null}
 
       <div className="flex flex-col gap-3">
         {form.fields.map((field) => (
@@ -206,5 +218,7 @@ export function ContactFormBlock({
         ) : null}
       </div>
     </form>
+      )}
+    </details>
   );
 }

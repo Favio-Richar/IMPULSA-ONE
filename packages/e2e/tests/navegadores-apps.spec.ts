@@ -52,9 +52,9 @@ for (const [app, userAgent] of Object.entries(IN_APP_USER_AGENTS)) {
       const socials = page.getByRole("navigation", { name: "Redes de Estudio Aroma" }).getByRole("link");
       await expect(socials).toHaveCount(3);
       for (const link of await socials.all()) {
-        // Abren afuera (en la app de la red), sin filtrar desde dónde se llegó.
-        await expect(link).toHaveAttribute("target", "_blank");
-        await expect(link).toHaveAttribute("rel", /noopener/);
+        // Abren ahí mismo (PP8): dentro del navegador de la app, sin pestañas nuevas.
+        expect(await link.getAttribute("target")).toBeNull();
+        await expect(link).toHaveAttribute("rel", "nofollow");
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 

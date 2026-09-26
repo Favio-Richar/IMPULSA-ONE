@@ -1,5 +1,6 @@
 import type { SocialBlockConfig } from "@impulza/validation";
 import { NETWORK_LABELS, NetworkIcon } from "./network-icon.js";
+import { OUTBOUND_LINK } from "./outbound.js";
 import { SURFACE_SCOPE } from "./surface.js";
 
 type SocialLink = SocialBlockConfig["links"][number];
@@ -17,8 +18,7 @@ export function SocialIconLinks({ links, className = "" }: { links: readonly Soc
         <li key={`${link.network}-${index}`}>
           <a
             href={link.url}
-            target="_blank"
-            rel="noopener noreferrer nofollow"
+            {...OUTBOUND_LINK}
             aria-label={NETWORK_LABELS[link.network]}
             className={`${SURFACE_SCOPE} flex h-11 w-11 items-center justify-center rounded-full border border-[var(--site-color-border)] bg-[var(--site-color-surface)] text-[var(--site-color-foreground)] shadow-[var(--site-shadow)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2`}
           >

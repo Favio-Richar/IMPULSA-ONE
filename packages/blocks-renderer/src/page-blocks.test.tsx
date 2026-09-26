@@ -30,14 +30,15 @@ describe("PageBlocks — acción principal (PP5)", () => {
     expect(bar).toContain('data-block-position="1"');
     expect(bar).toContain('data-block-type="whatsapp"');
     expect(bar).toContain("https://wa.me/56912345678?text=Hola%2C%20quiero%20reservar");
-    expect(bar).toContain('target="_blank"');
-    expect(bar).toContain('rel="noopener noreferrer nofollow"');
+    // Abre ahí mismo, como el resto de la página de enlaces (PP8).
+    expect(bar).not.toContain("target=");
+    expect(bar).toContain('rel="nofollow"');
     expect(bar).toContain("Reserva por WhatsApp");
     // Solo en pantallas angostas, por el ancho del contenedor y no de la ventana.
     expect(bar).toContain("@min-[40rem]:hidden");
     expect(html).toContain('class="@container"');
-    // El botón del bloque, más grande que uno común y con el halo que lo distingue.
-    expect(html).toMatch(/data-primary-action=""[\s\S]*?py-3\.5 text-base font-semibold ring-4/);
+    // El botón del bloque, más alto que uno común y con el halo que lo distingue.
+    expect(html).toMatch(/data-primary-action=""[^>]*><a [^>]*min-h-16 py-3\.5 ring-4/);
   });
 
   it("un enlace principal va sólido aunque su estilo sea de contorno", () => {
@@ -65,5 +66,32 @@ describe("PageBlocks — acción principal (PP5)", () => {
     for (const index of [0, 1, 2]) {
       expect(html).toContain(`--site-block-index:${index}`);
     }
+  });
+});
+
+describe("PageBlocks — página de enlaces (PP8)", () => {
+  it("cada enlace es un botón de la pila, del mismo alto, que abre ahí mismo y muestra el logo de su plataforma", () => {
+    const html = render([
+      { position: 0, type: "link", config: { label: "Mi Instagram", url: "https://instagram.com/ana", style: "primary" } },
+      { position: 1, type: "link", config: { label: "Mi OnlyFans", url: "https://onlyfans.com/ana", style: "secondary" } },
+      { position: 2, type: "link", config: { label: "Mi portafolio", url: "https://ana-rojas.cl", style: "outline" } },
+    ]);
+    const buttons = html.match(/<a [^>]*>/g) ?? [];
+    expect(buttons).toHaveLength(3);
+    for (const button of buttons) {
+      expect(button).toContain("min-h-14");
+      expect(button).not.toContain("target=");
+    }
+    // Logos reconocidos por el dominio; el portafolio lleva el ícono genérico de enlace.
+    expect(html.match(/<svg viewBox="0 0 24 24" fill="currentColor"/g)).toHaveLength(2);
+    expect(html).toContain("lucide-external-link");
+    // Los tres forman una sola pila.
+    expect(html.match(/data-stack=""/g)).toHaveLength(3);
+  });
+
+  it("el formulario se muestra como un botón más, que se despliega", () => {
+    const html = render([{ position: 0, type: "contact_form", config: { title: "Escríbeme", formId: "11111111-1111-4111-8111-111111111111" } }]);
+    // Sin la definición del formulario (vista previa) queda el aviso; con ella, `<details>`.
+    expect(html).toContain('data-stack=""');
   });
 });

@@ -1,42 +1,34 @@
 import { ExternalLink } from "lucide-react";
-import type { LinkBlockConfig } from "@impulza/validation";
-import { PRIMARY_ACTION_HALO } from "../ui/link-button.js";
+import { detectSocialNetwork, type LinkBlockConfig } from "@impulza/validation";
 import { NetworkIcon } from "../ui/network-icon.js";
-import { SURFACE_SCOPE } from "../ui/surface.js";
+import { OUTBOUND_LINK } from "../ui/outbound.js";
+import { StackButtonContent, stackButtonClass } from "../ui/stack-button.js";
 
 /**
- * `icon` (opcional) es una red de la lista blanca (F2.4): si viene, el enlace muestra el logo de
- * esa red; si no, el ícono genérico de enlace externo.
+ * Un botón de la pila de enlaces (PP8). `icon` (opcional) es una plataforma de la lista blanca
+ * (F2.4): si viene, el botón muestra su logo; si no, el de la plataforma que se reconoce en el
+ * enlace; y si no es de ninguna conocida, el ícono genérico de enlace.
  */
 export function LinkBlock({ config, primary = false }: { config: LinkBlockConfig; primary?: boolean }) {
   // La acción principal (PP5) siempre va sólida y más alta, sea cual sea el estilo elegido.
-  const isOutline = !primary && config.style === "outline";
-  const isSecondary = !primary && config.style === "secondary";
+  const variant = primary ? "primary" : config.style;
+  // PP8: sin ícono elegido, el de la plataforma del enlace (`instagram.com/...` → Instagram).
+  const network = config.icon ?? detectSocialNetwork(config.url);
 
   return (
-    <a
-      href={config.url}
-      target="_blank"
-      rel="noopener noreferrer nofollow"
-      className={`flex items-center gap-3 rounded-[var(--site-radius)] px-5 ${primary ? `py-5 ${PRIMARY_ACTION_HALO}` : "py-4"} shadow-[var(--site-shadow)] transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 ${
-        isOutline
-          ? "border border-[var(--site-color-link)] bg-transparent text-[var(--site-color-link)]"
-          : isSecondary
-            ? `${SURFACE_SCOPE} border border-[var(--site-color-border)] bg-[var(--site-color-surface)] text-[var(--site-color-foreground)]`
-            : "border border-transparent bg-[var(--site-color-primary)] text-[var(--site-color-primary-foreground)]"
-      }`}
-    >
-      {config.icon ? (
-        <NetworkIcon network={config.icon} className="h-5 w-5 shrink-0" />
-      ) : (
-        <ExternalLink className="h-5 w-5 shrink-0" aria-hidden="true" />
-      )}
-      <span className="flex-1 text-left">
-        <span className={primary ? "block text-base font-semibold" : "block font-medium"}>{config.label}</span>
-        {config.description ? (
-          <span className="block text-sm opacity-80">{config.description}</span>
-        ) : null}
-      </span>
+    <a href={config.url} {...OUTBOUND_LINK} className={stackButtonClass(variant, primary)}>
+      <StackButtonContent
+        primary={primary}
+        icon={
+          network ? (
+            <NetworkIcon network={network} className="h-5 w-5 shrink-0" />
+          ) : (
+            <ExternalLink className="h-5 w-5 shrink-0" aria-hidden="true" />
+          )
+        }
+        label={config.label}
+        description={config.description}
+      />
     </a>
   );
 }

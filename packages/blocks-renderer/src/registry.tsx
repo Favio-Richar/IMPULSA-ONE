@@ -115,7 +115,7 @@ export function RenderBlock({
       }
       const form = parsed.data.formId ? (forms?.[parsed.data.formId] ?? null) : null;
       return (
-        <ContactFormBlock config={parsed.data} form={form} siteSlug={siteSlug} mode={mode} />
+        <ContactFormBlock config={parsed.data} form={form} siteSlug={siteSlug} mode={mode} primary={block.primary === true} />
       );
     }
     case "service": {

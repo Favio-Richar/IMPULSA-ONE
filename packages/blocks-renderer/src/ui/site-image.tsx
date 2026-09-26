@@ -1,8 +1,8 @@
 import { mediaSrcSet } from "@impulza/validation";
 import type { ImgHTMLAttributes } from "react";
 
-/** Ancho del contenido de la página pública (`Container`, max-w-3xl = 768 px menos el relleno). */
-const CONTENT_SIZES = "(min-width: 768px) 720px, calc(100vw - 32px)";
+/** Ancho del contenido de la página pública (`Container`: 34 rem = 544 px menos el relleno, PP8). */
+const CONTENT_SIZES = "(min-width: 544px) 496px, calc(100vw - 32px)";
 
 interface SiteImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt" | "srcSet"> {
   image: { url: string; alt: string; decorative?: boolean };

@@ -173,7 +173,12 @@ export const videoEmbedSchema = z.union([
 
 // --- Redes sociales -------------------------------------------------------------------------
 
-/** También lista blanca: el render elige el icono por este valor, no por una URL cualquiera. */
+/**
+ * También lista blanca: el render elige el icono por este valor, no por una URL cualquiera. Desde
+ * PP8 cubre lo que una persona suele tener en su página de enlaces — redes, video y música,
+ * creadores, portafolio, tiendas y agenda —, no solo las redes de un negocio. Agregar un valor es
+ * compatible hacia atrás; quitar uno no (dejaría inválidos bloques guardados).
+ */
 export const SOCIAL_NETWORKS = [
   "instagram",
   "facebook",
@@ -187,6 +192,113 @@ export const SOCIAL_NETWORKS = [
   "spotify",
   "github",
   "website",
+  "onlyfans",
+  "twitch",
+  "kick",
+  "telegram",
+  "snapchat",
+  "discord",
+  "patreon",
+  "soundcloud",
+  "applemusic",
+  "vimeo",
+  "behance",
+  "dribbble",
+  "substack",
+  "medium",
+  "etsy",
+  "shopify",
+  "calendly",
+  "googlemaps",
 ] as const;
 
 export const socialNetworkSchema = z.enum(SOCIAL_NETWORKS);
+export type SocialNetwork = (typeof SOCIAL_NETWORKS)[number];
+
+/** Nombre visible de cada plataforma (panel y lector de pantalla). */
+export const SOCIAL_NETWORK_LABELS: Record<SocialNetwork, string> = {
+  instagram: "Instagram",
+  facebook: "Facebook",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  linkedin: "LinkedIn",
+  x: "X",
+  whatsapp: "WhatsApp",
+  threads: "Threads",
+  pinterest: "Pinterest",
+  spotify: "Spotify",
+  github: "GitHub",
+  website: "Sitio web",
+  onlyfans: "OnlyFans",
+  twitch: "Twitch",
+  kick: "Kick",
+  telegram: "Telegram",
+  snapchat: "Snapchat",
+  discord: "Discord",
+  patreon: "Patreon",
+  soundcloud: "SoundCloud",
+  applemusic: "Apple Music",
+  vimeo: "Vimeo",
+  behance: "Behance",
+  dribbble: "Dribbble",
+  substack: "Substack",
+  medium: "Medium",
+  etsy: "Etsy",
+  shopify: "Shopify",
+  calendly: "Calendly",
+  googlemaps: "Google Maps",
+};
+
+/** Dominio → plataforma, para reconocerla sola a partir del enlace (PP8). */
+const NETWORK_HOSTS: ReadonlyArray<[SocialNetwork, readonly string[]]> = [
+  ["instagram", ["instagram.com", "instagr.am"]],
+  ["facebook", ["facebook.com", "fb.com", "fb.me", "m.me"]],
+  ["tiktok", ["tiktok.com"]],
+  ["youtube", ["youtube.com", "youtu.be"]],
+  ["linkedin", ["linkedin.com", "lnkd.in"]],
+  ["x", ["x.com", "twitter.com"]],
+  ["whatsapp", ["wa.me", "whatsapp.com"]],
+  ["threads", ["threads.net", "threads.com"]],
+  ["pinterest", ["pinterest.com", "pin.it"]],
+  ["spotify", ["spotify.com", "spotify.link"]],
+  ["github", ["github.com"]],
+  ["onlyfans", ["onlyfans.com"]],
+  ["twitch", ["twitch.tv"]],
+  ["kick", ["kick.com"]],
+  ["telegram", ["t.me", "telegram.me", "telegram.org"]],
+  ["snapchat", ["snapchat.com"]],
+  ["discord", ["discord.gg", "discord.com"]],
+  ["patreon", ["patreon.com"]],
+  ["soundcloud", ["soundcloud.com"]],
+  ["applemusic", ["music.apple.com"]],
+  ["vimeo", ["vimeo.com"]],
+  ["behance", ["behance.net"]],
+  ["dribbble", ["dribbble.com"]],
+  ["substack", ["substack.com"]],
+  ["medium", ["medium.com"]],
+  ["etsy", ["etsy.com"]],
+  ["shopify", ["myshopify.com"]],
+  ["calendly", ["calendly.com"]],
+  ["googlemaps", ["maps.google.com", "maps.app.goo.gl", "goo.gl/maps"]],
+];
+
+/**
+ * Plataforma de un enlace por su dominio (o un subdominio: `ana.substack.com`), o `null` si no es
+ * de una conocida. Así, quien pega `instagram.com/ana` ve el logo de Instagram sin elegir nada.
+ */
+export function detectSocialNetwork(url: string): SocialNetwork | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+  const hostAndPath = `${host}${parsed.pathname.toLowerCase()}`;
+  for (const [network, hosts] of NETWORK_HOSTS) {
+    if (hosts.some((candidate) => (candidate.includes("/") ? hostAndPath.startsWith(candidate) : host === candidate || host.endsWith(`.${candidate}`)))) {
+      return network;
+    }
+  }
+  return null;
+}

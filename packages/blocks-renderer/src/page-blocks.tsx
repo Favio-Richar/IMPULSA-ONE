@@ -7,6 +7,9 @@ import { Container } from "./ui/container.js";
 import type { ButtonVariant } from "./ui/link-button.js";
 import { PrimaryActionBar } from "./ui/primary-action-bar.js";
 
+/** Bloques que se ven como un botón de la pila de enlaces (PP8). */
+const STACK_TYPES = new Set(["link", "whatsapp", "contact_form", "contact_actions"]);
+
 function buttonVariantFor(buttonStyle: ThemeTokens["buttonStyle"]): ButtonVariant {
   return buttonStyle === "outline" ? "outline" : "primary";
 }
@@ -59,6 +62,8 @@ export function PageBlocks({
               data-block-position={block.position}
               data-block-type={block.type}
               data-primary-action={isPrimary ? "" : undefined}
+              // PP8: los botones seguidos forman una pila pareja (`styles/site.css`).
+              data-stack={STACK_TYPES.has(block.type) ? "" : undefined}
               className="site-block-enter scroll-mt-6"
               style={{ "--site-block-index": index } as CSSProperties}
             >

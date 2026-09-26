@@ -31,6 +31,7 @@ Y todas comparten estas **reglas de la página pública**:
 | PP5 — Botón principal fijo en móvil y animaciones de entrada | Terminada (local) |
 | PP6 — Video de fondo propio (subida y transcodificación) | Terminada (local; licencias a revisar antes de producción, ADR-007) |
 | PP7 — Verificación de rendimiento y navegadores internos | Terminada (local) |
+| PP8 — Formato página de enlaces (perfil + pila de enlaces) | Terminada (local) |
 
 ### PP1 — Almacenamiento y subida de imágenes
 **Criterios de aceptación:**
@@ -398,3 +399,57 @@ Y todas comparten estas **reglas de la página pública**:
 > reintenta en Windows. `lint`/`typecheck` 26/26, `build` 15/15, `test` 23/23 (sin caché),
 > `@impulza/api` 347/347, Playwright 122/122 (+8 omitidas por diseño: variantes de escritorio de las
 > pruebas de teléfono).
+
+### PP8 — Formato página de enlaces
+
+**Decisión del propietario (2026-09-26):** la página pública es, ante todo, una **página de
+enlaces personal** —como Linktree, con identidad propia—: al tocar el enlace de la biografía se ve
+un perfil (foto, nombre, frase) y debajo **una fila por cada cosa que la persona tenga**: sus redes,
+su web, su portafolio, sus negocios, su tienda, su contenido exclusivo. Al tocar una fila se abre
+ahí mismo. Los bloques de negocio del plan maestro (formularios, servicios, testimonios, preguntas
+frecuentes, y más adelante reservas y tienda) **se mantienen como bloques opcionales**, no como lo
+que se muestra por defecto: no se quita nada del plan de desarrollo. Aprobado sobre un boceto
+("Página de enlaces (Recomendado)") y precisado por Favio: "debe ser como un linktree donde cada
+usuario pueda mostrar todas sus redes sociales, web, negocios".
+
+**Criterios de aceptación:**
+- Sin barra de sitio web: columna angosta centrada, igual en teléfono y en pantalla grande, sobre
+  el fondo de pantalla completa.
+- Todos los enlaces como una pila pareja: mismo alto, texto centrado, logo de la plataforma a la
+  izquierda, reconocido solo a partir del enlace.
+- Plataformas de creadores y negocios, no solo redes (incluidas OnlyFans, Twitch, Telegram,
+  Patreon, Spotify, Shopify, Calendly…).
+- Cada enlace abre ahí mismo, en la misma pestaña.
+- Sin foto, un monograma con las iniciales.
+- Nada de lo anterior copia el aspecto visual de Linktree (CLAUDE.md): tipografía, radios,
+  sombras y colores son los de los temas propios.
+
+> **Estado (2026-09-26): terminada en local.**
+>
+> - **Render (`@impulza/blocks-renderer`):** `Container` pasa a una columna de 34 rem; el
+>   encabezado del sitio solo aparece con más de una página publicada; `stackButtonClass` +
+>   `StackButtonContent` dan la geometría única de la pila (mín. 56 px, 64 px la acción principal
+>   con su halo) a enlaces, WhatsApp, correo/teléfono, redes en modo botones y al formulario, que
+>   se muestra como un botón más y se despliega (`<details>`, accesible y sin JavaScript; la barra
+>   de acción principal lo abre); los botones seguidos se juntan a 0,75 rem (`data-stack`);
+>   monograma con iniciales en el par primario/texto del tema (AA verificado).
+> - **Mismo pestaña:** `OUTBOUND_LINK` (`rel="nofollow"`, sin `target`) en todos los enlaces
+>   salientes; en el navegador interno de una app, una pestaña nueva confunde o ni existe, y un
+>   enlace a una red abre directo su app.
+> - **Plataformas (`@impulza/validation`):** `SOCIAL_NETWORKS` pasa de 12 a 30 (se agregan, no se
+>   quita ninguna: los bloques guardados siguen válidos), con `SOCIAL_NETWORK_LABELS` como tabla
+>   única de nombres (panel y render) y `detectSocialNetwork(url)` por dominio o subdominio, sin
+>   confundirse con dominios parecidos (`instagram.com.evil.test`, `fakeinstagram.com`).
+> - **Constructor:** biblioteca en dos grupos ("Tu página de enlaces": perfil, enlace, redes,
+>   WhatsApp, contacto; "Más bloques": el resto); el enlace pide título y enlace, y el ícono queda
+>   opcional ("se detecta solo"); nombres legibles de cada plataforma en los selectores.
+> - **Perfil de demostración:** `pnpm --filter @impulza/api run demo:perfil` crea (o rehace) una
+>   página personal de ejemplo, "Ana Rojas", por la API real: tema Violeta, fondo en degradado,
+>   redes, portafolio, tienda, YouTube, Spotify, contenido exclusivo y WhatsApp, con "Agenda una
+>   sesión" como acción principal. Se niega a correr en producción.
+>
+> **Verificación:** 21 pruebas nuevas de plataformas y detección (incluidos dominios engañosos), 3
+> del render de la pila (mismo alto, misma pestaña, logos detectados, pila única), monograma y
+> formulario plegado; la prueba de navegadores internos ahora exige que los enlaces abran ahí
+> mismo. Revisión visual del perfil de demostración en teléfono y escritorio.
+

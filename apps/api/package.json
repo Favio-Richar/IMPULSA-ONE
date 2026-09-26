@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "openapi:generate": "vite-node src/openapi/generate.ts",
-    "superadmin": "vite-node src/scripts/superadmin.ts"
+    "superadmin": "vite-node src/scripts/superadmin.ts",
+    "demo:perfil": "vite-node src/scripts/demo-profile.ts"
   },
   "dependencies": {
     "@impulza/analytics": "workspace:*",

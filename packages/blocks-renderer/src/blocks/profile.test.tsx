@@ -25,7 +25,7 @@ describe("ProfileBlock — encabezado de perfil (PP4)", () => {
     expect(html).toContain('aria-label="Perfil verificado"');
   });
 
-  it("la fila de redes usa el nombre de cada red como texto accesible y abre en otra pestaña sin filtrar el origen", () => {
+  it("la fila de redes usa el nombre de cada red como texto accesible y abre ahí mismo (PP8)", () => {
     const html = renderToStaticMarkup(
       <ProfileBlock
         config={{
@@ -41,7 +41,8 @@ describe("ProfileBlock — encabezado de perfil (PP4)", () => {
     expect(html).toContain('aria-label="Redes de Ana"');
     expect(html).toContain('aria-label="Instagram"');
     expect(html).toContain('aria-label="TikTok"');
-    expect(html.match(/rel="noopener noreferrer nofollow"/g)).toHaveLength(2);
+    expect(html.match(/rel="nofollow"/g)).toHaveLength(2);
+    expect(html).not.toContain("target=");
   });
 
   it("una portada decorativa se oculta a los lectores de pantalla", () => {
@@ -49,5 +50,13 @@ describe("ProfileBlock — encabezado de perfil (PP4)", () => {
       <ProfileBlock config={{ name: "Ana", verified: false, cover: { ...cover, decorative: true } }} />,
     );
     expect(html).toMatch(/data-profile-cover[^>]*><img[^>]*alt=""/);
+  });
+
+  it("sin foto, muestra las iniciales en un monograma (PP8)", () => {
+    const html = renderToStaticMarkup(<ProfileBlock config={{ name: "Ana María Rojas", verified: false }} />);
+    expect(html).toMatch(/data-profile-monogram=""[^>]*>AR</);
+    expect(renderToStaticMarkup(<ProfileBlock config={{ name: "ana", verified: false }} />)).toMatch(/data-profile-monogram=""[^>]*>A</);
+    // Con foto, no hay monograma.
+    expect(renderToStaticMarkup(<ProfileBlock config={{ name: "Ana", avatar, verified: false }} />)).not.toContain("data-profile-monogram");
   });
 });

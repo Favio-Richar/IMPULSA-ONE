@@ -1,7 +1,9 @@
 import { Mail, Phone } from "lucide-react";
 import type { ContactActionsBlockConfig } from "@impulza/validation";
-import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
+import type { ButtonVariant } from "../ui/link-button.js";
+import { StackButtonContent, stackButtonClass } from "../ui/stack-button.js";
 
+/** Correo y teléfono como botones de la pila de enlaces (PP8): uno debajo del otro, mismo alto. */
 export function ContactActionsBlock({
   config,
   buttonVariant,
@@ -10,18 +12,16 @@ export function ContactActionsBlock({
   buttonVariant: ButtonVariant;
 }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row">
+    <div className="flex flex-col gap-3">
       {config.email ? (
-        <LinkButton href={`mailto:${config.email}`} variant={buttonVariant}>
-          <Mail className="h-4 w-4 shrink-0" aria-hidden="true" />
-          {config.emailLabel ?? config.email}
-        </LinkButton>
+        <a href={`mailto:${config.email}`} className={stackButtonClass(buttonVariant)}>
+          <StackButtonContent icon={<Mail className="h-5 w-5 shrink-0" aria-hidden="true" />} label={config.emailLabel ?? config.email} />
+        </a>
       ) : null}
       {config.phone ? (
-        <LinkButton href={`tel:${config.phone}`} variant={buttonVariant === "primary" ? "secondary" : buttonVariant}>
-          <Phone className="h-4 w-4 shrink-0" aria-hidden="true" />
-          {config.phoneLabel ?? config.phone}
-        </LinkButton>
+        <a href={`tel:${config.phone}`} className={stackButtonClass(buttonVariant === "primary" ? "secondary" : buttonVariant)}>
+          <StackButtonContent icon={<Phone className="h-5 w-5 shrink-0" aria-hidden="true" />} label={config.phoneLabel ?? config.phone} />
+        </a>
       ) : null}
     </div>
   );

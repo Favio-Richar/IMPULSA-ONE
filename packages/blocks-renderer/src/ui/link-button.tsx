@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SURFACE_SCOPE } from "./surface.js";
+import { OUTBOUND_LINK } from "./outbound.js";
 
 export type ButtonVariant = "primary" | "secondary" | "outline";
 
@@ -47,8 +48,7 @@ export function LinkButton({ href, variant = "primary", children, block = false,
   return (
     <a
       href={href}
-      target="_blank"
-      rel="noopener noreferrer nofollow"
+      {...OUTBOUND_LINK}
       onClick={onClick}
       className={`inline-flex items-center justify-center gap-2 rounded-[var(--site-radius)] ${SIZE_CLASSES[size]} ${size === "lg" ? PRIMARY_ACTION_HALO : ""} shadow-[var(--site-shadow)] transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 ${block ? "w-full" : ""} ${VARIANT_CLASSES[variant]}`}
     >

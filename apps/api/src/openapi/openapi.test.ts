@@ -110,6 +110,10 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/sites/{siteSlug}/booking",
       "GET /api/v1/public/sites/{siteSlug}/booking/availability",
       "POST /api/v1/public/sites/{siteSlug}/booking",
+      // "Gestiona tu reserva" (F5.4): la credencial es el enlace firmado del correo, no una sesión.
+      "GET /api/v1/public/bookings/{token}",
+      "POST /api/v1/public/bookings/{token}/cancel",
+      "POST /api/v1/public/bookings/{token}/reschedule",
     ]);
 
     const sinSeguridad: string[] = [];

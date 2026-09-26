@@ -4,3 +4,4 @@ export { encryptSecret, decryptSecret } from "./crypto.js";
 export { generateTwoFactorSecret, verifyTwoFactorCode, type TwoFactorSetup } from "./twoFactor.js";
 export type { EmailAdapter, EmailMessage } from "./email/EmailAdapter.js";
 export { ConsoleEmailAdapter } from "./email/ConsoleEmailAdapter.js";
+export { signBookingLinkToken, verifyBookingLinkToken } from "./booking-link.js";

@@ -20,4 +20,9 @@ export const env = loadEnv({
   // Opcional a propósito: Sentry no es requerido para arrancar (F1.10).
   SENTRY_DSN: urlSchema.optional(),
   SENTRY_RELEASE: z.string().optional(),
+  // Recordatorios de reserva (F5.4): origen de apps/web para el enlace "gestiona tu reserva".
+  PUBLIC_SITE_BASE_URL: urlSchema.optional(),
+  // Secreto de la firma del enlace "gestiona tu reserva" (F5.4). El mismo en la API y el worker.
+  // Opcional: sin él, los correos no traen enlace y la página de gestión no existe.
+  BOOKING_LINK_SECRET: z.string().min(32).optional(),
 });

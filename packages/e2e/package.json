@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@impulza/analytics": "workspace:*",
+    "@impulza/auth": "workspace:*",
     "@impulza/database": "workspace:*",
     "@impulza/eslint-config": "workspace:*",
     "@impulza/tsconfig": "workspace:*",

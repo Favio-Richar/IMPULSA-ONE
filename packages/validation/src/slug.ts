@@ -32,6 +32,10 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   // rutas nunca debería depender solo de un efecto colateral de otra regla.
   "s",
   "qr",
+  // "Tu reserva" (F5.4, `apps/web/app/reserva/[token]`): una ruta fija gana sobre `[siteSlug]`, así
+  // que un sitio con este slug quedaría inalcanzable.
+  "reserva",
+  "reservas",
   // Superficies propias de la plataforma.
   "admin",
   "app",

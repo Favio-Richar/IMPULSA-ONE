@@ -241,3 +241,8 @@ export type ManualBookingInput = z.infer<typeof manualBookingSchema>;
 
 export const updateBookingStatusSchema = z.object({ status: z.enum(BOOKING_STATUSES) });
 export type UpdateBookingStatusInput = z.infer<typeof updateBookingStatusSchema>;
+export * from "./messages.js";
+
+/** Cambiar la hora desde el enlace del correo (F5.4). */
+export const rescheduleBookingSchema = z.object({ startsAt: z.iso.datetime({ offset: true }) });
+export type RescheduleBookingInput = z.infer<typeof rescheduleBookingSchema>;

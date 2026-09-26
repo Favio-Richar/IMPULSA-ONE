@@ -84,6 +84,9 @@ test("un visitante reserva desde la página y ve la confirmación con el pago de
   await page.getByRole("button", { name: /Sesión e2e/ }).click();
   const hours = page.getByRole("group", { name: "Hora" });
   await expect(hours.getByRole("button").first()).toBeVisible();
+  // La semana siguiente: días completos, sin depender de la hora en que corre la prueba.
+  await page.getByRole("button", { name: "Semana siguiente" }).click();
+  await expect(hours.getByRole("button").first()).toBeVisible();
   // Cada proyecto toma una hora distinta, así las dos corridas no compiten por la misma.
   const index = testInfo.project.name === "movil" ? 1 : 2;
   await hours.getByRole("button").nth(index).click();

@@ -237,7 +237,9 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   customer_email, customer_phone, note), status (`CONFIRMED`/`CANCELLED`/`COMPLETED`/`NO_SHOW`),
   source (`PUBLIC`/`MANUAL`), cancelled_at. Sin doble reserva: restricción de exclusión
   `bookings_no_overlap` (`btree_gist`) sobre `(site_id =, tstzrange(starts_at, ends_at) &&)` de las
-  `CONFIRMED`.
+  `CONFIRMED`. F5.4: `reminder_sent_at` (lo reclama el worker antes de enviar; reprogramar lo
+  vuelve a `null`). El enlace para que el cliente gestione su reserva no se guarda: se firma con
+  HMAC (`BOOKING_LINK_SECRET`).
 
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 

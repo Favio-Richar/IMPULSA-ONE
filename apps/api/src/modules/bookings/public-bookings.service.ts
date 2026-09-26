@@ -13,6 +13,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AnalyticsService } from "../analytics/analytics.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
+import { BookingNotifier } from "./booking-notifier.js";
 import { BookingSetupService } from "./booking-setup.service.js";
 
 const NOT_AVAILABLE = "Este sitio no está recibiendo reservas.";
@@ -38,12 +39,13 @@ export class PublicBookingsService {
     private readonly setup: BookingSetupService,
     private readonly contactsService: ContactsService,
     private readonly analyticsService: AnalyticsService,
+    private readonly notifier: BookingNotifier,
   ) {}
 
   private async enabledSiteOrThrow(siteSlug: string) {
     const site = await this.prisma.site.findFirst({
       where: { slug: siteSlug, status: { not: "ARCHIVED" }, ...ACTIVE_ORGANIZATION },
-      select: { id: true, organizationId: true },
+      select: { id: true, organizationId: true, name: true },
     });
     if (!site) {
       throw new NotFoundException(NOT_AVAILABLE);
@@ -199,6 +201,10 @@ export class PublicBookingsService {
         idempotencyKey: `lead_created:${contactResult.contact.id}`,
       });
     }
+    // Correos (F5.4): confirmación con el enlace "gestiona tu reserva" y aviso a los dueños.
+    const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
+    await this.notifier.notifyCustomer("confirmed", booking, site.name);
+    await this.notifier.notifyOwners("created", booking, site.name);
     logger.info("reserva pública creada", { organizationId: site.organizationId, siteId: site.id, bookingId });
     return confirmation;
   }

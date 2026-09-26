@@ -28,3 +28,4 @@ export { ServiceBlock } from "./blocks/service.js";
 export { DividerBlock } from "./blocks/divider.js";
 export { FaqBlock } from "./blocks/faq.js";
 export { TestimonialsBlock } from "./blocks/testimonials.js";
+export { BookingBlock, BookingTimePicker } from "./blocks/booking.js";

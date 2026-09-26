@@ -105,6 +105,9 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://ci:ci@localhost:5432/impulza
       REDIS_URL: redis://localhost:6379
+      # Reservas (F5.4): enlaces de los correos y su firma (valores de prueba, no secretos reales).
+      PUBLIC_SITE_BASE_URL: http://localhost:3300
+      BOOKING_LINK_SECRET: ci-test-placeholder-booking-link-secret-0000
       CORS_ORIGINS: http://localhost:3300
       AUTH_ENCRYPTION_KEY: MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
       APP_BASE_URL: http://localhost:3100
@@ -186,6 +189,9 @@ jobs:
       NODE_ENV: development
       DATABASE_URL: postgresql://ci:ci@localhost:5432/impulza
       REDIS_URL: redis://localhost:6379
+      # Reservas (F5.4): enlaces de los correos y su firma (valores de prueba, no secretos reales).
+      PUBLIC_SITE_BASE_URL: http://localhost:3300
+      BOOKING_LINK_SECRET: ci-test-placeholder-booking-link-secret-0000
       CORS_ORIGINS: http://localhost:3300,http://localhost:3100
       AUTH_ENCRYPTION_KEY: MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
       APP_BASE_URL: http://localhost:3100

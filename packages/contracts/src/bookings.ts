@@ -114,3 +114,24 @@ export const bookingResponse = z.object({
   createdAt: isoDateTime,
 });
 export type BookingResponse = z.infer<typeof bookingResponse>;
+
+/** Página "gestiona tu reserva" (F5.4): lo que el cliente ve con su enlace; sin datos del negocio que no le correspondan. */
+export const publicManagedBookingResponse = z.object({
+  siteSlug: z.string(),
+  siteName: z.string(),
+  serviceName: z.string(),
+  /** El servicio para buscar otra hora; `null` si ya no se ofrece (entonces no se puede cambiar la hora). */
+  serviceId: uuid.nullable(),
+  startsAt: isoDateTime,
+  endsAt: isoDateTime,
+  timeZone: z.string(),
+  status: z.enum(["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"]),
+  priceAmount: z.number().int().nullable(),
+  priceCurrency: z.string().nullable(),
+  paymentUrl: z.string().nullable(),
+  /** `false` si ya no está confirmada o falta menos que la anticipación mínima del negocio. */
+  canChange: z.boolean(),
+  /** Hasta cuándo se puede cancelar o cambiar. */
+  changeDeadline: isoDateTime,
+});
+export type PublicManagedBookingResponse = z.infer<typeof publicManagedBookingResponse>;

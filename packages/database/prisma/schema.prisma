@@ -1037,6 +1037,9 @@ model Booking {
   status          BookingStatus @default(CONFIRMED)
   source          BookingSource @default(PUBLIC)
   cancelledAt     DateTime?     @map("cancelled_at") @db.Timestamptz(6)
+  // F5.4: cuándo se envió el recordatorio (reprogramar lo vuelve a `null`). El worker lo reclama
+  // con un `updateMany` condicional antes de enviar: nunca dos recordatorios.
+  reminderSentAt  DateTime?     @map("reminder_sent_at") @db.Timestamptz(6)
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

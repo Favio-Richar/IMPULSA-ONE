@@ -3,7 +3,9 @@ import { prisma } from "@impulza/database";
 import { initSentry } from "@impulza/observability";
 import { Redis } from "ioredis";
 import { parseStorageConfig, parseVideoToolsConfig, S3StorageAdapter } from "@impulza/storage";
+import { ConsoleEmailAdapter } from "@impulza/auth";
 import { startAnalyticsWorkers } from "./analytics-workers.js";
+import { startBookingReminderWorkers } from "./booking-reminders.js";
 import { env } from "./env.js";
 import { createHealthServer } from "./health-server.js";
 import { startMediaWorkers } from "./media-workers.js";
@@ -46,6 +48,16 @@ if (!mediaWorkers) {
   logger.warn("ffmpeg no configurado: la cola de video no se inicia (FFMPEG_PATH/FFPROBE_PATH)");
 }
 
+// Recordatorios de reservas (F5.4). Correo por consola hasta que exista un proveedor real
+// (ARCHITECTURE.md §5), igual que en la API.
+const bookingReminders = await startBookingReminderWorkers({
+  prisma,
+  email: new ConsoleEmailAdapter(),
+  connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+  publicSiteBaseUrl: env.PUBLIC_SITE_BASE_URL,
+  bookingLinkSecret: env.BOOKING_LINK_SECRET,
+});
+
 const healthServer = createHealthServer([
   {
     name: "database",
@@ -75,6 +87,7 @@ async function shutdown(signal: string): Promise<void> {
   healthServer.close();
   await workers.close();
   await mediaWorkers?.close();
+  await bookingReminders.close();
   healthRedis.disconnect();
   await prisma.$disconnect();
   process.exit(0);

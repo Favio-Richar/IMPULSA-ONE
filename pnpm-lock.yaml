@@ -551,6 +551,9 @@ importers:
       '@impulza/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
+      '@impulza/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@impulza/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -804,6 +807,9 @@ importers:
       '@impulza/analytics':
         specifier: workspace:*
         version: link:../analytics
+      '@impulza/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@impulza/database':
         specifier: workspace:*
         version: link:../database

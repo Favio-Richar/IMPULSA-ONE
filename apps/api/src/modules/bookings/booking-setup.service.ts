@@ -286,10 +286,20 @@ export class BookingSetupService {
    * por la vista previa del panel, la página pública y la creación de una reserva (esta última con
    * el cliente de su transacción, `db`).
    */
-  async busyIntervals(siteId: string, from: Date, to: Date, db: Db = this.prisma): Promise<BusyInterval[]> {
+  async busyIntervals(siteId: string, from: Date, to: Date, db: Db = this.prisma, excludeBookingId?: string): Promise<BusyInterval[]> {
     const [blackouts, bookings] = await Promise.all([
       db.bookingBlackout.findMany({ where: { siteId, startsAt: { lt: to }, endsAt: { gt: from } }, select: { startsAt: true, endsAt: true } }),
-      db.booking.findMany({ where: { siteId, status: "CONFIRMED", startsAt: { lt: to }, endsAt: { gt: from } }, select: { startsAt: true, endsAt: true } }),
+      db.booking.findMany({
+        where: {
+          siteId,
+          status: "CONFIRMED",
+          startsAt: { lt: to },
+          endsAt: { gt: from },
+          // Al cambiar la hora de una reserva (F5.4), la propia no ocupa su agenda.
+          ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+        },
+        select: { startsAt: true, endsAt: true },
+      }),
     ]);
     return [...blackouts, ...bookings].map((interval) => ({ start: interval.startsAt, end: interval.endsAt }));
   }
@@ -303,11 +313,12 @@ export class BookingSetupService {
     days: number,
     now: Date,
     db: Db = this.prisma,
+    excludeBookingId?: string,
   ): Promise<BookingAvailabilityResponse> {
     // Un día de holgura a cada lado: la fecha local y la UTC no coinciden en los bordes.
     const rangeStart = new Date(`${fromDate}T00:00:00Z`).getTime() - 24 * 3_600_000;
     const rangeEnd = rangeStart + (days + 2) * 24 * 3_600_000;
-    const busy = await this.busyIntervals(siteId, new Date(rangeStart), new Date(rangeEnd), db);
+    const busy = await this.busyIntervals(siteId, new Date(rangeStart), new Date(rangeEnd), db, excludeBookingId);
     const result = availableSlots({
       timeZone: settings.timeZone,
       weeklyHours: settings.weeklyHours,

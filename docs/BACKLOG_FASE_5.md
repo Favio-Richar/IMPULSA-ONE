@@ -26,7 +26,7 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
 | F5.1 — Servicios reservables y disponibilidad | Lista para tu revisión (capturas en `docs/design/capturas/f51/`) |
 | F5.2 — Reserva pública desde la página (bloque "Reservar") | Lista para tu revisión (capturas en `docs/design/capturas/f52/`) |
 | F5.3 — Agenda del negocio en el panel | Lista para tu revisión (capturas en `docs/design/capturas/f53/`) |
-| F5.4 — Confirmaciones, cancelación/reprogramación y recordatorios | Pendiente |
+| F5.4 — Confirmaciones, cancelación/reprogramación y recordatorios | Lista para tu revisión (capturas en `docs/design/capturas/f54/`) |
 | F5.5 — Catálogo y pedidos (productos físicos, digitales y servicios) con pago externo | Pendiente |
 | F5.6 — Campañas de email con consentimiento y bajas | Pendiente |
 | F5.7 — Aislamiento y seguridad de Fase 5 | Pendiente |
@@ -98,6 +98,37 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
   - Pruebas: API 396/396 (agenda 4, con ANALYST sin permiso) y caso en la suite central;
     Playwright `agenda.spec.ts` (móvil, escritorio y 360 px).
   - Siguiente: F5.4 (confirmaciones por correo, cancelar/reprogramar y recordatorios).
+- **2026-09-26 — F5.4 terminada**, en "Lista para tu revisión".
+  - **Enlace "gestiona tu reserva" firmado** (`<id>.<HMAC-SHA256>`, `@impulza/auth`
+    `signBookingLinkToken`/`verifyBookingLinkToken`, comparación en tiempo constante) con el secreto
+    `BOOKING_LINK_SECRET` (API y worker). La base no guarda nada del enlace; el worker lo vuelve a
+    armar para el recordatorio. Se descartó guardar una huella del token: impedía poner el enlace en
+    el recordatorio (la migración se corrigió antes de subirla).
+  - Migración `20260926230000_f54_booking_manage`: `bookings.reminder_sent_at` + índice parcial.
+  - Correos en texto (`@impulza/validation/bookings/messages`, compartidos API/worker, asuntos sin
+    saltos de línea): confirmación con el pago del negocio y el enlace, cambio de hora,
+    cancelación, recordatorio y aviso a los dueños. Nunca hacen fallar la operación.
+  - API pública `public/bookings/:token` (ver, cancelar, cambiar hora): hasta la anticipación mínima
+    del negocio; la hora nueva con el mismo cálculo bajo bloqueo por sitio, **sin contar la propia
+    reserva**; reinicia el recordatorio. Auditoría `booking.cancelled_by_customer` y
+    `booking.rescheduled_by_customer`.
+  - Worker: `booking-reminders` cada 10 min; recuerda las confirmadas de las próximas 1–24 h hechas
+    con más de un día de anticipación; reclama cada una con un `updateMany` condicional (nunca dos
+    recordatorios) y la libera si el correo falla.
+  - `apps/web`: página `/reserva/[token]` (tema del negocio, `noindex`, `no-referrer`, sin caché)
+    con cancelar (confirmación en pantalla) y cambiar hora (mismo selector de día y hora que la
+    reserva, exportado del renderer); ruta `api/booking-manage/[token]/[action]`. "reserva" y
+    "reservas" pasan a slugs reservados (una ruta fija gana sobre `[siteSlug]`).
+  - Entorno: `PUBLIC_SITE_BASE_URL` y `BOOKING_LINK_SECRET` en API, worker, `.env.example` y CI
+    (valores de prueba). Sin ellos los correos lo dicen en vez de traer un enlace roto.
+  - Pruebas: API (gestión 5, reservas 21 en total) con suite completa 401 — 4 dieron timeout de 5 s
+    en la corrida completa con los servidores de desarrollo arriba y pasaron aisladas (5/5 y 4/4);
+    worker 6 (contra la base real, incluida la carrera de dos ejecuciones); `@impulza/auth` y
+    correos; Playwright `reserva-gestion.spec.ts` y `reserva-publica.spec.ts` (esta última ya no
+    depende de la hora del día). Recorrido real en la demo: 6 correos, cambio de hora y cancelación.
+  - **Aviso para la otra sesión (sitio comercial):** sus rutas nuevas `/planes`, `/plantillas` y
+    `/producto` también ganan sobre `[siteSlug]`; convendría sumarlas a `RESERVED_SLUGS`.
+  - Siguiente: F5.5 (catálogo y pedidos con pago externo).
 
 ---
 

@@ -53,4 +53,10 @@ export const env = loadEnv({
   // la verificación funciona y el panel dice que el destino del CNAME se define al desplegar.
   PLATFORM_DOMAIN: z.string().trim().toLowerCase().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/).optional(),
   CUSTOM_DOMAIN_CNAME_TARGET: z.string().trim().toLowerCase().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/).optional(),
+  // Reservas (F5.4): origen público de apps/web para los enlaces que recibe el cliente por correo
+  // ("gestiona tu reserva"). Opcional: sin él, el correo no trae enlace y lo dice.
+  PUBLIC_SITE_BASE_URL: urlSchema.optional(),
+  // Secreto de la firma del enlace "gestiona tu reserva" (F5.4). El mismo en la API y el worker.
+  // Opcional: sin él, los correos no traen enlace y la página de gestión no existe.
+  BOOKING_LINK_SECRET: z.string().min(32).optional(),
 });

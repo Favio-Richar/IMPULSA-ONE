@@ -203,7 +203,7 @@ function BookingFlow({ siteSlug, serviceIds }: { siteSlug: string; serviceIds?: 
       ) : null}
 
       {step === "time" && service ? (
-        <TimePicker
+        <BookingTimePicker
           base={base}
           service={service}
           timeZone={timeZone}
@@ -241,7 +241,8 @@ function BookingFlow({ siteSlug, serviceIds }: { siteSlug: string; serviceIds?: 
   );
 }
 
-function TimePicker({
+/** Día y hora libres de un servicio (F5.2); también lo usa "cambiar la hora" (F5.4). */
+export function BookingTimePicker({
   base,
   service,
   timeZone,
@@ -249,6 +250,8 @@ function TimePicker({
   heading,
   onBack,
   onPick,
+  backLabel = "Cambiar servicio",
+  title,
 }: {
   base: string;
   service: Service;
@@ -257,6 +260,10 @@ function TimePicker({
   heading: (text: string) => React.ReactNode;
   onBack: () => void;
   onPick: (slot: string) => void;
+  /** Texto del botón para volver (al reprogramar: "Volver"). */
+  backLabel?: string;
+  /** Título del paso (por defecto, "<servicio> · elige día y hora"). */
+  title?: string;
 }) {
   const today = localDateOf(new Date(), timeZone);
   const lastDay = addDaysToDate(today, maxAdvanceDays);
@@ -294,9 +301,9 @@ function TimePicker({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {heading(`${service.name} · elige día y hora`)}
+        {heading(title ?? `${service.name} · elige día y hora`)}
         <button type="button" onClick={onBack} className="text-sm text-[var(--site-color-foreground)] underline underline-offset-2">
-          Cambiar servicio
+          {backLabel}
         </button>
       </div>
 

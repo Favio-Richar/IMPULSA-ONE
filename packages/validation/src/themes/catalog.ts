@@ -321,7 +321,7 @@ export const THEME_CATALOG: readonly ThemeCatalogEntry[] = [
       radius: "moderate",
       density: "comfortable",
       shadow: "subtle",
-      buttonStyle: "solid",
+      buttonStyle: "glass",
     },
   },
   {

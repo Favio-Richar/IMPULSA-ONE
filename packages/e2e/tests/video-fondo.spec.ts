@@ -79,6 +79,25 @@ test("sube un video, queda convertido y se usa de fondo con una capa legible", a
     // Sobre un fondo oscurecido, el texto directo sobre el fondo pasa a claro.
     const paragraph = preview.getByText("Un párrafo de ejemplo para el lienzo.");
     await expect.poll(() => paragraph.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(255, 255, 255)");
+
+    // PL5 (WCAG 1.4.11): el contorno de foco usa el enlace de la página (claro sobre el video
+    // oscurecido), no el primario del tema, que sobre una foto puede no distinguirse.
+    const link = preview.getByRole("link", { name: "Ver nuestros servicios" });
+    expect((await link.evaluate((element) => getComputedStyle(element).getPropertyValue("--site-focus"))).trim()).toBe("#ffffff");
+
+    // PL5 (WCAG 2.2.2): el video en movimiento se puede pausar y volver a reproducir. El botón refleja
+    // el estado real: Chrome no reproduce un video silenciado fuera de pantalla (en el panel del
+    // teléfono la vista previa queda abajo), así que primero se lleva a la vista.
+    await video.scrollIntoViewIfNeeded();
+    const toggle = preview.getByRole("button", { name: "Pausar el video de fondo" });
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+    const box = (await toggle.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    await toggle.click();
+    await expect(preview.getByRole("button", { name: "Reproducir el video de fondo" })).toBeVisible();
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.paused)).toBe(true);
+    await preview.getByRole("button", { name: "Reproducir el video de fondo" }).click();
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.paused)).toBe(false);
   } finally {
     // El resto de las pruebas espera el fondo del tema.
     await page.goto(`/sitios/${fixture.siteId}`);

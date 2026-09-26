@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { AA_NORMAL_TEXT, contrastRatio } from "../contrast.js";
 import { THEME_CATALOG } from "../themes/catalog.js";
 import { themeTokensToCssVariables } from "../themes/css-variables.js";
+import { GLASS_ALPHA } from "../themes/tokens.js";
 import {
   BACKGROUND_GRADIENTS,
   backgroundForDisplay,
@@ -73,6 +74,14 @@ describe("matriz tema × fondo (PL2, ADR-008): WCAG 2.2 AA en cada combinación"
           for (const color of text) {
             expect(contrastRatio(color, backdrop), `${color} sobre ${backdrop}`).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
           }
+        }
+
+        // Botón "glass" (PL5): el texto de la página sobre el fondo teñido con ese mismo texto. Se
+        // verifica en todos los temas, no solo en los que lo usan: cualquier tema propio puede elegirlo.
+        for (const backdrop of backdropColors(resolved, theme.tokens.palette.background)) {
+          const label = vars["--site-color-foreground"]!;
+          const glass = blendHex(backdrop, label, GLASS_ALPHA);
+          expect(contrastRatio(label, glass), `glass: ${label} sobre ${glass}`).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
         }
 
         // Tarjetas y botones: la paleta del tema, que no cambia con el fondo.

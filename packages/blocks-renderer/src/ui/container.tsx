@@ -15,7 +15,9 @@ export function Container({
   style?: CSSProperties;
 }) {
   return (
-    <div className={`mx-auto w-full max-w-[34rem] px-4 sm:px-6 ${className}`} style={style}>
+    // Relleno por *container query* (PL5): la portada a sangre depende de él, y en la vista previa
+    // del constructor el "teléfono" es un marco angosto dentro de una ventana ancha.
+    <div className={`mx-auto w-full max-w-[34rem] px-4 @min-[40rem]:px-6 ${className}`} style={style}>
       {children}
     </div>
   );

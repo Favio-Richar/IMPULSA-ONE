@@ -291,7 +291,12 @@ function ThemeCard({
           style={
             tokens.buttonStyle === "outline"
               ? { border: "2px solid var(--site-color-primary)" }
-              : { background: "var(--site-color-primary)" }
+              : tokens.buttonStyle === "glass"
+                ? {
+                    border: "1px solid color-mix(in srgb, var(--site-color-foreground) 24%, transparent)",
+                    background: "color-mix(in srgb, var(--site-color-foreground) 12%, transparent)",
+                  }
+                : { background: "var(--site-color-primary)" }
           }
         />
       </div>

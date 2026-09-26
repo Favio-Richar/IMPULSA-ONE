@@ -95,3 +95,53 @@ describe("PageBlocks — página de enlaces (PP8)", () => {
     expect(html).toContain('data-stack=""');
   });
 });
+
+describe("PageBlocks — patrón enlace en bio (PL5, ADR-008)", () => {
+  const secondary: PublicBlockResponse = { position: 0, type: "link", config: { label: "Mi portafolio", url: "https://ana.cl", style: "secondary" } };
+  const primary: PublicBlockResponse = { position: 1, type: "link", config: { label: "Agenda", url: "https://calendly.com/ana", style: "primary" }, primary: true };
+
+  it("con un tema glass, los secundarios son translúcidos con el texto de la página; la acción principal sigue sólida", () => {
+    const html = renderToStaticMarkup(<PageBlocks blocks={[secondary, primary]} buttonStyle="glass" />);
+    const [portfolio, agenda] = html.match(/<a [^>]*>/g) ?? [];
+    // Mismo 12 % que `GLASS_ALPHA` (la matriz tema × fondo verifica AA con esa mezcla).
+    expect(portfolio).toContain("bg-[color-mix(in_srgb,var(--site-color-foreground)_12%,transparent)]");
+    expect(portfolio).toContain("text-[var(--site-color-foreground)]");
+    expect(agenda).toContain("bg-[var(--site-color-primary)]");
+    expect(agenda).not.toContain("color-mix");
+  });
+
+  it("con un tema sólido, los secundarios usan la superficie del tema, no glass", () => {
+    const html = renderToStaticMarkup(<PageBlocks blocks={[secondary]} buttonStyle="solid" />);
+    expect(html).not.toContain("color-mix");
+    expect(html).toContain("bg-[var(--site-color-surface)]");
+  });
+
+  it("la descripción de un botón no pierde contraste (sin opacidad reducida)", () => {
+    const html = render([{ position: 0, type: "link", config: { label: "Tienda", url: "https://ana.cl", description: "Presets y cursos", style: "primary" } }]);
+    expect(html).toContain("Presets y cursos");
+    expect(html).not.toMatch(/opacity-\d{2}[^"]*"[^>]*>Presets y cursos/);
+  });
+
+  it("las reseñas van en un carrusel horizontal que se puede recorrer con el teclado", () => {
+    const html = render([
+      {
+        position: 0,
+        type: "testimonials",
+        config: { title: "Lo que dicen", items: [{ quote: "Excelente", author: "Clienta 1" }, { quote: "Muy bueno", author: "Cliente 2" }] },
+      },
+    ]);
+    expect(html).toMatch(/role="region" aria-label="Lo que dicen" tabindex="0"[^>]*overflow-x-auto/);
+    expect(html.match(/snap-start/g)).toHaveLength(2);
+  });
+
+  it("con una acción principal, WhatsApp no compite con ella en sólido (un solo primario)", () => {
+    const whatsappBlock: PublicBlockResponse = { position: 2, type: "whatsapp", config: { phone: "+56912345678", label: "Escríbeme" } };
+    const withPrimary = renderToStaticMarkup(<PageBlocks blocks={[primary, whatsappBlock]} buttonStyle="solid" />);
+    const whatsappButton = (withPrimary.match(/<a [^>]*>/g) ?? [])[1] ?? "";
+    expect(whatsappButton).toContain("bg-[var(--site-color-surface)]");
+    // Sin acción principal, WhatsApp sí puede ser el botón sólido de la página.
+    const alone = renderToStaticMarkup(<PageBlocks blocks={[whatsappBlock]} buttonStyle="solid" />);
+    expect(alone).toContain("bg-[var(--site-color-primary)]");
+  });
+});
+

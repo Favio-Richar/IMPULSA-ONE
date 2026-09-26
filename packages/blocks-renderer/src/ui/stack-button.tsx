@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { PRIMARY_ACTION_HALO } from "./link-button.js";
 import { SURFACE_SCOPE } from "./surface.js";
 
-export type StackButtonVariant = "primary" | "secondary" | "outline";
+export type StackButtonVariant = "primary" | "secondary" | "outline" | "glass";
 
 /**
  * Geometría única de los botones de la página de enlaces (PP8): todos del mismo alto, a lo ancho de
@@ -12,7 +12,11 @@ export type StackButtonVariant = "primary" | "secondary" | "outline";
  */
 export function stackButtonClass(variant: StackButtonVariant, primary = false): string {
   const colors =
-    variant === "outline"
+    variant === "glass"
+      ? // PL5 (ADR-008): translúcido sobre foto o fondo oscuro. Tinte = texto de la página al 12 %
+        // (`GLASS_ALPHA` en `@impulza/validation`); la matriz tema × fondo verifica AA con la mezcla.
+        "border border-[color-mix(in_srgb,var(--site-color-foreground)_24%,transparent)] bg-[color-mix(in_srgb,var(--site-color-foreground)_12%,transparent)] text-[var(--site-color-foreground)] backdrop-blur-sm"
+      : variant === "outline"
       ? "border border-[var(--site-color-link)] bg-transparent text-[var(--site-color-link)]"
       : variant === "secondary"
         ? `${SURFACE_SCOPE} border border-[var(--site-color-border)] bg-[var(--site-color-surface)] text-[var(--site-color-foreground)]`
@@ -43,7 +47,8 @@ export function StackButtonContent({
       <span className="absolute left-5 top-1/2 flex -translate-y-1/2 items-center">{icon}</span>
       <span className="flex min-w-0 flex-col">
         <span className={primary ? "text-base font-semibold" : "font-medium"}>{label}</span>
-        {description ? <span className="text-sm opacity-80">{description}</span> : null}
+        {/* Mismo color que el título: bajar la opacidad le quitaba contraste que nadie verificaba. */}
+        {description ? <span className="text-sm">{description}</span> : null}
       </span>
     </>
   );

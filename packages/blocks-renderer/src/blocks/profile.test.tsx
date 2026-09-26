@@ -10,7 +10,7 @@ describe("ProfileBlock — encabezado de perfil (PP4)", () => {
     const html = renderToStaticMarkup(<ProfileBlock config={{ name: "Ana", avatar, verified: false }} />);
     expect(html).not.toContain("data-profile-cover");
     expect(html).not.toContain("<nav");
-    expect(html).not.toContain("-mt-14");
+    expect(html).not.toContain("-mt-16");
     expect(html).toContain("<h1");
   });
 
@@ -18,7 +18,7 @@ describe("ProfileBlock — encabezado de perfil (PP4)", () => {
     const html = renderToStaticMarkup(<ProfileBlock config={{ name: "Ana", avatar, cover, verified: true }} />);
     expect(html).toContain("data-profile-cover");
     expect(html).toContain('alt="Oficina frente al mar"');
-    expect(html).toContain("-mt-14");
+    expect(html).toContain("-mt-16");
     expect(html.match(/<img[^>]*fetchPriority="high"/gi)).toHaveLength(2);
     // React además las precarga en el <head>.
     expect(html.match(/<link rel="preload" as="image"/g)).toHaveLength(2);

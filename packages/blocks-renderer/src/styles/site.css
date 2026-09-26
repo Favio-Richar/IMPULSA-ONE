@@ -40,3 +40,33 @@
 [data-site-root] [data-stack] + [data-stack] {
   margin-top: calc(0.75rem - var(--site-gap));
 }
+
+/*
+ * Portada a sangre (PL5, ADR-008): en una columna de teléfono, la portada del perfil ocupa todo el
+ * ancho de la pantalla, y si el perfil es el primer bloque, también toca el borde superior — como en
+ * las apps de enlace en bio. En pantallas anchas queda redondeada dentro de la columna. Por
+ * *container query*, así la vista previa del constructor en modo teléfono se ve igual que un teléfono.
+ */
+@container (max-width: 39.999rem) {
+  [data-site-root] [data-profile-cover] {
+    width: calc(100% + 2rem);
+    margin-inline: -1rem;
+    border-radius: 0;
+  }
+  [data-site-root] [data-block-type="profile"]:first-child [data-profile-cover] {
+    margin-top: -2.5rem;
+  }
+}
+
+/*
+ * Contorno de foco (PL5, WCAG 1.4.11): `--site-focus` = el color de enlace **de la página** (fijado en
+ * `SiteBackdrop`), que cambia con el fondo y la matriz tema × fondo verifica a 4,5:1 contra cualquier
+ * fondo; sobre una foto oscurecida, el primario de un tema claro podía quedar bajo 3:1. Lo que está
+ * **dentro** de una tarjeta usa el primario del tema, que es el que se lee sobre la tarjeta
+ * (`SURFACE_SCOPE`); el contorno de la tarjeta o botón en sí, que cae sobre el fondo, no.
+ */
+[data-site-root] :focus-visible {
+  outline: 2px solid var(--site-focus, var(--site-color-link));
+  outline-offset: 2px;
+}
+

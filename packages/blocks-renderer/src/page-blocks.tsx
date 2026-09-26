@@ -11,7 +11,7 @@ import { PrimaryActionBar } from "./ui/primary-action-bar.js";
 const STACK_TYPES = new Set(["link", "whatsapp", "contact_form", "contact_actions"]);
 
 function buttonVariantFor(buttonStyle: ThemeTokens["buttonStyle"]): ButtonVariant {
-  return buttonStyle === "outline" ? "outline" : "primary";
+  return buttonStyle === "outline" ? "outline" : buttonStyle === "glass" ? "glass" : "primary";
 }
 
 /** Cada página publicada es, en el fondo, una lista ordenada de bloques (F2.4/F2.6) — esto es lo
@@ -39,6 +39,9 @@ export function PageBlocks({
   // PP5: a lo sumo uno (la API ya lo garantiza); si llegara más de uno, manda el primero.
   const primaryBlock = blocks.find((block) => block.primary === true);
   const primaryAction = primaryBlock ? primaryActionOf(primaryBlock) : null;
+  // PL5 (boceto: "un solo CTA primario por perfil"): si hay acción principal, los botones de la pila
+  // cuyo estilo no eligió la persona (WhatsApp, correo/teléfono) no compiten con ella en sólido.
+  const stackVariant: ButtonVariant = primaryBlock && buttonVariant === "primary" ? "secondary" : buttonVariant;
 
   return (
     // `@container`: la barra fija del teléfono decide por el ancho de **este** contenedor, no de la
@@ -69,7 +72,7 @@ export function PageBlocks({
             >
               <RenderBlock
                 block={block}
-                buttonVariant={buttonVariant}
+                buttonVariant={STACK_TYPES.has(block.type) ? stackVariant : buttonVariant}
                 siteSlug={siteSlug}
                 forms={forms}
                 mode={mode}

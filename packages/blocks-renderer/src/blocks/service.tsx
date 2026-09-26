@@ -13,12 +13,14 @@ export function ServiceBlock({
   buttonVariant: ButtonVariant;
 }) {
   return (
-    <div className={`${SURFACE_SCOPE} flex flex-col gap-4 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-5 shadow-[var(--site-shadow)] sm:flex-row`}>
+    // PL5: tarjeta de contenido de la columna de enlaces — imagen arriba, título y precio, texto y
+    // un botón a lo ancho, como en el boceto de perfiles por rubro.
+    <div className={`${SURFACE_SCOPE} flex flex-col gap-4 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-5 shadow-[var(--site-shadow)]`}>
       {config.image ? (
         <SiteImage
           image={config.image}
-          sizes="(min-width: 640px) 160px, calc(100vw - 72px)"
-          className="h-40 w-full shrink-0 rounded-[var(--site-radius)] border border-[var(--site-color-border)] object-cover sm:h-auto sm:w-40"
+          sizes="(min-width: 544px) 456px, calc(100vw - 72px)"
+          className="aspect-[16/9] w-full rounded-[var(--site-radius)] border border-[var(--site-color-border)] object-cover"
         />
       ) : null}
 
@@ -36,7 +38,7 @@ export function ServiceBlock({
 
         {config.cta ? (
           <div className="pt-2">
-            <LinkButton href={config.cta.url} variant={buttonVariant}>
+            <LinkButton href={config.cta.url} variant={buttonVariant === "glass" ? "primary" : buttonVariant} block>
               {config.cta.label}
             </LinkButton>
           </div>

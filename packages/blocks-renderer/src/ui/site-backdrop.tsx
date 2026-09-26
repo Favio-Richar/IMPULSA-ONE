@@ -52,6 +52,10 @@ export function SiteBackdrop({
   const style = {
     ...themeTokensToCssVariables(theme),
     ...(background ? backgroundTextCssVariables(background.text) : {}),
+    // Contorno de foco (PL5): el color de enlace **de la página**, fijado acá. Una variable propia y
+    // no `--site-color-link`, porque las tarjetas redefinen el enlace y el contorno de un botón sobre
+    // tarjeta se dibuja por fuera, sobre el fondo de la página. Ver `styles/site.css`.
+    "--site-focus": "var(--site-color-link)",
     fontFamily: "var(--site-font-family)",
   } as CSSProperties;
 
@@ -77,7 +81,7 @@ export function SiteBackdrop({
               className="absolute inset-0 h-full w-full object-cover"
             />
           ) : null}
-          {background.kind === "video" ? <BackgroundVideo posterUrl={background.video.posterUrl} src={background.video.src} /> : null}
+          {background.kind === "video" ? <BackgroundVideo posterUrl={background.video.posterUrl} src={background.video.src} fixed={fixed} /> : null}
           {background.kind === "image" || background.kind === "video" ? (
             <div data-overlay={`${background.overlay.tone}-${background.overlay.strength}`} className="absolute inset-0" style={{ backgroundColor: overlayCss(background.overlay) }} />
           ) : null}

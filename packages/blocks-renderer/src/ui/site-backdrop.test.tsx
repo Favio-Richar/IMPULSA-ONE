@@ -2,6 +2,7 @@ import { THEME_CATALOG } from "@impulza/validation";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { SiteBackdrop } from "./site-backdrop.js";
+import { SURFACE_SCOPE } from "./surface.js";
 
 const theme = THEME_CATALOG[0]!.tokens;
 const media = "https://media.impulza.cl/org/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222/w1600.webp";
@@ -49,4 +50,12 @@ describe("SiteBackdrop (PP3)", () => {
   it("en la vista previa el fondo queda dentro del marco", () => {
     expect(render({ kind: "color", color: "#0b1f3a", text: "light" }, false)).toMatch(/class="absolute inset-0 -z-10/);
   });
+
+  it("fija el color del contorno de foco con el enlace de la página (PL5, WCAG 1.4.11)", () => {
+    expect(render(null)).toContain("--site-focus:var(--site-color-link)");
+    // Las tarjetas lo cambian solo para su contenido, no para su propio contorno (que cae sobre el fondo).
+    expect(SURFACE_SCOPE).toContain("[&_*]:[--site-focus:var(--site-color-primary)]");
+    expect(SURFACE_SCOPE).not.toMatch(/(^|\s)\[--site-focus:/);
+  });
 });
+

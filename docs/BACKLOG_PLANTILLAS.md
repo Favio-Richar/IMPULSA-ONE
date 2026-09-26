@@ -33,7 +33,7 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 | PL2 — Familia de temas "Editorial oscuro" (ADR-008) | Lista para tu revisión (capturas mostradas en el chat) |
 | PL3 — Catálogo semilla de plantillas por rubro | Pendiente |
 | PL4 — Selector de plantillas en onboarding y constructor | Pendiente |
-| PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio) | Pendiente |
+| PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio) | Lista para tu revisión (capturas mostradas en el chat) |
 
 ### PL1 — Modelo `Template` y migración
 **Criterios de aceptación:**
@@ -103,6 +103,7 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 
 ### PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio)
 **Criterios de aceptación:**
+- **Reservas y toda acción "abrir un sistema interno" (agendar, cotizar, etc.) se muestran como un botón más de la misma pila uniforme** (ícono/miniatura + texto, mismo alto y estilo que el resto), nunca como una tarjeta aparte con su propio mini-botón de texto fijo tipo "Reserva tu mesa". El botón es configurable: solo aparece si el propietario del sitio activa esa función, y su acción es abrir el flujo interno de reservas (modal o pantalla propia dentro del sitio), no un enlace externo. Esto aplica a cualquier bloque con acción interna (reserva, cotización rápida, cita), no solo al de gastronomía.
 - `ProfileBlock` (`packages/blocks-renderer/src/blocks/profile.tsx`) y los componentes de botón
   (`link-button.tsx`, `stack-button.tsx`) se ajustan a la estructura de ADR-008: portada a sangre,
   avatar superpuesto más grande, badge de verificado, pila de botones con ícono/miniatura fija a la
@@ -110,3 +111,38 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 - Sigue pasando `profile.test.tsx` y los tests de contraste — ninguna combinación tema+fondo puede
   bajar de AA.
 - Revisado con las skills `design-critique` y `accessibility-review` antes de darse por terminado.
+
+> **Estado (2026-09-26): lista para revisión de Favio.** Estructura de ADR-008 con la jerarquía del
+> boceto (decisión 1 de arriba).
+>
+> - **Portada a sangre:** en una columna de teléfono ocupa todo el ancho y, si el perfil es el primer
+>   bloque, toca el borde superior; en pantallas anchas queda redondeada en la columna. Por
+>   *container query* (`styles/site.css`), así la vista previa del constructor en modo teléfono se ve
+>   igual que un teléfono; el relleno de `Container` pasó también a container query.
+> - **Avatar más grande** (128 px, antes 112) montado sobre la portada, con marco del color de fondo;
+>   el monograma sin foto crece igual. Nombre en la fuente de títulos del tema + badge de verificado.
+> - **Variante "glass"** (`buttonStyle: "glass"`, `GLASS_ALPHA` = 12 %): secundarios translúcidos
+>   con el texto de la página y desenfoque; la acción principal sigue sólida. La usa el tema Índigo.
+>   La matriz tema × fondo verifica AA de glass en las 195 combinaciones.
+> - **Un solo primario** (boceto): con acción principal, WhatsApp y correo/teléfono bajan a
+>   secundario en vez de competir en sólido; los enlaces conservan el estilo que eligió la persona.
+> - **Tarjeta de servicio** como el boceto (imagen arriba, título y precio, texto, botón a lo ancho) y
+>   **reseñas en carrusel** horizontal con `snap`, enfocable y con nombre (`role="region"`).
+> - **Correcciones de accesibilidad encontradas en la revisión:**
+>   - descripción de los botones con `opacity-80`: bajaba el contraste sin verificarlo — ahora el
+>     mismo color que el título;
+>   - contorno de foco: usaba el primario del tema, que sobre una foto oscurecida quedaba ≈ 2,6:1
+>     (WCAG 1.4.11 pide 3:1). Ahora `--site-focus` = color de enlace de la página, fijado en la raíz
+>     (verificado ≥ 4,5:1 contra cualquier fondo); dentro de una tarjeta, el primario del tema;
+>   - video de fondo sin forma de pausarlo (WCAG 2.2.2): botón de pausa/reproducción de 44 px, fuera
+>     de la capa decorativa, que refleja el estado **real** del video (en un teléfono puede no haber
+>     arrancado; Chrome no reproduce videos silenciados fuera de pantalla).
+> - **Auditoría medida en el navegador** (3 escenarios: Índigo glass, Claro profesional, Coral sobre
+>   foto): un `h1`, `lang="es"`, foto con alternativo y portada decorativa, ningún enlace sin nombre,
+>   ningún blanco de toque < 44 px, orden de tabulación lógico, sin desborde a 320 px (zoom 400 %).
+> - **Revisión de diseño** (skill `design-critique`): encontró la competencia entre botones sólidos,
+>   corregida arriba.
+>
+> **Verificación:** pruebas del render (glass solo en secundarios, sólido fuera de glass, descripción
+> sin opacidad, carrusel accesible, un solo primario, portada a sangre en el CSS, `--site-focus`);
+> Playwright: pausa del video y color de foco sobre video oscurecido (falla sin la corrección).

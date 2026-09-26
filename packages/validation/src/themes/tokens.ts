@@ -45,7 +45,15 @@ export const RADIUS_SCALES = ["none", "subtle", "moderate"] as const;
 export const DENSITY_SCALES = ["compact", "comfortable"] as const;
 // "Sombras discretas" — tampoco hay una opción pesada.
 export const SHADOW_SCALES = ["none", "subtle"] as const;
-export const BUTTON_STYLES = ["solid", "outline"] as const;
+/**
+ * `glass` (PL5, ADR-008): los botones secundarios son translúcidos sobre el fondo —el patrón de las
+ * apps de enlace en bio sobre foto o fondo oscuro—; la acción principal sigue sólida. Su texto es el
+ * de la página, y la matriz tema × fondo verifica AA con la capa ya mezclada (`GLASS_ALPHA`).
+ */
+export const BUTTON_STYLES = ["solid", "outline", "glass"] as const;
+
+/** Opacidad del tinte de un botón "glass": el color del texto de la página al 12 % sobre el fondo. */
+export const GLASS_ALPHA = 0.12;
 
 export const themeTokensSchema = z
   .object({

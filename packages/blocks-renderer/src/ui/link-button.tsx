@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { SURFACE_SCOPE } from "./surface.js";
 import { OUTBOUND_LINK } from "./outbound.js";
 
-export type ButtonVariant = "primary" | "secondary" | "outline";
+export type ButtonVariant = "primary" | "secondary" | "outline" | "glass";
 
 interface LinkButtonProps {
   href: string;
@@ -24,6 +24,9 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   // `--site-color-link` y no el primario: sobre un fondo oscuro (PP3) el primario puede no leerse.
   outline:
     "bg-transparent text-[var(--site-color-link)] border border-[var(--site-color-link)] hover:bg-[var(--site-color-link)]/10",
+  // PL5: translúcido sobre el fondo, con el texto de la página. Mismo tinte que `stackButtonClass`
+  // (`GLASS_ALPHA` = 12 % en `@impulza/validation`, verificado AA en la matriz tema × fondo).
+  glass: "border border-[color-mix(in_srgb,var(--site-color-foreground)_24%,transparent)] bg-[color-mix(in_srgb,var(--site-color-foreground)_12%,transparent)] text-[var(--site-color-foreground)] backdrop-blur-sm hover:opacity-90",
 };
 
 /**

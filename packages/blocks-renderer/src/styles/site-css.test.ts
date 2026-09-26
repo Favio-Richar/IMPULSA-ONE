@@ -18,4 +18,12 @@ describe("site.css — entrada de los bloques (PP5)", () => {
     const opacity = Number(/opacity:\s*([\d.]+)/.exec(from)?.[1]);
     expect(opacity).toBeGreaterThan(0);
   });
+
+  it("la portada va a sangre solo en una columna de teléfono, y toca el borde superior si el perfil es lo primero (PL5)", () => {
+    const narrow = /@container \(max-width: 39\.999rem\) \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? "";
+    expect(narrow).toContain("[data-profile-cover]");
+    expect(narrow).toMatch(/margin-inline:\s*-1rem/);
+    expect(narrow).toMatch(/\[data-block-type="profile"\]:first-child \[data-profile-cover\][^}]*margin-top:\s*-2\.5rem/);
+  });
 });
+

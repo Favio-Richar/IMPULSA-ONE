@@ -31,6 +31,7 @@ export function ContactFormBlock({
   siteSlug,
   mode = "public",
   primary = false,
+  glass = false,
 }: {
   config: ContactFormBlockConfig;
   form: PublicFormResponse | null;
@@ -38,6 +39,8 @@ export function ContactFormBlock({
   mode?: "public" | "preview";
   /** Acción principal de la página (PP5): el botón que despliega el formulario va destacado. */
   primary?: boolean;
+  /** Tema "glass" (PL5): el botón plegado, translúcido como el resto de los secundarios. */
+  glass?: boolean;
 }) {
   const [values, setValues] = useState<Record<string, string | boolean>>({});
   const [status, setStatus] = useState<Status>("idle");
@@ -112,7 +115,7 @@ export function ContactFormBlock({
   // JavaScript. La barra de acción principal (PP5) lo abre al llevar hasta él.
   return (
     <details className="group" open={status === "success" ? true : undefined}>
-      <summary className={`${stackButtonClass(primary ? "primary" : "secondary", primary)} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
+      <summary className={`${stackButtonClass(primary ? "primary" : glass ? "glass" : "secondary", primary)} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
         <StackButtonContent
           primary={primary}
           icon={<MessageSquareText className="h-5 w-5 shrink-0" aria-hidden="true" />}

@@ -6,4 +6,4 @@
  * tarjeta blanca. Sin un fondo propio, estas variables valen lo mismo y no cambian nada.
  */
 export const SURFACE_SCOPE =
-  "[--site-color-foreground:var(--site-theme-foreground)] [--site-color-muted-foreground:var(--site-theme-muted-foreground)] [--site-color-border:var(--site-theme-border)] [--site-color-link:var(--site-color-primary)]";
+  "[--site-color-foreground:var(--site-theme-foreground)] [--site-color-muted-foreground:var(--site-theme-muted-foreground)] [--site-color-border:var(--site-theme-border)] [--site-color-link:var(--site-color-primary)] [&_*]:[--site-focus:var(--site-color-primary)]";

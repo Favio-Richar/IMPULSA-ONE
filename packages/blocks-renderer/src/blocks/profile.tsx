@@ -28,7 +28,8 @@ export function ProfileBlock({ config }: { config: ProfileBlockConfig }) {
       {config.cover ? (
         <div
           data-profile-cover=""
-          className="aspect-[16/7] w-full overflow-hidden rounded-[var(--site-radius)] bg-[var(--site-color-surface)] sm:aspect-[16/6]"
+          // PL5 (ADR-008): a sangre en el teléfono (ver `styles/site.css`); redondeada en pantallas anchas.
+          className="aspect-[16/8] w-full overflow-hidden rounded-[var(--site-radius)] bg-[var(--site-color-surface)]"
         >
           <SiteImage image={config.cover} priority className="h-full w-full object-cover" />
         </div>
@@ -38,12 +39,12 @@ export function ProfileBlock({ config }: { config: ProfileBlockConfig }) {
         <SiteImage
           image={config.avatar}
           priority
-          sizes="112px"
-          width={112}
-          height={112}
-          className={`relative h-28 w-28 rounded-full object-cover shadow-[var(--site-shadow)] ${
+          sizes="128px"
+          width={128}
+          height={128}
+          className={`relative h-32 w-32 rounded-full object-cover shadow-[var(--site-shadow)] ${
             hasCover
-              ? "-mt-14 border-4 border-[var(--site-color-background)] bg-[var(--site-color-background)]"
+              ? "-mt-16 border-4 border-[var(--site-color-background)] bg-[var(--site-color-background)]"
               : "border border-[var(--site-color-border)]"
           }`}
         />
@@ -53,8 +54,8 @@ export function ProfileBlock({ config }: { config: ProfileBlockConfig }) {
         <span
           aria-hidden="true"
           data-profile-monogram=""
-          className={`relative flex h-24 w-24 items-center justify-center rounded-full bg-[var(--site-color-primary)] text-3xl font-semibold text-[var(--site-color-primary-foreground)] shadow-[var(--site-shadow)] ${
-            hasCover ? "-mt-12 border-4 border-[var(--site-color-background)]" : ""
+          className={`relative flex h-32 w-32 items-center justify-center rounded-full bg-[var(--site-color-primary)] text-4xl font-semibold text-[var(--site-color-primary-foreground)] shadow-[var(--site-shadow)] ${
+            hasCover ? "-mt-16 border-4 border-[var(--site-color-background)]" : ""
           }`}
           style={{ fontFamily: "var(--site-font-heading)" }}
         >

@@ -321,7 +321,7 @@ describe("Themes (e2e) — F2.5", () => {
         { shadow: "heavy" },
         { density: "spacious" },
         { fontFamily: "Comic Sans MS" },
-        { buttonStyle: "glass" },
+        { buttonStyle: "ghost" },
       ];
 
       for (const override of outOfScale) {

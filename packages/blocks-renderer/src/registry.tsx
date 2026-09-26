@@ -78,7 +78,7 @@ export function RenderBlock({
     }
     case "link": {
       const parsed = linkSchema.safeParse(block.config);
-      return parsed.success ? <LinkBlock config={parsed.data} primary={block.primary === true} /> : null;
+      return parsed.success ? <LinkBlock config={parsed.data} primary={block.primary === true} glass={buttonVariant === "glass"} /> : null;
     }
     case "social": {
       const parsed = socialSchema.safeParse(block.config);
@@ -115,7 +115,7 @@ export function RenderBlock({
       }
       const form = parsed.data.formId ? (forms?.[parsed.data.formId] ?? null) : null;
       return (
-        <ContactFormBlock config={parsed.data} form={form} siteSlug={siteSlug} mode={mode} primary={block.primary === true} />
+        <ContactFormBlock config={parsed.data} form={form} siteSlug={siteSlug} mode={mode} primary={block.primary === true} glass={buttonVariant === "glass"} />
       );
     }
     case "service": {

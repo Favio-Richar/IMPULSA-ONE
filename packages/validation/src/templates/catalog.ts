@@ -21,11 +21,12 @@ import type { TemplateBlockSeed, TemplateDefinition } from "./index.js";
 
 const EXAMPLE_PHONE = "+56900000000";
 
-function profile(name: string, headline: string, bio: string): TemplateBlockSeed {
+function profile(name: string, headline: string, bio: string, layout?: "hero"): TemplateBlockSeed {
   return {
     type: "profile",
     configSchemaVersion: 1,
-    config: { name, headline, bio: `<p>${bio}</p>`, verified: false },
+    // `hero` (PL7): portada de cuerpo entero; sin foto todavía, muestra las iniciales a lo alto.
+    config: { name, headline, bio: `<p>${bio}</p>`, verified: false, ...(layout ? { layout } : {}) },
   };
 }
 
@@ -310,6 +311,33 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
       service("Corte y barba (ejemplo)", "El servicio completo. Precio de ejemplo.", 18000, "Reservar", "corte-barba"),
       testimonials([["Siempre salgo conforme. Reseña de ejemplo.", "Cliente de ejemplo"]]),
       social(["instagram", "tiktok"]),
+    ],
+  },
+  {
+    // PL7: la variante de la referencia de Favio — foto de cuerpo entero como cabecera y todos los
+    // botones del mismo tono neutro (línea Minimal).
+    code: "portada-minimal",
+    name: "Portada de cuerpo entero",
+    description: "Tu foto a lo alto y botones del mismo tono: elegante y minimalista. Para marcas personales, artistas y coaches.",
+    industryTags: ["creador", "profesional"],
+    objectiveTags: ["compartir", "mostrar", "captar"],
+    themeCode: "minimal-perla",
+    family: "minimal",
+    background: null,
+    previewImageUrl: null,
+    sortOrder: 80,
+    blocksSeed: [
+      profile(
+        "Tu Nombre",
+        "Marca personal y asesorías",
+        `${EXAMPLE_BIO} quién eres, qué haces y cómo trabajar contigo.`,
+        "hero",
+      ),
+      link("Agenda una sesión", "agenda", { primary: true }),
+      link("Mi portafolio", "portafolio"),
+      service("Sesión de asesoría (ejemplo)", "Una hora por videollamada. Precio de ejemplo.", 30000, "Reservar", "sesion"),
+      testimonials([["Muy clara y cercana. Reseña de ejemplo.", "Clienta de ejemplo"]]),
+      social(["instagram", "tiktok", "linkedin"]),
     ],
   },
 ];

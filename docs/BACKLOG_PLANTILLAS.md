@@ -35,6 +35,7 @@ Cada historia cumple la Definición de Terminado general (`CLAUDE.md`) más sus 
 | PL4 — Selector de plantillas en onboarding y constructor | Lista para tu revisión (capturas en `docs/design/capturas/pl4/`) |
 | PL5 — Rediseño del bloque de perfil y la pila de botones (patrón enlace en bio) | Lista para tu revisión (capturas mostradas en el chat) |
 | PL6 — Extender ADR-008 a `service`, `testimonials` y `gallery` (sacar las tarjetas grandes) | Lista para tu revisión (capturas de las 7 plantillas en `docs/design/capturas/pl6/`) |
+| PL7 — Variante "portada de cuerpo entero" y botones monocromo (ADR-008, nota del 2026-09-26) | Lista para tu revisión (capturas en `docs/design/capturas/pl7/`) |
 
 ### Bitácora de avance (para retomar)
 
@@ -85,11 +86,52 @@ Orden obligatorio: PL2 → PL5 → PL1 → PL3 → PL4. Cada entrada dice dónde
     los pares ya verificados (superficie secundaria y `glass`). Capturas de las 7 plantillas a
     390 px y 1280 px en `docs/design/capturas/pl6/`, sin desplazamiento horizontal.
   - Siguiente: tu revisión de PL1-PL6 en el navegador (`localhost:3300/demo-<rubro>`).
+- **2026-09-26 — PL7 terminada**, en "Lista para tu revisión".
+  - **Perfil `layout: "hero"`**: la portada es la cabecera (retrato 4:5 a sangre en el teléfono,
+    cuadrada en pantallas anchas), sin avatar redondo, con el borde inferior desvanecido por máscara
+    (sirve sobre cualquier fondo). Nombre, frase y bio debajo, nunca sobre la foto. Sin portada, las
+    iniciales a lo alto en su lugar. Elegible en el constructor ("Diseño de la cabecera"). Sin la
+    clave, un perfil guardado se ve igual que antes.
+  - **Botones `mono`** (nuevo valor de `buttonStyle`): toda la pila, la acción principal y la barra
+    fija del teléfono con la superficie neutra del tema; la principal se distingue por alto y halo.
+  - **Temas nuevos**: línea **Minimal** (Perla, Arena, Niebla; fondo claro) y **Monocromo** en la
+    línea oscura. Pasan la batería AA y la matriz tema × fondo sin cambiar umbrales. Contratos de la
+    API y OpenAPI con la línea `minimal`; el panel la muestra en temas y en la galería.
+  - **Plantilla nueva** `portada-minimal` ("Portada de cuerpo entero", tema Perla): 8 plantillas.
+  - Verificación: validation 456, blocks-renderer 48, dashboard 5, web 17, api 362; typecheck y
+    lint OK en lo tocado; Playwright temas/plantillas/revisión visual/acción principal/navegadores:
+    62 pasan (6 omitidas a propósito: navegadores internos solo en teléfono), con 2 pruebas nuevas
+    (la foto es la cabecera y el nombre queda debajo; tema Minimal sin color primario). Capturas
+    sin foto, con foto de prueba y en oscuro, móvil y escritorio, en `docs/design/capturas/pl7/`.
+  - **Aviso**: al cerrar PL7 había cambios de otra sesión en `apps/web` (sitio comercial:
+    `components/marketing/`, `lib/api.ts`) con un error de lint en `reveal.tsx`. No se tocaron ni se
+    incluyeron en el commit de PL7.
 - Notas de entorno de esta sesión (no son de PL1-PL4): (1) con `packages/database/.env` presente,
   Prisma recarga variables y falla `revalidate-web.service.test.ts` ("no llama a nada si
   WEB_APP_URL…"); sin ese archivo pasa. (2) `admin.e2e.test.ts` "quitar la marca directo en la
   base…" falló una vez en la corrida completa y pasó en las siguientes (3/3 aislada, y la suite
   completa después); parece depender del reloj del código 2FA. Quedan para revisar aparte.
+
+### PL7 — Variante "portada de cuerpo entero" y botones monocromo
+
+**Origen:** captura de referencia que mandó Favio el 2026-09-26 (anotada en ADR-008, "Variante
+adicional"): foto de cuerpo entero como cabecera, sin avatar redondo, y todos los botones del mismo
+tono neutro. "Más elegante". Se toma la estructura, nunca contenido de la cuenta de referencia.
+
+**Criterios de aceptación:**
+- `ProfileBlock` acepta `layout: "avatar" | "hero"` (por defecto `avatar`: los perfiles guardados no
+  cambian). En `hero`, la portada ocupa toda la cabecera (a sangre en el teléfono, alto de retrato),
+  se funde con el color de fondo de la página y el nombre, la frase y la bio van debajo, sobre el
+  fondo — nunca texto sobre la foto (el contraste de la foto no se puede garantizar). Sin portada,
+  `hero` cae al diseño con avatar. Elegible en el constructor.
+- Estilo de botón `mono` en los tokens de tema: todos los botones de la pila — también la acción
+  principal y la barra fija del teléfono — con la misma superficie neutra del tema; la acción
+  principal se distingue solo por alto y halo. Usa pares de color ya verificados (superficie
+  secundaria), y la matriz tema × fondo lo cubre.
+- Línea de temas nueva **Minimal** (al menos 3, fondo claro, botones `mono`) y un tema oscuro
+  monocromo en la línea oscura. Todos pasan la batería AA de siempre, sin relajar umbrales.
+- Una plantilla nueva que use la variante (perfil `hero` + tema monocromo).
+- Pruebas unitarias, Playwright en móvil y escritorio, y capturas mostradas a Favio.
 
 ### PL6 — Extender el patrón de ADR-008 a `service`, `testimonials` y `gallery`
 

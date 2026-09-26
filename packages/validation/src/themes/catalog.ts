@@ -11,10 +11,11 @@ import type { ThemeTokens } from "./tokens.js";
 /**
  * Líneas del catálogo (PP4). `clasico` son los temas de F2.5; `ejecutivo` (sobrio y formal) y
  * `vibrante` (juvenil y con más color) traen pareja tipográfica propia; `oscuro` (PL2, ADR-008) es
- * la línea de fondo oscuro de las apps de enlace en bio, con títulos en Fraunces. El panel las
- * agrupa así.
+ * la línea de fondo oscuro de las apps de enlace en bio, con títulos en Fraunces; `minimal` (PL7)
+ * es la línea monocroma: fondo claro y todos los botones del mismo tono neutro. El panel las agrupa
+ * así.
  */
-export const THEME_FAMILIES = ["oscuro", "ejecutivo", "vibrante", "clasico"] as const;
+export const THEME_FAMILIES = ["oscuro", "minimal", "ejecutivo", "vibrante", "clasico"] as const;
 export type ThemeFamily = (typeof THEME_FAMILIES)[number];
 
 export interface ThemeCatalogEntry {
@@ -368,6 +369,96 @@ export const THEME_CATALOG: readonly ThemeCatalogEntry[] = [
       density: "comfortable",
       shadow: "subtle",
       buttonStyle: "solid",
+    },
+  },
+  {
+    code: "oscuro-monocromo",
+    name: "Monocromo",
+    description: "Negro carbón con botones del mismo tono. Para perfiles con foto de portada.",
+    family: "oscuro",
+    defaultBackground: { kind: "gradient", gradient: "grafito" },
+    tokens: {
+      palette: {
+        background: "#0c0c0e",
+        surface: "#1c1c20",
+        foreground: "#f4f4f5",
+        mutedForeground: "#b4b4bb",
+        primary: "#e4e4e7",
+        primaryForeground: "#18181b",
+        border: "#2c2c31",
+      },
+      fontFamily: "editorial",
+      radius: "moderate",
+      density: "comfortable",
+      shadow: "subtle",
+      buttonStyle: "mono",
+    },
+  },
+  // Línea Minimal (PL7): fondo claro, texto casi negro y todos los botones del mismo tono neutro.
+  {
+    code: "minimal-perla",
+    name: "Perla",
+    description: "Blanco y gris perla, botones parejos. Elegante y sin distracciones.",
+    family: "minimal",
+    tokens: {
+      palette: {
+        background: "#ffffff",
+        surface: "#f4f4f5",
+        foreground: "#18181b",
+        mutedForeground: "#52525b",
+        primary: "#18181b",
+        primaryForeground: "#ffffff",
+        border: "#e4e4e7",
+      },
+      fontFamily: "geometric",
+      radius: "moderate",
+      density: "comfortable",
+      shadow: "none",
+      buttonStyle: "mono",
+    },
+  },
+  {
+    code: "minimal-arena",
+    name: "Arena",
+    description: "Crema cálido y botones de lino. Para moda, diseño y bienestar.",
+    family: "minimal",
+    tokens: {
+      palette: {
+        background: "#fbf8f3",
+        surface: "#f1ebe1",
+        foreground: "#1c1917",
+        mutedForeground: "#57534e",
+        primary: "#292524",
+        primaryForeground: "#fafaf9",
+        border: "#e7e0d4",
+      },
+      fontFamily: "serif",
+      radius: "moderate",
+      density: "comfortable",
+      shadow: "none",
+      buttonStyle: "mono",
+    },
+  },
+  {
+    code: "minimal-niebla",
+    name: "Niebla",
+    description: "Gris azulado muy claro. Para profesionales y marcas personales.",
+    family: "minimal",
+    tokens: {
+      palette: {
+        background: "#f8fafc",
+        surface: "#eef2f6",
+        foreground: "#0f172a",
+        mutedForeground: "#475569",
+        primary: "#1e293b",
+        primaryForeground: "#ffffff",
+        border: "#dfe5ec",
+      },
+      fontFamily: "humanist",
+      radius: "moderate",
+      density: "comfortable",
+      shadow: "subtle",
+      buttonStyle: "mono",
     },
   },
 ];

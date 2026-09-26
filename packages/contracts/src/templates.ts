@@ -22,7 +22,7 @@ export const templateIndustry = z.enum([
 
 export const templateObjective = z.enum(["captar", "vender", "reservar", "mostrar", "compartir"]);
 
-export const templateFamily = z.enum(["oscuro", "ejecutivo", "vibrante", "clasico"]);
+export const templateFamily = z.enum(["oscuro", "minimal", "ejecutivo", "vibrante", "clasico"]);
 
 export const templateBlockSeedResponse = z.object({
   type: z.string(),

@@ -99,7 +99,11 @@ function FieldControlView({ field, namePrefix }: { field: FieldDescriptor; nameP
               </option>
             ))}
           </select>
-          {error ? <FieldErrorText message={error} /> : null}
+          {error ? (
+            <FieldErrorText message={error} />
+          ) : field.helperText ? (
+            <span className="text-sm text-muted-foreground">{field.helperText}</span>
+          ) : null}
         </label>
       );
     }

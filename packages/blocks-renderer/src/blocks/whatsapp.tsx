@@ -18,11 +18,14 @@ export function WhatsappBlock({
   config,
   buttonVariant,
   primary = false,
+  mono = false,
 }: {
   config: WhatsappBlockConfig;
   buttonVariant: ButtonVariant;
   /** Acción principal de la página (PP5): botón sólido, más alto y con halo, sin importar el tema. */
   primary?: boolean;
+  /** Botones monocromo (PL7): la acción principal también con la superficie neutra. */
+  mono?: boolean;
 }) {
   // El verde oficial de WhatsApp (#25D366) con texto blanco da 1.98:1 de contraste — muy por
   // debajo del 4.5:1 que exige WCAG 2.2 AA. El objetivo de accesibilidad del proyecto no se
@@ -32,7 +35,7 @@ export function WhatsappBlock({
     <a
       href={whatsappHref(config.phone, config.prefilledMessage)}
       {...OUTBOUND_LINK}
-      className={stackButtonClass(primary ? "primary" : buttonVariant, primary)}
+      className={stackButtonClass(primary && !mono ? "primary" : buttonVariant, primary)}
     >
       <StackButtonContent primary={primary} icon={<NetworkIcon network="whatsapp" className="h-5 w-5 shrink-0" />} label={config.label} />
     </a>

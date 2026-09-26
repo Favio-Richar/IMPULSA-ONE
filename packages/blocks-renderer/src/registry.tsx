@@ -56,12 +56,15 @@ export function RenderBlock({
   siteSlug,
   forms,
   mode = "public",
+  mono = false,
 }: {
   block: PublicBlockResponse;
   buttonVariant: ButtonVariant;
   siteSlug?: string;
   forms?: Record<string, PublicFormResponse>;
   mode?: "public" | "preview";
+  /** Botones monocromo (PL7): la acción principal usa la superficie neutra, no el color primario. */
+  mono?: boolean;
 }): ReactElement | null {
   switch (block.type) {
     case "profile": {
@@ -78,7 +81,7 @@ export function RenderBlock({
     }
     case "link": {
       const parsed = linkSchema.safeParse(block.config);
-      return parsed.success ? <LinkBlock config={parsed.data} primary={block.primary === true} glass={buttonVariant === "glass"} /> : null;
+      return parsed.success ? <LinkBlock config={parsed.data} primary={block.primary === true} glass={buttonVariant === "glass"} mono={mono} /> : null;
     }
     case "social": {
       const parsed = socialSchema.safeParse(block.config);
@@ -99,7 +102,7 @@ export function RenderBlock({
     case "whatsapp": {
       const parsed = whatsappSchema.safeParse(block.config);
       return parsed.success ? (
-        <WhatsappBlock config={parsed.data} buttonVariant={buttonVariant} primary={block.primary === true} />
+        <WhatsappBlock config={parsed.data} buttonVariant={buttonVariant} primary={block.primary === true} mono={mono} />
       ) : null;
     }
     case "contact_actions": {
@@ -115,7 +118,7 @@ export function RenderBlock({
       }
       const form = parsed.data.formId ? (forms?.[parsed.data.formId] ?? null) : null;
       return (
-        <ContactFormBlock config={parsed.data} form={form} siteSlug={siteSlug} mode={mode} primary={block.primary === true} glass={buttonVariant === "glass"} />
+        <ContactFormBlock config={parsed.data} form={form} siteSlug={siteSlug} mode={mode} primary={block.primary === true} glass={buttonVariant === "glass"} mono={mono} />
       );
     }
     case "service": {

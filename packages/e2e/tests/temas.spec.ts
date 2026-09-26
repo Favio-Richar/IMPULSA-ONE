@@ -114,3 +114,57 @@ test("encabezado de perfil: portada, avatar montado sobre ella y redes con tama�
     await page.request.delete(`${blocksPath}/${blockId}`, { headers: CSRF });
   }
 });
+
+test("portada de cuerpo entero (PL7): la foto es la cabecera y el nombre queda debajo, nunca encima", async ({ page }) => {
+  const created = await page.request.post(blocksPath, {
+    headers: CSRF,
+    data: {
+      type: "profile",
+      config: {
+        name: "Estudio Portada",
+        headline: "Fotografía de retrato",
+        cover: { url: "https://example.invalid/retrato.jpg", alt: "Retrato de cuerpo entero" },
+        verified: false,
+        layout: "hero",
+      },
+    },
+  });
+  expect(created.status()).toBe(201);
+  const blockId = ((await created.json()) as { id: string }).id;
+
+  try {
+    await page.goto(`/sitios/${fixture.siteId}/paginas/${fixture.pageId}/editor`);
+    const site = page.locator("[data-site-root]");
+    const hero = site.locator("[data-profile-hero]");
+    const heading = site.getByRole("heading", { name: "Estudio Portada" });
+    await expect(hero).toBeVisible();
+    await expect(heading).toBeVisible();
+
+    const heroBox = (await hero.boundingBox())!;
+    const headingBox = (await heading.boundingBox())!;
+    // Alto de retrato o cuadrada: nunca una franja apaisada.
+    expect(heroBox.height).toBeGreaterThanOrEqual(heroBox.width - 1);
+    // El texto empieza donde termina la foto: su contraste no depende de la imagen.
+    expect(headingBox.y).toBeGreaterThanOrEqual(heroBox.y + heroBox.height - 1);
+    // Sin avatar redondo en esta variante.
+    await expect(site.locator("[data-profile-monogram]")).toHaveCount(0);
+    await expectNoHorizontalScroll(page);
+  } finally {
+    await page.request.delete(`${blocksPath}/${blockId}`, { headers: CSRF });
+  }
+});
+
+test("tema Minimal (PL7): los botones de la pila van todos con la superficie neutra, sin color primario", async ({ page }) => {
+  await applyTheme(page, "Minimal", "Perla");
+  try {
+    await page.goto(`/sitios/${fixture.siteId}/paginas/${fixture.pageId}/editor`);
+    const site = page.locator("[data-site-root]");
+    const button = site.locator('[data-block-type="link"] a').first();
+    await expect(button).toBeVisible();
+    // `surface` de Perla (#f4f4f5), no el primario (#18181b).
+    await expect(button).toHaveCSS("background-color", "rgb(244, 244, 245)");
+    await expectNoHorizontalScroll(page);
+  } finally {
+    await applyTheme(page, "Clásicos", "Claro profesional");
+  }
+});

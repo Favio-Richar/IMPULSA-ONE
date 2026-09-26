@@ -93,6 +93,11 @@ selector de temas/plantillas. No crear un ADR nuevo para esto: es una variante d
 dirección visual de ADR-008, documentarla como historia nueva en `BACKLOG_PLANTILLAS.md` cuando se
 tome.
 
+**Implementada en PL7 (2026-09-26):** perfil `layout: "hero"` (portada de cuerpo entero sin avatar,
+texto siempre debajo de la foto) y estilo de botón `mono` con la línea de temas Minimal y el tema
+oscuro Monocromo. El menú "···" por botón de la referencia no se implementó: queda como idea para
+una historia de "compartir enlace".
+
 ## Restricciones asociadas
 
 No usar logos, nombres, colores de marca ni contenido real de Linktree, Beacons, Stan o de las

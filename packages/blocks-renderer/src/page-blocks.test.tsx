@@ -216,3 +216,23 @@ describe("PageBlocks — patrón enlace en bio (PL5, ADR-008)", () => {
   });
 });
 
+describe("PageBlocks — botones monocromo (PL7)", () => {
+  it("con `mono`, la acción principal y la barra fija usan la superficie neutra, no el color primario", () => {
+    const html = renderToStaticMarkup(
+      <PageBlocks
+        buttonStyle="mono"
+        blocks={[
+          { position: 0, type: "link", config: { label: "Agenda", url: "https://ejemplo.cl/agenda", style: "primary" }, primary: true },
+          { position: 1, type: "whatsapp", config: { phone: "+56912345678", label: "Escríbeme" } },
+          { position: 2, type: "link", config: { label: "Portafolio", url: "https://ejemplo.cl/p", style: "outline" } },
+        ]}
+      />,
+    );
+    expect(html).not.toContain("bg-[var(--site-color-primary)]");
+    // La principal se sigue distinguiendo por alto y halo.
+    expect(html).toMatch(/<a [^>]*min-h-16[^>]*>/);
+    const bar = /<div data-primary-action-bar=""[^>]*>[\s\S]*?<\/div>/.exec(html)?.[0] ?? "";
+    expect(bar).toContain("bg-[var(--site-color-surface)]");
+    expect(html.match(/bg-\[var\(--site-color-surface\)\]/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+  });
+});

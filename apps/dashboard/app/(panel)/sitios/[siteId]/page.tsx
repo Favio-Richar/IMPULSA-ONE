@@ -233,6 +233,7 @@ function ThemePicker({ organizationId, siteId }: { organizationId: string; siteI
 /** Líneas del catálogo (PP4) en el orden en que se ofrecen; `null` agrupa los temas propios. */
 const THEME_GROUPS: ReadonlyArray<{ family: ThemeResponse["family"]; label: string; description: string }> = [
   { family: "oscuro", label: "Oscuro", description: "Fondo oscuro de app de enlaces, con títulos editoriales." },
+  { family: "minimal", label: "Minimal", description: "Fondo claro y todos los botones del mismo tono." },
   { family: "ejecutivo", label: "Ejecutivo", description: "Sobrio y formal, con títulos en serif." },
   { family: "vibrante", label: "Vibrante", description: "Juvenil y con más color." },
   { family: "clasico", label: "Clásicos", description: "Neutros, con las fuentes del dispositivo." },
@@ -291,6 +292,8 @@ function ThemeCard({
           style={
             tokens.buttonStyle === "outline"
               ? { border: "2px solid var(--site-color-primary)" }
+              : tokens.buttonStyle === "mono"
+                ? { border: "1px solid var(--site-color-border)", background: "var(--site-color-surface)" }
               : tokens.buttonStyle === "glass"
                 ? {
                     border: "1px solid color-mix(in srgb, var(--site-color-foreground) 24%, transparent)",

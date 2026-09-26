@@ -44,6 +44,19 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
       { name: "bio", label: "Biografía", optional: true, control: { kind: "richtext" } },
       imageField("avatar", "Foto de perfil", true, "square"),
       imageField("cover", "Portada", true, "wide"),
+      // PL7: portada de cuerpo entero (sin foto redonda), como la referencia que eligió Favio.
+      {
+        name: "layout",
+        label: "Diseño de la cabecera",
+        helperText: "«Portada de cuerpo entero» usa la portada como foto principal, a lo alto, sin la foto redonda.",
+        control: {
+          kind: "select",
+          options: [
+            { value: "avatar", label: "Foto redonda sobre la portada" },
+            { value: "hero", label: "Portada de cuerpo entero" },
+          ],
+        },
+      },
       { name: "verified", label: "Cuenta verificada", control: { kind: "boolean" } },
       {
         name: "socials",

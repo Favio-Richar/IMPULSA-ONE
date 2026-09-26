@@ -15,7 +15,8 @@ import { PrimaryActionBar } from "./ui/primary-action-bar.js";
 const STACK_TYPES = new Set(["link", "whatsapp", "contact_form", "contact_actions", "social", "service", "testimonials", "faq"]);
 
 function buttonVariantFor(buttonStyle: ThemeTokens["buttonStyle"]): ButtonVariant {
-  return buttonStyle === "outline" ? "outline" : buttonStyle === "glass" ? "glass" : "primary";
+  // `mono` (PL7): todos los botones con la superficie neutra del tema, como los secundarios.
+  return buttonStyle === "outline" ? "outline" : buttonStyle === "glass" ? "glass" : buttonStyle === "mono" ? "secondary" : "primary";
 }
 
 /** Cada página publicada es, en el fondo, una lista ordenada de bloques (F2.4/F2.6) — esto es lo
@@ -47,6 +48,8 @@ export function PageBlocks({
   primaryActionBar?: boolean;
 }) {
   const buttonVariant = buttonVariantFor(buttonStyle);
+  // PL7: con botones monocromo, la acción principal tampoco va en el color primario.
+  const mono = buttonStyle === "mono";
   // PP5: a lo sumo uno (la API ya lo garantiza); si llegara más de uno, manda el primero.
   const primaryBlock = blocks.find((block) => block.primary === true);
   const primaryAction = primaryBlock ? primaryActionOf(primaryBlock) : null;
@@ -87,6 +90,7 @@ export function PageBlocks({
                 siteSlug={siteSlug}
                 forms={forms}
                 mode={mode}
+                mono={mono}
               />
             </div>
           );
@@ -97,6 +101,7 @@ export function PageBlocks({
             position={primaryBlock.position}
             type={primaryBlock.type}
             targetId={PRIMARY_ACTION_ANCHOR}
+            mono={mono}
           />
         ) : null}
       </Container>

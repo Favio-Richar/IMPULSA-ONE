@@ -50,6 +50,9 @@ export const profileSchema = z.object({
   cover: imageSchema.optional(),
   verified: z.boolean().default(false),
   socials: z.array(socialLinkSchema).max(8).optional(),
+  // PL7: `hero` = portada de cuerpo entero sin avatar redondo. Opcional y sin valor por defecto: un
+  // perfil guardado antes se lee igual (sin la clave = `avatar`).
+  layout: z.enum(["avatar", "hero"]).optional(),
 });
 
 export const heroSchema = z.object({

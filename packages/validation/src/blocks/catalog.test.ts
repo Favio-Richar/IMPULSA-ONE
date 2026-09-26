@@ -239,6 +239,17 @@ describe("encabezado de perfil (PP4)", () => {
   });
 });
 
+describe("cabecera de cuerpo entero (PL7)", () => {
+  it("acepta `layout` avatar o hero, rechaza otro valor, y sin él la configuración anterior no cambia", () => {
+    const schema = BLOCK_CATALOG.profile.schema;
+    expect(schema.safeParse({ name: "Ana", layout: "hero" }).success).toBe(true);
+    expect(schema.safeParse({ name: "Ana", layout: "avatar" }).success).toBe(true);
+    expect(schema.safeParse({ name: "Ana", layout: "banner" }).success).toBe(false);
+    const stored = { name: "Ana", verified: false };
+    expect(parseStoredBlock("profile", 1, stored)).toEqual({ renderable: true, config: stored });
+  });
+});
+
 describe("reseñas como insignia (PL6)", () => {
   const schema = testimonialsSchema;
   const items = [{ quote: "Excelente", author: "Clienta" }];

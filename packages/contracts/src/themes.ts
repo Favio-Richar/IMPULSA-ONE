@@ -9,10 +9,11 @@ export const themeResponse = z.object({
   source: z.enum(["catalog", "organization"]),
   /**
    * Línea del catálogo (PP4): `oscuro` (PL2, fondo oscuro de app de enlace en bio), `ejecutivo`
-   * (sobrio, serif en títulos), `vibrante` (juvenil, más color) o `clasico` (los primeros temas).
+   * (sobrio, serif en títulos), `vibrante` (juvenil, más color), `minimal` (PL7, botones monocromo)
+   * o `clasico` (los primeros temas).
    * `null` en un tema propio de la organización.
    */
-  family: z.enum(["oscuro", "ejecutivo", "vibrante", "clasico"]).nullable(),
+  family: z.enum(["oscuro", "minimal", "ejecutivo", "vibrante", "clasico"]).nullable(),
   /** Los temas del catálogo se ven y se aplican, pero solo se editan duplicándolos. */
   editable: z.boolean(),
   /**

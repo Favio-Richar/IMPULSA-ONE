@@ -1701,6 +1701,7 @@
                         "type": "string",
                         "enum": [
                           "oscuro",
+                          "minimal",
                           "ejecutivo",
                           "vibrante",
                           "clasico"
@@ -1839,6 +1840,7 @@
                       "type": "string",
                       "enum": [
                         "oscuro",
+                        "minimal",
                         "ejecutivo",
                         "vibrante",
                         "clasico"
@@ -1968,6 +1970,7 @@
                       "type": "string",
                       "enum": [
                         "oscuro",
+                        "minimal",
                         "ejecutivo",
                         "vibrante",
                         "clasico"
@@ -2114,6 +2117,7 @@
                       "type": "string",
                       "enum": [
                         "oscuro",
+                        "minimal",
                         "ejecutivo",
                         "vibrante",
                         "clasico"
@@ -2331,6 +2335,7 @@
                       "type": "string",
                       "enum": [
                         "oscuro",
+                        "minimal",
                         "ejecutivo",
                         "vibrante",
                         "clasico"
@@ -2403,6 +2408,7 @@
             "schema": {
               "enum": [
                 "oscuro",
+                "minimal",
                 "ejecutivo",
                 "vibrante",
                 "clasico"
@@ -2517,6 +2523,7 @@
                         "type": "string",
                         "enum": [
                           "oscuro",
+                          "minimal",
                           "ejecutivo",
                           "vibrante",
                           "clasico"
@@ -2692,6 +2699,7 @@
                       "type": "string",
                       "enum": [
                         "oscuro",
+                        "minimal",
                         "ejecutivo",
                         "vibrante",
                         "clasico"
@@ -6963,6 +6971,7 @@
                       "type": "string",
                       "enum": [
                         "oscuro",
+                        "minimal",
                         "ejecutivo",
                         "vibrante",
                         "clasico"

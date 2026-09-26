@@ -60,4 +60,29 @@ describe("ProfileBlock — encabezado de perfil (PP4)", () => {
     // Con foto, no hay monograma.
     expect(renderToStaticMarkup(<ProfileBlock config={{ name: "Ana", avatar, verified: false }} />)).not.toContain("data-profile-monogram");
   });
+  describe("portada de cuerpo entero (PL7)", () => {
+    it("con portada: la foto es la cabecera, sin avatar redondo, y el texto va debajo de la foto", () => {
+      const html = renderToStaticMarkup(<ProfileBlock config={{ name: "Ana", avatar, cover, verified: false, layout: "hero" }} />);
+      expect(html).toContain("data-profile-hero");
+      expect(html).toContain('alt="Oficina frente al mar"');
+      // El avatar no se pinta: solo la portada.
+      expect(html).not.toContain('alt="Ana sonriendo"');
+      expect(html).not.toContain("rounded-full");
+      // Se desvanece con máscara (sirve sobre cualquier fondo) y el nombre queda fuera de la foto.
+      expect(html).toContain("mask-image");
+      expect(html).toMatch(/data-profile-hero=""[\s\S]*<\/div><div class="-mt-4 w-full"><div class="mt-4[^"]*"><div[^>]*><h1/);
+    });
+
+    it("sin portada todavía, muestra las iniciales a lo alto en el lugar de la foto", () => {
+      const html = renderToStaticMarkup(<ProfileBlock config={{ name: "Ana María Rojas", verified: false, layout: "hero" }} />);
+      expect(html).toMatch(/data-profile-hero=""[\s\S]*data-profile-monogram=""[^>]*>AR</);
+      expect(html).toContain("text-8xl");
+    });
+
+    it("sin `layout`, un perfil guardado antes se ve con la foto redonda de siempre", () => {
+      const html = renderToStaticMarkup(<ProfileBlock config={{ name: "Ana", avatar, cover, verified: false }} />);
+      expect(html).not.toContain("data-profile-hero");
+      expect(html).toContain("-mt-16");
+    });
+  });
 });

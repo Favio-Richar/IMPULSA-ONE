@@ -22,6 +22,7 @@ import { TemplateThumbnail } from "./template-preview";
 /** Nombre visible de cada línea de estilo (PP4/PL2), el filtro "estilo" de PM §7.4. */
 export const FAMILY_LABELS: Record<ThemeFamily, string> = {
   oscuro: "Oscuro",
+  minimal: "Minimal",
   ejecutivo: "Ejecutivo",
   vibrante: "Vibrante",
   clasico: "Clásico",

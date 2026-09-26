@@ -23,6 +23,12 @@ const envSchema = z.object({
   // visitante real (lib/visitor-headers.ts) para que la API les crea. Server-only, igual que
   // REVALIDATE_SECRET: nunca llega al navegador.
   INTERNAL_PROXY_SECRET: z.string().min(32),
+  // Origen público de apps/dashboard (la app del panel/onboarding, proceso y puerto aparte de este
+  // sitio de marketing), p. ej. https://app.impulza.one o http://localhost:3100 en desarrollo — sin
+  // path ni slash final. La landing enlaza "Crear mi portal gratis" e "Iniciar sesión" hacia esa
+  // otra app: nunca un href relativo como "/bienvenida", porque esa ruta no existe en este proceso
+  // y sería un enlace roto en producción (F2.8: dos apps, dos orígenes).
+  DASHBOARD_BASE_URL: z.url(),
 });
 
 export const env = envSchema.parse({
@@ -30,4 +36,5 @@ export const env = envSchema.parse({
   REVALIDATE_SECRET: process.env.REVALIDATE_SECRET,
   PUBLIC_WEB_BASE_URL: process.env.PUBLIC_WEB_BASE_URL,
   INTERNAL_PROXY_SECRET: process.env.INTERNAL_PROXY_SECRET,
+  DASHBOARD_BASE_URL: process.env.DASHBOARD_BASE_URL,
 });

@@ -43,3 +43,26 @@
     outline-offset: 2px;
   }
 }
+
+@layer utilities {
+  /* Decoración animada del home comercial (marketing) — nunca se usa en sitios de tenants. */
+  @keyframes marketing-float {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-14px);
+    }
+  }
+
+  .animate-marketing-float {
+    animation: marketing-float 6s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marketing-float {
+      animation: none;
+    }
+  }
+}

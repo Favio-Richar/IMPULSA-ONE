@@ -1,10 +1,15 @@
+import { z } from "zod";
 import {
   publicFormResponse,
   publicPageResponse,
   publicSiteResponse,
+  planResponse,
+  templateResponse,
   type PublicFormResponse,
   type PublicPageResponse,
   type PublicSiteResponse,
+  type PlanResponse,
+  type TemplateResponse,
 } from "@impulza/contracts";
 import { env } from "./env";
 
@@ -67,4 +72,24 @@ export function getPublicForm(siteSlug: string, formId: string): Promise<PublicF
     siteSlug,
     publicFormResponse,
   );
+}
+
+
+/**
+ * Catálogo público de plantillas y de planes (PL1, F4.1) — no dependen de un sitio, así que no
+ * llevan `siteCacheTag`: los invalida el próximo despliegue, no una publicación de un cliente.
+ * Usados por la home comercial (`app/page.tsx`) para mostrar datos reales, no maquetados.
+ */
+async function fetchCatalog<T>(path: string, schema: { parse: (value: unknown) => T }): Promise<T | null> {
+  const response = await fetch(`${env.API_BASE_URL}${path}`, { next: { revalidate: 300 } });
+  if (!response.ok) return null;
+  return schema.parse(await response.json());
+}
+
+export async function getTemplateCatalog(): Promise<TemplateResponse[]> {
+  return (await fetchCatalog("/templates", z.array(templateResponse))) ?? [];
+}
+
+export async function getPlanCatalog(): Promise<PlanResponse[]> {
+  return (await fetchCatalog("/plans", z.array(planResponse))) ?? [];
 }

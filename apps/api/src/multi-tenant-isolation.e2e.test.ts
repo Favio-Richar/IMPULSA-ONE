@@ -1131,6 +1131,41 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Dominios propios (F4.7/F4.9): ningún acceso cruzado entre organizaciones", () => {
+    it("A no ve, no verifica ni quita un dominio de B por ninguna combinación de ids", async () => {
+      const domainOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/domains`)
+        .set(CSRF_HEADERS)
+        .send({ domain: `${uniqueSlug()}.isolation-e2e.cl` })
+        .expect(201);
+      const domainId = domainOfB.body.id as string;
+
+      // Con la organización de B en la URL: frenado por el guard de membresía.
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/domains`).expect(403);
+      await orgA.ownerAgent.post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/domains/${domainId}/verify`).set(CSRF_HEADERS).expect(403);
+      await orgA.ownerAgent.delete(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/domains/${domainId}`).set(CSRF_HEADERS).expect(403);
+
+      // Organización propia de A con el sitio de B: 404.
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/domains`).expect(404);
+      await orgA.ownerAgent
+        .post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/domains`)
+        .set(CSRF_HEADERS)
+        .send({ domain: `${uniqueSlug()}.isolation-e2e.cl` })
+        .expect(404);
+
+      // Organización y sitio propios de A con el dominio de B: 404.
+      const ownPath = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/domains/${domainId}`;
+      await orgA.ownerAgent.post(`${ownPath}/verify`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.delete(ownPath).set(CSRF_HEADERS).expect(404);
+
+      const listOfA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/domains`).expect(200);
+      expect(JSON.stringify(listOfA.body)).not.toContain(domainId);
+      const stillB = await prisma.siteDomain.findUniqueOrThrow({ where: { id: domainId } });
+      expect(stillB.verificationStatus).toBe("PENDING");
+      expect(stillB.lastCheckedAt).toBeNull();
+    });
+  });
+
   describe("Administración (F4.4/F4.9): un usuario de organización nunca la alcanza", () => {
     it("ni el OWNER ni un ADMIN de una organización abren una ruta de administración", async () => {
       const paths = [

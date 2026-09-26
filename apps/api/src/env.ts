@@ -47,4 +47,10 @@ export const env = loadEnv({
   // warning en el log — nunca falla abrir una solicitud por eso.
   SUPPORT_NOTIFICATION_EMAIL: z.email().optional(),
   ADMIN_BASE_URL: urlSchema.optional(),
+  // Dominios propios (F4.7). `PLATFORM_DOMAIN`: el dominio de la plataforma (y sus subdominios), que
+  // ningún cliente puede reclamar. `CUSTOM_DOMAIN_CNAME_TARGET`: a dónde apunta el cliente su dominio
+  // verificado. Opcionales mientras no esté la decisión #1 (nombre y dominio definitivos): sin ellos
+  // la verificación funciona y el panel dice que el destino del CNAME se define al desplegar.
+  PLATFORM_DOMAIN: z.string().trim().toLowerCase().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/).optional(),
+  CUSTOM_DOMAIN_CNAME_TARGET: z.string().trim().toLowerCase().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/).optional(),
 });

@@ -21,10 +21,10 @@ export function OrgSwitcher({ organizations }: { organizations: Organization[] }
   }
 
   return (
-    <label className="flex items-center gap-2 text-sm">
+    <label className="flex min-w-0 items-center gap-2 text-sm">
       <span className="sr-only">Organización activa</span>
       <select
-        className="h-9 rounded-md border border-border-strong bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+        className="h-9 w-full min-w-0 max-w-xs truncate rounded-md border border-border-strong bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
         value={activeOrganizationId ?? ""}
         onChange={(event) => setActiveOrganizationId(event.target.value)}
       >

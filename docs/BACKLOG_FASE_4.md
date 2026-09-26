@@ -38,7 +38,7 @@ bloqueado explícitamente.
 | F4.4 — Superadministración mínima (`apps/admin`) | Terminada (local; ver deudas) |
 | F4.5 — Soporte mínimo | Terminada (local; ver deudas) |
 | F4.6 — Cobro recurrente con pasarela | Bloqueada (decisión #5) |
-| F4.7 — Dominios personalizados | Pendiente (parcialmente bloqueada por decisión #1) |
+| F4.7 — Dominios personalizados | Lista para tu revisión (SSL depende de F4.8; límite por plan, de la decisión #4) |
 | F4.8 — Producción y monitoreo | Bloqueada (decisión de hosting) |
 | F4.9 — Aislamiento y seguridad de Fase 4 | Lista para tu revisión (el caso de dominios se suma con F4.7, que todavía no existe) |
 
@@ -304,6 +304,19 @@ bloqueado explícitamente.
   reclamar) y de SSRF en la verificación.
 - La emisión de SSL depende del hosting (F4.8): hasta entonces, la verificación y el ruteo quedan
   listos y la emisión, documentada como paso de despliegue.
+
+> **Estado (2026-09-26): lista para revisión de Favio.** Migración `20260926160000_f47_site_domains`
+> (aditiva sobre la tabla vacía de F2.1, con `down.sql`; `domain` deja de ser único global y pasa a
+> único por sitio + índice parcial único entre los VERIFICADOS: un reclamo pendiente no bloquea al
+> dueño real). API `organizations/:id/sites/:siteId/domains` (listar, agregar, verificar por TXT
+> `_impulza.<dominio>`, quitar; `site.update`, límite de tasa, auditoría) y
+> `GET /public/domains/:hostname` (solo el slug). Verificación solo por DNS con tiempo acotado (sin
+> SSRF). `apps/web/proxy.ts` sirve el sitio en su dominio verificado. Panel: tarjeta "Dominio propio"
+> en el sitio. Env opcionales `PLATFORM_DOMAIN` y `CUSTOM_DOMAIN_CNAME_TARGET` (decisión #1). Pruebas:
+> validación 5, e2e de dominios 8, suite central 49 (con el caso de dominios), web 21, Playwright
+> dominios y panel angosto. Pendiente: SSL (F4.8), límite de dominios por plan (decisión #4; hoy
+> tope técnico de 5 por sitio) y canonical/SEO con el dominio propio.
+> También se corrigió un desborde horizontal previo de la cabecera del panel en teléfonos de 360-390 px.
 
 ### F4.8 — Producción y monitoreo *(bloqueada por decisión de hosting)*
 **Criterios de aceptación:**

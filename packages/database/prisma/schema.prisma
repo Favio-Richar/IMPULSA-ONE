@@ -142,6 +142,7 @@ model Organization {
   usageCounters       UsageCounter[]
   auditLogs           AuditLog[]
   sites               Site[]
+  siteDomains         SiteDomain[]
   themes              Theme[]
   contacts            Contact[]
   shortLinks          ShortLink[]
@@ -365,18 +366,37 @@ model Site {
   @@map("sites")
 }
 
+// Dominio de un sitio (F4.7). `domain` NO es único global: un reclamo pendiente no puede bloquear al
+// dueño real (toma de dominio por ocupación). La garantía es el índice único parcial
+// `site_domains_one_verified_per_domain (domain) WHERE verification_status = 'VERIFIED'` (en la
+// migración, Prisma no expresa índices parciales): un dominio queda verificado en un solo sitio.
+// Se verifica con un registro DNS TXT con `verificationToken`, que solo el dueño del DNS puede crear.
 model SiteDomain {
   id                 String                   @id @default(uuid()) @db.Uuid
+  organizationId     String                   @map("organization_id") @db.Uuid
   siteId             String                   @map("site_id") @db.Uuid
-  domain             String                   @unique
+  // En minúsculas, sin punto final, ASCII (punycode). Validado con `customDomainSchema`.
+  domain             String
   type               SiteDomainType           @default(SUBDOMAIN)
   verificationStatus DomainVerificationStatus @default(PENDING) @map("verification_status")
+  // Valor esperado en el TXT `_impulza.<dominio>`. Aleatorio por reclamo, nunca se reutiliza.
+  verificationToken  String                   @map("verification_token")
+  verifiedAt         DateTime?                @map("verified_at") @db.Timestamptz(6)
+  lastCheckedAt      DateTime?                @map("last_checked_at") @db.Timestamptz(6)
+  // Código estable del último fallo (`DOMAIN_CHECK_ERRORS`), nunca texto libre del resolvedor DNS.
+  lastCheckError     String?                  @map("last_check_error")
+  // La emisión de SSL depende del hosting (F4.8): hasta entonces queda PENDING.
   sslStatus          DomainSslStatus          @default(PENDING) @map("ssl_status")
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
 
+  @@unique([siteId, domain])
   @@index([siteId])
+  @@index([organizationId])
+  @@index([domain])
   @@map("site_domains")
 }
 

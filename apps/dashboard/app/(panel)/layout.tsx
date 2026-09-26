@@ -111,9 +111,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             <Menu className="size-4" />
           </Button>
 
-          <div className="flex-1">{orgsQuery.data ? <OrgSwitcher organizations={orgsQuery.data} /> : null}</div>
+          {/* `min-w-0`: el selector se encoge en un teléfono en vez de empujar la cabecera fuera de la
+              pantalla cuando el nombre de una organización es largo. */}
+          <div className="min-w-0 flex-1">{orgsQuery.data ? <OrgSwitcher organizations={orgsQuery.data} /> : null}</div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
             <Button variant="secondary" size="sm" onClick={handleLogout}>
               Cerrar sesión

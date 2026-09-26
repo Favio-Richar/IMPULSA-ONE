@@ -28,6 +28,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { ConfirmButton } from "../../../../components/confirm-button";
 import { BackgroundPicker } from "../../../../components/site/background-picker";
+import { CustomDomains } from "../../../../components/site/custom-domains";
 import { useActiveOrgStore } from "../../../../lib/active-org-store";
 import { ApiError } from "../../../../lib/api-client";
 import {
@@ -95,6 +96,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
       <ThemePicker organizationId={organizationId} siteId={siteId} />
       <BackgroundPicker organizationId={organizationId} siteId={siteId} />
       <PagesSection organizationId={organizationId} siteId={siteId} />
+      <CustomDomains organizationId={organizationId} siteId={siteId} />
     </div>
   );
 }

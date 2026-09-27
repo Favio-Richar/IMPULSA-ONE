@@ -43,45 +43,43 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Iniciar sesión</CardTitle>
-          <CardDescription>Entra a tu panel de Impulza One.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-            <Input
-              label="Correo electrónico"
-              type="email"
-              autoComplete="email"
-              error={errors.email?.message}
-              {...register("email")}
-            />
-            <Input
-              label="Contraseña"
-              type="password"
-              autoComplete="current-password"
-              error={errors.password?.message}
-              {...register("password")}
-            />
-            {serverError ? (
-              <p role="alert" className="text-sm text-danger">
-                {serverError}
-              </p>
-            ) : null}
-            <Button type="submit" loading={isSubmitting} className="mt-2">
-              Entrar
-            </Button>
-          </form>
-          <p className="mt-4 text-sm text-muted-foreground">
-            ¿No tienes cuenta?{" "}
-            <Link href="/registro" className="font-medium text-primary hover:underline">
-              Regístrate
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </main>
+    <Card className="w-full max-w-sm">
+      <CardHeader>
+        <CardTitle>Iniciar sesión</CardTitle>
+        <CardDescription>Entra a tu panel de Impulza One.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <Input
+            label="Correo electrónico"
+            type="email"
+            autoComplete="email"
+            error={errors.email?.message}
+            {...register("email")}
+          />
+          <Input
+            label="Contraseña"
+            type="password"
+            autoComplete="current-password"
+            error={errors.password?.message}
+            {...register("password")}
+          />
+          {serverError ? (
+            <p role="alert" className="text-sm text-danger">
+              {serverError}
+            </p>
+          ) : null}
+          <Button type="submit" loading={isSubmitting} className="mt-2">
+            Entrar
+          </Button>
+        </form>
+        <p className="mt-4 text-sm text-muted-foreground">
+          ¿No tienes cuenta?{" "}
+          <Link href="/registro" className="font-medium text-primary hover:underline">
+            Regístrate
+          </Link>
+        </p>
+      </CardContent>
+    </Card>
   );
 }

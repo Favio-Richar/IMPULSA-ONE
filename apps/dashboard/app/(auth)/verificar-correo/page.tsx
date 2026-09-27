@@ -47,17 +47,15 @@ function VerifyEmailContent(): React.JSX.Element {
 
 export default function VerifyEmailPage(): React.JSX.Element {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Verificación de correo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<LoadingState />}>
-            <VerifyEmailContent />
-          </Suspense>
-        </CardContent>
-      </Card>
-    </main>
+    <Card className="w-full max-w-sm">
+      <CardHeader>
+        <CardTitle>Verificación de correo</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Suspense fallback={<LoadingState />}>
+          <VerifyEmailContent />
+        </Suspense>
+      </CardContent>
+    </Card>
   );
 }

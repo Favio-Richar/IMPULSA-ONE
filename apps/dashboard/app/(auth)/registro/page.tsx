@@ -42,60 +42,56 @@ export default function RegisterPage() {
 
   if (done) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardTitle>Revisa tu correo</CardTitle>
-            <CardDescription>
-              Te enviamos un enlace para verificar tu cuenta. Ábrelo para poder iniciar sesión.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </main>
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>Revisa tu correo</CardTitle>
+          <CardDescription>
+            Te enviamos un enlace para verificar tu cuenta. Ábrelo para poder iniciar sesión.
+          </CardDescription>
+        </CardHeader>
+      </Card>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Crear cuenta</CardTitle>
-          <CardDescription>Publica tu página profesional en minutos.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-            <Input
-              label="Correo electrónico"
-              type="email"
-              autoComplete="email"
-              error={errors.email?.message}
-              {...registerField("email")}
-            />
-            <Input
-              label="Contraseña"
-              type="password"
-              autoComplete="new-password"
-              helperText={errors.password ? undefined : "Mínimo 8 caracteres."}
-              error={errors.password?.message}
-              {...registerField("password")}
-            />
-            {serverError ? (
-              <p role="alert" className="text-sm text-danger">
-                {serverError}
-              </p>
-            ) : null}
-            <Button type="submit" loading={isSubmitting} className="mt-2">
-              Crear cuenta
-            </Button>
-          </form>
-          <p className="mt-4 text-sm text-muted-foreground">
-            ¿Ya tienes cuenta?{" "}
-            <Link href="/login" className="font-medium text-primary hover:underline">
-              Inicia sesión
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </main>
+    <Card className="w-full max-w-sm">
+      <CardHeader>
+        <CardTitle>Crear cuenta</CardTitle>
+        <CardDescription>Publica tu página profesional en minutos.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <Input
+            label="Correo electrónico"
+            type="email"
+            autoComplete="email"
+            error={errors.email?.message}
+            {...registerField("email")}
+          />
+          <Input
+            label="Contraseña"
+            type="password"
+            autoComplete="new-password"
+            helperText={errors.password ? undefined : "Mínimo 8 caracteres."}
+            error={errors.password?.message}
+            {...registerField("password")}
+          />
+          {serverError ? (
+            <p role="alert" className="text-sm text-danger">
+              {serverError}
+            </p>
+          ) : null}
+          <Button type="submit" loading={isSubmitting} className="mt-2">
+            Crear cuenta
+          </Button>
+        </form>
+        <p className="mt-4 text-sm text-muted-foreground">
+          ¿Ya tienes cuenta?{" "}
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Inicia sesión
+          </Link>
+        </p>
+      </CardContent>
+    </Card>
   );
 }

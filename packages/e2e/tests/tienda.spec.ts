@@ -140,3 +140,16 @@ test("el catálogo del sitio lista los productos y agrega uno nuevo", async ({ p
   await expect(created).toHaveCount(0);
   await expectNoHorizontalScroll(page);
 });
+
+test("el menú lleva al catálogo sin pasar por el sitio", async ({ page }, testInfo) => {
+  await page.goto("/");
+  // En el teléfono el menú está plegado detrás de su botón.
+  if (testInfo.project.name === "movil") {
+    await page.getByRole("button", { name: "Abrir menú" }).click();
+  }
+  await page.getByRole("link", { name: "Catálogo", exact: true }).filter({ visible: true }).first().click();
+  await expect(page).toHaveURL(/\/catalogo$/);
+  await expect(page.getByRole("heading", { name: "Catálogo", level: 1 })).toBeVisible();
+  await expect(page.locator("[data-product]", { hasText: productName })).toBeVisible();
+  await expectNoHorizontalScroll(page);
+});

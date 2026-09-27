@@ -160,6 +160,8 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
     completa de la API 410/410; OpenAPI regenerado (115 rutas). Playwright `tienda.spec.ts` 6/6
     (móvil y escritorio: pedido, pedidos, catálogo, sin desplazamiento horizontal, también a 360 px).
   - Demo: `demo-tienda` tiene 5 productos (uno agotado) y el bloque "Tienda" publicado.
+  - 2026-09-27, a pedido del propietario: "Catálogo" también en el menú del panel (`/catalogo`, con
+    selector de sitio), además de Sitios → Catálogo. Playwright `tienda.spec.ts` 8/8.
   - Siguiente: F5.6 (campañas de email con consentimiento y bajas).
 
 ---

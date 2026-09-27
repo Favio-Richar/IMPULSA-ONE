@@ -6,6 +6,7 @@ import { parseStorageConfig, parseVideoToolsConfig, S3StorageAdapter } from "@im
 import { ConsoleEmailAdapter } from "@impulza/auth";
 import { startAnalyticsWorkers } from "./analytics-workers.js";
 import { startBookingReminderWorkers } from "./booking-reminders.js";
+import { startCampaignDispatchWorkers } from "./campaign-dispatch.js";
 import { env } from "./env.js";
 import { createHealthServer } from "./health-server.js";
 import { startMediaWorkers } from "./media-workers.js";
@@ -58,6 +59,15 @@ const bookingReminders = await startBookingReminderWorkers({
   bookingLinkSecret: env.BOOKING_LINK_SECRET,
 });
 
+// Campañas de email (F5.6): el enlace de baja se firma con el mismo secreto de enlaces de correo.
+const campaignDispatch = await startCampaignDispatchWorkers({
+  prisma,
+  email: new ConsoleEmailAdapter(),
+  connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+  publicSiteBaseUrl: env.PUBLIC_SITE_BASE_URL,
+  linkSecret: env.BOOKING_LINK_SECRET,
+});
+
 const healthServer = createHealthServer([
   {
     name: "database",
@@ -88,6 +98,7 @@ async function shutdown(signal: string): Promise<void> {
   await workers.close();
   await mediaWorkers?.close();
   await bookingReminders.close();
+  await campaignDispatch.close();
   healthRedis.disconnect();
   await prisma.$disconnect();
   process.exit(0);

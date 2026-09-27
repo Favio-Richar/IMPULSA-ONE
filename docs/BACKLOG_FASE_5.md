@@ -28,7 +28,7 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
 | F5.3 — Agenda del negocio en el panel | Lista para tu revisión (capturas en `docs/design/capturas/f53/`) |
 | F5.4 — Confirmaciones, cancelación/reprogramación y recordatorios | Lista para tu revisión (capturas en `docs/design/capturas/f54/`) |
 | F5.5 — Catálogo y pedidos (productos físicos, digitales y servicios) con pago externo | Lista para tu revisión (capturas en `docs/design/capturas/f55/`) |
-| F5.6 — Campañas de email con consentimiento y bajas | Pendiente |
+| F5.6 — Campañas de email con consentimiento y bajas | Lista para tu revisión (capturas en `docs/design/capturas/f56/`) |
 | F5.7 — Aislamiento y seguridad de Fase 5 | Pendiente |
 | — Seña cobrada, checkout, reembolsos, descargas pagadas, afiliados | Bloqueado (decisión #6) |
 | — Profesionales y sucursales múltiples, integración de calendario externo/videollamada | Después de F5.4 (se diseña con uso real) |
@@ -163,6 +163,36 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
   - 2026-09-27, a pedido del propietario: "Catálogo" también en el menú del panel (`/catalogo`, con
     selector de sitio), además de Sitios → Catálogo. Playwright `tienda.spec.ts` 8/8.
   - Siguiente: F5.6 (campañas de email con consentimiento y bajas).
+- **2026-09-27 — F5.6 terminada**, en "Lista para tu revisión".
+  - **Consentimiento de marketing aparte** del de gestión: aceptar que el negocio guarde los datos
+    de una reserva o un pedido no es aceptar publicidad. Casilla opcional y no premarcada ("Quiero
+    recibir novedades…") en la reserva y el pedido públicos; se guarda fuente, versión del texto
+    (`marketing-v1`) y fecha. El panel no puede declarar consentimiento ajeno. Los contactos de
+    formularios todavía no tienen esta casilla (pendiente: sumarla al constructor de formularios).
+  - Migración `20260927030000_f56_campaigns` (con `down.sql`, aplicada, revertida y vuelta a
+    aplicar): columnas de marketing en `contacts`, tablas `campaigns` y `campaign_recipients`.
+    Permiso `campaign.manage` solo para OWNER y ADMIN. Límite de plan nuevo `emailsPerHour`
+    (provisorio, decisión #4: 50/300/1.000/5.000; un plan viejo sin el dato vale 50).
+  - API: campañas (borrador, audiencia en vivo, opciones de segmento por etiqueta/estado/origen,
+    prueba al autor con límite de tasa, envío que congela destinatarios, una campaña a la vez por
+    organización con bloqueo, detener) y baja pública `public/unsubscribe/:token` (enlace HMAC con
+    propósito propio, idempotente, auditada). Cuerpo saneado en el servidor.
+  - Worker `campaign-dispatch` cada minuto: respeta el límite por hora congelado, reclama cada
+    destinatario con `updateMany` condicional (nunca dos correos), revisa la baja justo antes de
+    enviar, registra fallos y cierra la campaña. Cada correo lleva texto, HTML, pie con el porqué y
+    el enlace de baja, y la cabecera `List-Unsubscribe` de un clic (RFC 8058).
+  - "Rebotes": por ahora se cuentan los fallos al entregar al proveedor; los rebotes reales llegan
+    cuando exista un proveedor de correo con avisos (decisión pendiente del propietario).
+  - Web: `/baja/[token]` (noindex, sin caché, pide un clic: los escáneres de correo abren enlaces
+    solos) y `api/unsubscribe/[token]`. Slugs reservados `baja` y `campanas`.
+  - Panel: "Campañas" en el menú; lista con avance, editor con audiencia en vivo, filtros en
+    botones, vista previa aislada (iframe sin scripts) y confirmación de envío; informe con
+    métricas (destinatarios, enviados, pendientes, fallidos, bajas) que se refresca solo.
+  - Pruebas: validación 4, auth 2, worker 5 (contra la base, verificado también contra el código
+    sin la revisión de baja), API e2e 6 + caso central de aislamiento, web 2; suites completas: API
+    417, worker 11, validación 489, auth 18, web 31. OpenAPI regenerado (123 rutas). Playwright
+    `campanas.spec.ts` 4/4 (móvil y escritorio, baja con enlace firmado y enlace falso 404).
+  - Siguiente: F5.7 (revisión de aislamiento y seguridad de toda la Fase 5).
 
 ---
 

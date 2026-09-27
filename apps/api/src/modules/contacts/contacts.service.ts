@@ -6,6 +6,7 @@ import type {
   ListContactsQuery,
   UpdateContactInput,
 } from "@impulza/validation";
+import { MARKETING_CONSENT_TEXT_VERSION } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
 import { PlansService } from "../plans/plans.service.js";
@@ -37,6 +38,23 @@ export class ContactsService {
    * Matchea por email dentro de la organización (único criterio confiable, F3.1); sin email no hay
    * forma de deduplicar, así que siempre crea un contacto nuevo.
    */
+  /**
+   * Consentimiento de **marketing** (F5.6): solo cuando la persona marcó la casilla aparte y no
+   * premarcada. Volver a aceptar después de una baja la deja sin efecto (es una decisión nueva y
+   * explícita). Nunca se llama desde el panel: el negocio no puede declarar consentimiento ajeno.
+   */
+  async recordMarketingConsent(contactId: string, source: string): Promise<void> {
+    await this.prisma.contact.update({
+      where: { id: contactId },
+      data: {
+        marketingConsentAt: new Date(),
+        marketingConsentSource: source,
+        marketingConsentTextVersion: MARKETING_CONSENT_TEXT_VERSION,
+        marketingUnsubscribedAt: null,
+      },
+    });
+  }
+
   async findOrCreateFromSubmission(input: ContactFromSubmissionInput): Promise<{ contact: Contact; created: boolean }> {
     const now = new Date();
 

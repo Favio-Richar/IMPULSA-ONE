@@ -18,10 +18,13 @@ export function RichTextEditor({
   value,
   onChange,
   placeholder,
+  ariaLabel,
 }: {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  /** Nombre accesible del área de edición cuando no hay un `<label>` asociado. */
+  ariaLabel?: string;
 }) {
   const editor = useEditor({
     extensions: [
@@ -39,6 +42,7 @@ export function RichTextEditor({
       attributes: {
         class: "prose-content min-h-24 px-3 py-2 text-sm focus:outline-none",
         ...(placeholder ? { "data-placeholder": placeholder } : {}),
+        ...(ariaLabel ? { "aria-label": ariaLabel, role: "textbox", "aria-multiline": "true" } : {}),
       },
     },
   });

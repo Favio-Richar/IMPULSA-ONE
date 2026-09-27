@@ -27,6 +27,7 @@ import { StorageModule } from "./storage/storage.module.js";
 import { MediaModule } from "./modules/media/media.module.js";
 import { DomainsModule } from "./modules/domains/domains.module.js";
 import { BookingsModule } from "./modules/bookings/bookings.module.js";
+import { CampaignsModule } from "./modules/campaigns/campaigns.module.js";
 import { CatalogModule } from "./modules/catalog/catalog.module.js";
 
 // Módulo raíz — los módulos de dominio (sites, forms, ...) se agregan a partir de Fase 2, uno
@@ -59,6 +60,7 @@ import { CatalogModule } from "./modules/catalog/catalog.module.js";
     DomainsModule,
     BookingsModule,
     CatalogModule,
+    CampaignsModule,
     AdminModule,
     HealthModule,
   ],

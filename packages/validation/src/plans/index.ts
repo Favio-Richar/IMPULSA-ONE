@@ -22,7 +22,12 @@ export const planLimitsSchema = z.object({
   analyticsHistoryDays: limitValue,
   /** Existe en el catálogo pero no se aplica hasta que haya subida de archivos (decisión #7). */
   storageMb: limitValue,
+  /** Correos de campañas por hora (F5.6). Un plan guardado antes de F5.6 no lo tiene: vale el
+   *  mínimo (`DEFAULT_EMAILS_PER_HOUR`) hasta que el equipo lo ajuste. */
+  emailsPerHour: limitValue.default(50),
 });
+
+export const DEFAULT_EMAILS_PER_HOUR = 50;
 
 export type PlanLimits = z.infer<typeof planLimitsSchema>;
 export type PlanLimitKey = keyof PlanLimits;
@@ -77,6 +82,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       members: 1,
       analyticsHistoryDays: 30,
       storageMb: 200,
+      emailsPerHour: 50,
     },
   },
   {
@@ -96,6 +102,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       members: 3,
       analyticsHistoryDays: 365,
       storageMb: 2_000,
+      emailsPerHour: 300,
     },
   },
   {
@@ -115,6 +122,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       members: 10,
       analyticsHistoryDays: 730,
       storageMb: 10_000,
+      emailsPerHour: 1_000,
     },
   },
   {
@@ -134,6 +142,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       members: 50,
       analyticsHistoryDays: 730,
       storageMb: 50_000,
+      emailsPerHour: 5_000,
     },
   },
 ];

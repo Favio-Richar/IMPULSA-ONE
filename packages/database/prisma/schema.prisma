@@ -80,29 +80,30 @@ model User {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  sessions            Session[]
-  accounts            Account[]
-  memberships         Membership[]
-  verificationTokens  VerificationToken[]
-  auditLogsAsActor    AuditLog[]          @relation("AuditLogActor")
-  pageVersionsCreated PageVersion[]       @relation("PageVersionAuthor")
-  contactsAssigned    Contact[]           @relation("ContactAssignee")
-  supportTicketsOpened SupportTicket[]    @relation("SupportTicketOpener")
-  supportMessages      SupportMessage[]   @relation("SupportMessageAuthor")
-  mediaUploaded        MediaAsset[]       @relation("MediaUploader")
+  sessions             Session[]
+  accounts             Account[]
+  memberships          Membership[]
+  verificationTokens   VerificationToken[]
+  auditLogsAsActor     AuditLog[]          @relation("AuditLogActor")
+  pageVersionsCreated  PageVersion[]       @relation("PageVersionAuthor")
+  contactsAssigned     Contact[]           @relation("ContactAssignee")
+  supportTicketsOpened SupportTicket[]     @relation("SupportTicketOpener")
+  supportMessages      SupportMessage[]    @relation("SupportMessageAuthor")
+  mediaUploaded        MediaAsset[]        @relation("MediaUploader")
+  campaignsCreated     Campaign[]          @relation("CampaignAuthor")
 
   @@map("users")
 }
 
 model Session {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime     @map("expires_at") @db.Timestamptz(6)
   scope     SessionScope @default(USER)
-  userAgent String?  @map("user_agent")
+  userAgent String?      @map("user_agent")
   // Nunca la IP completa en texto plano — hash/truncada (ST §8, no negociable de privacidad).
-  ipHash    String?  @map("ip_hash")
+  ipHash    String?      @map("ip_hash")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -125,16 +126,16 @@ model Account {
 }
 
 model Organization {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  slug      String   @unique
-  planId    String?  @map("plan_id") @db.Uuid
+  id            String             @id @default(uuid()) @db.Uuid
+  name          String
+  slug          String             @unique
+  planId        String?            @map("plan_id") @db.Uuid
   // Bloqueo manual desde superadministración (ADR-005 §6). Motivo obligatorio y auditado.
   status        OrganizationStatus @default(ACTIVE)
   blockedAt     DateTime?          @map("blocked_at") @db.Timestamptz(6)
   blockedReason String?            @map("blocked_reason")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   plan                Plan?                @relation(fields: [planId], references: [id])
   memberships         Membership[]
@@ -150,6 +151,7 @@ model Organization {
   productCategories   ProductCategory[]
   products            Product[]
   orders              Order[]
+  campaigns           Campaign[]
   themes              Theme[]
   contacts            Contact[]
   shortLinks          ShortLink[]
@@ -216,9 +218,9 @@ model RolePermission {
 }
 
 model Plan {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique
-  name      String
+  id           String   @id @default(uuid()) @db.Uuid
+  code         String   @unique
+  name         String
   // Precio en unidad mínima de moneda + código ISO — nunca float (ST §8). CLP no tiene decimales:
   // la unidad mínima es el peso. Mensual y anual (PM §7.5, F4.1).
   priceMonthly Int      @map("price_monthly")
@@ -700,40 +702,49 @@ model FormSubmission {
 }
 
 model Contact {
-  id                 String                  @id @default(uuid()) @db.Uuid
-  organizationId     String                  @map("organization_id") @db.Uuid
-  name               String?
+  id                          String                  @id @default(uuid()) @db.Uuid
+  organizationId              String                  @map("organization_id") @db.Uuid
+  name                        String?
   // Unicidad (organization_id, email) cuando email no es null: índice único parcial creado con
   // SQL en la migración (mismo patrón que Page.slug en F2.3 — Prisma no expresa parciales).
-  email              String?
-  phone              String?
-  source             String?
-  tags               String[]                @default([])
+  email                       String?
+  phone                       String?
+  source                      String?
+  tags                        String[]                @default([])
   // Consentimiento auditado (ADR-004 punto 3): qué se aceptó, de dónde y cuándo.
-  consentStatus      ConsentStatus           @default(UNKNOWN) @map("consent_status")
-  consentSource      String?                 @map("consent_source")
-  consentTextVersion String?                 @map("consent_text_version")
-  consentAt          DateTime?               @map("consent_at") @db.Timestamptz(6)
-  commercialStatus   ContactCommercialStatus @default(NEW) @map("commercial_status")
-  assignedToId       String?                 @map("assigned_to") @db.Uuid
+  consentStatus               ConsentStatus           @default(UNKNOWN) @map("consent_status")
+  consentSource               String?                 @map("consent_source")
+  consentTextVersion          String?                 @map("consent_text_version")
+  consentAt                   DateTime?               @map("consent_at") @db.Timestamptz(6)
+  commercialStatus            ContactCommercialStatus @default(NEW) @map("commercial_status")
+  assignedToId                String?                 @map("assigned_to") @db.Uuid
   // ADR-004 punto 4: el job diario del worker lo marca cuando el contacto lleva
   // CONTACT_RETENTION_REVIEW_MONTHS (36 por defecto) sin ninguna interacción (edición, nota, envío).
   // Solo una marca para que el dueño decida — un dato de contacto de negocio nunca se purga solo.
   // Nulo = no requiere revisión. Se limpia al conservarlo o al volver a interactuar.
-  retentionReviewAt  DateTime?               @map("retention_review_at") @db.Timestamptz(6)
-  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  retentionReviewAt           DateTime?               @map("retention_review_at") @db.Timestamptz(6)
+  // Consentimiento de **marketing** (F5.6), aparte del de gestión de arriba: aceptar que el negocio
+  // guarde los datos para una reserva o un pedido no es aceptar publicidad. Solo una casilla
+  // explícita y no premarcada lo registra (fuente, versión del texto y fecha). La baja por el enlace
+  // firmado de un correo lo deja en `marketing_unsubscribed_at` y se respeta de inmediato.
+  marketingConsentAt          DateTime?               @map("marketing_consent_at") @db.Timestamptz(6)
+  marketingConsentSource      String?                 @map("marketing_consent_source")
+  marketingConsentTextVersion String?                 @map("marketing_consent_text_version")
+  marketingUnsubscribedAt     DateTime?               @map("marketing_unsubscribed_at") @db.Timestamptz(6)
+  createdAt                   DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assignedTo   User?            @relation("ContactAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  submissions  FormSubmission[]
-  events       ContactEvent[]
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedTo         User?               @relation("ContactAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  submissions        FormSubmission[]
+  events             ContactEvent[]
+  bookings           Booking[]
+  orders             Order[]
+  campaignRecipients CampaignRecipient[]
 
   @@index([organizationId])
   @@index([organizationId, retentionReviewAt])
   @@map("contacts")
-  bookings  Booking[]
-  orders    Order[]
 }
 
 model ContactEvent {
@@ -981,7 +992,7 @@ model BookableService {
   site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  bookings     Booking[]
+  bookings Booking[]
 
   @@index([siteId, position])
   @@index([organizationId])
@@ -1165,4 +1176,71 @@ model Order {
   @@index([siteId, createdAt])
   @@index([contactId])
   @@map("orders")
+}
+
+enum CampaignStatus {
+  DRAFT
+  SENDING
+  SENT
+  CANCELLED
+}
+
+enum CampaignRecipientStatus {
+  PENDING
+  SENT
+  FAILED
+  // No se envió: se dio de baja o dejó de cumplir el segmento entre el alta del envío y su turno.
+  SKIPPED
+}
+
+// Campaña de email (F5.6): a nivel organización. El segmento se guarda como JSON validado con
+// `campaignSegmentSchema`; al enviar se congela la lista en `CampaignRecipient` y el worker la
+// despacha respetando el límite por hora del plan.
+model Campaign {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  createdById    String?        @map("created_by") @db.Uuid
+  name           String
+  subject        String
+  // HTML saneado en el servidor (mismo saneamiento que el texto enriquecido de los bloques).
+  bodyHtml       String         @map("body_html")
+  segment        Json
+  status         CampaignStatus @default(DRAFT)
+  recipientCount Int            @default(0) @map("recipient_count")
+  // Límite por hora del plan al iniciar el envío (lo decide la API; el worker no resuelve planes).
+  // `null` = sin límite. Una organización envía una campaña a la vez.
+  emailsPerHour  Int?           @map("emails_per_hour")
+  sendStartedAt  DateTime?      @map("send_started_at") @db.Timestamptz(6)
+  sentAt         DateTime?      @map("sent_at") @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?               @relation("CampaignAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  recipients   CampaignRecipient[]
+
+  @@index([organizationId, createdAt])
+  @@index([status])
+  @@map("campaigns")
+}
+
+model CampaignRecipient {
+  id             String                  @id @default(uuid()) @db.Uuid
+  campaignId     String                  @map("campaign_id") @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  contactId      String?                 @map("contact_id") @db.Uuid
+  email          String
+  status         CampaignRecipientStatus @default(PENDING)
+  sentAt         DateTime?               @map("sent_at") @db.Timestamptz(6)
+  error          String?
+  unsubscribedAt DateTime?               @map("unsubscribed_at") @db.Timestamptz(6)
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId, status])
+  @@index([organizationId, sentAt])
+  @@map("campaign_recipients")
 }

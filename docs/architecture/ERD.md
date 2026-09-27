@@ -255,6 +255,19 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   físico, note), status (`NEW`/`PAID`/`DELIVERED`/`CANCELLED`), stock_reserved (si descontó stock,
   para devolverlo al cancelar), paid_at, delivered_at, cancelled_at.
 
+## 9d. Campañas de email (F5.6, `BACKLOG_FASE_5.md`)
+
+- **Contact** suma el consentimiento de **marketing**, aparte del de gestión:
+  marketing_consent_at, marketing_consent_source, marketing_consent_text_version y
+  marketing_unsubscribed_at (la baja se respeta de inmediato; volver a aceptar la limpia).
+- **Campaign** (Organization 1:N, User 1:N con `SET NULL`): name, subject, body_html (saneado),
+  segment (JSON validado: etiquetas, orígenes, estados comerciales), status
+  (`DRAFT`/`SENDING`/`SENT`/`CANCELLED`), recipient_count, emails_per_hour (límite del plan
+  congelado al enviar, `CHECK >= 0`), send_started_at, sent_at.
+- **CampaignRecipient** (Campaign 1:N con `CASCADE`, Contact 1:N con `SET NULL`, único
+  `(campaign_id, contact_id)`): organization_id, email, status (`PENDING`/`SENT`/`FAILED`/`SKIPPED`),
+  sent_at, error, unsubscribed_at. El enlace de baja no se guarda: se firma con HMAC.
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 `Payment` (cobro propio; hoy bloqueado por la decisión #6), variantes/cupones/carrito,

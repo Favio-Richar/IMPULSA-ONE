@@ -21,6 +21,7 @@ export const PERMISSIONS = {
   BOOKING_MANAGE: "booking.manage",
   CATALOG_MANAGE: "catalog.manage",
   ORDER_MANAGE: "order.manage",
+  CAMPAIGN_MANAGE: "campaign.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -102,6 +103,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.ORDER_MANAGE,
     description: "Atender pedidos: marcarlos como pagados, entregados o cancelados (F5.5).",
   },
+  {
+    key: PERMISSIONS.CAMPAIGN_MANAGE,
+    description: "Crear y enviar campañas de email a los contactos que aceptaron recibirlas (F5.6).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -131,6 +136,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.BOOKING_MANAGE,
     PERMISSIONS.CATALOG_MANAGE,
     PERMISSIONS.ORDER_MANAGE,
+    PERMISSIONS.CAMPAIGN_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -151,6 +157,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.BOOKING_MANAGE,
     PERMISSIONS.CATALOG_MANAGE,
     PERMISSIONS.ORDER_MANAGE,
+    // Un envío masivo sale a nombre del negocio y no se puede deshacer (F5.6): solo OWNER/ADMIN.
+    PERMISSIONS.CAMPAIGN_MANAGE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y

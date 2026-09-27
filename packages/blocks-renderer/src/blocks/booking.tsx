@@ -4,7 +4,7 @@ import { CalendarCheck, CalendarPlus, Check, ChevronLeft, ChevronRight, Clock, C
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { BookingAvailabilityResponse, PublicBookingConfirmationResponse, PublicBookingInfoResponse } from "@impulza/contracts";
-import { addDaysToDate, localDateOf, type BookingBlockConfig } from "@impulza/validation";
+import { addDaysToDate, localDateOf, MARKETING_CONSENT_LABEL, type BookingBlockConfig } from "@impulza/validation";
 import { formatPrice } from "../lib/format-price.js";
 import { buildIcs } from "../lib/ics.js";
 import { OUTBOUND_LINK } from "../ui/outbound.js";
@@ -365,7 +365,7 @@ function DetailsForm({
   onDone: (confirmation: PublicBookingConfirmationResponse) => void;
 }) {
   const id = useId();
-  const [values, setValues] = useState({ name: "", email: "", phone: "", note: "", consent: false, website: "" });
+  const [values, setValues] = useState({ name: "", email: "", phone: "", note: "", consent: false, marketing: false, website: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const when = new Intl.DateTimeFormat("es-CL", { timeZone, weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(
@@ -400,6 +400,8 @@ function DetailsForm({
         ...(phone ? { phone } : {}),
         ...(values.note.trim() ? { note: values.note.trim() } : {}),
         consent: true,
+        // Aparte y opcional (F5.6): solo con la casilla marcada llegan campañas.
+        ...(values.marketing ? { marketingConsent: true } : {}),
         website: values.website,
       }),
     });
@@ -466,6 +468,10 @@ function DetailsForm({
       <label className="flex items-start gap-2 text-sm text-[var(--site-color-foreground)]">
         <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--site-color-primary)]" checked={values.consent} onChange={(e) => setValues({ ...values, consent: e.target.checked })} />
         <span>Acepto que este negocio guarde mis datos para gestionar mi reserva. *</span>
+      </label>
+      <label className="flex items-start gap-2 text-sm text-[var(--site-color-foreground)]">
+        <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--site-color-primary)]" checked={values.marketing} onChange={(e) => setValues({ ...values, marketing: e.target.checked })} />
+        <span>{MARKETING_CONSENT_LABEL}</span>
       </label>
       {error ? <Notice>{error}</Notice> : null}
       <button type="submit" disabled={submitting} className={PRIMARY_BUTTON}>

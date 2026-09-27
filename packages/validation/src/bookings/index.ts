@@ -193,6 +193,8 @@ export const publicBookingRequestSchema = z.object({
   phone: phoneSchema.optional(),
   note: plainTextSchema(500).optional(),
   consent: z.literal(true, { message: "Necesitamos tu autorización para guardar la reserva." }),
+  /** Casilla aparte y opcional (F5.6): recibir novedades por correo. Sin ella, nunca hay campañas. */
+  marketingConsent: z.boolean().optional(),
   [BOOKING_HONEYPOT_FIELD]: z.string().max(200).optional(),
 });
 export type PublicBookingRequest = z.infer<typeof publicBookingRequestSchema>;

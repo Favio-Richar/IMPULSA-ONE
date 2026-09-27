@@ -13,6 +13,7 @@ const LIMIT_MESSAGES: Record<PlanLimitKey, string> = {
   members: "Llegaste al máximo de miembros de tu plan.",
   analyticsHistoryDays: "Tu plan no incluye ese período de historial.",
   storageMb: "Llegaste al máximo de almacenamiento de tu plan.",
+  emailsPerHour: "Llegaste al máximo de correos por hora de tu plan.",
 };
 
 /**

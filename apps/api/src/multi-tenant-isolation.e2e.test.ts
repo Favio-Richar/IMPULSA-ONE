@@ -1340,6 +1340,39 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Campañas (F5.6): ningún acceso cruzado entre organizaciones", () => {
+    it("A no ve, edita, prueba, envía ni detiene campañas de B, y su audiencia no cuenta contactos de B", async () => {
+      await prisma.contact.create({ data: { organizationId: orgB.id, email: `marketing-b${TEST_EMAIL_DOMAIN}`, marketingConsentAt: new Date() } });
+      const baseB = `/api/v1/organizations/${orgB.id}/campaigns`;
+      const campaignOfB = await orgB.ownerAgent.post(baseB).set(CSRF_HEADERS).send({ name: "Campaña de B", subject: "Hola", bodyHtml: "<p>B</p>" }).expect(201);
+      const campaignId = campaignOfB.body.id as string;
+
+      // Con la organización de B en la URL: 403.
+      await orgA.ownerAgent.get(baseB).expect(403);
+      await orgA.ownerAgent.post(`${baseB}/audience`).set(CSRF_HEADERS).send({}).expect(403);
+      await orgA.ownerAgent.post(`${baseB}/${campaignId}/send`).set(CSRF_HEADERS).expect(403);
+
+      // Organización propia de A con el id de B: 404.
+      const baseA = `/api/v1/organizations/${orgA.id}/campaigns`;
+      await orgA.ownerAgent.get(`${baseA}/${campaignId}`).expect(404);
+      await orgA.ownerAgent.patch(`${baseA}/${campaignId}`).set(CSRF_HEADERS).send({ subject: "Tomada" }).expect(404);
+      await orgA.ownerAgent.delete(`${baseA}/${campaignId}`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.post(`${baseA}/${campaignId}/test`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.post(`${baseA}/${campaignId}/send`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.post(`${baseA}/${campaignId}/cancel`).set(CSRF_HEADERS).expect(404);
+      const listOfA = await orgA.ownerAgent.get(baseA).expect(200);
+      expect(JSON.stringify(listOfA.body)).not.toContain(campaignId);
+      const options = await orgA.ownerAgent.get(`${baseA}/segment-options`).expect(200);
+      expect(JSON.stringify(options.body)).not.toContain("marketing-b");
+      const audienceOfA = await orgA.ownerAgent.post(`${baseA}/audience`).set(CSRF_HEADERS).send({}).expect(200);
+      const ownEligible = await prisma.contact.count({ where: { organizationId: orgA.id, email: { not: null }, marketingConsentAt: { not: null }, marketingUnsubscribedAt: null } });
+      expect(audienceOfA.body.eligible).toBe(ownEligible);
+
+      const stillB = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+      expect(stillB).toMatchObject({ status: "DRAFT", subject: "Hola" });
+    });
+  });
+
   describe("Administración (F4.4/F4.9): un usuario de organización nunca la alcanza", () => {
     it("ni el OWNER ni un ADMIN de una organización abren una ruta de administración", async () => {
       const paths = [

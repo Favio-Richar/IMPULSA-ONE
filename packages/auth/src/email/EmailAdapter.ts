@@ -8,6 +8,10 @@ export interface EmailMessage {
   to: string;
   subject: string;
   text: string;
+  /** Versión HTML opcional (campañas, F5.6). El texto va siempre. */
+  html?: string;
+  /** Cabeceras extra, p. ej. `List-Unsubscribe` en campañas (RFC 8058). */
+  headers?: Record<string, string>;
 }
 
 export interface EmailAdapter {

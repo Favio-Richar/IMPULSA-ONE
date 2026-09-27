@@ -4,7 +4,7 @@ import { Check, CreditCard, Minus, Package, Plus, ShoppingBag } from "lucide-rea
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { PublicCatalogResponse, PublicOrderConfirmationResponse } from "@impulza/contracts";
-import type { CatalogBlockConfig } from "@impulza/validation";
+import { MARKETING_CONSENT_LABEL, type CatalogBlockConfig } from "@impulza/validation";
 import { formatPrice } from "../lib/format-price.js";
 import { fetchJson, INPUT_CLASS, Notice, PRIMARY_BUTTON } from "../ui/flow.js";
 import { OUTBOUND_LINK } from "../ui/outbound.js";
@@ -138,7 +138,7 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
   const id = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [quantity, setQuantity] = useState(1);
-  const [values, setValues] = useState({ name: "", email: "", phone: "", address: "", note: "", consent: false, website: "" });
+  const [values, setValues] = useState({ name: "", email: "", phone: "", address: "", note: "", consent: false, marketing: false, website: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<PublicOrderConfirmationResponse | null>(null);
@@ -188,6 +188,8 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
         ...(needsAddress ? { address: values.address.trim() } : {}),
         ...(values.note.trim() ? { note: values.note.trim() } : {}),
         consent: true,
+        // Aparte y opcional (F5.6): solo con la casilla marcada llegan campañas.
+        ...(values.marketing ? { marketingConsent: true } : {}),
         website: values.website,
       }),
     });
@@ -259,6 +261,10 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
       <label className="flex items-start gap-2 text-sm text-[var(--site-color-foreground)]">
         <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--site-color-primary)]" checked={values.consent} onChange={(e) => setValues({ ...values, consent: e.target.checked })} />
         <span>Acepto que este negocio guarde mis datos para gestionar mi pedido. *</span>
+      </label>
+      <label className="flex items-start gap-2 text-sm text-[var(--site-color-foreground)]">
+        <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--site-color-primary)]" checked={values.marketing} onChange={(e) => setValues({ ...values, marketing: e.target.checked })} />
+        <span>{MARKETING_CONSENT_LABEL}</span>
       </label>
       {error ? <Notice>{error}</Notice> : null}
       <button type="submit" disabled={submitting} className={PRIMARY_BUTTON}>

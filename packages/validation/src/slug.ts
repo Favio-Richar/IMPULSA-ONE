@@ -47,6 +47,9 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "catalogo",
   "pedido",
   "pedidos",
+  // Baja de campañas (F5.6): `/baja/:token` es una ruta fija de apps/web.
+  "baja",
+  "campanas",
   // Superficies propias de la plataforma.
   "admin",
   "app",

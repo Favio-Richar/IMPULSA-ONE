@@ -81,6 +81,8 @@ export const publicOrderRequestSchema = z.object({
   address: plainTextSchema(300).optional(),
   note: plainTextSchema(500).optional(),
   consent: z.literal(true, { message: "Necesitamos tu autorización para guardar el pedido." }),
+  /** Casilla aparte y opcional (F5.6): recibir novedades por correo. Sin ella, nunca hay campañas. */
+  marketingConsent: z.boolean().optional(),
   [ORDER_HONEYPOT_FIELD]: z.string().max(200).optional(),
 });
 export type PublicOrderRequest = z.infer<typeof publicOrderRequestSchema>;

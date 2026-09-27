@@ -21,6 +21,7 @@ const LIMIT_FIELDS: Array<{ key: keyof PlanLimitsResponse; label: string; unit?:
   { key: "members", label: "Miembros" },
   { key: "analyticsHistoryDays", label: "Historial de analítica", unit: "días" },
   { key: "storageMb", label: "Almacenamiento", unit: "MB", note: "Aún no se aplica: no hay subida de archivos." },
+  { key: "emailsPerHour", label: "Correos de campañas por hora" },
 ];
 
 export default function PlansPage(): React.JSX.Element {

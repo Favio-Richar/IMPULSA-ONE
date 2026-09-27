@@ -141,6 +141,9 @@ export class PublicCatalogService {
       phone: input.phone,
       consentSource: `order:${site.id}`,
     });
+    if (input.marketingConsent === true) {
+      await this.contactsService.recordMarketingConsent(contactResult.contact.id, `order:${site.id}`);
+    }
     const [linked] = await this.prisma.$transaction([
       this.prisma.order.update({ where: { id: order.id }, data: { contactId: contactResult.contact.id } }),
       this.prisma.contactEvent.create({

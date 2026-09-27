@@ -172,6 +172,9 @@ export class PublicBookingsService {
       phone: input.phone,
       consentSource: `booking:${site.id}`,
     });
+    if (input.marketingConsent === true) {
+      await this.contactsService.recordMarketingConsent(contactResult.contact.id, `booking:${site.id}`);
+    }
     await this.prisma.$transaction([
       this.prisma.booking.update({ where: { id: bookingId }, data: { contactId: contactResult.contact.id } }),
       this.prisma.contactEvent.create({

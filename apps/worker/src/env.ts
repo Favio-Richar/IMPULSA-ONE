@@ -22,7 +22,8 @@ export const env = loadEnv({
   SENTRY_RELEASE: z.string().optional(),
   // Recordatorios de reserva (F5.4): origen de apps/web para el enlace "gestiona tu reserva".
   PUBLIC_SITE_BASE_URL: urlSchema.optional(),
-  // Secreto de la firma del enlace "gestiona tu reserva" (F5.4). El mismo en la API y el worker.
+  // Secreto de los enlaces firmados de correos: "gestiona tu reserva" (F5.4) y la baja de campañas
+  // (F5.6, con otro propósito en la firma). El mismo en la API y el worker.
   // Opcional: sin él, los correos no traen enlace y la página de gestión no existe.
   BOOKING_LINK_SECRET: z.string().min(32).optional(),
 });

@@ -16,9 +16,11 @@ const ROTATIONS = ["-rotate-3", "rotate-2", "-rotate-1", "rotate-3", "rotate-1",
  * previas reales del catálogo de plantillas (nunca fotos de personas inventadas), sobre el color
  * de marca oficial de Impulza One (verde azulado #0f6f6b, decidido por el propietario del
  * producto — ver README "Identidad de marca"). Mismo patrón visual que el hero del sitio
- * comercial (apps/web), adaptado a este panel oscuro.
+ * comercial (apps/web), adaptado a este panel oscuro. El logo enlaza de vuelta a ese sitio
+ * (webBaseUrl = NEXT_PUBLIC_WEB_BASE_URL), igual que Linktree/Beacons dejan volver a su landing
+ * desde el login.
  */
-export function AuthMosaic({ templates }: { templates: TemplateResponse[] }) {
+export function AuthMosaic({ templates, webBaseUrl }: { templates: TemplateResponse[]; webBaseUrl: string }) {
   const hasTemplates = templates.length > 0;
   const tiles = hasTemplates ? Array.from({ length: 9 }, (_, index) => templates[index % templates.length]!) : [];
 
@@ -37,10 +39,13 @@ export function AuthMosaic({ templates }: { templates: TemplateResponse[] }) {
         className="pointer-events-none absolute -bottom-24 -right-10 h-80 w-80 rounded-full bg-black/20 blur-3xl"
       />
 
-      <div className="relative flex items-center gap-2 text-white">
+      <a
+        href={webBaseUrl}
+        className="relative flex w-fit items-center gap-2 text-white transition-opacity hover:opacity-80"
+      >
         <span className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-white/15 text-xs font-bold">IO</span>
         <span className="text-base font-semibold">Impulza One</span>
-      </div>
+      </a>
 
       {hasTemplates ? (
         <div className="relative mx-auto grid max-w-md grid-cols-3 gap-4 [mask-image:radial-gradient(ellipse_75%_75%_at_50%_50%,#000_55%,transparent_100%)]">

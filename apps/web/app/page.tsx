@@ -7,6 +7,7 @@ import { MarketingFooter } from "../components/marketing/footer";
 import { Reveal } from "../components/marketing/reveal";
 import { TemplateAvatar } from "../components/marketing/template-avatar";
 import { MarketingHeroBackground, MarketingCtaBackground } from "../components/marketing/hero-background";
+import { HeroScene } from "../components/marketing/hero-scene";
 import { TemplateMosaic } from "../components/marketing/template-mosaic";
 import { TemplateCarousel } from "../components/marketing/template-carousel";
 import { FEATURES, FeatureIcon, STEPS, PlanCard } from "../components/marketing/shared";
@@ -59,6 +60,8 @@ export default async function MarketingHomePage() {
                 <TemplateMosaic templates={templates} />
               </div>
             ) : null}
+            {/* Entre el mosaico y el teléfono: la constelación sale del teléfono (tu enlace) y une las plantillas. */}
+            <HeroScene className="-inset-10 md:-inset-16" />
             <div className="animate-marketing-float relative z-10 w-64 rounded-[2rem] border-8 border-[#0f172a] bg-[#0f172a] p-2 shadow-2xl [animation-delay:-1.5s]">
               <div className="flex flex-col items-center gap-3 rounded-[1.4rem] bg-[#111827] px-4 py-8 text-center">
                 <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#0f6f6b] text-lg font-semibold text-white">

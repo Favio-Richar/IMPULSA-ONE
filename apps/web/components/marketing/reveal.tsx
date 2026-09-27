@@ -10,7 +10,9 @@ function prefersReducedMotion(): boolean {
 /**
  * Envuelve contenido y lo revela (opacidad + leve desplazamiento) cuando entra en pantalla, con
  * `IntersectionObserver` — sin dependencias nuevas (esta app no trae una librería de animación).
- * Respeta `prefers-reduced-motion`: si el visitante lo pidió, aparece directo, sin transición.
+ * Respeta `prefers-reduced-motion` con las variantes `motion-reduce:` de CSS: aparece directo, sin
+ * transición. No se decide con estado, porque el servidor no conoce esa preferencia y el HTML no
+ * coincidiría al hidratar.
  */
 export function Reveal({
   children,
@@ -22,7 +24,7 @@ export function Reveal({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(() => prefersReducedMotion());
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (prefersReducedMotion()) {
@@ -50,7 +52,7 @@ export function Reveal({
   return (
     <div
       ref={ref}
-      className={`transition-all duration-700 ease-out ${visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"} ${className}`}
+      className={`transition-all duration-700 ease-out motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none ${visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"} ${className}`}
       style={{ transitionDelay: visible ? `${delayMs}ms` : "0ms" }}
     >
       {children}

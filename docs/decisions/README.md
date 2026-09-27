@@ -42,3 +42,4 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 | [ADR-006](./ADR-006-almacenamiento-medios.md) | Almacenamiento y entrega de medios (Cloudflare R2) | Aceptado |
 | [ADR-007](./ADR-007-procesamiento-video.md) | Procesamiento de video propio con ffmpeg | Aceptado |
 | [ADR-008](./ADR-008-direccion-visual-link-in-bio.md) | Adoptar el patrón visual de las apps de enlace en bio para la página pública | Aceptado |
+| [ADR-009](./ADR-009-three-js-sitio-comercial.md) | Usar three.js para gráficos 3D, solo en el sitio comercial | Aceptado |

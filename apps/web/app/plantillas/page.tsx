@@ -2,7 +2,7 @@ import { MarketingHeader } from "../../components/marketing/header";
 import { MarketingHeroBackground, MarketingCtaBackground } from "../../components/marketing/hero-background";
 import { MarketingFooter } from "../../components/marketing/footer";
 import { Reveal } from "../../components/marketing/reveal";
-import { TemplateMockup } from "../../components/marketing/shared";
+import { TemplateCardLink } from "../../components/marketing/shared";
 import { getDashboardLinks } from "../../lib/dashboard-links";
 import { getTemplateCatalog } from "../../lib/api";
 
@@ -42,9 +42,7 @@ export default async function PlantillasPage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {templates.map((template, index) => (
               <Reveal key={template.code} delayMs={index * 60}>
-                <a href={bienvenidaHref} className="block">
-                  <TemplateMockup template={template} />
-                </a>
+                <TemplateCardLink template={template} href={bienvenidaHref} />
               </Reveal>
             ))}
           </div>

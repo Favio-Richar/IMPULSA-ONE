@@ -34,7 +34,8 @@ async function revalidate(): Promise<void> {
   expect(revalidated.status()).toBe(200);
 }
 
-test.beforeAll(async ({}, testInfo) => {
+test.beforeAll(async () => {
+  const testInfo = test.info();
   api = await apiRequest.newContext({ storageState: "./.playwright/session.json" });
   const suffix = `${testInfo.project.name} ${Date.now().toString(36)}`;
   productName = `Vela e2e ${suffix}`;

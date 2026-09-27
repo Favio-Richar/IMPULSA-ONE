@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import type { TemplateResponse } from "@impulza/contracts";
-import { TemplateMockup } from "./shared";
+import { TemplateCardLink } from "./shared";
 
 // Carrusel horizontal de plantillas reales del catálogo (scroll-snap nativo + botones), para el
 // showcase de la home. Nunca usa contenido inventado: cada tarjeta es una plantilla real que ya
@@ -31,14 +31,12 @@ export function TemplateCarousel({
         className="[scrollbar-width:none] flex snap-x snap-mandatory gap-6 overflow-x-auto scroll-smooth pb-2 [&::-webkit-scrollbar]:hidden"
       >
         {templates.map((template) => (
-          <a
+          <TemplateCardLink
             key={template.code}
+            template={template}
             href={bienvenidaHref}
-            data-carousel-card
-            className="block w-[260px] shrink-0 snap-start sm:w-[280px]"
-          >
-            <TemplateMockup template={template} />
-          </a>
+            className="w-[260px] shrink-0 snap-start sm:w-[280px]"
+          />
         ))}
       </div>
 

@@ -29,7 +29,8 @@ async function expectNoHorizontalScroll(page: Page): Promise<void> {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
-test.beforeAll(async ({}, testInfo) => {
+test.beforeAll(async () => {
+  const testInfo = test.info();
   api = await apiRequest.newContext({ storageState: "./.playwright/session.json" });
   const product = await api.post(`${site}/catalog/products`, { headers: CSRF, data: { name: `Guía campañas ${testInfo.project.name}`, kind: "DIGITAL", priceAmount: 1000, priceCurrency: "CLP" } });
   expect(product.status()).toBe(201);

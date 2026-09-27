@@ -7,6 +7,7 @@ captación, reservas, ventas y analítica) desde una sola URL.
 (backlog en `docs/BACKLOG_FASE_5.md`): reservas con disponibilidad y sin doble reserva, agenda,
 correos con enlace firmado para cancelar o reprogramar, catálogo y pedidos con pago externo,
 campañas de email con consentimiento y baja, y la revisión de aislamiento y seguridad de la fase.
+La portada comercial suma una escena 3D con three.js (ADR-009).
 Lo que falta depende de decisiones del propietario (#6 cobros, #4 límites por plan, hosting de F4.8,
 proveedor de correo). Fase 4: F4.1–F4.5, F4.7 y F4.9 hechas; F4.6 y F4.8 bloqueadas. Página pública
 premium (`docs/BACKLOG_PAGINA_PREMIUM.md`) terminada en local salvo el contenido de la biblioteca de
@@ -1124,6 +1125,30 @@ Detalle, criterios y bitácora en `docs/BACKLOG_FASE_5.md`. Nada se cobra dentro
   `apps/api/src/multi-tenant-isolation.e2e.test.ts`; los enlaces firmados (gestión de reserva y
   baja) no cruzan organizaciones ni sirven uno por el otro; las respuestas públicas traen solo lo
   del contrato, sin ids internos; y toda escritura pública tiene límite de tasa por IP (probado).
+
+## Sitio comercial: escena 3D del hero (ADR-009)
+
+La portada de Impulza (`apps/web/app/page.tsx`) tiene una "constelación de enlaces" en 3D con
+three.js, entre el mosaico de plantillas y el teléfono de ejemplo: tu enlace al centro, lo que
+Impulza conecta alrededor y pulsos que viajan como visitas. Reglas (ADR-009, solo sitio comercial):
+
+- `three` se carga con `import("three")` cuando el navegador está ocioso, en un archivo aparte (ESLint
+  prohíbe el import estático en `apps/web`). Sin WebGL 2, con ahorro de datos o ante un fallo queda
+  el fondo CSS de siempre.
+- Movimiento reducido: un cuadro fijo. Botón para pausar/reanudar (WCAG 2.2.2). Se detiene fuera de
+  pantalla y con la pestaña oculta; versión liviana en teléfonos y equipos modestos.
+- Geometría, conexiones y calidad por dispositivo en `apps/web/lib/constellation.ts` (funciones puras,
+  19 pruebas unitarias); el componente `components/marketing/hero-scene.tsx` solo dibuja.
+- Playwright `sitio-comercial.spec.ts` (móvil y escritorio): three.js fuera del paquete inicial, la
+  escena no tapa texto ni botones, cuadro fijo con movimiento reducido, pausa por teclado, y las
+  tarjetas de plantilla sin enlaces anidados ni errores de hidratación.
+- Corregido de paso (bugs previos de la portada y `/plantillas`): las tarjetas de plantilla anidaban
+  un enlace dentro de otro (HTML inválido, error de hidratación), y `Reveal` hidrataba distinto con
+  movimiento reducido.
+- **Deuda detectada (2026-09-27):** `apps/web` no envía cabeceras de seguridad (ni
+  `Content-Security-Policy`, ni `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` o
+  HSTS; verificado con `curl -I`). `CLAUDE.md` las pide desde el primer commit: queda como historia
+  pendiente, a hacer antes de F4.8 (producción).
 
 ## Planes, límites y uso (F4.1–F4.3)
 

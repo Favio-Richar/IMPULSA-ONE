@@ -74,12 +74,30 @@ export function formatPrice(amount: number, currency: string): string {
 
 export function TemplateMockup({ template }: { template: TemplateResponse }) {
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md">
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-sm transition-transform duration-300 group-hover:-translate-y-1 group-hover:shadow-md group-focus-within:-translate-y-1">
       <TemplateThumbnail template={template} />
       <div className="flex flex-1 flex-col gap-1 border-t border-[#e2e8f0] px-5 py-4">
         <span className="text-sm font-semibold text-[#0f172a]">{template.name}</span>
         <span className="text-xs text-[#64748b]">{template.description}</span>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Tarjeta de plantilla que lleva al asistente. El enlace va superpuesto y no envolviendo la
+ * miniatura: la miniatura pinta los bloques reales de la plantilla, que traen sus propios `<a>`, y
+ * un enlace dentro de otro es HTML inválido (el navegador lo parte y React falla al hidratar).
+ */
+export function TemplateCardLink({ template, href, className = "" }: { template: TemplateResponse; href: string; className?: string }) {
+  return (
+    <div className={`group relative ${className}`} data-carousel-card>
+      <TemplateMockup template={template} />
+      <a
+        href={href}
+        aria-label={`Usar la plantilla ${template.name}`}
+        className="absolute inset-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2"
+      />
     </div>
   );
 }

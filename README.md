@@ -3,13 +3,14 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 4 — SaaS comercial — en progreso (backlog en `docs/BACKLOG_FASE_4.md`;
-F4.1–F4.5 terminadas; F4.6 y F4.8 bloqueadas por decisiones del propietario). Fases 0–3 cerradas.
-Por delante de F4.9 va la página pública premium (`docs/BACKLOG_PAGINA_PREMIUM.md`): PP1 y PP2
-(medios propios y selector de imágenes), PP4 (temas Ejecutivo y Vibrante, encabezado de perfil) y
-PP5 (acción principal fija en el teléfono y entrada de los bloques), PP6 (video de fondo propio) y
-PP7 (rendimiento, navegadores de Instagram/TikTok y revisión visual) terminadas en local; PP3 (fondo premium) construida y probada, en espera de que se apruebe el
-contenido de la biblioteca de videos.** Fase 2
+**Estado actual: Fase 5 — Negocio digital — F5.1–F5.7 listas para revisión del propietario
+(backlog en `docs/BACKLOG_FASE_5.md`): reservas con disponibilidad y sin doble reserva, agenda,
+correos con enlace firmado para cancelar o reprogramar, catálogo y pedidos con pago externo,
+campañas de email con consentimiento y baja, y la revisión de aislamiento y seguridad de la fase.
+Lo que falta depende de decisiones del propietario (#6 cobros, #4 límites por plan, hosting de F4.8,
+proveedor de correo). Fase 4: F4.1–F4.5, F4.7 y F4.9 hechas; F4.6 y F4.8 bloqueadas. Página pública
+premium (`docs/BACKLOG_PAGINA_PREMIUM.md`) terminada en local salvo el contenido de la biblioteca de
+videos de PP3.** Fase 2
 (sitio público y constructor) y Fase 1 y 0 están cerradas. El modelo de datos de conversión
 (formularios, contactos/mini-CRM, QR/enlaces cortos y analítica) existe en `packages/database`, con
 consentimiento auditado y minimización pensados desde el diseño (`docs/decisions/ADR-004-privacidad-
@@ -17,8 +18,8 @@ retencion-datos.md`, Ley 21.719). Un sitio puede publicar un formulario de conta
 desde el panel, el visitante lo llena en el sitio público, y el envío queda en el mini-CRM de
 contactos (`/contactos`) con consentimiento auditado, línea de tiempo, etiquetas y estado
 comercial editables. Desde `/enlaces` se crean enlaces cortos (`/s/:slug`) y códigos QR
-descargables que cuentan cada clic y escaneo. Ver `docs/BACKLOG_FASE_3.md` para el backlog de la fase activa,
-`docs/BACKLOG_FASE_2.md`/`docs/BACKLOG_FASE_0_1.md` para las anteriores y `CLAUDE.md` para las
+descargables que cuentan cada clic y escaneo. Ver `docs/BACKLOG_FASE_5.md` para el backlog de la fase activa,
+`docs/BACKLOG_FASE_4.md`…`docs/BACKLOG_FASE_0_1.md` para las anteriores y `CLAUDE.md` para las
 reglas de trabajo del repositorio.
 
 | Fase | Historias | Estado |
@@ -28,6 +29,7 @@ reglas de trabajo del repositorio.
 | 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
 | 3 — Conversión | F3.1–F3.8 | Terminada |
 | 4 — SaaS comercial | F4.1–F4.9 | En progreso |
+| 5 — Negocio digital | F5.1–F5.7 | Lista para revisión (cobros bloqueados por decisión #6) |
 
 ## Requisitos
 
@@ -1104,6 +1106,24 @@ Verificado: 5 tests nuevos (`public-analytics.e2e.test.ts`) — 211/211 en `@imp
 navegador quedó pendiente por un límite de uso de la herramienta de navegador en la sesión — el
 mecanismo está probado end-to-end a nivel de API y de build del cliente, no con un clic observado
 a mano todavía.
+
+## Negocio digital (Fase 5)
+
+Detalle, criterios y bitácora en `docs/BACKLOG_FASE_5.md`. Nada se cobra dentro de Impulza
+(decisión #6): servicios y productos pueden llevar un enlace de pago externo del propio negocio.
+
+- **Reservas (F5.1–F5.4):** servicios, horario semanal, bloqueos y cálculo de horarios libres en el
+  servidor según la zona horaria del sitio; reserva pública sin doble reserva (restricción de
+  exclusión en la base); agenda en el panel; correo con `.ics` y enlace firmado para cancelar o
+  reprogramar; recordatorio idempotente desde `apps/worker`.
+- **Catálogo y pedidos (F5.5):** productos físicos, digitales y servicios con categorías y stock
+  opcional; el pedido es una solicitud que el negocio gestiona a mano.
+- **Campañas (F5.6):** solo a contactos con consentimiento de marketing (aparte del de gestión),
+  envío por cola con límite por hora del plan y baja firmada que se respeta de inmediato.
+- **Aislamiento y seguridad (F5.7):** cada endpoint de la fase tiene su caso en
+  `apps/api/src/multi-tenant-isolation.e2e.test.ts`; los enlaces firmados (gestión de reserva y
+  baja) no cruzan organizaciones ni sirven uno por el otro; las respuestas públicas traen solo lo
+  del contrato, sin ids internos; y toda escritura pública tiene límite de tasa por IP (probado).
 
 ## Planes, límites y uso (F4.1–F4.3)
 

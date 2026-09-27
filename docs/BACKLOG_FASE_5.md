@@ -29,7 +29,7 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
 | F5.4 — Confirmaciones, cancelación/reprogramación y recordatorios | Lista para tu revisión (capturas en `docs/design/capturas/f54/`) |
 | F5.5 — Catálogo y pedidos (productos físicos, digitales y servicios) con pago externo | Lista para tu revisión (capturas en `docs/design/capturas/f55/`) |
 | F5.6 — Campañas de email con consentimiento y bajas | Lista para tu revisión (capturas en `docs/design/capturas/f56/`) |
-| F5.7 — Aislamiento y seguridad de Fase 5 | Pendiente |
+| F5.7 — Aislamiento y seguridad de Fase 5 | Lista para tu revisión (sin UI: pruebas en la suite central) |
 | — Seña cobrada, checkout, reembolsos, descargas pagadas, afiliados | Bloqueado (decisión #6) |
 | — Profesionales y sucursales múltiples, integración de calendario externo/videollamada | Después de F5.4 (se diseña con uso real) |
 
@@ -193,6 +193,28 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
     417, worker 11, validación 489, auth 18, web 31. OpenAPI regenerado (123 rutas). Playwright
     `campanas.spec.ts` 4/4 (móvil y escritorio, baja con enlace firmado y enlace falso 404).
   - Siguiente: F5.7 (revisión de aislamiento y seguridad de toda la Fase 5).
+- **2026-09-27 — F5.7 terminada**, en "Lista para tu revisión". Con ella la Fase 5 queda
+  completa salvo lo bloqueado por la decisión #6 (cobros) y lo diferido a uso real.
+  - Revisión de toda la superficie de la fase: cada endpoint con sesión ya tenía su caso en
+    `multi-tenant-isolation.e2e.test.ts` (F5.1, F5.2, F5.3, F5.5, F5.6); los públicos tenían
+    límite de tasa y antispam (campo trampa) pero **faltaba probarlo**, y los enlaces firmados de
+    F5.4 (gestión de reserva) y F5.6 (baja) no tenían caso central.
+  - Suite central, bloque nuevo "Superficie pública de Fase 5" (4 pruebas): el enlace de gestión de
+    B solo alcanza su reserva (la firma de B pegada al id de A da 404 al ver, cancelar y
+    reprogramar; una firma de baja no sirve para gestionar); la baja de una campaña de B **no da de
+    baja al mismo correo en A** (verificada contra el código roto: dar de baja por correo en vez de
+    por contacto hace fallar la prueba); las confirmaciones públicas de reserva y pedido y las
+    respuestas de gestión y baja traen exactamente las claves del contrato y ningún id interno; y
+    las 5 escrituras públicas de la fase devuelven 429 al pasar su límite por IP.
+  - `packages/auth`: prueba unitaria del enlace de baja ampliada (id cambiado, firma alterada,
+    basura, y ninguna firma sirve por la otra en **las dos** direcciones: baja↔reserva).
+  - Sin cambios de rutas ni de modelo: OpenAPI y migraciones sin cambios.
+  - Pruebas: suite central 58/58; auth 19/19 (antes 18); typecheck y lint de api y auth limpios. Suite completa
+    de la API: 393 pasan y 7 fallan en la corrida completa (medios, analítica, organizaciones y
+    temas, archivos no tocados); aislados, esos 4 archivos pasan 61/61: carga de la máquina, no
+    regresión.
+  - Siguiente: tu revisión de F5.1–F5.7. Lo que sigue depende de decisiones tuyas (#6 cobros,
+    #4 límites por plan, hosting de F4.8, proveedor de correo).
 
 ---
 

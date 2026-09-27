@@ -1,13 +1,20 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type { PrismaClient } from "@impulza/database";
-import type { EmailAdapter, EmailMessage } from "@impulza/auth";
+import { signBookingLinkToken, signUnsubscribeToken, type EmailAdapter, type EmailMessage } from "@impulza/auth";
+import {
+  publicBookingConfirmationResponse,
+  publicManagedBookingResponse,
+  publicOrderConfirmationResponse,
+  publicUnsubscribeResponse,
+} from "@impulza/contracts";
 import cookieParser from "cookie-parser";
 import type { Redis } from "ioredis";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "./app.module.js";
 import { PRISMA } from "./database/prisma.module.js";
+import { env } from "./env.js";
 import { EMAIL_ADAPTER } from "./modules/auth/email-adapter.token.js";
 import { REDIS } from "./redis/redis.module.js";
 import { BROWSER_USER_AGENT, startAnalyticsTestWorker } from "./test-support/analytics-pipeline.js";
@@ -1370,6 +1377,152 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
 
       const stillB = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
       expect(stillB).toMatchObject({ status: "DRAFT", subject: "Hola" });
+    });
+  });
+
+  describe("Superficie pública de Fase 5 (F5.7): enlaces firmados, respuestas y límites", () => {
+    const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+    const everyDay = [{ start: "09:00", end: "18:00" }];
+    const openSettings = {
+      enabled: true,
+      timeZone: "America/Santiago",
+      weeklyHours: { mon: everyDay, tue: everyDay, wed: everyDay, thu: everyDay, fri: everyDay, sat: everyDay, sun: everyDay },
+      minNoticeMinutes: 0,
+      maxAdvanceDays: 365,
+      bufferMinutes: 0,
+      slotIntervalMinutes: 30,
+    };
+
+    /** Una hora libre dentro del horario de ambos sitios: 15:00 UTC (11:00 o 12:00 en Santiago), `daysAhead` días adelante. */
+    function slotInDays(daysAhead: number): string {
+      const day = new Date(Date.now() + daysAhead * 86_400_000);
+      day.setUTCHours(15, 0, 0, 0);
+      return day.toISOString();
+    }
+
+    /** Una reserva pública real en el sitio de la organización: devuelve la respuesta y la fila creada. */
+    async function publicBookingIn(org: { id: string; siteId: string; ownerAgent: ReturnType<typeof request.agent> }, startsAt: string, email: string) {
+      const base = `/api/v1/organizations/${org.id}/sites/${org.siteId}/booking`;
+      await org.ownerAgent.put(`${base}/settings`).set(CSRF_HEADERS).send(openSettings).expect(200);
+      const service = await org.ownerAgent.post(`${base}/services`).set(CSRF_HEADERS).send({ name: `Servicio F5.7 ${email}`, durationMinutes: 30 }).expect(201);
+      const site = await prisma.site.findUniqueOrThrow({ where: { id: org.siteId } });
+      const response = await request(httpServer)
+        .post(`/api/v1/public/sites/${site.slug}/booking`)
+        .set(CSRF_HEADERS)
+        .send({ serviceId: service.body.id, startsAt, name: "Cliente F5.7", email, consent: true })
+        .expect(201);
+      const booking = await prisma.booking.findFirstOrThrow({ where: { serviceId: service.body.id } });
+      return { response, booking };
+    }
+
+    it("el enlace de gestión de una reserva de B solo alcanza esa reserva; uno alterado o de otro propósito da 404", async () => {
+      const secret = env.BOOKING_LINK_SECRET;
+      expect(secret, "BOOKING_LINK_SECRET debe estar configurado para probar los enlaces firmados").toBeDefined();
+      const ofA = await publicBookingIn(orgA, slotInDays(20), `gestion-a${TEST_EMAIL_DOMAIN}`);
+      const ofB = await publicBookingIn(orgB, slotInDays(21), `gestion-b${TEST_EMAIL_DOMAIN}`);
+
+      // La confirmación pública trae exactamente lo del contrato y ningún id.
+      for (const { response } of [ofA, ofB]) {
+        expect(Object.keys(response.body).sort()).toEqual(Object.keys(publicBookingConfirmationResponse.shape).sort());
+        expect(JSON.stringify(response.body)).not.toMatch(UUID_PATTERN);
+      }
+
+      const tokenB = signBookingLinkToken(ofB.booking.id, secret!);
+      const view = publicManagedBookingResponse.strict().parse((await request(httpServer).get(`/api/v1/public/bookings/${tokenB}`).expect(200)).body);
+      const viewText = JSON.stringify(view);
+      expect(ofB.booking.contactId).not.toBeNull();
+      for (const internal of [ofB.booking.id, orgB.id, orgB.siteId, ofB.booking.contactId!, orgA.id, orgA.siteId, ofA.booking.id]) {
+        expect(viewText).not.toContain(internal);
+      }
+
+      // La firma de B pegada al id de la reserva de A: 404 al ver, cancelar y reprogramar.
+      const forged = `${ofA.booking.id}.${tokenB.slice(tokenB.indexOf(".") + 1)}`;
+      await request(httpServer).get(`/api/v1/public/bookings/${forged}`).expect(404);
+      await request(httpServer).post(`/api/v1/public/bookings/${forged}/cancel`).set(CSRF_HEADERS).expect(404);
+      await request(httpServer).post(`/api/v1/public/bookings/${forged}/reschedule`).set(CSRF_HEADERS).send({ startsAt: slotInDays(22) }).expect(404);
+
+      // Una firma válida de baja (otro propósito, mismo secreto) no sirve para gestionar una reserva.
+      const wrongPurpose = signUnsubscribeToken(ofA.booking.id, secret!);
+      await request(httpServer).get(`/api/v1/public/bookings/${wrongPurpose}`).expect(404);
+      await request(httpServer).post(`/api/v1/public/bookings/${wrongPurpose}/cancel`).set(CSRF_HEADERS).expect(404);
+
+      // Con su propio enlace, B cancela la suya y la de A no se entera.
+      await request(httpServer).post(`/api/v1/public/bookings/${tokenB}/cancel`).set(CSRF_HEADERS).expect(200);
+      expect((await prisma.booking.findUniqueOrThrow({ where: { id: ofB.booking.id } })).status).toBe("CANCELLED");
+      const stillA = await prisma.booking.findUniqueOrThrow({ where: { id: ofA.booking.id } });
+      expect(stillA.status).toBe("CONFIRMED");
+      expect(stillA.startsAt.toISOString()).toBe(ofA.booking.startsAt.toISOString());
+    });
+
+    it("la baja de una campaña de B no da de baja al mismo correo en A, y un enlace de reserva no sirve como baja", async () => {
+      const secret = env.BOOKING_LINK_SECRET!;
+      const sharedEmail = `mismo-correo${TEST_EMAIL_DOMAIN}`;
+      const contactA = await prisma.contact.create({ data: { organizationId: orgA.id, email: sharedEmail, marketingConsentAt: new Date() } });
+      const contactB = await prisma.contact.create({ data: { organizationId: orgB.id, email: sharedEmail, marketingConsentAt: new Date() } });
+      const campaignOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/campaigns`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Campaña con baja", subject: "Novedades", bodyHtml: "<p>Hola</p>" })
+        .expect(201);
+      const recipientB = await prisma.campaignRecipient.create({
+        data: { campaignId: campaignOfB.body.id, organizationId: orgB.id, contactId: contactB.id, email: sharedEmail },
+      });
+
+      // Un enlace de gestión de reserva firmado sobre el id del destinatario no da de baja.
+      const wrongPurpose = signBookingLinkToken(recipientB.id, secret);
+      await request(httpServer).get(`/api/v1/public/unsubscribe/${wrongPurpose}`).expect(404);
+      await request(httpServer).post(`/api/v1/public/unsubscribe/${wrongPurpose}`).set(CSRF_HEADERS).expect(404);
+      expect((await prisma.contact.findUniqueOrThrow({ where: { id: contactB.id } })).marketingUnsubscribedAt).toBeNull();
+
+      const token = signUnsubscribeToken(recipientB.id, secret);
+      const done = publicUnsubscribeResponse.strict().parse((await request(httpServer).post(`/api/v1/public/unsubscribe/${token}`).set(CSRF_HEADERS).expect(200)).body);
+      expect(done).toMatchObject({ organizationName: "Org B", unsubscribed: true });
+      expect(JSON.stringify(done)).not.toMatch(UUID_PATTERN);
+      expect(JSON.stringify(done)).not.toContain(sharedEmail);
+
+      expect((await prisma.contact.findUniqueOrThrow({ where: { id: contactB.id } })).marketingUnsubscribedAt).not.toBeNull();
+      expect((await prisma.contact.findUniqueOrThrow({ where: { id: contactA.id } })).marketingUnsubscribedAt).toBeNull();
+      const audienceOfA = await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/campaigns/audience`).set(CSRF_HEADERS).send({}).expect(200);
+      const eligibleInA = await prisma.contact.count({ where: { organizationId: orgA.id, email: { not: null }, marketingConsentAt: { not: null }, marketingUnsubscribedAt: null } });
+      expect(audienceOfA.body.eligible).toBe(eligibleInA);
+      expect(eligibleInA).toBeGreaterThan(0);
+    });
+
+    it("la confirmación pública de un pedido trae solo lo del contrato, sin ids", async () => {
+      const catalogA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/catalog`;
+      const product = await orgA.ownerAgent
+        .post(`${catalogA}/products`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Producto F5.7", kind: "DIGITAL", priceAmount: 1500, priceCurrency: "CLP" })
+        .expect(201);
+      const siteA = await prisma.site.findUniqueOrThrow({ where: { id: orgA.siteId } });
+      const confirmation = await request(httpServer)
+        .post(`/api/v1/public/sites/${siteA.slug}/catalog/orders`)
+        .set(CSRF_HEADERS)
+        .send({ productId: product.body.id, quantity: 2, name: "Cliente F5.7", email: `pedido-f57${TEST_EMAIL_DOMAIN}`, consent: true })
+        .expect(201);
+      expect(Object.keys(confirmation.body).sort()).toEqual(Object.keys(publicOrderConfirmationResponse.shape).sort());
+      expect(JSON.stringify(confirmation.body)).not.toMatch(UUID_PATTERN);
+      expect(confirmation.body).toMatchObject({ quantity: 2, totalAmount: 3000, priceCurrency: "CLP" });
+    });
+
+    it("cada escritura pública de Fase 5 tiene límite de tasa por IP", async () => {
+      const siteA = await prisma.site.findUniqueOrThrow({ where: { id: orgA.siteId } });
+      // El limitador corre antes de validar: cuerpos vacíos (400) y enlaces falsos (404) también gastan cupo.
+      const writes: Array<{ path: string; limit: number }> = [
+        { path: `/api/v1/public/sites/${siteA.slug}/booking`, limit: 10 },
+        { path: `/api/v1/public/sites/${siteA.slug}/catalog/orders`, limit: 10 },
+        { path: "/api/v1/public/bookings/no-es-un-token/cancel", limit: 10 },
+        { path: "/api/v1/public/bookings/no-es-un-token/reschedule", limit: 10 },
+        { path: "/api/v1/public/unsubscribe/no-es-un-token", limit: 30 },
+      ];
+      for (const { path, limit } of writes) {
+        for (let attempt = 0; attempt < limit; attempt += 1) {
+          const response = await request(httpServer).post(path).set(CSRF_HEADERS).send({});
+          expect(response.status, `${path} intento ${attempt + 1}`).not.toBe(429);
+        }
+        await request(httpServer).post(path).set(CSRF_HEADERS).send({}).expect(429);
+      }
     });
   });
 

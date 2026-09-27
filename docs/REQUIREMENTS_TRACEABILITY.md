@@ -23,7 +23,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Roles técnicos: OWNER, ADMIN, EDITOR, ANALYST, SUPPORT, AGENCY_MANAGER, SUPER_ADMIN | ST §7 | Fase 1 |
 | Todo dato comercial pertenece a una `organization_id`; nunca confiar en valor enviado por el cliente | ST §3.2 | Fase 1 (no negociable, aplica a todo el proyecto) |
 | Un usuario puede pertenecer a varias organizaciones; una organización a varios sitios según plan | ST §3.2 | Fase 1 |
-| Pruebas obligatorias de aislamiento entre organizaciones | ST §3.2, §21 | Fase 1 en adelante |
+| Pruebas obligatorias de aislamiento entre organizaciones | ST §3.2, §21 | Fase 1 en adelante — suite central `multi-tenant-isolation.e2e.test.ts`; al día hasta Fase 5 (F5.7: enlaces firmados, respuestas públicas sin ids y límites de tasa probados) |
 
 ## 3. Acceso y onboarding
 

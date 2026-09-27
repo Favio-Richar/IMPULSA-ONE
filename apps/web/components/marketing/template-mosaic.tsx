@@ -24,8 +24,8 @@ export function TemplateMosaic({ templates }: { templates: TemplateResponse[] })
       {tiles.map((template, index) => {
         const tokens = (template.theme.tokens ?? {}) as ThemeTokensPreview;
         const palette = tokens.palette ?? {};
-        const background = palette.background ?? "#eef2ff";
-        const primary = palette.primary ?? "#4338ca";
+        const background = palette.background ?? "#e6f5f3";
+        const primary = palette.primary ?? "#0f6f6b";
         const primaryForeground = palette.primaryForeground ?? "#ffffff";
         const avatarSeed = encodeURIComponent(`${template.code}-${index}`);
         const avatarSrc = `https://api.dicebear.com/9.x/notionists/svg?seed=${avatarSeed}&backgroundColor=transparent`;

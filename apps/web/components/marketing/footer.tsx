@@ -6,7 +6,7 @@ export function MarketingFooter({ bienvenidaHref, loginHref }: { bienvenidaHref:
       <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
         <div className="flex flex-col gap-3">
           <span className="flex items-center gap-2 text-base font-semibold text-[#0f172a]">
-            <span className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-[#4338ca] text-xs font-bold text-white">
+            <span className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-[#0f6f6b] text-xs font-bold text-white">
               IO
             </span>
             Impulza One

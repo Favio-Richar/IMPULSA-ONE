@@ -22,11 +22,11 @@ export default async function MarketingHomePage() {
       <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
 
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#eef2ff,_#ffffff_60%)]">
+      <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)]">
         <MarketingHeroBackground />
         <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
           <Reveal className="flex flex-col justify-center gap-6">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e2e8f0] bg-white px-3 py-1 text-xs font-medium text-[#4338ca]">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e2e8f0] bg-white px-3 py-1 text-xs font-medium text-[#0f6f6b]">
               Identidad digital todo en uno
             </span>
             <h1 className="text-4xl font-semibold tracking-tight text-[#0f172a] sm:text-5xl">
@@ -39,7 +39,7 @@ export default async function MarketingHomePage() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <a
                 href={bienvenidaHref}
-                className="rounded-[10px] bg-[#4338ca] px-6 py-3.5 text-center text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+                className="rounded-[10px] bg-[#0f6f6b] px-6 py-3.5 text-center text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
               >
                 Crear mi portal gratis
               </a>
@@ -61,7 +61,7 @@ export default async function MarketingHomePage() {
             ) : null}
             <div className="animate-marketing-float relative z-10 w-64 rounded-[2rem] border-8 border-[#0f172a] bg-[#0f172a] p-2 shadow-2xl [animation-delay:-1.5s]">
               <div className="flex flex-col items-center gap-3 rounded-[1.4rem] bg-[#111827] px-4 py-8 text-center">
-                <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#4338ca] text-lg font-semibold text-white">
+                <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#0f6f6b] text-lg font-semibold text-white">
                   <TemplateAvatar src="https://api.dicebear.com/9.x/notionists/svg?seed=impulza-one-demo&backgroundColor=transparent" fallbackLabel="TU" />
                 </span>
                 <div className="flex flex-col gap-1">
@@ -69,7 +69,7 @@ export default async function MarketingHomePage() {
                   <span className="text-xs text-[#94a3b8]">Texto de ejemplo: tu bio va acá</span>
                 </div>
                 <div className="mt-2 flex w-full flex-col gap-2">
-                  <span className="h-9 w-full rounded-[10px] bg-[#4338ca]" />
+                  <span className="h-9 w-full rounded-[10px] bg-[#0f6f6b]" />
                   <span className="h-9 w-full rounded-[10px] border border-white/20 bg-white/10" />
                   <span className="h-9 w-full rounded-[10px] border border-white/20 bg-white/10" />
                 </div>
@@ -97,7 +97,7 @@ export default async function MarketingHomePage() {
           {FEATURES.map((feature, index) => (
             <Reveal key={feature.title} delayMs={index * 80}>
               <div className="flex h-full flex-col gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
-                <span className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[#eef2ff] text-[#4338ca]">
+                <span className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[#e6f5f3] text-[#0f6f6b]">
                   <FeatureIcon name={feature.icon} />
                 </span>
                 <h3 className="text-base font-semibold text-[#0f172a]">{feature.title}</h3>
@@ -108,7 +108,7 @@ export default async function MarketingHomePage() {
         </div>
 
         <Reveal className="mt-10 text-center">
-          <Link href="/producto" className="text-sm font-semibold text-[#4338ca] hover:underline">
+          <Link href="/producto" className="text-sm font-semibold text-[#0f6f6b] hover:underline">
             Ver todas las funcionalidades →
           </Link>
         </Reveal>
@@ -125,7 +125,7 @@ export default async function MarketingHomePage() {
             {STEPS.map((step, index) => (
               <Reveal key={step.title} delayMs={index * 100}>
                 <div className="flex flex-col gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-6">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4338ca] text-sm font-semibold text-white">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0f6f6b] text-sm font-semibold text-white">
                     {index + 1}
                   </span>
                   <h3 className="text-base font-semibold text-[#0f172a]">{step.title}</h3>
@@ -152,7 +152,7 @@ export default async function MarketingHomePage() {
           </Reveal>
 
           <Reveal className="mt-4 text-center">
-            <Link href="/plantillas" className="text-sm font-semibold text-[#4338ca] hover:underline">
+            <Link href="/plantillas" className="text-sm font-semibold text-[#0f6f6b] hover:underline">
               Ver todas las plantillas →
             </Link>
           </Reveal>
@@ -179,7 +179,7 @@ export default async function MarketingHomePage() {
             </div>
 
             <Reveal className="mt-10 text-center">
-              <Link href="/planes" className="text-sm font-semibold text-[#4338ca] hover:underline">
+              <Link href="/planes" className="text-sm font-semibold text-[#0f6f6b] hover:underline">
                 Ver comparativa completa y preguntas frecuentes →
               </Link>
             </Reveal>
@@ -197,7 +197,7 @@ export default async function MarketingHomePage() {
             </h2>
             <a
               href={bienvenidaHref}
-              className="relative rounded-[10px] bg-[#4338ca] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="relative rounded-[10px] bg-[#0f6f6b] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               Crear mi portal gratis
             </a>

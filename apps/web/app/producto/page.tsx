@@ -45,11 +45,11 @@ export default async function ProductoPage() {
     <div className="min-h-screen bg-white text-[#0f172a]">
       <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
 
-      <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#eef2ff,_#ffffff_60%)] py-20">
+      <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-20">
         <MarketingHeroBackground />
         <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6">
           <Reveal>
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#e2e8f0] bg-white px-3 py-1 text-xs font-medium text-[#4338ca]">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#e2e8f0] bg-white px-3 py-1 text-xs font-medium text-[#0f6f6b]">
               Producto
             </span>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight text-[#0f172a] sm:text-5xl">
@@ -68,7 +68,7 @@ export default async function ProductoPage() {
           {FEATURES.map((feature, index) => (
             <Reveal key={feature.title} delayMs={index * 60}>
               <div className="flex h-full flex-col gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
-                <span className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[#eef2ff] text-[#4338ca]">
+                <span className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[#e6f5f3] text-[#0f6f6b]">
                   <FeatureIcon name={feature.icon} />
                 </span>
                 <h2 className="text-base font-semibold text-[#0f172a]">{feature.title}</h2>
@@ -101,7 +101,7 @@ export default async function ProductoPage() {
           {STEPS.map((step, index) => (
             <Reveal key={step.title} delayMs={index * 100}>
               <div className="flex flex-col gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-6">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4338ca] text-sm font-semibold text-white">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0f6f6b] text-sm font-semibold text-white">
                   {index + 1}
                 </span>
                 <h3 className="text-base font-semibold text-[#0f172a]">{step.title}</h3>
@@ -121,7 +121,7 @@ export default async function ProductoPage() {
             </h2>
             <a
               href={bienvenidaHref}
-              className="relative rounded-[10px] bg-[#4338ca] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="relative rounded-[10px] bg-[#0f6f6b] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               Crear mi portal gratis
             </a>

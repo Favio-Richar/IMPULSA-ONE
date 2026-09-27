@@ -22,7 +22,7 @@ export function MarketingHeader({
     <header className="sticky top-0 z-50 border-b border-[#e2e8f0] bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-[#0f172a]">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#4338ca] text-sm font-bold text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#0f6f6b] text-sm font-bold text-white">
             IO
           </span>
           Impulza One
@@ -45,7 +45,7 @@ export function MarketingHeader({
           </a>
           <a
             href={bienvenidaHref}
-            className="rounded-[10px] bg-[#4338ca] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="rounded-[10px] bg-[#0f6f6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Crear mi portal gratis
           </a>
@@ -87,7 +87,7 @@ export function MarketingHeader({
             </a>
             <a
               href={bienvenidaHref}
-              className="rounded-[10px] bg-[#4338ca] px-4 py-2.5 text-center text-sm font-semibold text-white"
+              className="rounded-[10px] bg-[#0f6f6b] px-4 py-2.5 text-center text-sm font-semibold text-white"
             >
               Crear mi portal gratis
             </a>

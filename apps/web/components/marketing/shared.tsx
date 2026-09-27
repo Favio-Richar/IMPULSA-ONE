@@ -87,7 +87,7 @@ export function TemplateMockup({ template }: { template: TemplateResponse }) {
   const palette = tokens.palette ?? {};
   const background = palette.background ?? "#ffffff";
   const foreground = palette.foreground ?? "#0f172a";
-  const primary = palette.primary ?? "#4338ca";
+  const primary = palette.primary ?? "#0f6f6b";
   const primaryForeground = palette.primaryForeground ?? "#ffffff";
   const initials = template.name
     .split(/[\s/]+/)
@@ -136,11 +136,11 @@ export function PlanCard({
   return (
     <div
       className={`relative flex h-full flex-col gap-4 rounded-2xl border bg-white p-6 shadow-sm transition-transform duration-300 ${
-        isRecommended ? "border-2 border-[#4338ca] shadow-md md:-translate-y-2" : "border-[#e2e8f0]"
+        isRecommended ? "border-2 border-[#0f6f6b] shadow-md md:-translate-y-2" : "border-[#e2e8f0]"
       }`}
     >
       {isRecommended ? (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#4338ca] px-3 py-1 text-xs font-semibold text-white shadow-sm">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#0f6f6b] px-3 py-1 text-xs font-semibold text-white shadow-sm">
           Recomendado
         </span>
       ) : null}
@@ -158,8 +158,8 @@ export function PlanCard({
         href={bienvenidaHref}
         className={
           isRecommended
-            ? "rounded-[10px] bg-[#4338ca] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
-            : "rounded-[10px] border border-[#4338ca] px-4 py-2.5 text-center text-sm font-semibold text-[#4338ca] transition-colors hover:bg-[#eef2ff]"
+            ? "rounded-[10px] bg-[#0f6f6b] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+            : "rounded-[10px] border border-[#0f6f6b] px-4 py-2.5 text-center text-sm font-semibold text-[#0f6f6b] transition-colors hover:bg-[#e6f5f3]"
         }
       >
         Elegir {plan.name}
@@ -185,7 +185,7 @@ export function ComparisonTable() {
             <th scope="col" className="px-5 py-3 font-semibold">
               Funcionalidad
             </th>
-            <th scope="col" className="px-5 py-3 font-semibold text-[#4338ca]">
+            <th scope="col" className="px-5 py-3 font-semibold text-[#0f6f6b]">
               Impulza One
             </th>
             <th scope="col" className="px-5 py-3 font-semibold text-[#64748b]">
@@ -198,7 +198,7 @@ export function ComparisonTable() {
             <tr key={row.label}>
               <td className="px-5 py-3 text-[#334155]">{row.label}</td>
               <td className="px-5 py-3">
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#eef2ff] text-[#4338ca]" aria-hidden="true">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#e6f5f3] text-[#0f6f6b]" aria-hidden="true">
                   &#10003;
                 </span>
                 <span className="sr-only">Incluido</span>
@@ -258,7 +258,7 @@ export function FaqAccordion({ items }: { items: Array<{ question: string; answe
         <details key={item.question} className="group rounded-2xl border border-[#e2e8f0] bg-white px-5 py-4 open:shadow-sm">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-[#0f172a] focus-visible:outline-2 focus-visible:outline-offset-2">
             {item.question}
-            <span className="shrink-0 text-[#4338ca] transition-transform group-open:rotate-45" aria-hidden="true">
+            <span className="shrink-0 text-[#0f6f6b] transition-transform group-open:rotate-45" aria-hidden="true">
               +
             </span>
           </summary>

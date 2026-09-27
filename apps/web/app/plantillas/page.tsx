@@ -19,11 +19,11 @@ export default async function PlantillasPage() {
     <div className="min-h-screen bg-white text-[#0f172a]">
       <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
 
-      <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#eef2ff,_#ffffff_60%)] py-20">
+      <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-20">
         <MarketingHeroBackground />
         <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6">
           <Reveal>
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#e2e8f0] bg-white px-3 py-1 text-xs font-medium text-[#4338ca]">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#e2e8f0] bg-white px-3 py-1 text-xs font-medium text-[#0f6f6b]">
               Plantillas
             </span>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight text-[#0f172a] sm:text-5xl">
@@ -64,7 +64,7 @@ export default async function PlantillasPage() {
             </h2>
             <a
               href={bienvenidaHref}
-              className="relative rounded-[10px] bg-[#4338ca] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="relative rounded-[10px] bg-[#0f6f6b] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               Crear mi portal gratis
             </a>

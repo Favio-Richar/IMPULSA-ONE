@@ -36,6 +36,17 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   // que un sitio con este slug quedaría inalcanzable.
   "reserva",
   "reservas",
+  // Páginas del sitio comercial de Impulza (`apps/web/app/planes`, `plantillas`, `producto`): mismas
+  // rutas fijas que ganan sobre `[siteSlug]`.
+  "planes",
+  "plantillas",
+  "producto",
+  "productos",
+  "precios",
+  // Catálogo y pedidos (F5.5): reservados de entrada para futuras rutas propias.
+  "catalogo",
+  "pedido",
+  "pedidos",
   // Superficies propias de la plataforma.
   "admin",
   "app",

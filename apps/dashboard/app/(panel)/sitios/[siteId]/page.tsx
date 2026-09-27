@@ -98,6 +98,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
       <BackgroundPicker organizationId={organizationId} siteId={siteId} />
       <PagesSection organizationId={organizationId} siteId={siteId} />
       <BookingShortcut siteId={siteId} />
+      <CatalogShortcut siteId={siteId} />
       <CustomDomains organizationId={organizationId} siteId={siteId} />
     </div>
   );
@@ -533,6 +534,23 @@ function BookingShortcut({ siteId }: { siteId: string }): React.JSX.Element {
         <p className="text-sm text-muted-foreground">Horario de atención, servicios con su duración y días bloqueados.</p>
         <Link href={`/sitios/${siteId}/reservas`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
           Configurar reservas
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Acceso al catálogo de productos (F5.5), que tiene su propia pantalla. */
+function CatalogShortcut({ siteId }: { siteId: string }): React.JSX.Element {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Catálogo</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Productos físicos, digitales o servicios, con foto, precio, stock y enlace de pago.</p>
+        <Link href={`/sitios/${siteId}/catalogo`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+          Administrar catálogo
         </Link>
       </CardContent>
     </Card>

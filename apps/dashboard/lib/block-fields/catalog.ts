@@ -299,6 +299,21 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
     seedConfig: () => ({ label: "Reservar hora" }),
   },
 
+  // F5.5: cada producto activo del sitio es un botón de la pila que despliega su pedido. Los
+  // productos se administran en Sitios → Catálogo; acá solo el nombre de la tienda (se anuncia a
+  // los lectores de pantalla como el título de la lista).
+  catalog: {
+    fields: [
+      {
+        name: "label",
+        label: "Nombre de la tienda",
+        helperText: "Cada producto activo aparece como un botón. Tus productos se administran en el sitio, sección Catálogo.",
+        control: { kind: "text", maxLength: 80 },
+      },
+    ],
+    seedConfig: () => ({ label: "Tienda" }),
+  },
+
   service: {
     fields: [
       { name: "name", label: "Nombre", control: { kind: "text", maxLength: 120 } },

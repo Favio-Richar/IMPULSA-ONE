@@ -147,6 +147,9 @@ model Organization {
   bookableServices    BookableService[]
   bookingBlackouts    BookingBlackout[]
   bookings            Booking[]
+  productCategories   ProductCategory[]
+  products            Product[]
+  orders              Order[]
   themes              Theme[]
   contacts            Contact[]
   shortLinks          ShortLink[]
@@ -366,6 +369,9 @@ model Site {
   bookableServices    BookableService[]
   bookingBlackouts    BookingBlackout[]
   bookings            Booking[]
+  productCategories   ProductCategory[]
+  products            Product[]
+  orders              Order[]
   forms               Form[]
   analyticsEvents     AnalyticsEvent[]
   analyticsAggregates AnalyticsAggregate[]
@@ -727,6 +733,7 @@ model Contact {
   @@index([organizationId, retentionReviewAt])
   @@map("contacts")
   bookings  Booking[]
+  orders    Order[]
 }
 
 model ContactEvent {
@@ -1052,4 +1059,110 @@ model Booking {
   @@index([organizationId, startsAt])
   @@index([contactId])
   @@map("bookings")
+}
+
+// --- Catálogo y pedidos (F5.5, BACKLOG_FASE_5.md) ---
+
+enum ProductKind {
+  PHYSICAL
+  DIGITAL
+  SERVICE
+}
+
+enum OrderStatus {
+  NEW
+  PAID
+  DELIVERED
+  CANCELLED
+}
+
+// Categoría del catálogo de un sitio ("Cortes", "Regalos").
+model ProductCategory {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  siteId         String   @map("site_id") @db.Uuid
+  name           String
+  position       Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  products     Product[]
+
+  @@index([siteId, position])
+  @@index([organizationId])
+  @@map("product_categories")
+}
+
+// Producto del catálogo. Precio en unidad mínima + moneda ISO. El pago es un enlace externo del
+// negocio (Impulza no cobra: decisión #6). `stock` `null` = sin control de stock; con número, un
+// pedido lo descuenta de forma atómica y cancelar lo devuelve (CHECK: nunca negativo).
+model Product {
+  id             String      @id @default(uuid()) @db.Uuid
+  organizationId String      @map("organization_id") @db.Uuid
+  siteId         String      @map("site_id") @db.Uuid
+  categoryId     String?     @map("category_id") @db.Uuid
+  name           String
+  description    String?
+  kind           ProductKind @default(PHYSICAL)
+  priceAmount    Int         @map("price_amount")
+  priceCurrency  String      @map("price_currency")
+  // `{ url, alt }` de la biblioteca de medios, validado con `imageSchema`.
+  image          Json?
+  paymentUrl     String?     @map("payment_url")
+  stock          Int?
+  active         Boolean     @default(true)
+  position       Int         @default(0)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  category     ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  orders       Order[]
+
+  @@index([siteId, position])
+  @@index([organizationId])
+  @@map("products")
+}
+
+// Pedido como **solicitud** (F5.5): el visitante deja sus datos; el negocio cobra por su cuenta y lo
+// marca pagado, entregado o cancelado. Guarda una copia del producto y el precio al pedir.
+model Order {
+  id              String      @id @default(uuid()) @db.Uuid
+  organizationId  String      @map("organization_id") @db.Uuid
+  siteId          String      @map("site_id") @db.Uuid
+  productId       String?     @map("product_id") @db.Uuid
+  contactId       String?     @map("contact_id") @db.Uuid
+  productName     String      @map("product_name")
+  productKind     ProductKind @map("product_kind")
+  unitPriceAmount Int         @map("unit_price_amount")
+  priceCurrency   String      @map("price_currency")
+  quantity        Int
+  totalAmount     Int         @map("total_amount")
+  paymentUrl      String?     @map("payment_url")
+  customerName    String      @map("customer_name")
+  customerEmail   String      @map("customer_email")
+  customerPhone   String?     @map("customer_phone")
+  // Dirección de entrega (solo productos físicos).
+  deliveryAddress String?     @map("delivery_address")
+  note            String?
+  status          OrderStatus @default(NEW)
+  // `true` si el pedido descontó stock (para devolverlo al cancelar).
+  stockReserved   Boolean     @default(false) @map("stock_reserved")
+  paidAt          DateTime?   @map("paid_at") @db.Timestamptz(6)
+  deliveredAt     DateTime?   @map("delivered_at") @db.Timestamptz(6)
+  cancelledAt     DateTime?   @map("cancelled_at") @db.Timestamptz(6)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  product      Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([siteId, createdAt])
+  @@index([contactId])
+  @@map("orders")
 }

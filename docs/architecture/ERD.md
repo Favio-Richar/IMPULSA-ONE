@@ -241,8 +241,22 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   vuelve a `null`). El enlace para que el cliente gestione su reserva no se guarda: se firma con
   HMAC (`BOOKING_LINK_SECRET`).
 
+## 9c. Catálogo y pedidos (F5.5, `BACKLOG_FASE_5.md`)
+
+- **ProductCategory** (Site 1:N): organization_id, name, position.
+- **Product** (Site 1:N, ProductCategory 1:N con `SET NULL`): organization_id, name, description,
+  kind (`PHYSICAL`/`DIGITAL`/`SERVICE`), price_amount + price_currency (unidad mínima + ISO,
+  `CHECK >= 0`), image (JSON `{url, alt, decorative?}`), payment_url (enlace externo del negocio:
+  Impulza no cobra, decisión #6), stock (`NULL` = sin control, `CHECK >= 0`), active, position.
+- **Order** (Site 1:N, Product 1:N con `SET NULL`, Contact 1:N con `SET NULL`): organization_id,
+  copia del producto al pedir (product_name, product_kind, unit_price_amount, price_currency,
+  payment_url), quantity (`CHECK 1–99`), total_amount (`CHECK = unit_price_amount * quantity`),
+  datos del cliente (customer_name, customer_email, customer_phone, delivery_address solo si es
+  físico, note), status (`NEW`/`PAID`/`DELIVERED`/`CANCELLED`), stock_reserved (si descontó stock,
+  para devolverlo al cancelar), paid_at, delivered_at, cancelled_at.
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
-`Booking`, `Service` (agenda), `Catalog`, `Product`, `Order`, `Payment` (comercio de negocios),
+`Payment` (cobro propio; hoy bloqueado por la decisión #6), variantes/cupones/carrito,
 `Campaign`/email marketing, `Course`/`Membership` (contenido). Se diseñan cuando se inicie la Fase 5
 para evitar tablas vacías o esquemas prematuros (restricción explícita de ST §6.2).

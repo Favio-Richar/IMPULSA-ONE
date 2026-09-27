@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import type { PublicBlockResponse, PublicFormResponse } from "@impulza/contracts";
 import {
   bookingBlockSchema,
+  catalogBlockSchema,
   contactActionsSchema,
   contactFormSchema,
   dividerSchema,
@@ -21,6 +22,7 @@ import {
 import type { ButtonVariant } from "./ui/link-button.js";
 import { ContactActionsBlock } from "./blocks/contact-actions.js";
 import { BookingBlock } from "./blocks/booking.js";
+import { CatalogBlock } from "./blocks/catalog.js";
 import { ContactFormBlock } from "./blocks/contact-form.js";
 import { DividerBlock } from "./blocks/divider.js";
 import { FaqBlock } from "./blocks/faq.js";
@@ -144,6 +146,10 @@ export function RenderBlock({
       return parsed.success ? (
         <BookingBlock config={parsed.data} siteSlug={siteSlug} mode={mode} primary={block.primary === true} glass={buttonVariant === "glass"} mono={mono} />
       ) : null;
+    }
+    case "catalog": {
+      const parsed = catalogBlockSchema.safeParse(block.config);
+      return parsed.success ? <CatalogBlock config={parsed.data} siteSlug={siteSlug} mode={mode} glass={buttonVariant === "glass"} /> : null;
     }
     default:
       return null;

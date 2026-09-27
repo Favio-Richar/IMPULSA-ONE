@@ -27,7 +27,7 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
 | F5.2 — Reserva pública desde la página (bloque "Reservar") | Lista para tu revisión (capturas en `docs/design/capturas/f52/`) |
 | F5.3 — Agenda del negocio en el panel | Lista para tu revisión (capturas en `docs/design/capturas/f53/`) |
 | F5.4 — Confirmaciones, cancelación/reprogramación y recordatorios | Lista para tu revisión (capturas en `docs/design/capturas/f54/`) |
-| F5.5 — Catálogo y pedidos (productos físicos, digitales y servicios) con pago externo | Pendiente |
+| F5.5 — Catálogo y pedidos (productos físicos, digitales y servicios) con pago externo | Lista para tu revisión (capturas en `docs/design/capturas/f55/`) |
 | F5.6 — Campañas de email con consentimiento y bajas | Pendiente |
 | F5.7 — Aislamiento y seguridad de Fase 5 | Pendiente |
 | — Seña cobrada, checkout, reembolsos, descargas pagadas, afiliados | Bloqueado (decisión #6) |
@@ -129,6 +129,38 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
   - **Aviso para la otra sesión (sitio comercial):** sus rutas nuevas `/planes`, `/plantillas` y
     `/producto` también ganan sobre `[siteSlug]`; convendría sumarlas a `RESERVED_SLUGS`.
   - Siguiente: F5.5 (catálogo y pedidos con pago externo).
+- **2026-09-27 — F5.5 terminada**, en "Lista para tu revisión".
+  - Migración `20260927010000_f55_catalog_orders` (con `down.sql`, aplicada, revertida y vuelta a
+    aplicar): `product_categories`, `products` y `orders`, enums `ProductKind` y `OrderStatus`, y
+    `CHECK` de precio y stock no negativos, cantidad 1–99 y total = precio × cantidad.
+  - Permisos nuevos `catalog.manage` (OWNER, ADMIN, EDITOR) y `order.manage` (esos más SUPPORT).
+    Slugs reservados: `catalogo`, `pedido`, `pedidos` y, por el aviso de F5.4, `planes`,
+    `plantillas`, `producto`, `productos`, `precios`.
+  - API: catálogo del panel (`organizations/:org/sites/:site/catalog/{categories,products}`),
+    catálogo y pedido públicos (`public/sites/:slug/catalog`, `.../orders`: CSRF, límite de tasa
+    10/10 min, campo trampa, consentimiento, contacto con evento `PURCHASE`, `order_created` y
+    `lead_created`) y pedidos (`organizations/:org/orders`: lista paginada con conteo por estado,
+    cambio de estado con `order.manage`). Precio, moneda y enlace de pago salen siempre del
+    producto guardado. El stock se descuenta con un `updateMany` condicional (`stock >= cantidad`):
+    tres pedidos simultáneos por la última unidad dan 201/409/409 (verificado también contra el
+    código sin la condición: 201/500/500). Cancelar devuelve el stock; reabrir lo vuelve a
+    reservar o da 409; un entregado no se reabre. Cada cambio es condicional al estado leído.
+  - Correos en texto (`@impulza/validation/catalog/messages`): pedido recibido (con "paga aquí" si
+    hay enlace del negocio), pagado, entregado, cancelado y aviso de pedido nuevo a los dueños.
+  - Página pública: bloque `catalog` ("Tienda"): **cada producto es un botón de la pila** (miniatura
+    o ícono, nombre, "$12.990 · Pedir" o "Agotado") que despliega cantidad, datos (dirección solo si
+    es físico), consentimiento y la confirmación con "Pagar ahora". Sin productos, el bloque no
+    ocupa lugar. Rutas `apps/web/app/api/catalog/[siteSlug]` (archivos nuevos, sin tocar el sitio
+    comercial). Las piezas comunes del flujo de reservas pasaron a `blocks-renderer/src/ui/flow.tsx`.
+  - Panel: `Sitios → Catálogo` (productos con foto de la biblioteca, tipo, precio, stock, categoría,
+    enlace de pago, pausar/activar; categorías en línea) y `Pedidos` en el menú (pestañas por estado
+    con conteo, datos del cliente, WhatsApp, dirección y acciones). Bloque "Tienda" en el
+    constructor.
+  - Pruebas: validación 5, renderer 2, web 3, API e2e 8 + caso central de aislamiento; suite
+    completa de la API 410/410; OpenAPI regenerado (115 rutas). Playwright `tienda.spec.ts` 6/6
+    (móvil y escritorio: pedido, pedidos, catálogo, sin desplazamiento horizontal, también a 360 px).
+  - Demo: `demo-tienda` tiene 5 productos (uno agotado) y el bloque "Tienda" publicado.
+  - Siguiente: F5.6 (campañas de email con consentimiento y bajas).
 
 ---
 

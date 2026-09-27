@@ -1275,6 +1275,71 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Catálogo y pedidos (F5.5): ningún acceso cruzado entre organizaciones", () => {
+    it("A no lee ni cambia el catálogo ni los pedidos de B, y un producto de B no se pide por el sitio de A", async () => {
+      const catalogB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/catalog`;
+      const categoryOfB = await orgB.ownerAgent.post(`${catalogB}/categories`).set(CSRF_HEADERS).send({ name: "Categoría de B" }).expect(201);
+      const productOfB = await orgB.ownerAgent
+        .post(`${catalogB}/products`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Producto de B", kind: "DIGITAL", priceAmount: 5000, priceCurrency: "CLP", stock: 5, categoryId: categoryOfB.body.id })
+        .expect(201);
+      const productId = productOfB.body.id as string;
+      const categoryId = categoryOfB.body.id as string;
+      const siteB = await prisma.site.findUniqueOrThrow({ where: { id: orgB.siteId } });
+      await request(httpServer)
+        .post(`/api/v1/public/sites/${siteB.slug}/catalog/orders`)
+        .set(CSRF_HEADERS)
+        .send({ productId, quantity: 1, name: "Cliente de B", email: `cliente-pedido-b${TEST_EMAIL_DOMAIN}`, consent: true })
+        .expect(201);
+      const orderOfB = await prisma.order.findFirstOrThrow({ where: { productId } });
+
+      // Con la organización de B en la URL: 403.
+      await orgA.ownerAgent.get(`${catalogB}/products`).expect(403);
+      await orgA.ownerAgent.patch(`${catalogB}/products/${productId}`).set(CSRF_HEADERS).send({ name: "Tomado" }).expect(403);
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/orders`).expect(403);
+      await orgA.ownerAgent.patch(`/api/v1/organizations/${orgB.id}/orders/${orderOfB.id}`).set(CSRF_HEADERS).send({ status: "PAID" }).expect(403);
+
+      // Organización propia de A con el sitio de B: 404.
+      const aWithSiteB = `/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/catalog`;
+      await orgA.ownerAgent.get(`${aWithSiteB}/products`).expect(404);
+      await orgA.ownerAgent.get(`${aWithSiteB}/categories`).expect(404);
+      await orgA.ownerAgent.post(`${aWithSiteB}/products`).set(CSRF_HEADERS).send({ name: "Intruso", priceAmount: 1, priceCurrency: "CLP" }).expect(404);
+
+      // Organización y sitio propios de A con los ids de B: 404.
+      const catalogA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/catalog`;
+      await orgA.ownerAgent.patch(`${catalogA}/products/${productId}`).set(CSRF_HEADERS).send({ name: "Tomado" }).expect(404);
+      await orgA.ownerAgent.delete(`${catalogA}/products/${productId}`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.patch(`${catalogA}/categories/${categoryId}`).set(CSRF_HEADERS).send({ name: "Tomada" }).expect(404);
+      await orgA.ownerAgent.delete(`${catalogA}/categories/${categoryId}`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.post(`${catalogA}/products`).set(CSRF_HEADERS).send({ name: "Con categoría ajena", priceAmount: 1, priceCurrency: "CLP", categoryId }).expect(404);
+      const ordersA = `/api/v1/organizations/${orgA.id}/orders`;
+      await orgA.ownerAgent.get(`${ordersA}/${orderOfB.id}`).expect(404);
+      await orgA.ownerAgent.patch(`${ordersA}/${orderOfB.id}`).set(CSRF_HEADERS).send({ status: "CANCELLED" }).expect(404);
+      await orgA.ownerAgent.get(`${ordersA}?siteId=${orgB.siteId}`).expect(404);
+      const listOfA = await orgA.ownerAgent.get(ordersA).expect(200);
+      expect(JSON.stringify(listOfA.body)).not.toContain(orderOfB.id);
+      expect(JSON.stringify(listOfA.body)).not.toContain("Cliente de B");
+
+      // El sitio público de A no ofrece ni acepta pedidos del producto de B.
+      const siteA = await prisma.site.findUniqueOrThrow({ where: { id: orgA.siteId } });
+      const publicA = `/api/v1/public/sites/${siteA.slug}/catalog`;
+      const catalogOfA = await request(httpServer).get(publicA).expect(200);
+      expect(JSON.stringify(catalogOfA.body)).not.toContain(productId);
+      await request(httpServer)
+        .post(`${publicA}/orders`)
+        .set(CSRF_HEADERS)
+        .send({ productId, quantity: 1, name: "Intruso", email: `intruso-pedido${TEST_EMAIL_DOMAIN}`, consent: true })
+        .expect(404);
+
+      const stillB = await prisma.product.findUniqueOrThrow({ where: { id: productId } });
+      expect(stillB.name).toBe("Producto de B");
+      expect(stillB.stock).toBe(4);
+      expect((await prisma.order.findUniqueOrThrow({ where: { id: orderOfB.id } })).status).toBe("NEW");
+      expect(await prisma.order.count({ where: { productId } })).toBe(1);
+    });
+  });
+
   describe("Administración (F4.4/F4.9): un usuario de organización nunca la alcanza", () => {
     it("ni el OWNER ni un ADMIN de una organización abren una ruta de administración", async () => {
       const paths = [

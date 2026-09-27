@@ -31,6 +31,7 @@ export const BLOCK_TYPES = [
   "faq",
   "testimonials",
   "booking",
+  "catalog",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -142,6 +143,15 @@ export const bookingBlockSchema = z.object({
   serviceIds: z.array(z.uuid()).max(50).optional(),
 });
 
+// Catálogo (F5.5): cada producto es un botón más de la pila (miniatura, nombre, precio) que
+// despliega el pedido. Sin `productIds` ni `categoryId`, muestra todos los productos activos del
+// sitio; con `productIds`, solo esos y en ese orden; con `categoryId`, los de esa categoría.
+export const catalogBlockSchema = z.object({
+  label: plainTextSchema(80).default("Tienda"),
+  productIds: z.array(z.uuid()).max(50).optional(),
+  categoryId: z.uuid().optional(),
+});
+
 export const serviceSchema = z.object({
   name: plainTextSchema(120),
   description: richTextSchema.optional(),
@@ -235,6 +245,7 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
     richTextPaths: [],
   },
   booking: { type: "booking", version: 1, schema: bookingBlockSchema, richTextPaths: [] },
+  catalog: { type: "catalog", version: 1, schema: catalogBlockSchema, richTextPaths: [] },
 };
 
 /**
@@ -278,4 +289,5 @@ export type ServiceBlockConfig = z.infer<typeof serviceSchema>;
 export type DividerBlockConfig = z.infer<typeof dividerSchema>;
 export type FaqBlockConfig = z.infer<typeof faqSchema>;
 export type BookingBlockConfig = z.infer<typeof bookingBlockSchema>;
+export type CatalogBlockConfig = z.infer<typeof catalogBlockSchema>;
 export type TestimonialsBlockConfig = z.infer<typeof testimonialsSchema>;

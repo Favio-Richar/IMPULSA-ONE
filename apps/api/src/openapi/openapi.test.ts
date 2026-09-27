@@ -110,6 +110,9 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/sites/{siteSlug}/booking",
       "GET /api/v1/public/sites/{siteSlug}/booking/availability",
       "POST /api/v1/public/sites/{siteSlug}/booking",
+      // Catálogo y pedidos (F5.5): el visitante no tiene sesión. CSRF, límite de tasa y antispam.
+      "GET /api/v1/public/sites/{siteSlug}/catalog",
+      "POST /api/v1/public/sites/{siteSlug}/catalog/orders",
       // "Gestiona tu reserva" (F5.4): la credencial es el enlace firmado del correo, no una sesión.
       "GET /api/v1/public/bookings/{token}",
       "POST /api/v1/public/bookings/{token}/cancel",

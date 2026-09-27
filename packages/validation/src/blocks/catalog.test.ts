@@ -16,9 +16,10 @@ import { parseStoredBlock } from "./stored-block.js";
 
 describe("catálogo de bloques (F2.4)", () => {
   it("cubre los 15 bloques del MVP de ST §9 más el de reservas (F5.2), sin repetir", () => {
-    expect(BLOCK_TYPES).toHaveLength(16);
-    expect(new Set(BLOCK_TYPES).size).toBe(16);
+    expect(BLOCK_TYPES).toHaveLength(17);
+    expect(new Set(BLOCK_TYPES).size).toBe(17);
     expect(BLOCK_TYPES).toContain("booking");
+    expect(BLOCK_TYPES).toContain("catalog");
   });
 
   it("cada tipo tiene su entrada, con el mismo `type` que su clave y una versión válida", () => {
@@ -82,6 +83,7 @@ describe("catálogo de bloques (F2.4)", () => {
       faq: { items: [{ question: "¿?", answer: "<p>sí</p>" }] },
       testimonials: { items: [{ quote: "Bien", author: "Ana" }] },
       booking: { label: "Reservar hora" },
+      catalog: { label: "Tienda" },
     };
 
     for (const type of BLOCK_TYPES) {

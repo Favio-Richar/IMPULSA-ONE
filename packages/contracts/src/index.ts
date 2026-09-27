@@ -25,3 +25,4 @@ export * from "./support.js";
 export * from "./media.js";
 export * from "./domains.js";
 export * from "./bookings.js";
+export * from "./catalog.js";

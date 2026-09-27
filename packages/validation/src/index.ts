@@ -44,3 +44,4 @@ export * from "./templates/index.js";
 export { TEMPLATE_CATALOG } from "./templates/catalog.js";
 export * from "./domains/index.js";
 export * from "./bookings/index.js";
+export * from "./catalog/index.js";

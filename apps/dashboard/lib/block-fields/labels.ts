@@ -12,6 +12,7 @@ import {
   NotebookPen,
   Quote,
   Share2,
+  ShoppingBag,
   Type,
   UserRound,
   Video,
@@ -36,6 +37,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   faq: "Preguntas frecuentes",
   testimonials: "Testimonios",
   booking: "Reservas",
+  catalog: "Tienda",
 };
 
 /** Un ícono lineal por tipo (no-negociable de UI/UX del proyecto) — la misma biblioteca
@@ -57,4 +59,5 @@ export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   faq: HelpCircle,
   testimonials: Quote,
   booking: CalendarCheck,
+  catalog: ShoppingBag,
 };

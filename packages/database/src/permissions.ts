@@ -19,6 +19,8 @@ export const PERMISSIONS = {
   SUPPORT_VIEW_ALL: "support.view_all",
   MEDIA_MANAGE: "media.manage",
   BOOKING_MANAGE: "booking.manage",
+  CATALOG_MANAGE: "catalog.manage",
+  ORDER_MANAGE: "order.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -92,6 +94,14 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.BOOKING_MANAGE,
     description: "Gestionar la agenda: crear reservas a mano y cambiar su estado (F5.3).",
   },
+  {
+    key: PERMISSIONS.CATALOG_MANAGE,
+    description: "Crear y editar el catálogo de productos y sus categorías (F5.5).",
+  },
+  {
+    key: PERMISSIONS.ORDER_MANAGE,
+    description: "Atender pedidos: marcarlos como pagados, entregados o cancelados (F5.5).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -119,6 +129,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.SUPPORT_VIEW_ALL,
     PERMISSIONS.MEDIA_MANAGE,
     PERMISSIONS.BOOKING_MANAGE,
+    PERMISSIONS.CATALOG_MANAGE,
+    PERMISSIONS.ORDER_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -137,6 +149,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.SUPPORT_VIEW_ALL,
     PERMISSIONS.MEDIA_MANAGE,
     PERMISSIONS.BOOKING_MANAGE,
+    PERMISSIONS.CATALOG_MANAGE,
+    PERMISSIONS.ORDER_MANAGE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y
@@ -153,6 +167,9 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.MEDIA_MANAGE,
     // Atender la agenda del negocio (F5.3).
     PERMISSIONS.BOOKING_MANAGE,
+    // Catálogo y pedidos (F5.5): contenido y atención comercial del día a día.
+    PERMISSIONS.CATALOG_MANAGE,
+    PERMISSIONS.ORDER_MANAGE,
   ],
   ANALYST: [],
   // SUPPORT es "soporte al cliente con acceso limitado y auditado" (seed.ts) — administrar el
@@ -160,7 +177,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
   // OWNER/ADMIN) ni tocar formularios/enlaces (eso es marketing/contenido, no soporte).
   // Atender la agenda (marcar asistencia, cancelar, anotar una reserva) también es atención al
   // cliente (F5.3).
-  SUPPORT: [PERMISSIONS.CONTACT_MANAGE, PERMISSIONS.BOOKING_MANAGE],
+  SUPPORT: [PERMISSIONS.CONTACT_MANAGE, PERMISSIONS.BOOKING_MANAGE, PERMISSIONS.ORDER_MANAGE],
   AGENCY_MANAGER: [],
   SUPER_ADMIN: [],
 };

@@ -6,12 +6,15 @@ import { MarketingHeader } from "../components/marketing/header";
 import { MarketingFooter } from "../components/marketing/footer";
 import { Reveal } from "../components/marketing/reveal";
 import { TemplateAvatar } from "../components/marketing/template-avatar";
-import { FEATURES, FeatureIcon, STEPS, PlanCard, TemplateMockup } from "../components/marketing/shared";
+import { MarketingHeroBackground, MarketingCtaBackground } from "../components/marketing/hero-background";
+import { TemplateMosaic } from "../components/marketing/template-mosaic";
+import { TemplateCarousel } from "../components/marketing/template-carousel";
+import { FEATURES, FeatureIcon, STEPS, PlanCard } from "../components/marketing/shared";
 
 export default async function MarketingHomePage() {
   const [templates, plansRaw] = await Promise.all([getTemplateCatalog(), getPlanCatalog()]);
   const { bienvenidaHref, loginHref } = getDashboardLinks();
-  const featuredTemplates = templates.slice(0, 3);
+  const carouselTemplates = templates.slice(0, 8);
   const plans: PlanResponse[] = [...plansRaw].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
@@ -20,14 +23,7 @@ export default async function MarketingHomePage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#eef2ff,_#ffffff_60%)]">
-        <div
-          aria-hidden="true"
-          className="animate-marketing-float pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#c7d2fe] opacity-40 blur-3xl"
-        />
-        <div
-          aria-hidden="true"
-          className="animate-marketing-float pointer-events-none absolute -right-16 top-32 h-64 w-64 rounded-full bg-[#ddd6fe] opacity-40 blur-3xl [animation-delay:-3s]"
-        />
+        <MarketingHeroBackground />
         <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
           <Reveal className="flex flex-col justify-center gap-6">
             <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e2e8f0] bg-white px-3 py-1 text-xs font-medium text-[#4338ca]">
@@ -57,8 +53,13 @@ export default async function MarketingHomePage() {
             <p className="text-sm text-[#64748b]">Sin tarjeta de crédito. Publicás en minutos.</p>
           </Reveal>
 
-          <Reveal delayMs={150} className="flex items-center justify-center">
-            <div className="animate-marketing-float w-64 rounded-[2rem] border-8 border-[#0f172a] bg-[#0f172a] p-2 shadow-xl [animation-delay:-1.5s]">
+          <Reveal delayMs={150} className="relative flex items-center justify-center">
+            {templates.length > 0 ? (
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0 scale-110 opacity-90">
+                <TemplateMosaic templates={templates} />
+              </div>
+            ) : null}
+            <div className="animate-marketing-float relative z-10 w-64 rounded-[2rem] border-8 border-[#0f172a] bg-[#0f172a] p-2 shadow-2xl [animation-delay:-1.5s]">
               <div className="flex flex-col items-center gap-3 rounded-[1.4rem] bg-[#111827] px-4 py-8 text-center">
                 <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#4338ca] text-lg font-semibold text-white">
                   <TemplateAvatar src="https://api.dicebear.com/9.x/notionists/svg?seed=impulza-one-demo&backgroundColor=transparent" fallbackLabel="TU" />
@@ -137,7 +138,7 @@ export default async function MarketingHomePage() {
       </section>
 
       {/* Plantillas */}
-      {featuredTemplates.length > 0 ? (
+      {carouselTemplates.length > 0 ? (
         <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <Reveal className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-semibold tracking-tight text-[#0f172a]">Plantillas para tu rubro</h2>
@@ -146,17 +147,11 @@ export default async function MarketingHomePage() {
             </p>
           </Reveal>
 
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredTemplates.map((template, index) => (
-              <Reveal key={template.code} delayMs={index * 70}>
-                <a href={bienvenidaHref} className="block">
-                  <TemplateMockup template={template} />
-                </a>
-              </Reveal>
-            ))}
-          </div>
+          <Reveal className="mt-12" delayMs={80}>
+            <TemplateCarousel templates={carouselTemplates} bienvenidaHref={bienvenidaHref} />
+          </Reveal>
 
-          <Reveal className="mt-10 text-center">
+          <Reveal className="mt-4 text-center">
             <Link href="/plantillas" className="text-sm font-semibold text-[#4338ca] hover:underline">
               Ver todas las plantillas →
             </Link>
@@ -195,13 +190,14 @@ export default async function MarketingHomePage() {
       {/* CTA final */}
       <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <Reveal>
-          <div className="flex flex-col items-center gap-6 rounded-3xl bg-[#0f172a] px-6 py-16 text-center">
-            <h2 className="max-w-xl text-3xl font-semibold tracking-tight text-white">
+          <div className="relative flex flex-col items-center gap-6 overflow-hidden rounded-3xl bg-[#0f172a] px-6 py-16 text-center">
+            <MarketingCtaBackground />
+            <h2 className="relative max-w-xl text-3xl font-semibold tracking-tight text-white">
               Tu identidad digital, lista para el mercado.
             </h2>
             <a
               href={bienvenidaHref}
-              className="rounded-[10px] bg-[#4338ca] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="relative rounded-[10px] bg-[#4338ca] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               Crear mi portal gratis
             </a>

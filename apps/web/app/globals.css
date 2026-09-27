@@ -65,4 +65,17 @@
       animation: none;
     }
   }
+
+  /* Fondos decorativos del sitio comercial (home, /producto, /plantillas, /planes): patron de
+     puntos sutil detras del mesh de gradientes, para que las secciones "hero" y los CTA finales
+     no se vean planas. Nunca se usa en sitios de tenants. */
+  .bg-dot-grid {
+    background-image: radial-gradient(circle, rgba(67, 56, 202, 0.16) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  .bg-dot-grid-dark {
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
 }

@@ -1,15 +1,5 @@
 import type { PlanResponse, TemplateResponse } from "@impulza/contracts";
-import { TemplateAvatar } from "./template-avatar";
-
-interface ThemeTokensPreview {
-  palette?: {
-    background?: string;
-    foreground?: string;
-    primary?: string;
-    primaryForeground?: string;
-    surface?: string;
-  };
-}
+import { TemplateThumbnail } from "./template-thumbnail";
 
 export type ReactIcon = "link" | "users" | "chart" | "qr" | "form" | "grid";
 
@@ -83,39 +73,9 @@ export function formatPrice(amount: number, currency: string): string {
 }
 
 export function TemplateMockup({ template }: { template: TemplateResponse }) {
-  const tokens = (template.theme.tokens ?? {}) as ThemeTokensPreview;
-  const palette = tokens.palette ?? {};
-  const background = palette.background ?? "#ffffff";
-  const foreground = palette.foreground ?? "#0f172a";
-  const primary = palette.primary ?? "#0f6f6b";
-  const primaryForeground = palette.primaryForeground ?? "#ffffff";
-  const initials = template.name
-    .split(/[\s/]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toLocaleUpperCase("es"))
-    .join("");
-
-  // Avatar de ejemplo generado (no es una foto real de nadie): sirve solo para previsualizar
-  // cómo luce la plantilla con una foto de perfil. El usuario reemplaza esto por la suya propia
-  // desde el panel de Impulza One al personalizar su portal — nunca es contenido final.
-  const avatarSeed = encodeURIComponent(template.code);
-  const avatarSrc = `https://api.dicebear.com/9.x/notionists/svg?seed=${avatarSeed}&backgroundColor=transparent`;
-
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-md">
-      <div className="flex flex-col items-center gap-3 px-5 pb-5 pt-7" style={{ background }}>
-        <span
-          className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full text-sm font-semibold"
-          style={{ backgroundColor: primary, color: primaryForeground }}
-        >
-          <TemplateAvatar src={avatarSrc} fallbackLabel={initials ?? ""} />
-        </span>
-        <div className="flex w-full flex-col gap-1.5">
-          <span className="h-7 w-full rounded-[8px]" style={{ backgroundColor: primary }} />
-          <span className="h-7 w-full rounded-[8px] border" style={{ borderColor: foreground + "33" }} />
-        </div>
-      </div>
+      <TemplateThumbnail template={template} />
       <div className="flex flex-1 flex-col gap-1 border-t border-[#e2e8f0] px-5 py-4">
         <span className="text-sm font-semibold text-[#0f172a]">{template.name}</span>
         <span className="text-xs text-[#64748b]">{template.description}</span>

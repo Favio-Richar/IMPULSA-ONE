@@ -24,7 +24,7 @@ import { ANALYTICS_QUEUE } from "./analytics.tokens.js";
     },
     AnalyticsService,
   ],
-  exports: [AnalyticsService],
+  exports: [AnalyticsService, AnalyticsReportsService],
 })
 export class AnalyticsModule implements OnApplicationShutdown {
   constructor(@Inject(ANALYTICS_QUEUE) private readonly queue: Queue<AnalyticsEventJob>) {}

@@ -1,9 +1,8 @@
-import { createServer, type Server } from "node:http";
-import type { AddressInfo } from "node:net";
 import { readFileSync } from "node:fs";
-import { expect, request as apiRequest, test, type Page } from "@playwright/test";
-import { ADMIN_SESSION_PATH, FIXTURE_PATH, type SeededFixture } from "../global-setup.js";
+import { expect, test, type Page } from "@playwright/test";
+import { FIXTURE_PATH, type SeededFixture } from "../global-setup.js";
 import { API_BASE_URL } from "../playwright.config.js";
+import { startSimulatedModel } from "./support/modelo-simulado.js";
 
 // F6.3 — asistente de textos contra la API y el panel reales. El "modelo" es un servidor local
 // compatible con OpenAI que responde propuestas fijas: la API lo llama de verdad por la conexión
@@ -29,58 +28,17 @@ const SEO = [
   { title: "Estudio e2e · Fotos para tu tienda online", description: "Sesiones de fotografía de producto con entrega rápida y precios claros." },
 ];
 
-let server: Server;
-let connectionId: string | null = null;
-let savedRoutes: Record<string, string[]> = {};
-
-/** Servidor que imita `POST /v1/chat/completions` y responde según el esquema pedido. */
-function startModelServer(): Promise<string> {
-  server = createServer((req, res) => {
-    let raw = "";
-    req.on("data", (chunk: Buffer) => (raw += chunk.toString()));
-    req.on("end", () => {
-      const body = JSON.parse(raw || "{}") as { response_format?: { json_schema?: { name?: string } } };
-      const name = body.response_format?.json_schema?.name;
-      const output = name === "seo_proposals" ? { proposals: SEO } : name === "block_copy" ? { proposals: COPY.map((values) => ({ values })) } : { ok: true };
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ model: "simulado", choices: [{ message: { content: JSON.stringify(output) }, finish_reason: "stop" }], usage: { prompt_tokens: 120, completion_tokens: 80 } }));
-    });
-  });
-  return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`)));
-}
-
-async function adminApi() {
-  return apiRequest.newContext({ storageState: ADMIN_SESSION_PATH, extraHTTPHeaders: CSRF });
-}
+let model: { stop: () => Promise<void> } | null = null;
 
 test.beforeAll(async () => {
-  const baseUrl = await startModelServer();
-  const api = await adminApi();
-  // Restos de una corrida cortada a la mitad.
-  const list = (await (await api.get(`${API_BASE_URL}/admin/ai/connections`)).json()) as Array<{ id: string; name: string }>;
-  for (const leftover of list.filter((c) => c.name === CONNECTION_NAME)) {
-    await api.delete(`${API_BASE_URL}/admin/ai/connections/${leftover.id}`);
-  }
-  savedRoutes = ((await (await api.get(`${API_BASE_URL}/admin/ai/routes`)).json()) as { routes: Record<string, string[]> }).routes;
-  const created = await api.post(`${API_BASE_URL}/admin/ai/connections`, {
-    data: { name: CONNECTION_NAME, kind: "OPENAI_COMPATIBLE", baseUrl, model: "simulado", jsonMode: "json_schema", timeoutMs: 5_000 },
+  model = await startSimulatedModel(CONNECTION_NAME, ["short_copy", "seo", "translate"], {
+    block_copy: () => ({ proposals: COPY.map((values) => ({ values })) }),
+    seo_proposals: () => ({ proposals: SEO }),
   });
-  expect(created.status()).toBe(201);
-  connectionId = ((await created.json()) as { id: string }).id;
-  const routes = { ...savedRoutes, short_copy: [connectionId], seo: [connectionId], translate: [connectionId] };
-  expect((await api.put(`${API_BASE_URL}/admin/ai/routes`, { data: { routes } })).status()).toBe(200);
-  await api.dispose();
 });
 
 test.afterAll(async () => {
-  const api = await adminApi();
-  const kept = Object.fromEntries(Object.entries(savedRoutes).map(([task, ids]) => [task, ids.filter((id) => id !== connectionId)]));
-  await api.put(`${API_BASE_URL}/admin/ai/routes`, { data: { routes: kept } });
-  if (connectionId) {
-    await api.delete(`${API_BASE_URL}/admin/ai/connections/${connectionId}`);
-  }
-  await api.dispose();
-  await new Promise((resolve) => server.close(resolve));
+  await model?.stop();
 });
 
 async function expectNoHorizontalScroll(page: Page): Promise<void> {

@@ -1,6 +1,6 @@
-import type { AiTaskCode, AiBlockCopyRequest, AiSeoRequest, AiTranslateRequest } from "@impulza/validation";
+import type { AiTaskCode, AiBlockCopyRequest, AiInsightsRequest, AiSeoRequest, AiTranslateRequest } from "@impulza/validation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAiStatus, proposeBlockCopy, proposeSeo, translateBlock } from "../api/ai";
+import { analyzeSite, getAiStatus, proposeBlockCopy, proposeSeo, translateBlock } from "../api/ai";
 
 function statusKey(organizationId: string) {
   return ["ai", organizationId, "status"] as const;
@@ -42,6 +42,14 @@ export function useProposeSeo(organizationId: string, siteId: string, pageId: st
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: AiSeoRequest) => proposeSeo(organizationId, siteId, pageId, body),
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: statusKey(organizationId) }),
+  });
+}
+
+export function useAnalyzeSite(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ siteId, ...body }: AiInsightsRequest & { siteId: string }) => analyzeSite(organizationId, siteId, body),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: statusKey(organizationId) }),
   });
 }

@@ -17,15 +17,17 @@ import {
   TableRow,
   cn,
 } from "@impulza/ui";
-import { Contact, Eye, MousePointerClick, Percent, QrCode, Target, Users } from "lucide-react";
+import { Contact, Eye, MousePointerClick, Percent, QrCode, Sparkles, Target, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { formatCompact, formatInteger, formatPercent, isoDayOffset } from "../../../components/analytics/format";
 import { RankedBars } from "../../../components/analytics/ranked-bars";
 import { SeriesChart } from "../../../components/analytics/series-chart";
 import { StatTile } from "../../../components/analytics/stat-tile";
+import { SiteInsightsCard } from "../../../components/ai/site-insights-card";
 import { useActiveOrgStore } from "../../../lib/active-org-store";
 import { BLOCK_LABELS } from "../../../lib/block-fields/labels";
+import { isAiTaskAvailable, useAiStatus } from "../../../lib/hooks/use-ai";
 import { useAnalyticsOverview } from "../../../lib/hooks/use-analytics";
 import { useSites } from "../../../lib/hooks/use-sites";
 import { PlanLimitNotice } from "../../../components/plan-limit-notice";
@@ -91,6 +93,8 @@ function AnalyticsDashboard({ organizationId }: { organizationId: string }): Rea
   const draftError = customRangeError(customDraft.from, customDraft.to);
   const { from, to } = resolveRange(range);
   const overviewQuery = useAnalyticsOverview(organizationId, { from, to, siteId: siteId || undefined });
+  const aiStatus = useAiStatus(organizationId);
+  const insightsDays = range.preset === "7" ? 7 : range.preset === "90" ? 90 : 30;
 
   return (
     <div className="flex flex-col gap-6">
@@ -177,6 +181,18 @@ function AnalyticsDashboard({ organizationId }: { organizationId: string }): Rea
         <p role="alert" className="-mt-3 text-sm text-danger">
           {draftError}
         </p>
+      ) : null}
+
+      {/* F6.4: la lectura con IA es por sitio (las recomendaciones apuntan a una página concreta). */}
+      {isAiTaskAvailable(aiStatus.data, "insights") ? (
+        siteId ? (
+          <SiteInsightsCard key={siteId} organizationId={organizationId} siteId={siteId} initialDays={insightsDays} />
+        ) : (
+          <p className="flex items-center gap-2 rounded-lg border border-dashed border-border-strong px-4 py-3 text-sm text-muted-foreground">
+            <Sparkles className="size-4 shrink-0 text-primary" aria-hidden="true" />
+            Elige un sitio arriba para pedir una lectura con IA de sus números.
+          </p>
+        )
       ) : null}
 
       {overviewQuery.isPending ? (

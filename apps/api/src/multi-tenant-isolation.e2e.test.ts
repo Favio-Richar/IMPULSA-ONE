@@ -1648,5 +1648,11 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       await orgA.ownerAgent.post(`${pagesPathB}/${homeOfB}/ai/seo`).set(CSRF_HEADERS).send({}).expect(403);
       await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/${homeOfB}/ai/seo`).set(CSRF_HEADERS).send({}).expect(404);
     });
+
+    it("A no pide la lectura comercial del sitio de B, ni metiendo el sitio de B bajo su organización (F6.4)", async () => {
+      // Ambas se resuelven antes de leer métricas o llamar al modelo: las cifras de B nunca viajan.
+      await orgA.ownerAgent.post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/ai/insights`).set(CSRF_HEADERS).send({ days: 7 }).expect(403);
+      await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/ai/insights`).set(CSRF_HEADERS).send({ days: 7 }).expect(404);
+    });
   });
 });

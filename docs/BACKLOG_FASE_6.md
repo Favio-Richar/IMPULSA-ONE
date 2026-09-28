@@ -29,13 +29,13 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
 | F6.2 — Motor de IA: `AIProvider`, ruteo con respaldo, registro de uso y cuota por plan | Lista para tu revisión (sin UI: la administración es F6.2b) |
 | F6.2b — Conexiones de IA en la superadministración | Lista para tu revisión (capturas en `docs/design/capturas/f62b/`) |
 | F6.3 — Asistente de textos: títulos, CTA, SEO y traducción | Lista para tu revisión (capturas en `docs/design/capturas/f63/`) |
-| F6.4 — IA comercial: lectura de métricas y recomendaciones | Pendiente |
+| F6.4 — IA comercial: lectura de métricas y recomendaciones | Lista para tu revisión (capturas en `docs/design/capturas/f64/`) |
 | F6.5 — Pruebas A/B | Pendiente |
 | F6.6 — Smart CTA | Pendiente |
 | F6.7 — Automatizaciones básicas | Pendiente |
 | F6.8 — Modo agencia | Bloqueado (decisión #8) |
 | F6.9 — Marca blanca | Bloqueado (decisión #8) |
-| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1, F6.2, F6.2b y F6.3 agregados; se completa con cada historia) |
+| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1, F6.2, F6.2b, F6.3 y F6.4 agregados; se completa con cada historia) |
 
 ### Bitácora de avance (para retomar)
 
@@ -166,6 +166,47 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
     API 446/447 (la falla: timeout de 5 s en `admin.e2e.test.ts` con los servidores de Playwright
     corriendo; aislada pasa 26/26).
   - Siguiente: F6.4 (IA comercial sobre métricas agregadas y hallazgos de F6.1).
+
+- **2026-09-28 — F6.4 terminada**, en "Lista para tu revisión". Favio: "continúa desarrollando el
+  sistema sin cometer errores".
+  - `@impulza/validation` (`src/ai/insights.ts`): `buildInsightsDigest` arma el resumen para el
+    modelo solo con métricas agregadas (visitas, visitantes, clics, leads, conversión, clics por
+    visitante, contactos nuevos como conteo) y códigos de hallazgo de F6.1; sin ids ni bloques
+    borrados. **Muestra suficiente = 50 visitantes** (`INSIGHTS_MIN_VISITORS`, criterio conservador:
+    con menos, "+100 %" puede ser una persona): sin ella no se incluyen el período anterior, la
+    variación ni los desgloses (dispositivos, fuentes, campañas, bloques), así el modelo no tiene con
+    qué inventar una tendencia; se compara solo si **ambos** períodos tienen muestra.
+    `insightsOutputSchema`: resumen ≤ 600, 1–3 acciones (título, razón, tipo de una lista cerrada) y
+    `findingCode` limitado a los hallazgos reales de la página. Períodos cerrados: 7, 30 o 90 días.
+    5 pruebas nuevas (525 en total).
+  - API (`SiteInsightsService`, `SiteInsightsController`): `POST organizations/:org/sites/:site/ai/
+    insights`. Reusa el cálculo del panel de analítica (`AnalyticsReportsService.overview`) y la salud
+    de la página de inicio (`PageHealthService`), ahora exportados por sus módulos. El período valida
+    el historial del plan (402 como el panel); la comparación solo se pide si el doble del período
+    entra en el historial. Permiso: miembro activo (leer analítica no exige permiso, F3.7; el rol
+    ANALYST existe para esto); la cuota y el límite por usuario de `AiService` acotan el gasto. No
+    escribe. Log con días, muestra y cantidad de acciones, nunca métricas ni texto. Contrato
+    `aiInsightsResponse`; OpenAPI regenerado (134 rutas). Sin migración.
+  - Panel (Analítica): con la tarea disponible, pide elegir un sitio; con sitio, tarjeta "Lectura con
+    IA" con período (7/30/90), "Analizar", cuota ("Solo lectura: no cambia nada en tu sitio"),
+    rango y período comparado, explicación, 3 acciones en tarjetas numeradas con su tipo y, si
+    corrige un hallazgo, enlace a donde se corrige (constructor, SEO o tema). El aviso de muestra
+    insuficiente sale de `sample` del servidor, no del texto del modelo. Estados de carga
+    (esqueleto), vacío, error (402, 429, 503, red) y éxito.
+  - Pruebas: API e2e `site-insights.e2e.test.ts` 7 (sin muestra: aviso y sin período anterior ni
+    desgloses en el pedido; con muestra en ambos: variación correcta; hallazgo inventado = salida
+    inválida → 503; ni correo, nombre, teléfono ni ids en el pedido; historial del plan: 402 sin
+    llamar al modelo y sin comparación; un ANALYST puede; período fuera de lista 400; falla del
+    modelo → 503 sin consumir cuota) + caso central de aislamiento. **Verificadas contra el código
+    roto:** sin la regla de muestra y sin el límite de historial para la comparación, fallan las
+    pruebas correspondientes por la razón correcta. El caso de aislamiento "sitio de B bajo la
+    organización de A" también lo cubre `overview` (doble capa), así que quitar solo el chequeo del
+    servicio no lo hace fallar. Playwright `lectura-ia.spec.ts` 2/2 (móvil y escritorio) con el modelo
+    simulado, ahora compartido en `tests/support/modelo-simulado.ts` (F6.3 lo usa también: 4/4).
+    Suite completa de la API 453/455 (2 timeouts de 5 s por carga en `admin` y `media`; aislados
+    41/41). `pnpm build`: `apps/web` necesita la API arriba para prerenderizar la portada (con la API
+    levantada compila); no cambió en esta historia.
+  - Siguiente: F6.5 (pruebas A/B).
 
 > **PUNTO DE CORTE (2026-09-28) — superado:** F6.3 se terminó después (ver la entrada de F6.3 arriba). Favio había pedido parar acá.
 > - Hecho, probado y commiteado: F6.1 (salud de página), F6.2 (motor de IA, ADR-010) y F6.2b

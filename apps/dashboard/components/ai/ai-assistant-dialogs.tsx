@@ -296,7 +296,14 @@ export function SeoAiDialog({
 
 // --- piezas compartidas -----------------------------------------------------------------------------
 
-function QuotaLine({ status }: { status: AiStatusResponse | undefined }): React.JSX.Element | null {
+export function QuotaLine({
+  status,
+  lead = "Nada cambia hasta que apliques.",
+}: {
+  status: AiStatusResponse | undefined;
+  /** Frase de garantía antes de la cuota: qué hace (y qué no) esta función con tu contenido. */
+  lead?: string;
+}): React.JSX.Element | null {
   if (!status) {
     return null;
   }
@@ -305,14 +312,14 @@ function QuotaLine({ status }: { status: AiStatusResponse | undefined }): React.
     <p className="flex items-center gap-2 text-xs text-muted-foreground">
       <ShieldCheck className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
       <span>
-        Nada cambia hasta que apliques.{" "}
+        {lead}{" "}
         {limit === null ? "Tu plan no tiene límite de solicitudes." : `Usaste ${used} de ${limit} solicitudes de IA este mes.`}
       </span>
     </p>
   );
 }
 
-function Intro({ icon: Icon, children }: { icon: typeof Sparkles; children: ReactNode }): React.JSX.Element {
+export function Intro({ icon: Icon, children }: { icon: typeof Sparkles; children: ReactNode }): React.JSX.Element {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-dashed border-border-strong bg-surface p-4 text-sm text-muted-foreground">
       <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -340,7 +347,7 @@ function ProposalSkeleton({ label, rows }: { label: string; rows: number }): Rea
   );
 }
 
-function AiErrorNotice({ error }: { error: unknown }): React.JSX.Element {
+export function AiErrorNotice({ error }: { error: unknown }): React.JSX.Element {
   const message = aiErrorMessage(error);
   return (
     <>

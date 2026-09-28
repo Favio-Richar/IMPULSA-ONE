@@ -5,8 +5,8 @@ captación, reservas, ventas y analítica) desde una sola URL.
 
 **Estado actual: Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
 (salud de página), F6.2 (motor de IA con modelos locales primero, ADR-010), F6.2b (conexiones de IA
-en la administración) y F6.3 (asistente de textos en el constructor) listas para revisión; sigue
-F6.4 (IA comercial sobre métricas agregadas). Modo agencia y marca blanca
+en la administración), F6.3 (asistente de textos en el constructor) y F6.4 (lectura comercial con IA
+en Analítica) listas para revisión; sigue F6.5 (pruebas A/B). Modo agencia y marca blanca
 esperan la decisión #8. Fase 5 — Negocio digital — F5.1–F5.7 listas para revisión del propietario
 (backlog en `docs/BACKLOG_FASE_5.md`): reservas con disponibilidad y sin doble reserva, agenda,
 correos con enlace firmado para cancelar o reprogramar, catálogo y pedidos con pago externo,
@@ -35,7 +35,7 @@ reglas de trabajo del repositorio.
 | 3 — Conversión | F3.1–F3.8 | Terminada |
 | 4 — SaaS comercial | F4.1–F4.9 | En progreso |
 | 5 — Negocio digital | F5.1–F5.7 | Lista para revisión (cobros bloqueados por decisión #6) |
-| 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.3 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
+| 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.4 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
 
 ## Requisitos
 
@@ -1160,6 +1160,14 @@ Detalle, criterios y bitácora en `docs/BACKLOG_FASE_6.md`.
   sanitiza el HTML traducido, trata el contenido de la página como datos (no instrucciones) y nunca
   toca URLs, teléfonos ni precios. Rutas `POST .../pages/:pageId/ai/{block-copy,translate,seo}` con
   `page.manage`; los botones solo aparecen si hay un modelo configurado para la tarea.
+- **Lectura comercial con IA (F6.4):** en Analítica, con un sitio elegido, la tarjeta "Lectura con IA"
+  explica qué dicen los números del período (7, 30 o 90 días) y propone hasta 3 acciones con su
+  razón; si una acción corrige un hallazgo de la salud de página, lleva a corregirlo. El modelo
+  recibe solo métricas agregadas y códigos de hallazgo (nunca contactos, ids ni eventos sueltos). La
+  **muestra suficiente la decide el servidor** (50 visitantes en el período): sin ella, el modelo ni
+  siquiera recibe el período anterior ni desgloses, y el panel muestra su propio aviso. La
+  comparación con el período anterior respeta el historial de analítica del plan.
+  `POST .../sites/:siteId/ai/insights` (cualquier miembro activo, como leer la analítica).
 
 ## Sitio comercial: escena 3D del hero (ADR-009)
 

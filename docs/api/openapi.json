@@ -25661,6 +25661,277 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/ai/insights": {
+      "post": {
+        "description": "Explica las métricas agregadas del sitio en el período (7, 30 o 90 días) y propone hasta 3 acciones con su razón, apoyándose en la salud de la página de inicio (F6.4). Sin datos personales. Si no hay muestra suficiente, `sample.enough` es falso y no se compara con el período anterior. No guarda nada.",
+        "operationId": "SiteInsightsController_analyze",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio a analizar.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "days": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          7
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          30
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          90
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "days"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lectura y acciones recomendadas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "siteId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "range": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "comparedTo": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "sample": {
+                      "type": "object",
+                      "properties": {
+                        "enough": {
+                          "type": "boolean"
+                        },
+                        "visitors": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "minimum": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "comparable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enough",
+                        "visitors",
+                        "minimum",
+                        "comparable"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "health": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "pageId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "score": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "pageId",
+                        "score"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "actions": {
+                      "minItems": 1,
+                      "maxItems": 3,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "fix_page",
+                              "content",
+                              "acquisition",
+                              "conversion"
+                            ]
+                          },
+                          "findingCode": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "title",
+                          "reason",
+                          "kind",
+                          "findingCode"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "generatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "siteId",
+                    "range",
+                    "comparedTo",
+                    "sample",
+                    "health",
+                    "summary",
+                    "actions",
+                    "generatedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "402": {
+            "description": "`PLAN_LIMIT_REACHED`: cuota mensual de IA agotada, o el período supera el historial de analítica del plan."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio no encontrado, o de otra organización (ADR-002)."
+          },
+          "429": {
+            "description": "Demasiadas solicitudes al asistente en el último minuto."
+          },
+          "503": {
+            "description": "`AI_UNAVAILABLE`: no hay modelos configurados para el análisis o ninguno respondió."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Lectura comercial del sitio con IA",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
     "/api/v1/admin/auth/login": {
       "post": {
         "description": "Correo, contraseña y código 2FA en la misma petición. Emite la cookie `impulza_admin_session` (`HttpOnly`, `SameSite=Strict`, `path=/api/v1/admin`, 8 h). El mensaje de error es el mismo para cualquier fallo, y un código incorrecto cuenta como intento fallido.",

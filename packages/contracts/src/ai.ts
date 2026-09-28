@@ -42,6 +42,38 @@ export const aiSeoProposalsResponse = z.object({
   proposals: z.array(z.object({ title: z.string(), description: z.string() })).min(1).max(3),
 });
 
+// --- IA comercial (F6.4) --------------------------------------------------------------------------
+
+const dayRange = z.object({ from: z.iso.date(), to: z.iso.date() });
+
+/**
+ * Lectura de las métricas de un sitio con recomendaciones. `sample` lo calcula el servidor (no el
+ * modelo): sin muestra suficiente el panel lo dice aunque el texto del modelo no lo hiciera.
+ * `findingCode` es siempre un hallazgo real de la salud de la página de inicio (F6.1) o nulo.
+ */
+export const aiInsightsResponse = z.object({
+  siteId: z.uuid(),
+  range: dayRange,
+  /** Período anterior usado para comparar; nulo si no había muestra o el plan no alcanza. */
+  comparedTo: dayRange.nullable(),
+  sample: z.object({ enough: z.boolean(), visitors: z.number().int(), minimum: z.number().int(), comparable: z.boolean() }),
+  health: z.object({ pageId: z.uuid(), score: z.number().int() }).nullable(),
+  summary: z.string(),
+  actions: z
+    .array(
+      z.object({
+        title: z.string(),
+        reason: z.string(),
+        kind: z.enum(["fix_page", "content", "acquisition", "conversion"]),
+        findingCode: z.string().nullable(),
+      }),
+    )
+    .min(1)
+    .max(3),
+  generatedAt: z.iso.datetime({ offset: true }),
+});
+
+export type AiInsightsResponse = z.infer<typeof aiInsightsResponse>;
 export type AiBlockProposalsResponse = z.infer<typeof aiBlockProposalsResponse>;
 export type AiSeoProposalsResponse = z.infer<typeof aiSeoProposalsResponse>;
 

@@ -12,6 +12,6 @@ import { PagesService } from "./pages.service.js";
   imports: [PublicSitesModule, ThemesModule],
   controllers: [PagesController],
   providers: [PagesService, PageVersionsService, PageHealthService],
-  exports: [PagesService, PageVersionsService],
+  exports: [PagesService, PageVersionsService, PageHealthService],
 })
 export class PagesModule {}

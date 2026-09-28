@@ -11882,6 +11882,12 @@
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
+                          },
+                          "aiRequestsPerMonth": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
                           }
                         },
                         "required": [
@@ -11894,7 +11900,8 @@
                           "members",
                           "analyticsHistoryDays",
                           "storageMb",
-                          "emailsPerHour"
+                          "emailsPerHour",
+                          "aiRequestsPerMonth"
                         ],
                         "additionalProperties": false
                       }
@@ -12052,6 +12059,12 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "aiRequestsPerMonth": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -12064,7 +12077,8 @@
                             "members",
                             "analyticsHistoryDays",
                             "storageMb",
-                            "emailsPerHour"
+                            "emailsPerHour",
+                            "aiRequestsPerMonth"
                           ],
                           "additionalProperties": false
                         }
@@ -23833,6 +23847,104 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/ai/status": {
+      "get": {
+        "description": "Qué tareas de IA están disponibles y cuánto queda de la cuota mensual del plan (F6.2). No expone proveedores ni modelos: son configuración de la plataforma.",
+        "operationId": "AiController_status",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tareas disponibles y cuota del mes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "availableTasks": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "quota": {
+                      "type": "object",
+                      "properties": {
+                        "limit": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "used": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "period": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "limit",
+                        "used",
+                        "period"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "availableTasks",
+                    "quota"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Estado del asistente de IA",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
     "/api/v1/admin/auth/login": {
       "post": {
         "description": "Correo, contraseña y código 2FA en la misma petición. Emite la cookie `impulza_admin_session` (`HttpOnly`, `SameSite=Strict`, `path=/api/v1/admin`, 8 h). El mensaje de error es el mismo para cualquier fallo, y un código incorrecto cuenta como intento fallido.",
@@ -24542,6 +24654,12 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "aiRequestsPerMonth": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -24554,7 +24672,8 @@
                             "members",
                             "analyticsHistoryDays",
                             "storageMb",
-                            "emailsPerHour"
+                            "emailsPerHour",
+                            "aiRequestsPerMonth"
                           ],
                           "additionalProperties": false
                         }
@@ -24935,6 +25054,12 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "aiRequestsPerMonth": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -24947,7 +25072,8 @@
                             "members",
                             "analyticsHistoryDays",
                             "storageMb",
-                            "emailsPerHour"
+                            "emailsPerHour",
+                            "aiRequestsPerMonth"
                           ],
                           "additionalProperties": false
                         }
@@ -25324,6 +25450,12 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "aiRequestsPerMonth": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -25336,7 +25468,8 @@
                             "members",
                             "analyticsHistoryDays",
                             "storageMb",
-                            "emailsPerHour"
+                            "emailsPerHour",
+                            "aiRequestsPerMonth"
                           ],
                           "additionalProperties": false
                         }
@@ -25715,6 +25848,12 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "aiRequestsPerMonth": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -25727,7 +25866,8 @@
                             "members",
                             "analyticsHistoryDays",
                             "storageMb",
-                            "emailsPerHour"
+                            "emailsPerHour",
+                            "aiRequestsPerMonth"
                           ],
                           "additionalProperties": false
                         }
@@ -26173,6 +26313,12 @@
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
+                          },
+                          "aiRequestsPerMonth": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
                           }
                         },
                         "required": [
@@ -26185,7 +26331,8 @@
                           "members",
                           "analyticsHistoryDays",
                           "storageMb",
-                          "emailsPerHour"
+                          "emailsPerHour",
+                          "aiRequestsPerMonth"
                         ],
                         "additionalProperties": false
                       }
@@ -26341,6 +26488,13 @@
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 9007199254740991
+                      },
+                      "aiRequestsPerMonth": {
+                        "default": 20,
+                        "nullable": true,
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
                       }
                     },
                     "required": [
@@ -26467,6 +26621,12 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "aiRequestsPerMonth": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
@@ -26479,7 +26639,8 @@
                         "members",
                         "analyticsHistoryDays",
                         "storageMb",
-                        "emailsPerHour"
+                        "emailsPerHour",
+                        "aiRequestsPerMonth"
                       ],
                       "additionalProperties": false
                     }

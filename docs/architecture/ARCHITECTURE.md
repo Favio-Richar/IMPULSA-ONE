@@ -105,6 +105,13 @@ IA, analítica externa, calendarios, WhatsApp. Ningún módulo de dominio import
 directamente; siempre pasa por el adaptador correspondiente en `packages/*` o en un módulo de
 infraestructura dedicado dentro de `apps/api`.
 
+**IA (F6.2, ADR-010):** `packages/ai` define `AIProvider` con dos adaptadores — compatible con
+OpenAI (servidor de modelos propio, OpenAI, Gemini, Groq, OpenRouter…) y Anthropic (SDK oficial) —
+y `runWithFallback` (timeout, reintentos, respaldo entre conexiones y validación Zod de toda salida).
+En `apps/api`, `AiService` (módulo `ai`) es la única puerta: lee conexiones y rutas por tarea de la
+base, aplica la cuota del plan y el límite por usuario, y registra el uso sin contenido. Las
+conexiones las administra solo la superadministración (F6.2b).
+
 ## 6. Decisiones abiertas de infraestructura
 
 - Proxy inverso: Caddy, Traefik o Nginx — a decidir y documentar en un ADR antes de Fase 4

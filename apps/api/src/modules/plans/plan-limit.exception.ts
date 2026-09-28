@@ -14,6 +14,7 @@ const LIMIT_MESSAGES: Record<PlanLimitKey, string> = {
   analyticsHistoryDays: "Tu plan no incluye ese período de historial.",
   storageMb: "Llegaste al máximo de almacenamiento de tu plan.",
   emailsPerHour: "Llegaste al máximo de correos por hora de tu plan.",
+  aiRequestsPerMonth: "Llegaste al máximo de solicitudes al asistente de IA de este mes en tu plan.",
 };
 
 /**

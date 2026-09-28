@@ -18,6 +18,7 @@ export const planLimitsResponse = z.object({
   analyticsHistoryDays: limitValue,
   storageMb: limitValue,
   emailsPerHour: limitValue,
+  aiRequestsPerMonth: limitValue,
 });
 
 export const planResponse = z.object({

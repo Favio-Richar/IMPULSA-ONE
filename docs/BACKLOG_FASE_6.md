@@ -19,14 +19,15 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
 |---|---|---|---|
 | 8 | Alcance inicial de agencia | Modo agencia (F6.8) y marca blanca (F6.9) | No se construyen hasta que Favio defina el alcance: son las dos historias que cambian el modelo de cuentas (una organización que administra a otras) y la facturación |
 | 4 | Límites exactos de cada plan | Cuota de uso de IA y de pruebas A/B por plan | Límites como en Fase 4: columnas del `Plan` con valores por defecto conservadores, editables desde administración sin desplegar |
-| — | Proveedor de IA y su costo | Generación real de textos | `AIProvider` con adaptador de Anthropic (Claude) configurable por entorno y un adaptador falso para pruebas. Sin clave configurada, el asistente responde "no disponible" (503) y nada más se rompe — mismo criterio que el proveedor de correo en F5.6 |
+| — | Proveedor de IA y su costo | Generación real de textos | **Resuelta 2026-09-28 (ADR-010):** proveedores intercambiables con modelos locales primero (servidor propio de Favio a futuro); conexiones administradas por el propietario en `apps/admin`. Sin conexiones configuradas, el asistente responde "no disponible" (503) y nada más se rompe |
 
 ## Estado
 
 | Historia | Estado |
 |---|---|
 | F6.1 — Salud de página | Lista para tu revisión (capturas en `docs/design/capturas/f61/`) |
-| F6.2 — `AIProvider`, registro de uso y cuota por plan | Pendiente |
+| F6.2 — Motor de IA: `AIProvider`, ruteo con respaldo, registro de uso y cuota por plan | Lista para tu revisión (sin UI: la administración es F6.2b) |
+| F6.2b — Conexiones de IA en la superadministración | Pendiente |
 | F6.3 — Asistente de textos: títulos, CTA, SEO y traducción | Pendiente |
 | F6.4 — IA comercial: lectura de métricas y recomendaciones | Pendiente |
 | F6.5 — Pruebas A/B | Pendiente |
@@ -34,7 +35,7 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
 | F6.7 — Automatizaciones básicas | Pendiente |
 | F6.8 — Modo agencia | Bloqueado (decisión #8) |
 | F6.9 — Marca blanca | Bloqueado (decisión #8) |
-| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (caso de F6.1 agregado; se completa con cada historia) |
+| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1 y F6.2 agregados; se completa con cada historia) |
 
 ### Bitácora de avance (para retomar)
 
@@ -65,6 +66,37 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
     diálogo dentro de la pantalla, "Abrir el bloque" abre el bloque).
   - Siguiente: F6.2 (`AIProvider`, registro de uso y cuota por plan).
 
+- **2026-09-28 — F6.2 terminada**, en "Lista para tu revisión". Decisión en ADR-010 (Favio: "que
+  aguante modelos locales… no depender de pagos"; conexiones administradas por el dueño).
+  - `packages/ai` (`@impulza/ai`): `AIProvider`, adaptador **compatible con OpenAI** (`fetch`, sin
+    seguir redirecciones, modo de JSON por conexión, esquema también en las instrucciones para
+    modelos que ignoran `response_format`, extracción tolerante de bloques de código), adaptador
+    **Anthropic** con el SDK oficial `@anthropic-ai/sdk` 0.128.0 (salida estructurada por
+    `output_config.format`, `maxRetries: 0`, negativa del modelo → siguiente conexión) y
+    `runWithFallback` (timeout por conexión, reintento con retroceso solo en transitorios y salida
+    inválida, respaldo en orden, validación Zod siempre). La prueba del adaptador de Claude corre
+    contra un servidor local que imita la Messages API y encontró un caso real: `messages.parse`
+    decodifica antes de mirar `stop_reason`, así que una negativa llegaba como error de formato; se
+    cambió a `messages.create` + validación propia.
+  - Base (migración aditiva `20260928030000_f62_ai_engine` con `CHECK`s): `AiConnection`, `AiRoute`,
+    `AiUsage`; `aiRequestsPerMonth` en los límites del plan (provisorios: 20 / 300 / 1.500 / 5.000,
+    decisión #4) y en las pantallas de plan del panel y de la administración.
+  - API: `AiService` (única puerta a la IA): ruta por tarea desde la base, token descifrado solo al
+    usarse, límite de 20 solicitudes por minuto por usuario (429), cuota mensual con reserva atómica
+    en Redis sembrada desde la base (402; una solicitud fallida devuelve el cupo), registro de cada
+    intento en `AiUsage` sin contenido y log estructurado con resultados y costo.
+    `GET organizations/:org/ai/status` (tareas disponibles y cuota, sin proveedores ni modelos).
+    OpenAPI regenerado (125 rutas). Sin UI todavía: la usan F6.2b y F6.3.
+  - Pruebas: `@impulza/ai` 14; API e2e 6 (respaldo real desde la base, token descifrado, uso sin
+    contenido, 503 sin conexiones, 402 al agotar la cuota sin llamar al proveedor, 429 por usuario,
+    estado sin datos internos) — la de concurrencia verificada contra el código roto (contar en la
+    base en vez de reservar en Redis deja pasar dos solicitudes con el último cupo); caso central
+    de aislamiento (el uso de B no cuenta en la cuota de A). Suite completa de la API 433/433 (una
+    primera corrida tuvo 4 fallas de carga en administración y páginas; aisladas pasan 47/47 y la
+    segunda corrida completa pasó entera).
+  - Sin conexiones configuradas, todo responde "no disponible".
+  - Siguiente: F6.2b (conexiones de IA en la superadministración).
+
 ---
 
 ### F6.1 — Salud de página
@@ -89,19 +121,39 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
   vivo de enlaces caídos queda para cuando exista el hosting (F4.8) y un servicio de salida
   aislado.
 
-### F6.2 — `AIProvider`, registro de uso y cuota por plan
+### F6.2 — Motor de IA: `AIProvider`, ruteo con respaldo, registro de uso y cuota por plan
+Decisión en `docs/decisions/ADR-010-proveedores-ia.md`.
 **Criterios de aceptación:**
-- Interfaz `AIProvider` (texto estructurado con esquema Zod de salida) en un paquete propio, con
-  adaptador de Anthropic y adaptador falso determinista. El proveedor y el modelo se eligen por
-  variables de entorno validadas al iniciar; sin clave, el módulo queda deshabilitado.
-- Timeout, reintentos con retroceso solo en errores transitorios, y respuesta validada con Zod:
-  una salida que no cumple el esquema es un error controlado, nunca se muestra cruda.
-- Tabla `AiUsage` por organización: proveedor, modelo, función, tokens de entrada y salida,
-  costo estimado, duración, resultado técnico (ok/timeout/invalid_output/provider_error). Nunca
-  guarda el texto del prompt ni la respuesta (ADR-004: minimización).
-- Cuota mensual de solicitudes por plan (`Plan.aiRequestsPerMonth`), comprobada antes de llamar
-  al proveedor; 402/429 con código estable al superarla. Límite de tasa por usuario.
-- Los prompts no incluyen datos personales de contactos ni secretos.
+- Paquete `@impulza/ai` con la interfaz `AIProvider` y dos adaptadores: **compatible con OpenAI**
+  (URL base + modelo + token: Ollama, vLLM, LM Studio, OpenAI, Gemini, Groq, OpenRouter…) y
+  **Anthropic** (SDK oficial). Adaptador falso determinista para pruebas, sin red.
+- Salida siempre JSON validado con Zod; modo de formato por conexión (`json_schema`,
+  `json_object` o solo instrucción) para servidores que no soportan esquema estricto. Una salida
+  inválida es `invalid_output`, se reintenta una vez y luego pasa a la siguiente conexión.
+- Timeout por conexión (más largo para modelos locales), reintento con retroceso solo en errores
+  transitorios (red, 408/429/5xx) y **ruteo por tarea con respaldo** en el orden configurado.
+- Modelo de datos de plataforma (migración aditiva): `AiConnection` (tipo, URL, modelo, token
+  cifrado + pista de 4 caracteres, modo de formato, timeout, precio por millón de tokens, activa),
+  `AiRoute` (tarea → conexiones en orden) y `AiUsage` (organización, usuario, tarea, conexión,
+  modelo, tokens, costo, duración, resultado). `AiUsage` nunca guarda prompt ni respuesta.
+- Cuota mensual por plan (`aiRequestsPerMonth` en los límites del plan, con valor por defecto
+  conservador) y límite de tasa por usuario, comprobados antes de llamar al proveedor; 429 con
+  código estable al superarlos (cuota: 402 `PLAN_LIMIT_REACHED`, igual que el resto de los límites
+  de plan de F4.2; tasa por usuario: 429). Una solicitud cuenta una vez aunque haya reintentos o
+  respaldo.
+- `GET /organizations/:org/ai/status`: si el asistente está disponible y cuánto queda de la cuota
+  del mes (para que el panel muestre u oculte las funciones).
+- El servidor de IA propio se alcanza solo desde `apps/api`; la URL la fija un superadministrador.
+
+### F6.2b — Conexiones de IA en la superadministración
+**Criterios de aceptación:**
+- En `apps/admin`, sección "Inteligencia artificial": alta, edición, activación y baja de
+  conexiones; el token se escribe pero nunca se vuelve a mostrar (solo la pista); botón "Probar
+  conexión" que hace una llamada mínima y muestra resultado y latencia.
+- Rutas por tarea con orden de respaldo (arrastrar o subir/bajar); interruptor global.
+- Consumo del mes por conexión y por tarea (solicitudes, tokens, costo, fallas) y las
+  organizaciones con más uso.
+- Solo superadministradores con sesión TOTP; cada cambio queda en la auditoría.
 
 ### F6.3 — Asistente de textos: títulos, CTA, SEO y traducción
 **Criterios de aceptación:**

@@ -268,6 +268,21 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   `(campaign_id, contact_id)`): organization_id, email, status (`PENDING`/`SENT`/`FAILED`/`SKIPPED`),
   sent_at, error, unsubscribed_at. El enlace de baja no se guarda: se firma con HMAC.
 
+## 9e. IA (F6.2, `BACKLOG_FASE_6.md`, ADR-010)
+
+- **AiConnection** (de plataforma, sin organización): name (único), kind
+  (`OPENAI_COMPATIBLE`/`ANTHROPIC`), base_url (obligatoria para compatible, `CHECK`),
+  api_key_encrypted (AES-256-GCM) + api_key_hint, model, json_mode
+  (`json_schema`/`json_object`/`prompt`), timeout_ms (`CHECK 1000–300000`), precios de entrada y
+  salida en micro-dólares por millón de tokens (enteros, `CHECK >= 0`), enabled.
+- **AiRoute** (AiConnection 1:N con `CASCADE`, único `(task, connection_id)`): task, position (orden
+  de respaldo, 0 = principal).
+- **AiUsage** (Organization 1:N con `CASCADE`, User 1:N y AiConnection 1:N con `SET NULL`): un
+  intento contra un proveedor — request_id (agrupa reintentos y respaldo), task, provider_kind,
+  model, outcome, tokens de entrada y salida, cost_micro_usd, duration_ms. **Sin prompt ni
+  respuesta** (ADR-004). La cuota mensual cuenta solicitudes con al menos un intento `ok`.
+- **Plan.limits** suma `aiRequestsPerMonth` (con valor por defecto para planes anteriores).
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 `Payment` (cobro propio; hoy bloqueado por la decisión #6), variantes/cupones/carrito,

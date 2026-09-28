@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type { PrismaClient } from "@impulza/database";
@@ -1606,6 +1607,22 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       } finally {
         await prisma.block.delete({ where: { id: block.id } });
       }
+    });
+  });
+
+  describe("Asistente de IA (F6.2/F6.10): cuota y estado por organización", () => {
+    it("A no lee el estado de IA de B, y el uso de B nunca cuenta en la cuota de A", async () => {
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/ai/status`).expect(403);
+
+      const ownerOfB = await prisma.user.findUniqueOrThrow({ where: { email: orgB.ownerEmail } });
+      const before = (await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/ai/status`).expect(200)).body.quota.used;
+      await prisma.aiUsage.create({
+        data: { organizationId: orgB.id, userId: ownerOfB.id, requestId: randomUUID(), task: "short_copy", providerKind: "OPENAI_COMPATIBLE", model: "m", outcome: "ok" },
+      });
+      const afterA = (await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/ai/status`).expect(200)).body.quota.used;
+      const afterB = (await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/ai/status`).expect(200)).body.quota.used;
+      expect(afterA).toBe(before);
+      expect(afterB).toBeGreaterThanOrEqual(1);
     });
   });
 });

@@ -1,0 +1,25 @@
+{
+  "name": "@impulza/ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@impulza/eslint-config": "workspace:*",
+    "@impulza/tsconfig": "workspace:*",
+    "typescript": "6.0.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.128.0",
+    "zod": "4.6.5"
+  }
+}

@@ -15,6 +15,7 @@
     "demo:perfil": "vite-node src/scripts/demo-profile.ts"
   },
   "dependencies": {
+    "@impulza/ai": "workspace:*",
     "@impulza/analytics": "workspace:*",
     "@impulza/auth": "workspace:*",
     "@impulza/config": "workspace:*",

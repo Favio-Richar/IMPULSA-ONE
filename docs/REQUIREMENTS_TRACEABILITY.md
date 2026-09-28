@@ -113,7 +113,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Requisito | Fuente | Fase |
 |---|---|---|
 | Asistente IA: estructura inicial, bloques, textos/CTA, SEO, traducción, análisis de métricas, propuestas A/B, detección de info faltante | PM §9.16 | Fase 6 |
-| Interfaz `AIProvider` con adaptadores; IA propone, usuario confirma antes de publicar; registrar proveedor/modelo/tokens/costo; límites por plan; sin dependencia rígida de un proveedor | ST §13 | Fase 6 |
+| Interfaz `AIProvider` con adaptadores; IA propone, usuario confirma antes de publicar; registrar proveedor/modelo/tokens/costo; límites por plan; sin dependencia rígida de un proveedor | ST §13 | Fase 6 — `BACKLOG_FASE_6.md` F6.2 (en revisión, ADR-010): `packages/ai` con adaptador compatible con OpenAI (modelos locales primero) y Anthropic, respaldo entre conexiones, uso registrado sin contenido, cuota mensual por plan. Administración de conexiones: F6.2b. "IA propone, usuario confirma": F6.3 |
 
 ## 13. Superadministración
 

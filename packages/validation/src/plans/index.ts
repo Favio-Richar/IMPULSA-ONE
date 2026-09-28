@@ -25,7 +25,12 @@ export const planLimitsSchema = z.object({
   /** Correos de campañas por hora (F5.6). Un plan guardado antes de F5.6 no lo tiene: vale el
    *  mínimo (`DEFAULT_EMAILS_PER_HOUR`) hasta que el equipo lo ajuste. */
   emailsPerHour: limitValue.default(50),
+  /** Solicitudes al asistente de IA por mes calendario (F6.2). Un plan guardado antes de F6.2 no lo
+   *  tiene: vale el mínimo (`DEFAULT_AI_REQUESTS_PER_MONTH`) hasta que el equipo lo ajuste. */
+  aiRequestsPerMonth: limitValue.default(20),
 });
+
+export const DEFAULT_AI_REQUESTS_PER_MONTH = 20;
 
 export const DEFAULT_EMAILS_PER_HOUR = 50;
 
@@ -83,6 +88,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       analyticsHistoryDays: 30,
       storageMb: 200,
       emailsPerHour: 50,
+      aiRequestsPerMonth: 20,
     },
   },
   {
@@ -103,6 +109,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       analyticsHistoryDays: 365,
       storageMb: 2_000,
       emailsPerHour: 300,
+      aiRequestsPerMonth: 300,
     },
   },
   {
@@ -123,6 +130,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       analyticsHistoryDays: 730,
       storageMb: 10_000,
       emailsPerHour: 1_000,
+      aiRequestsPerMonth: 1_500,
     },
   },
   {
@@ -143,6 +151,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       analyticsHistoryDays: 730,
       storageMb: 50_000,
       emailsPerHour: 5_000,
+      aiRequestsPerMonth: 5_000,
     },
   },
 ];

@@ -3,9 +3,10 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
-(salud de página) y F6.2 (motor de IA con modelos locales primero, ADR-010) listas para revisión;
-sigue F6.2b (conexiones de IA en la superadministración). Modo agencia y marca blanca
+**Estado actual: Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`, con el
+punto de corte del 2026-09-28 para retomar). F6.1 (salud de página), F6.2 (motor de IA con modelos
+locales primero, ADR-010) y F6.2b (conexiones de IA en la administración) listas para revisión;
+sigue F6.3 (asistente de textos en el constructor). Modo agencia y marca blanca
 esperan la decisión #8. Fase 5 — Negocio digital — F5.1–F5.7 listas para revisión del propietario
 (backlog en `docs/BACKLOG_FASE_5.md`): reservas con disponibilidad y sin doble reserva, agenda,
 correos con enlace firmado para cancelar o reprogramar, catálogo y pedidos con pago externo,
@@ -34,7 +35,7 @@ reglas de trabajo del repositorio.
 | 3 — Conversión | F3.1–F3.8 | Terminada |
 | 4 — SaaS comercial | F4.1–F4.9 | En progreso |
 | 5 — Negocio digital | F5.1–F5.7 | Lista para revisión (cobros bloqueados por decisión #6) |
-| 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.2 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
+| 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.2b listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
 
 ## Requisitos
 
@@ -1146,6 +1147,9 @@ Detalle, criterios y bitácora en `docs/BACKLOG_FASE_6.md`.
   la cuota mensual del plan (`aiRequestsPerMonth`) y un límite por usuario, y registra tokens y
   costo por intento sin guardar nunca el texto. Las conexiones se guardan cifradas en la base; sin
   ninguna configurada, el asistente responde "no disponible".
+- **Conexiones de IA (F6.2b):** en la administración (`/ia`) el propietario agrega su servidor de
+  modelos o proveedores, los prueba con un clic, elige qué conexión usa cada tarea (principal y
+  respaldos) y ve el consumo del mes. El token no se vuelve a mostrar y todo queda auditado.
 
 ## Sitio comercial: escena 3D del hero (ADR-009)
 

@@ -1,4 +1,8 @@
 import type {
+  AdminAiConnectionResponse,
+  AdminAiConnectionTestResponse,
+  AdminAiRoutesResponse,
+  AdminAiUsageResponse,
   AdminAuditListResponse,
   AdminIdentityResponse,
   AdminLoginResponse,
@@ -11,6 +15,7 @@ import type {
   PlanLimitsResponse,
   PlanResponse,
 } from "@impulza/contracts";
+import type { AiRoutesInput, CreateAiConnectionInput, UpdateAiConnectionInput } from "@impulza/validation";
 import { apiFetch } from "./api-client";
 
 // Un archivo, una función por endpoint de `/api/v1/admin` (F4.4). Los tipos salen de
@@ -63,4 +68,16 @@ export const adminApi = {
 
   audit: (params: { scope: "admin" | "all"; organizationId?: string; page: number; pageSize: number }) =>
     apiFetch<AdminAuditListResponse>(`/admin/audit-logs${query(params)}`),
+
+  // IA (F6.2b, ADR-010): el token se envía al crear o editar y nunca vuelve.
+  aiConnections: () => apiFetch<AdminAiConnectionResponse[]>("/admin/ai/connections"),
+  createAiConnection: (body: CreateAiConnectionInput) =>
+    apiFetch<AdminAiConnectionResponse>("/admin/ai/connections", { method: "POST", body }),
+  updateAiConnection: (id: string, body: UpdateAiConnectionInput) =>
+    apiFetch<AdminAiConnectionResponse>(`/admin/ai/connections/${id}`, { method: "PATCH", body }),
+  deleteAiConnection: (id: string) => apiFetch<void>(`/admin/ai/connections/${id}`, { method: "DELETE" }),
+  testAiConnection: (id: string) => apiFetch<AdminAiConnectionTestResponse>(`/admin/ai/connections/${id}/test`, { method: "POST" }),
+  aiRoutes: () => apiFetch<AdminAiRoutesResponse>("/admin/ai/routes"),
+  setAiRoutes: (body: AiRoutesInput) => apiFetch<AdminAiRoutesResponse>("/admin/ai/routes", { method: "PUT", body }),
+  aiUsage: () => apiFetch<AdminAiUsageResponse>("/admin/ai/usage"),
 };

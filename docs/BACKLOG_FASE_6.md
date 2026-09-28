@@ -27,7 +27,7 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
 |---|---|
 | F6.1 — Salud de página | Lista para tu revisión (capturas en `docs/design/capturas/f61/`) |
 | F6.2 — Motor de IA: `AIProvider`, ruteo con respaldo, registro de uso y cuota por plan | Lista para tu revisión (sin UI: la administración es F6.2b) |
-| F6.2b — Conexiones de IA en la superadministración | Pendiente |
+| F6.2b — Conexiones de IA en la superadministración | Lista para tu revisión (capturas en `docs/design/capturas/f62b/`) |
 | F6.3 — Asistente de textos: títulos, CTA, SEO y traducción | Pendiente |
 | F6.4 — IA comercial: lectura de métricas y recomendaciones | Pendiente |
 | F6.5 — Pruebas A/B | Pendiente |
@@ -35,7 +35,7 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
 | F6.7 — Automatizaciones básicas | Pendiente |
 | F6.8 — Modo agencia | Bloqueado (decisión #8) |
 | F6.9 — Marca blanca | Bloqueado (decisión #8) |
-| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1 y F6.2 agregados; se completa con cada historia) |
+| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1, F6.2 y F6.2b agregados; se completa con cada historia) |
 
 ### Bitácora de avance (para retomar)
 
@@ -97,6 +97,52 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
   - Sin conexiones configuradas, todo responde "no disponible".
   - Siguiente: F6.2b (conexiones de IA en la superadministración).
 
+- **2026-09-28 — F6.2b terminada**, en "Lista para tu revisión".
+  - `@impulza/validation` (`src/ai`): esquemas de conexión y rutas compartidos por el formulario y la
+    API. La URL acepta `http` y hosts privados (servidor propio en red privada/VPN) pero nunca
+    usuario, contraseña, parámetros ni fragmento; el token va aparte y cifrado. Una prueba de la API
+    verifica que las listas de tareas/tipos/modos coincidan con `@impulza/ai`.
+  - API `admin/ai/*` (sesión de superadministración con TOTP, ADR-005): listar, crear, editar y
+    borrar conexiones (el token se cifra y nunca vuelve: solo `hasApiKey` y `apiKeyHint`; editar sin
+    token lo conserva, `null` lo quita), **probar** una conexión (llamada mínima real sin reintentos,
+    10/min por IP, se registra como `connection_test`), rutas por tarea reemplazadas en una
+    transacción (una conexión inexistente rechaza todo el cambio) y consumo del mes por conexión,
+    tarea y organización. Todo cambio auditado con antes/después y **sin el token**. Borrar una
+    conexión la saca de las rutas y conserva el historial de uso. OpenAPI regenerado (130 rutas).
+  - `apps/admin`: sección **Inteligencia artificial** (`/ia`, en el menú) con conexiones (probar,
+    editar, borrar con confirmación), editor de rutas (principal y respaldos, subir/bajar) y
+    consumo del mes (totales, por conexión, por tarea, organizaciones con más uso). Estados de
+    carga, vacío, error y éxito.
+  - Pruebas: validación 6 nuevas (510 en total); API e2e 6 nuevas en `ai.e2e.test.ts` (mismo
+    archivo que el motor: las rutas son globales y así no se pisan; el archivo guarda y restaura
+    las rutas reales de quien corre las pruebas) + prueba de catálogos; suite completa de la API
+    440/440. Playwright `ia-admin.spec.ts` 2/2 (móvil y escritorio): alta con validación, prueba
+    contra un puerto cerrado (resultado controlado), ruta, edición sin exponer el token, consumo,
+    borrado; limpia conexiones de corridas anteriores cortadas.
+  - Hallazgos corregidos por las pruebas: el aviso "Rutas guardadas" se perdía porque la recarga
+    de rutas volvía a montar el editor (el estado pasó a la página); en el teléfono las URLs de
+    ejemplo del formulario se salían del diálogo (ahora son una lista que se parte).
+  - **Deuda declarada:** intenté una comprobación automática de "nada se sale del diálogo" y pasó
+    también con el código roto (dos variantes), así que se quitó en vez de dejar una falsa
+    garantía. El desborde se verificó con las capturas de `docs/design/capturas/f62b/`.
+
+> **PUNTO DE CORTE (2026-09-28, para retomar mañana).** Favio pidió parar acá.
+> - Hecho, probado y commiteado: F6.1 (salud de página), F6.2 (motor de IA, ADR-010) y F6.2b
+>   (conexiones de IA en la administración). Nada a medias en el árbol de trabajo.
+> - Para probar la IA de verdad: en `http://localhost:3200/ia` agregar una conexión (p. ej. Ollama
+>   local: tipo "Compatible con OpenAI", URL `http://localhost:11434/v1`, modelo el que tengas
+>   descargado, formato "Solo JSON válido" si el modelo no soporta esquemas), apretar **Probar** y
+>   ponerla en las rutas. Sin conexiones todo sigue funcionando y la IA dice "no disponible".
+> - Siguiente, en orden:
+>   1. **F6.3 — Asistente de textos** (primer uso real de la IA para el cliente): endpoints
+>      `POST organizations/:org/sites/:site/pages/:page/ai/...` para proponer título/subtítulo del
+>      perfil, texto de botón, título y descripción SEO y traducir un bloque; usan
+>      `AiService.run` (tareas `short_copy`, `seo`, `translate`); las propuestas pasan por los
+>      esquemas del bloque; en el constructor, vista previa lado a lado y "Aplicar" explícito (nunca
+>      publica). Mostrar/ocultar según `GET .../ai/status`; manejar 402 (cuota), 429 y 503.
+>   2. F6.4 — IA comercial (métricas agregadas + hallazgos de F6.1).
+>   3. F6.5 A/B → F6.6 Smart CTA → F6.7 automatizaciones. F6.8–F6.9 siguen bloqueadas (#8).
+
 ---
 
 ### F6.1 — Salud de página
@@ -150,7 +196,8 @@ Decisión en `docs/decisions/ADR-010-proveedores-ia.md`.
 - En `apps/admin`, sección "Inteligencia artificial": alta, edición, activación y baja de
   conexiones; el token se escribe pero nunca se vuelve a mostrar (solo la pista); botón "Probar
   conexión" que hace una llamada mínima y muestra resultado y latencia.
-- Rutas por tarea con orden de respaldo (arrastrar o subir/bajar); interruptor global.
+- Rutas por tarea con orden de respaldo (subir/bajar). Apagar el asistente = apagar las conexiones o
+  dejar las rutas vacías (no hace falta un interruptor aparte).
 - Consumo del mes por conexión y por tarea (solicitudes, tokens, costo, fallas) y las
   organizaciones con más uso.
 - Solo superadministradores con sesión TOTP; cada cambio queda en la auditoría.

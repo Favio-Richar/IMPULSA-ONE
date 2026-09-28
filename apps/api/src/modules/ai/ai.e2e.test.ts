@@ -1,11 +1,13 @@
+import { randomUUID } from "node:crypto";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { AiProviderError, FakeProvider, type AiConnectionConfig, type AiRequest, type FakeStep } from "@impulza/ai";
 import { aiStatusResponse } from "@impulza/contracts";
-import { encryptSecret, type EmailAdapter, type EmailMessage } from "@impulza/auth";
+import { decryptSecret, encryptSecret, type EmailAdapter, type EmailMessage } from "@impulza/auth";
 import type { PrismaClient } from "@impulza/database";
 import cookieParser from "cookie-parser";
 import type { Redis } from "ioredis";
+import { generate } from "otplib";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -15,6 +17,7 @@ import { env } from "../../env.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { listenForTests } from "../../test-support/http.js";
 import { assignRoomyPlan } from "../../test-support/plans.js";
+import { grantSuperAdmin } from "../admin/superadmin-grants.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { AI_PROVIDER_FACTORY, AI_USER_RATE_LIMIT, AiService } from "./ai.service.js";
 
@@ -52,6 +55,7 @@ describe("Motor de IA (e2e) — F6.2", () => {
   // Un proveedor falso por nombre de conexión; la fábrica registra la configuración que recibió.
   const providers = new Map<string, FakeProvider>();
   const seenConfigs: AiConnectionConfig[] = [];
+  let savedRoutes: Array<{ id: string; task: string; position: number; connectionId: string }> = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -71,10 +75,15 @@ describe("Motor de IA (e2e) — F6.2", () => {
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
     ai = app.get(AiService);
+    // Las rutas son globales y las pruebas de administración las reemplazan: se guardan y se
+    // restauran al final para no borrar la configuración real de quien corre las pruebas en local.
+    savedRoutes = await prisma.aiRoute.findMany();
   });
 
   afterAll(async () => {
     await prisma.aiConnection.deleteMany({ where: { name: { startsWith: PREFIX } } });
+    await prisma.aiRoute.deleteMany({});
+    await prisma.aiRoute.createMany({ data: savedRoutes });
     await prisma.organization.deleteMany({ where: { memberships: { some: { user: { email: { endsWith: TEST_EMAIL_DOMAIN } } } } } });
     await prisma.user.deleteMany({ where: { email: { endsWith: TEST_EMAIL_DOMAIN } } });
     await prisma.plan.deleteMany({ where: { code: { startsWith: PREFIX } } });
@@ -85,7 +94,7 @@ describe("Motor de IA (e2e) — F6.2", () => {
     providers.clear();
     seenConfigs.length = 0;
     await prisma.aiConnection.deleteMany({ where: { name: { startsWith: PREFIX } } });
-    const keys = [...(await redis.keys("ratelimit:*")), ...(await redis.keys("ai:quota:*"))];
+    const keys = [...(await redis.keys("ratelimit:*")), ...(await redis.keys("ai:quota:*")), ...(await redis.keys("admin-totp-used:*"))];
     if (keys.length > 0) {
       await redis.del(...keys);
     }
@@ -222,5 +231,149 @@ describe("Motor de IA (e2e) — F6.2", () => {
     const status = await owner.agent.get(`/api/v1/organizations/${owner.organizationId}/ai/status`).expect(200);
     expect(JSON.stringify(status.body)).not.toMatch(/modelo-local|ia\.interna|sk-/);
     await stranger.agent.get(`/api/v1/organizations/${owner.organizationId}/ai/status`).expect(403);
+  });
+
+  describe("administración de conexiones (F6.2b)", () => {
+    const base = "/api/v1/admin/ai";
+
+    async function loggedInAdmin() {
+      const { userId } = await createOrg();
+      const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+      const grant = await grantSuperAdmin(prisma, user.email, env.AUTH_ENCRYPTION_KEY);
+      const agent = request.agent(httpServer);
+      const code = await generate({ secret: grant.twoFactorEnrollment!.secret });
+      await agent.post("/api/v1/admin/auth/login").set(CSRF_HEADERS).send({ email: user.email, password: "password1234", code }).expect(201);
+      return { agent, adminId: userId };
+    }
+
+    async function createConnection(agent: ReturnType<typeof request.agent>, name: string, extra: Record<string, unknown> = {}) {
+      const response = await agent
+        .post(`${base}/connections`)
+        .set(CSRF_HEADERS)
+        .send({ name: `${PREFIX}-${name}`, kind: "OPENAI_COMPATIBLE", baseUrl: "http://10.0.0.5:11434/v1", model: name, ...extra })
+        .expect(201);
+      return response.body as { id: string };
+    }
+
+    it("crea una conexión con el token cifrado, nunca lo devuelve, y audita sin el token", async () => {
+      const { agent, adminId } = await loggedInAdmin();
+      const created = await agent
+        .post(`${base}/connections`)
+        .set(CSRF_HEADERS)
+        .send({ name: `${PREFIX}-servidor`, kind: "OPENAI_COMPATIBLE", baseUrl: "http://10.0.0.5:11434/v1/", model: "qwen2.5:14b", apiKey: "sk-secreto-1234" })
+        .expect(201);
+      expect(created.body).toMatchObject({ baseUrl: "http://10.0.0.5:11434/v1", hasApiKey: true, apiKeyHint: "1234", jsonMode: "json_schema", tasks: [] });
+      expect(JSON.stringify(created.body)).not.toContain("sk-secreto");
+
+      const row = await prisma.aiConnection.findUniqueOrThrow({ where: { id: created.body.id } });
+      expect(row.apiKeyEncrypted).not.toContain("sk-secreto");
+      expect(decryptSecret(row.apiKeyEncrypted!, env.AUTH_ENCRYPTION_KEY)).toBe("sk-secreto-1234");
+      expect(JSON.stringify((await agent.get(`${base}/connections`).expect(200)).body)).not.toContain("sk-secreto");
+
+      await agent.post(`${base}/connections`).set(CSRF_HEADERS).send({ name: `${PREFIX}-servidor`, kind: "ANTHROPIC", model: "claude-opus-5" }).expect(409);
+      await agent.post(`${base}/connections`).set(CSRF_HEADERS).send({ name: `${PREFIX}-sin-url`, kind: "OPENAI_COMPATIBLE", model: "x" }).expect(400);
+      await agent
+        .post(`${base}/connections`)
+        .set(CSRF_HEADERS)
+        .send({ name: `${PREFIX}-cred`, kind: "OPENAI_COMPATIBLE", baseUrl: "http://user:pass@10.0.0.5/v1", model: "x" })
+        .expect(400);
+
+      const audit = await prisma.auditLog.findFirstOrThrow({ where: { action: "admin.ai_connection_created", targetId: created.body.id } });
+      expect(audit.actorId).toBe(adminId);
+      expect(JSON.stringify(audit.metadata)).not.toContain("sk-secreto");
+    });
+
+    it("editar conserva el token si no viene, lo reemplaza o lo quita, y no deja una compatible sin URL", async () => {
+      const { agent } = await loggedInAdmin();
+      const created = await createConnection(agent, "nube", { baseUrl: "https://api.example.com/v1", apiKey: "sk-uno-aaaa" });
+      const path = `${base}/connections/${created.id}`;
+
+      expect((await agent.patch(path).set(CSRF_HEADERS).send({ model: "m2", enabled: false }).expect(200)).body).toMatchObject({
+        model: "m2",
+        enabled: false,
+        hasApiKey: true,
+        apiKeyHint: "aaaa",
+      });
+      expect((await agent.patch(path).set(CSRF_HEADERS).send({ apiKey: "sk-dos-bbbb" }).expect(200)).body.apiKeyHint).toBe("bbbb");
+      expect((await agent.patch(path).set(CSRF_HEADERS).send({ apiKey: null }).expect(200)).body).toMatchObject({ hasApiKey: false, apiKeyHint: null });
+      await agent.patch(path).set(CSRF_HEADERS).send({ baseUrl: null }).expect(400);
+      await agent.patch(`${base}/connections/00000000-0000-4000-8000-000000000000`).set(CSRF_HEADERS).send({ model: "x" }).expect(404);
+
+      const audits = await prisma.auditLog.findMany({ where: { action: "admin.ai_connection_updated", targetId: created.id } });
+      expect(audits).toHaveLength(3);
+      expect(JSON.stringify(audits)).not.toMatch(/sk-(uno|dos)/);
+    });
+
+    it("probar una conexión hace una llamada mínima y dice el resultado, también cuando falla", async () => {
+      const { agent } = await loggedInAdmin();
+      const created = await createConnection(agent, "prueba");
+      const fake = provider("prueba", { output: { ok: true }, inputTokens: 20, outputTokens: 5 }, new AiProviderError("auth_error", false, "clave mala"));
+
+      const ok = await agent.post(`${base}/connections/${created.id}/test`).set(CSRF_HEADERS).expect(200);
+      expect(ok.body).toMatchObject({ ok: true, outcome: "ok", model: "fake-model", inputTokens: 20, outputTokens: 5 });
+      const failed = await agent.post(`${base}/connections/${created.id}/test`).set(CSRF_HEADERS).expect(200);
+      expect(failed.body).toMatchObject({ ok: false, outcome: "auth_error", model: null });
+      expect(fake.requests).toHaveLength(2);
+
+      const usage = await prisma.aiUsage.findMany({ where: { connectionId: created.id } });
+      expect(usage.map((row) => row.task)).toEqual(["connection_test", "connection_test"]);
+      expect(usage.every((row) => row.organizationId === null)).toBe(true);
+    });
+
+    it("las rutas se reemplazan de una vez, validan las conexiones y mandan en el estado de las organizaciones", async () => {
+      const { agent } = await loggedInAdmin();
+      const org = await createOrg();
+      const fast = (await createConnection(agent, "rapido")).id;
+      const smart = (await createConnection(agent, "capaz")).id;
+
+      const routes = { short_copy: [fast, smart], seo: [fast], translate: [], insights: [smart] };
+      expect((await agent.put(`${base}/routes`).set(CSRF_HEADERS).send({ routes }).expect(200)).body.routes).toEqual(routes);
+      expect((await agent.get(`${base}/routes`).expect(200)).body.routes).toEqual(routes);
+      const listed = (await agent.get(`${base}/connections`).expect(200)).body as Array<{ id: string; tasks: string[] }>;
+      expect(listed.find((c) => c.id === fast)!.tasks.sort()).toEqual(["seo", "short_copy"]);
+
+      const status = await org.agent.get(`/api/v1/organizations/${org.organizationId}/ai/status`).expect(200);
+      expect(status.body.availableTasks).toEqual(["short_copy", "seo", "insights"]);
+
+      // Una conexión inexistente rechaza todo el cambio: las rutas quedan como estaban.
+      await agent
+        .put(`${base}/routes`)
+        .set(CSRF_HEADERS)
+        .send({ routes: { ...routes, seo: ["00000000-0000-4000-8000-000000000000"] } })
+        .expect(400);
+      expect((await agent.get(`${base}/routes`).expect(200)).body.routes).toEqual(routes);
+
+      // Borrar una conexión la saca de las rutas y conserva el historial de uso.
+      await prisma.aiUsage.create({ data: { requestId: randomUUID(), task: "seo", connectionId: fast, providerKind: "OPENAI_COMPATIBLE", model: `${PREFIX}-borrado`, outcome: "ok" } });
+      await agent.delete(`${base}/connections/${fast}`).set(CSRF_HEADERS).expect(204);
+      expect((await agent.get(`${base}/routes`).expect(200)).body.routes).toEqual({ ...routes, short_copy: [smart], seo: [] });
+      expect(await prisma.aiUsage.count({ where: { model: `${PREFIX}-borrado`, connectionId: null } })).toBe(1);
+      expect(await prisma.auditLog.count({ where: { action: "admin.ai_routes_updated" } })).toBeGreaterThanOrEqual(1);
+    });
+
+    it("el consumo del mes suma solicitudes, fallas, tokens y costo por conexión y organización", async () => {
+      const { agent } = await loggedInAdmin();
+      const { organizationId, userId } = await createOrg();
+      await assignRoomyPlan(prisma, organizationId);
+      await route("local", "nube");
+      provider("local", new AiProviderError("auth_error", false, "clave mala"));
+      provider("nube", { output: { headline: "Hola" }, inputTokens: 1_000_000, outputTokens: 0 });
+      await ai.run({ organizationId, userId, task: "short_copy", request: aiRequest });
+
+      const usage = await agent.get(`${base}/usage`).expect(200);
+      expect(usage.body.period).toMatch(/^\d{4}-\d{2}$/);
+      const byName = (name: string) => usage.body.byConnection.find((row: { name: string }) => row.name === `${PREFIX}-${name}`);
+      expect(byName("local")).toMatchObject({ requests: 0, attempts: 1, failures: 1 });
+      expect(byName("nube")).toMatchObject({ requests: 1, attempts: 1, failures: 0, inputTokens: 1_000_000, costMicroUsd: 1_000_000 });
+      expect(usage.body.topOrganizations).toContainEqual(expect.objectContaining({ organizationId, name: "Org IA", requests: 1, costMicroUsd: 1_000_000 }));
+    });
+
+    it("sin sesión de administración, o con la sesión normal de un usuario, no se alcanza nada", async () => {
+      const { agent } = await createOrg();
+      await request(httpServer).get(`${base}/connections`).expect(401);
+      await agent.get(`${base}/connections`).expect(401);
+      await agent.put(`${base}/routes`).set(CSRF_HEADERS).send({ routes: { short_copy: [], seo: [], translate: [], insights: [] } }).expect(401);
+      await agent.get(`${base}/usage`).expect(401);
+    });
   });
 });

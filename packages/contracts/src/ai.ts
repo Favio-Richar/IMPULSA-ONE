@@ -18,3 +18,65 @@ export const aiStatusResponse = z.object({
 });
 
 export type AiStatusResponse = z.infer<typeof aiStatusResponse>;
+
+// --- Superadministración (F6.2b) ------------------------------------------------------------------
+
+/** Una conexión tal como la ve la superadministración: el token **nunca** sale, solo su pista. */
+export const adminAiConnectionResponse = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  kind: z.enum(["OPENAI_COMPATIBLE", "ANTHROPIC"]),
+  baseUrl: z.string().nullable(),
+  hasApiKey: z.boolean(),
+  /** Últimos 4 caracteres del token, para reconocerlo. `null` sin token. */
+  apiKeyHint: z.string().nullable(),
+  model: z.string(),
+  jsonMode: z.enum(["json_schema", "json_object", "prompt"]),
+  timeoutMs: z.number().int(),
+  inputMicroUsdPerMTok: z.number().int(),
+  outputMicroUsdPerMTok: z.number().int(),
+  enabled: z.boolean(),
+  /** Tareas en cuya ruta figura. */
+  tasks: z.array(z.string()),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+});
+
+/** Ruta de cada tarea: ids de conexión en orden de respaldo (el primero es el principal). */
+export const adminAiRoutesResponse = z.object({
+  routes: z.record(z.string(), z.array(z.uuid())),
+});
+
+/** Resultado de "Probar conexión": una llamada mínima real con el esquema `{ ok: true }`. */
+export const adminAiConnectionTestResponse = z.object({
+  ok: z.boolean(),
+  outcome: z.string(),
+  /** Modelo que respondió (puede diferir del configurado, p. ej. un alias). */
+  model: z.string().nullable(),
+  durationMs: z.number().int(),
+  inputTokens: z.number().int(),
+  outputTokens: z.number().int(),
+});
+
+const usageTotals = {
+  requests: z.number().int(),
+  attempts: z.number().int(),
+  failures: z.number().int(),
+  inputTokens: z.number().int(),
+  outputTokens: z.number().int(),
+  costMicroUsd: z.number().int(),
+};
+
+/** Consumo del mes calendario UTC (`AAAA-MM`), por conexión, por tarea y organizaciones con más uso. */
+export const adminAiUsageResponse = z.object({
+  period: z.string(),
+  totals: z.object(usageTotals),
+  byConnection: z.array(z.object({ connectionId: z.uuid().nullable(), name: z.string(), ...usageTotals })),
+  byTask: z.array(z.object({ task: z.string(), ...usageTotals })),
+  topOrganizations: z.array(z.object({ organizationId: z.uuid(), name: z.string(), requests: z.number().int(), costMicroUsd: z.number().int() })),
+});
+
+export type AdminAiConnectionResponse = z.infer<typeof adminAiConnectionResponse>;
+export type AdminAiRoutesResponse = z.infer<typeof adminAiRoutesResponse>;
+export type AdminAiConnectionTestResponse = z.infer<typeof adminAiConnectionTestResponse>;
+export type AdminAiUsageResponse = z.infer<typeof adminAiUsageResponse>;

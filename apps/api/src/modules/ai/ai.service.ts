@@ -115,7 +115,8 @@ export class AiService {
     return routes.map(({ connection }) => ({ row: connection, config: this.toConfig(connection) }));
   }
 
-  private toConfig(connection: AiConnection): AiConnectionConfig {
+  /** Configuración lista para usar, con el token descifrado. Nunca sale de la API. */
+  toConfig(connection: AiConnection): AiConnectionConfig {
     return {
       id: connection.id,
       name: connection.name,
@@ -177,10 +178,10 @@ export class AiService {
     return { release: async () => void (await this.redis.decr(key)) };
   }
 
-  private async recordUsage(input: {
-    organizationId: string;
+  async recordUsage(input: {
+    organizationId: string | null;
     userId: string;
-    task: AiTask;
+    task: AiTask | "connection_test";
     requestId: string;
     attempts: AiAttempt[];
     connections: Array<{ row: AiConnection }>;

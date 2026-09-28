@@ -19,6 +19,32 @@ export const aiStatusResponse = z.object({
 
 export type AiStatusResponse = z.infer<typeof aiStatusResponse>;
 
+// --- Asistente de textos (F6.3) -------------------------------------------------------------------
+
+/**
+ * Propuestas de texto para un bloque (reescribir o traducir). Cada propuesta trae solo los textos
+ * (`values`, por clave de la configuración): el panel los escribe sobre la configuración **vigente**
+ * del bloque con `writeTextFields` y la guarda por la ruta normal de edición, así que aplicar nunca
+ * pisa otros cambios ni publica. El servidor ya verificó que cada propuesta, aplicada, cumple el
+ * esquema del bloque; los textos enriquecidos llegan sanitizados.
+ */
+export const aiBlockProposalsResponse = z.object({
+  blockId: z.uuid(),
+  blockType: z.string(),
+  fields: z.array(z.object({ key: z.string(), label: z.string(), rich: z.boolean() })),
+  current: z.record(z.string(), z.string()),
+  proposals: z.array(z.object({ values: z.record(z.string(), z.string()) })).min(1).max(3),
+});
+
+/** Propuestas de título y descripción para buscadores. Se aplican al formulario de SEO, que se guarda aparte. */
+export const aiSeoProposalsResponse = z.object({
+  current: z.object({ title: z.string().nullable(), description: z.string().nullable() }),
+  proposals: z.array(z.object({ title: z.string(), description: z.string() })).min(1).max(3),
+});
+
+export type AiBlockProposalsResponse = z.infer<typeof aiBlockProposalsResponse>;
+export type AiSeoProposalsResponse = z.infer<typeof aiSeoProposalsResponse>;
+
 // --- Superadministración (F6.2b) ------------------------------------------------------------------
 
 /** Una conexión tal como la ve la superadministración: el token **nunca** sale, solo su pista. */

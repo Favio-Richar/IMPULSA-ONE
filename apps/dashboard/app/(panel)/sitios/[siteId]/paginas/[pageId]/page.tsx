@@ -19,13 +19,17 @@ import {
   TableHeader,
   TableRow,
 } from "@impulza/ui";
+import { Sparkles } from "lucide-react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { SeoAiDialog } from "../../../../../../components/ai/ai-assistant-dialogs";
 import { ConfirmButton } from "../../../../../../components/confirm-button";
 import { useActiveOrgStore } from "../../../../../../lib/active-org-store";
 import { ApiError } from "../../../../../../lib/api-client";
+import { isAiTaskAvailable, useAiStatus } from "../../../../../../lib/hooks/use-ai";
 import {
   usePage,
   usePages,
@@ -251,11 +255,15 @@ function SeoForm({
 }): React.JSX.Element {
   const updateMutation = useUpdatePage(organizationId, siteId, pageId);
   const pagesQuery = usePages(organizationId, siteId);
+  const aiStatus = useAiStatus(organizationId);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiApplied, setAiApplied] = useState(false);
 
   const {
     register,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isDirty },
   } = useForm<SeoFormValues>({
     defaultValues: {
@@ -293,6 +301,7 @@ function SeoForm({
 
     try {
       await updateMutation.mutateAsync({ seoMeta: parsed.data });
+      setAiApplied(false);
     } catch {
       setError("root", { message: "No pudimos guardar el SEO. Intenta de nuevo." });
     }
@@ -302,9 +311,26 @@ function SeoForm({
 
   return (
     <Card id="seo" className="scroll-mt-20">
-      <CardHeader>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
         <CardTitle>SEO</CardTitle>
+        {isAiTaskAvailable(aiStatus.data, "seo") ? (
+          <Button type="button" variant="secondary" size="sm" onClick={() => setAiOpen(true)}>
+            <Sparkles className="size-4" aria-hidden="true" />
+            Proponer con IA
+          </Button>
+        ) : null}
       </CardHeader>
+      <SeoAiDialog
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        page={{ organizationId, siteId, pageId }}
+        onApply={(proposal) => {
+          setValue("title", proposal.title, { shouldDirty: true, shouldValidate: true });
+          setValue("description", proposal.description, { shouldDirty: true, shouldValidate: true });
+          updateMutation.reset();
+          setAiApplied(true);
+        }}
+      />
       <CardContent>
         <p className="mb-4 text-sm text-muted-foreground">
           Todo es opcional: sin nada acá, el título y la descripción se completan solos con el contenido real de
@@ -384,6 +410,11 @@ function SeoForm({
             </p>
           ) : null}
           {updateMutation.isSuccess ? <p className="text-sm text-success">SEO guardado.</p> : null}
+          {aiApplied && isDirty ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Propuesta de la IA cargada en el formulario. Revísala y guarda para aplicarla.
+            </p>
+          ) : null}
 
           <Button type="submit" loading={updateMutation.isPending} disabled={!isDirty} className="self-start">
             Guardar SEO

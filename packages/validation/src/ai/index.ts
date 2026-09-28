@@ -103,3 +103,4 @@ export function apiKeyHint(apiKey: string): string {
 export function formatMicroUsd(value: number): string {
   return `US$ ${(value / 1_000_000).toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
 }
+export * from "./assistant.js";

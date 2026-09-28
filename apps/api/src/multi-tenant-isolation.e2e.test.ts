@@ -1624,5 +1624,29 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       expect(afterA).toBe(before);
       expect(afterB).toBeGreaterThanOrEqual(1);
     });
+
+    it("A no pide propuestas de IA sobre páginas ni bloques de B por ninguna combinación de ids (F6.3)", async () => {
+      const pagesPathB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`;
+      const homeOfB = (await orgB.ownerAgent.get(pagesPathB).expect(200)).body[0].id;
+      const blockOfB = await orgB.ownerAgent
+        .post(`${pagesPathB}/${homeOfB}/blocks`)
+        .set(CSRF_HEADERS)
+        .send({ type: "booking", config: { label: "Reservar con B" } })
+        .expect(201);
+      const pagesPathA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/pages`;
+      const homeOfA = (await orgA.ownerAgent.get(pagesPathA).expect(200)).body[0].id;
+
+      // Todas se resuelven antes de llegar al modelo: el contenido de B nunca viaja en un pedido de A.
+      for (const [task, body] of [
+        ["block-copy", { blockId: blockOfB.body.id }],
+        ["translate", { blockId: blockOfB.body.id, locale: "en" }],
+      ] as const) {
+        await orgA.ownerAgent.post(`${pagesPathB}/${homeOfB}/ai/${task}`).set(CSRF_HEADERS).send(body).expect(403);
+        await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/${homeOfB}/ai/${task}`).set(CSRF_HEADERS).send(body).expect(404);
+        await orgA.ownerAgent.post(`${pagesPathA}/${homeOfA}/ai/${task}`).set(CSRF_HEADERS).send(body).expect(404);
+      }
+      await orgA.ownerAgent.post(`${pagesPathB}/${homeOfB}/ai/seo`).set(CSRF_HEADERS).send({}).expect(403);
+      await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/${homeOfB}/ai/seo`).set(CSRF_HEADERS).send({}).expect(404);
+    });
   });
 });

@@ -28,14 +28,14 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
 | F6.1 — Salud de página | Lista para tu revisión (capturas en `docs/design/capturas/f61/`) |
 | F6.2 — Motor de IA: `AIProvider`, ruteo con respaldo, registro de uso y cuota por plan | Lista para tu revisión (sin UI: la administración es F6.2b) |
 | F6.2b — Conexiones de IA en la superadministración | Lista para tu revisión (capturas en `docs/design/capturas/f62b/`) |
-| F6.3 — Asistente de textos: títulos, CTA, SEO y traducción | Pendiente |
+| F6.3 — Asistente de textos: títulos, CTA, SEO y traducción | Lista para tu revisión (capturas en `docs/design/capturas/f63/`) |
 | F6.4 — IA comercial: lectura de métricas y recomendaciones | Pendiente |
 | F6.5 — Pruebas A/B | Pendiente |
 | F6.6 — Smart CTA | Pendiente |
 | F6.7 — Automatizaciones básicas | Pendiente |
 | F6.8 — Modo agencia | Bloqueado (decisión #8) |
 | F6.9 — Marca blanca | Bloqueado (decisión #8) |
-| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1, F6.2 y F6.2b agregados; se completa con cada historia) |
+| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1, F6.2, F6.2b y F6.3 agregados; se completa con cada historia) |
 
 ### Bitácora de avance (para retomar)
 
@@ -126,7 +126,48 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
     también con el código roto (dos variantes), así que se quitó en vez de dejar una falsa
     garantía. El desborde se verificó con las capturas de `docs/design/capturas/f62b/`.
 
-> **PUNTO DE CORTE (2026-09-28, para retomar mañana).** Favio pidió parar acá.
+- **2026-09-28 — F6.3 terminada**, en "Lista para tu revisión". Favio pidió retomar el desarrollo
+  con diseño avanzado, profesional, elegante y moderno.
+  - `@impulza/validation` (`src/ai/assistant.ts`): qué textos de cada bloque se pueden **reescribir**
+    (títulos, subtítulos, textos de botón; nunca el nombre, preguntas ni testimonios) y **traducir**
+    (todo lo que el visitante lee, incluidos textos enriquecidos y alternativos), con largo máximo
+    por campo; lectura/escritura por clave (`items.2.question`) que nunca crea botones ni ítems;
+    esquemas de pedido (idiomas cerrados: es, en, pt, fr, it, de; indicación de hasta 300
+    caracteres) y de salida del modelo (todos los campos, sin claves extra, 1–3 propuestas). 10
+    pruebas nuevas (520 en total).
+  - API (`PageAiService`, `PageAiController`): `POST organizations/:org/sites/:site/pages/:page/ai/`
+    `block-copy`, `translate` y `seo`, con `page.manage`. Nunca escriben. Cada propuesta: HTML
+    sanitizado, aplicada sobre la configuración vigente y validada con el esquema del bloque, sin
+    duplicados ni iguales a lo actual (502 `AI_NO_USEFUL_PROPOSAL` si no queda ninguna). El
+    contenido de la página va delimitado y declarado como datos; la indicación del usuario sin `<` ni
+    `>`; las URLs no viajan al modelo. 422 `AI_BLOCK_NOT_SUPPORTED` (bloque sin textos o roto, página
+    sin contenido) y `AI_CONTENT_TOO_LONG` (más de 12.000 caracteres a traducir) sin llamar al modelo.
+    Log con tipo de bloque y conteos, nunca contenido. Contratos `aiBlockProposalsResponse` y
+    `aiSeoProposalsResponse`; OpenAPI regenerado (133 rutas). Sin migración.
+  - Panel: en la configuración del bloque, franja "Asistente de textos" (solo si la tarea tiene
+    modelo y el bloque tiene textos) con "Proponer textos" y "Traducir"; diálogo con indicación o
+    idioma, cuota del mes, selector de propuestas, comparación "Actual → Propuesta" por campo y
+    "Aplicar", que guarda por la edición normal y entra al historial (Ctrl+Z). Un autoguardado
+    pendiente se manda antes de abrir. En la página, "Proponer con IA" en SEO con vista de buscador
+    y contador de caracteres; "Usar en el formulario" completa título y descripción para revisar y
+    guardar. Estados de carga (esqueleto), vacío (explicación), error (402 con aviso de plan, 429,
+    502, 503, 422, red) y éxito.
+  - Pruebas: API e2e `page-ai.e2e.test.ts` 6 (propone sin guardar y sin mandar URLs; descarta
+    duplicados e iguales → 502; salida fuera de largo → 503; bloque sin textos o roto → 422 sin
+    llamar al modelo; traducción con `<script>` sanitizado; idioma fuera de lista → 400; SEO sin
+    contenido → 422; un ANALYST recibe 403 sin gastar cuota) + caso central de aislamiento (A no pide
+    propuestas sobre páginas ni bloques de B por ninguna combinación de ids). **Verificadas contra el
+    código roto:** sin sanitizar, sin `PermissionGuard` y sin el filtro por organización, las pruebas
+    correspondientes fallan por la razón correcta. Panel 3 nuevas (mensajes de error por código).
+    Playwright `asistente-textos.spec.ts` 4/4 (móvil y escritorio) contra un servidor local
+    compatible con OpenAI configurado por la administración real: el asistente aparece, nada cambia
+    antes de "Aplicar", aplicar guarda sin publicar (mismas versiones), el SEO llega al formulario y
+    se guarda; diálogo dentro de la pantalla y sin desplazamiento horizontal. Suite completa de la
+    API 446/447 (la falla: timeout de 5 s en `admin.e2e.test.ts` con los servidores de Playwright
+    corriendo; aislada pasa 26/26).
+  - Siguiente: F6.4 (IA comercial sobre métricas agregadas y hallazgos de F6.1).
+
+> **PUNTO DE CORTE (2026-09-28) — superado:** F6.3 se terminó después (ver la entrada de F6.3 arriba). Favio había pedido parar acá.
 > - Hecho, probado y commiteado: F6.1 (salud de página), F6.2 (motor de IA, ADR-010) y F6.2b
 >   (conexiones de IA en la administración). Nada a medias en el árbol de trabajo.
 > - Para probar la IA de verdad: en `http://localhost:3200/ia` agregar una conexión (p. ej. Ollama

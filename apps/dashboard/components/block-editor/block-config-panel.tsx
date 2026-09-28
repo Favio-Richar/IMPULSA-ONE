@@ -1,8 +1,17 @@
 "use client";
 
-import { BLOCK_CATALOG, isBlockType, isPrimaryActionBlockType, type BlockType } from "@impulza/validation";
+import {
+  BLOCK_CATALOG,
+  copyFieldsFor,
+  isBlockType,
+  isPrimaryActionBlockType,
+  translateFieldsFor,
+  writeTextFields,
+  type BlockType,
+} from "@impulza/validation";
 import type { BlockResponse } from "@impulza/contracts";
 import { Button } from "@impulza/ui";
+import { Languages, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { BLOCK_FIELD_SETS } from "../../lib/block-fields/catalog";
@@ -11,7 +20,9 @@ import { BLOCK_LABELS } from "../../lib/block-fields/labels";
 import { createBlockConfigResolver } from "../../lib/block-fields/resolver";
 import { sameConfig } from "../../lib/block-fields/same-config";
 import { toFormConfig } from "../../lib/block-fields/to-form-value";
+import { isAiTaskAvailable, useAiStatus } from "../../lib/hooks/use-ai";
 import { useUpdateBlock } from "../../lib/hooks/use-blocks";
+import { BlockAiDialog } from "../ai/ai-assistant-dialogs";
 import { ContactFormPicker } from "./contact-form-picker";
 import { PrimaryActionToggle } from "./primary-action-toggle";
 
@@ -55,6 +66,8 @@ export function BlockConfigPanel({
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openingConfigRef = useRef<unknown>(block.config);
   const lastPersistedRef = useRef<unknown>(block.config);
+  const aiStatus = useAiStatus(organizationId);
+  const [aiMode, setAiMode] = useState<"copy" | "translate" | null>(null);
 
   const methods = useForm({
     defaultValues: toFormConfig(block.config, fieldSet?.fields ?? []),
@@ -70,6 +83,7 @@ export function BlockConfigPanel({
     lastPersistedRef.current = block.config;
     reset(toFormConfig(block.config, fieldSet?.fields ?? []));
     setStatus("idle");
+    setAiMode(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [block.id]);
 
@@ -115,6 +129,39 @@ export function BlockConfigPanel({
   }
 
   const submit = () => handleSubmit(persist, markInvalid)();
+
+  /** Abre el asistente con lo último ya guardado: un autoguardado pendiente se manda antes. */
+  async function openAssistant(mode: "copy" | "translate"): Promise<void> {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+      await submit();
+    }
+    setAiMode(mode);
+  }
+
+  /**
+   * Aplica una propuesta de la IA (F6.3): escribe solo esos textos sobre la configuración vigente y la
+   * guarda como cualquier edición — queda en el historial (Ctrl+Z la deshace) y nunca se publica sola.
+   */
+  async function applyAiProposal(values: Record<string, string>): Promise<void> {
+    // Lo último guardado (propio o externo): `block.config` puede venir atrasado si el autoguardado
+    // pendiente se acaba de mandar al abrir el asistente.
+    const before = lastPersistedRef.current;
+    const after = writeTextFields(before, values);
+    setStatus("saving");
+    try {
+      await updateMutation.mutateAsync({ blockId: block.id, changes: { config: after } });
+    } catch (error) {
+      setStatus("error");
+      throw error;
+    }
+    openingConfigRef.current = after;
+    lastPersistedRef.current = after;
+    reset(toFormConfig(after, fieldSet?.fields ?? []));
+    setStatus("saved");
+    onSaved(block.id, before, after);
+  }
 
   useEffect(() => {
     const subscription = watch((_value, { type: eventType }) => {
@@ -164,6 +211,26 @@ export function BlockConfigPanel({
         {isPrimaryActionBlockType(type) ? (
           <PrimaryActionToggle organizationId={organizationId} siteId={siteId} pageId={pageId} block={block} />
         ) : null}
+        <BlockAiActions
+          canPropose={isAiTaskAvailable(aiStatus.data, "short_copy") && copyFieldsFor(type, block.config).length > 0}
+          canTranslate={isAiTaskAvailable(aiStatus.data, "translate") && translateFieldsFor(type, block.config).length > 0}
+          onOpen={(mode) => void openAssistant(mode)}
+        />
+        {aiMode ? (
+          <BlockAiDialog
+            mode={aiMode}
+            open
+            onOpenChange={(open) => {
+              if (!open) {
+                setAiMode(null);
+              }
+            }}
+            page={{ organizationId, siteId, pageId }}
+            blockId={block.id}
+            blockLabel={BLOCK_LABELS[type]}
+            onApply={applyAiProposal}
+          />
+        ) : null}
         <form className="flex flex-col gap-4" onSubmit={(event) => event.preventDefault()}>
           <FieldGroup fields={fieldSet.fields} />
           {type === "contact_form" ? (
@@ -179,6 +246,43 @@ export function BlockConfigPanel({
         </form>
       </div>
     </FormProvider>
+  );
+}
+
+/** Accesos al asistente de textos. Solo aparece si hay un modelo configurado para la tarea y el bloque tiene textos. */
+function BlockAiActions({
+  canPropose,
+  canTranslate,
+  onOpen,
+}: {
+  canPropose: boolean;
+  canTranslate: boolean;
+  onOpen: (mode: "copy" | "translate") => void;
+}) {
+  if (!canPropose && !canTranslate) {
+    return null;
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-primary/25 bg-primary/5 p-3">
+      <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <Sparkles className="size-4 text-primary" aria-hidden="true" />
+        Asistente de textos
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {canPropose ? (
+          <Button type="button" size="sm" variant="secondary" onClick={() => onOpen("copy")}>
+            <Sparkles className="size-4" aria-hidden="true" />
+            Proponer textos
+          </Button>
+        ) : null}
+        {canTranslate ? (
+          <Button type="button" size="sm" variant="secondary" onClick={() => onOpen("translate")}>
+            <Languages className="size-4" aria-hidden="true" />
+            Traducir
+          </Button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

@@ -301,7 +301,7 @@ function SeoForm({
   const otherPages = (pagesQuery.data ?? []).filter((page) => page.id !== pageId);
 
   return (
-    <Card>
+    <Card id="seo" className="scroll-mt-20">
       <CardHeader>
         <CardTitle>SEO</CardTitle>
       </CardHeader>

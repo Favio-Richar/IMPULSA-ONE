@@ -13,11 +13,12 @@ import { assignSiteTheme, setSiteBackground } from "../../../../../../../lib/api
 import { BlockCanvas } from "../../../../../../../components/block-editor/block-canvas";
 import { BlockConfigPanel } from "../../../../../../../components/block-editor/block-config-panel";
 import { BlockLibrary } from "../../../../../../../components/block-editor/block-library";
+import { PageHealth } from "../../../../../../../components/block-editor/page-health";
 import { PreviewPane } from "../../../../../../../components/block-editor/preview-pane";
 import { BLOCK_FIELD_SETS } from "../../../../../../../lib/block-fields/catalog";
 import { useActiveOrgStore } from "../../../../../../../lib/active-org-store";
 import { useBlockHistory } from "../../../../../../../lib/hooks/use-block-history";
-import { usePage, usePublishPage } from "../../../../../../../lib/hooks/use-pages";
+import { usePage, usePageHealth, usePublishPage } from "../../../../../../../lib/hooks/use-pages";
 import { useSiteBackground, useSiteTheme } from "../../../../../../../lib/hooks/use-sites";
 import {
   useBlocks,
@@ -65,6 +66,8 @@ function BlockEditor({
   const duplicateMutation = useDuplicateBlock(organizationId, siteId, pageId);
   const deleteMutation = useDeleteBlock(organizationId, siteId, pageId);
   const publishMutation = usePublishPage(organizationId, siteId, pageId);
+  // F6.1: se recalcula cada vez que cambian la página o sus bloques (ver `usePageHealth`).
+  const healthQuery = usePageHealth(organizationId, siteId, pageId, Math.max(pageQuery.dataUpdatedAt, blocksQuery.dataUpdatedAt));
 
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [togglingBlockId, setTogglingBlockId] = useState<string | null>(null);
@@ -251,6 +254,14 @@ function BlockEditor({
               <Redo2 className="size-4" />
             </Button>
           </div>
+          <PageHealth
+            siteId={siteId}
+            pageId={pageId}
+            health={healthQuery}
+            onOpenBlock={setSelectedBlockId}
+            onPublish={() => publishMutation.mutate()}
+            publishing={publishMutation.isPending}
+          />
           <Button type="button" variant="secondary" size="sm" onClick={() => setTemplateDialogOpen(true)}>
             <LayoutTemplate className="size-4" aria-hidden="true" />
             Usar una plantilla

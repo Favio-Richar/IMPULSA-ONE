@@ -1,4 +1,4 @@
-import type { PageResponse, PageVersionResponse, PageVersionSummaryResponse } from "@impulza/contracts";
+import type { PageHealthResponse, PageResponse, PageVersionResponse, PageVersionSummaryResponse } from "@impulza/contracts";
 import type { SeoMeta } from "@impulza/validation";
 import { apiFetch } from "../api-client";
 
@@ -88,4 +88,9 @@ export function restorePageVersion(
     `${pagesPath(organizationId, siteId)}/${pageId}/versions/${versionId}/restore`,
     { method: "POST" },
   );
+}
+
+/** Salud de la página (F6.1): la calcula el servidor sobre el estado vivo. */
+export function getPageHealth(organizationId: string, siteId: string, pageId: string): Promise<PageHealthResponse> {
+  return apiFetch<PageHealthResponse>(`${pagesPath(organizationId, siteId)}/${pageId}/health`);
 }

@@ -96,6 +96,30 @@ export const pageVersionResponse = pageVersionSummaryResponse.extend({
   contentSnapshot: z.unknown(),
 });
 
+/**
+ * Salud de página (F6.1): puntaje 0–100 y hallazgos, calculados en el servidor con
+ * `evaluatePageHealth` de `@impulza/validation`. `code` y `category` son códigos estables de ese
+ * catálogo (`HEALTH_FINDING_CODES`, `HEALTH_CATEGORIES`); se tipan como texto acá para que un código
+ * nuevo del servidor no rompa a un cliente anterior — el panel muestra uno genérico si no lo conoce.
+ */
+export const pageHealthFindingResponse = z.object({
+  code: z.string(),
+  severity: z.enum(["critical", "warning", "info"]),
+  category: z.string(),
+  blockId: uuid.optional(),
+  blockType: z.string().optional(),
+  count: z.number().int().optional(),
+});
+
+export const pageHealthResponse = z.object({
+  score: z.number().int().min(0).max(100),
+  findings: z.array(pageHealthFindingResponse),
+  checkedAt: isoDateTime,
+});
+
+export type PageHealthResponse = z.infer<typeof pageHealthResponse>;
+export type PageHealthFindingResponse = z.infer<typeof pageHealthFindingResponse>;
+
 export type SiteResponse = z.infer<typeof siteResponse>;
 export type PageResponse = z.infer<typeof pageResponse>;
 export type BlockResponse = z.infer<typeof blockResponse>;

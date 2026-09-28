@@ -46,3 +46,4 @@ export * from "./domains/index.js";
 export * from "./bookings/index.js";
 export * from "./catalog/index.js";
 export * from "./campaigns/index.js";
+export * from "./health/index.js";

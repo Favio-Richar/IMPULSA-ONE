@@ -1574,4 +1574,38 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       expect(emails).not.toContain(orgB.ownerEmail);
     });
   });
+
+  describe("Salud de página (F6.1/F6.10): ningún acceso cruzado ni recursos de otra organización", () => {
+    it("A no lee la salud de una página de B, y un formulario de B no cuenta como configurado en A", async () => {
+      const homeOfB = (await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`).expect(200)).body[0].id;
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages/${homeOfB}/health`).expect(403);
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/${homeOfB}/health`).expect(404);
+
+      // Un bloque de A que apunta (por la base, sin pasar por la API) al formulario real de B: la
+      // salud lo evalúa contra los formularios del sitio de A, así que sigue "sin configurar".
+      const formOfB = await orgB.ownerAgent
+        .post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/forms`)
+        .set(CSRF_HEADERS)
+        .send({ name: "Formulario de B", fields: [{ type: "TEXT", label: "Nombre" }] })
+        .expect(201);
+      const pagesPathA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/pages`;
+      const homeOfA = (await orgA.ownerAgent.get(pagesPathA).expect(200)).body[0].id;
+      const block = await prisma.block.create({
+        data: {
+          pageId: homeOfA,
+          type: "contact_form",
+          position: 999,
+          configSchemaVersion: 2,
+          versions: { create: { versionNumber: 1, config: { formId: formOfB.body.id } } },
+        },
+      });
+      try {
+        const health = await orgA.ownerAgent.get(`${pagesPathA}/${homeOfA}/health`).expect(200);
+        expect(health.body.findings).toContainEqual(expect.objectContaining({ code: "form_not_configured", blockId: block.id }));
+        expect(JSON.stringify(health.body)).not.toContain(formOfB.body.id);
+      } finally {
+        await prisma.block.delete({ where: { id: block.id } });
+      }
+    });
+  });
 });

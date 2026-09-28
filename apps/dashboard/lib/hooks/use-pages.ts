@@ -4,6 +4,7 @@ import {
   createPage,
   deletePage,
   getPage,
+  getPageHealth,
   listPageVersions,
   listPages,
   publishPage,
@@ -36,6 +37,19 @@ export function usePage(organizationId: string, siteId: string, pageId: string) 
   return useQuery({
     queryKey: pageKey(organizationId, siteId, pageId),
     queryFn: () => getPage(organizationId, siteId, pageId),
+  });
+}
+
+/**
+ * Salud de la página (F6.1). `revision` cambia cada vez que cambian la página o sus bloques en el
+ * panel (su `dataUpdatedAt`): así el puntaje se recalcula tras cada edición sin que cada mutación
+ * tenga que acordarse de invalidarlo. Mientras recalcula, se sigue mostrando el anterior.
+ */
+export function usePageHealth(organizationId: string, siteId: string, pageId: string, revision: number) {
+  return useQuery({
+    queryKey: [...pageKey(organizationId, siteId, pageId), "health", revision] as const,
+    queryFn: () => getPageHealth(organizationId, siteId, pageId),
+    placeholderData: (previous) => previous,
   });
 }
 

@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { pageResponse, pageVersionResponse, pageVersionSummaryResponse } from "@impulza/contracts";
+import { pageHealthResponse, pageResponse, pageVersionResponse, pageVersionSummaryResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
@@ -27,6 +27,7 @@ import {
   type ReorderPagesDto,
   type UpdatePageDto,
 } from "./dto/page.dto.js";
+import { PageHealthService } from "./page-health.service.js";
 import { PageVersionsService } from "./page-versions.service.js";
 import { PagesService } from "./pages.service.js";
 
@@ -45,6 +46,7 @@ export class PagesController {
   constructor(
     private readonly pagesService: PagesService,
     private readonly pageVersionsService: PageVersionsService,
+    private readonly pageHealthService: PageHealthService,
   ) {}
 
   // Leer no exige permiso: basta con ser miembro activo (mismo criterio que los sitios, F2.2).
@@ -73,6 +75,25 @@ export class PagesController {
     @Param("pageId") pageId: string,
   ) {
     return this.pagesService.getPage(organizationId, siteId, pageId);
+  }
+
+  // Leer la salud no exige permiso, igual que leer la página: la ve cualquier miembro activo.
+  @Get(":pageId/health")
+  @ApiOperation({
+    summary: "Salud de la página",
+    description:
+      "Puntaje 0–100 y hallazgos (publicación, contenido, acción, SEO, accesibilidad, enlaces, rendimiento) sobre el estado vivo de la página (F6.1). La comprobación de enlaces es estática: el servidor nunca pide las URLs del usuario.",
+  })
+  @ApiUuidParam("siteId", "Sitio dueño de la página.")
+  @ApiUuidParam("pageId", "Página del sitio.")
+  @ApiZodResponse(200, pageHealthResponse, "Puntaje y hallazgos, del más grave al más leve.")
+  @ApiResponse({ status: 404, description: PAGE_NOT_FOUND })
+  async health(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("pageId") pageId: string,
+  ) {
+    return this.pageHealthService.getHealth(organizationId, siteId, pageId);
   }
 
   @Post()

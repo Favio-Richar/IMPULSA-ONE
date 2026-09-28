@@ -62,6 +62,10 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Constructor de formularios, plantillas, campos condicionales, notificaciones, webhooks, antispam, consentimientos | PM §9.8 | Fase 3 |
 | Mini-CRM: lista/filtros, ficha de contacto, timeline, fuente/campaña, etiquetas, consentimientos, notas/tareas, estados comerciales, import/export | PM §9.7 | Fase 3 |
 | Mini-CRM nativo alimentado por formularios, reservas y compras (diferenciador) | PM §14.4 | Fase 3 |
+| Salud de página: puntaje por velocidad, accesibilidad, SEO, enlaces rotos, CTA y conversión (diferenciador) | PM §14.7, ST §19 | Fase 6 — `BACKLOG_FASE_6.md` F6.1 (en revisión): puntaje y hallazgos en el servidor, tarjeta en el constructor. Enlaces rotos solo en forma estática hasta tener hosting (F4.8) y un servicio de salida aislado |
+| Smart CTA por horario, dispositivo, campaña, disponibilidad o ubicación aproximada | PM §14.2, ST §19 | Fase 6 — F6.6 |
+| Pruebas A/B con ganador solo con muestra suficiente | PM §14.6, ST §19 | Fase 6 — F6.5 |
+| Automatizaciones | ST §19 | Fase 6 — F6.7 |
 
 ## 7. QR, enlaces y dominios
 

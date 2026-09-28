@@ -3,7 +3,9 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 5 — Negocio digital — F5.1–F5.7 listas para revisión del propietario
+**Estado actual: Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
+(salud de página) lista para revisión; sigue F6.2 (`AIProvider`). Modo agencia y marca blanca
+esperan la decisión #8. Fase 5 — Negocio digital — F5.1–F5.7 listas para revisión del propietario
 (backlog en `docs/BACKLOG_FASE_5.md`): reservas con disponibilidad y sin doble reserva, agenda,
 correos con enlace firmado para cancelar o reprogramar, catálogo y pedidos con pago externo,
 campañas de email con consentimiento y baja, y la revisión de aislamiento y seguridad de la fase.
@@ -31,6 +33,7 @@ reglas de trabajo del repositorio.
 | 3 — Conversión | F3.1–F3.8 | Terminada |
 | 4 — SaaS comercial | F4.1–F4.9 | En progreso |
 | 5 — Negocio digital | F5.1–F5.7 | Lista para revisión (cobros bloqueados por decisión #6) |
+| 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1 lista para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
 
 ## Requisitos
 
@@ -1125,6 +1128,17 @@ Detalle, criterios y bitácora en `docs/BACKLOG_FASE_5.md`. Nada se cobra dentro
   `apps/api/src/multi-tenant-isolation.e2e.test.ts`; los enlaces firmados (gestión de reserva y
   baja) no cruzan organizaciones ni sirven uno por el otro; las respuestas públicas traen solo lo
   del contrato, sin ids internos; y toda escritura pública tiene límite de tasa por IP (probado).
+
+## Diferenciación (Fase 6)
+
+Detalle, criterios y bitácora en `docs/BACKLOG_FASE_6.md`.
+
+- **Salud de página (F6.1):** `evaluatePageHealth` (`packages/validation/src/health`) es una
+  función pura que puntúa la página de 0 a 100 y devuelve hallazgos con código estable, severidad
+  y bloque afectado (publicación, contenido, acción, SEO, accesibilidad, enlaces, peso). La API la
+  calcula sobre el estado vivo real en `GET .../pages/:pageId/health`; el constructor muestra el
+  puntaje en la cabecera y un diálogo con cada hallazgo y un botón para corregirlo. Los enlaces se
+  revisan de forma estática: el servidor nunca pide URLs del usuario (SSRF).
 
 ## Sitio comercial: escena 3D del hero (ADR-009)
 

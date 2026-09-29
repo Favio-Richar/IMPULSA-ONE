@@ -3,6 +3,7 @@ import { AnalyticsModule } from "../analytics/analytics.module.js";
 import { AgendaController } from "./agenda.controller.js";
 import { AgendaService } from "./agenda.service.js";
 import { AuthModule } from "../auth/auth.module.js";
+import { AutomationsModule } from "../automations/automations.module.js";
 import { BookingManageController } from "./booking-manage.controller.js";
 import { BookingManageService } from "./booking-manage.service.js";
 import { BookingNotifier } from "./booking-notifier.js";
@@ -13,7 +14,7 @@ import { PublicBookingsController } from "./public-bookings.controller.js";
 import { PublicBookingsService } from "./public-bookings.service.js";
 
 @Module({
-  imports: [ContactsModule, AnalyticsModule, AuthModule],
+  imports: [ContactsModule, AnalyticsModule, AuthModule, AutomationsModule],
   controllers: [BookingSetupController, PublicBookingsController, AgendaController, BookingManageController],
   providers: [BookingSetupService, PublicBookingsService, AgendaService, BookingManageService, BookingNotifier],
   exports: [BookingSetupService],

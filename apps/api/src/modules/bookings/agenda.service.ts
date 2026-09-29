@@ -5,6 +5,7 @@ import type { ListBookingsQuery, ManualBookingInput, UpdateBookingStatusInput } 
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
+import { AutomationEventsService } from "../automations/automation-events.service.js";
 import { BookingSetupService } from "./booking-setup.service.js";
 
 export const BOOKING_NOT_FOUND = "Reserva no encontrada: no existe, o pertenece a otra organización (ADR-002).";
@@ -29,6 +30,7 @@ export class AgendaService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
     private readonly setup: BookingSetupService,
+    private readonly automationEvents: AutomationEventsService,
   ) {}
 
   toResponse(booking: Booking): BookingResponse {
@@ -145,6 +147,9 @@ export class AgendaService {
         data: { contactId: contact.id, type: "BOOKING", payload: { bookingId: booking.id, serviceName: service.name, startsAt: booking.startsAt.toISOString() } },
       });
     }
+    // También una reserva anotada a mano dispara las automatizaciones (sin contacto, las acciones
+    // sobre el contacto se omiten y queda registrado).
+    await this.automationEvents.emit({ organizationId, trigger: "booking_created", subjectId: booking.id, contactId: contact?.id ?? null });
     logger.info("reserva anotada por el negocio", { organizationId, siteId: input.siteId, bookingId: booking.id });
     return this.toResponse(booking);
   }

@@ -7,6 +7,7 @@ import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AnalyticsService } from "../analytics/analytics.service.js";
+import { AutomationEventsService } from "../automations/automation-events.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
 import { storedImage } from "./catalog-setup.service.js";
 import { OrderNotifier } from "./order-notifier.js";
@@ -30,6 +31,7 @@ export class PublicCatalogService {
     private readonly contactsService: ContactsService,
     private readonly analyticsService: AnalyticsService,
     private readonly notifier: OrderNotifier,
+    private readonly automationEvents: AutomationEventsService,
   ) {}
 
   private async siteOrThrow(siteSlug: string) {
@@ -181,6 +183,7 @@ export class PublicCatalogService {
     }
     await this.notifier.notifyReceived(linked, site.name);
     await this.notifier.notifyOwners(linked, site.name);
+    await this.automationEvents.emit({ organizationId: site.organizationId, trigger: "order_created", subjectId: order.id, contactId: contactResult.contact.id });
     logger.info("pedido público creado", { organizationId: site.organizationId, siteId: site.id, orderId: order.id });
     return confirmation;
   }

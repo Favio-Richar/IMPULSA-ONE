@@ -1705,6 +1705,23 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       }
     });
 
+    it("A no ve, edita, borra ni lee el registro de las automatizaciones de B (F6.7)", async () => {
+      const ofB = `/api/v1/organizations/${orgB.id}/automations`;
+      const automation = (await orgB.ownerAgent.post(ofB).set(CSRF_HEADERS).send({ name: "Aviso de B", trigger: "contact_created", action: { type: "notify_team" } }).expect(201)).body;
+      const ofA = `/api/v1/organizations/${orgA.id}/automations`;
+      try {
+        await orgA.ownerAgent.get(ofB).expect(403);
+        await orgA.ownerAgent.post(ofB).set(CSRF_HEADERS).send({ name: "Intrusa", trigger: "contact_created", action: { type: "notify_team" } }).expect(403);
+        await orgA.ownerAgent.patch(`${ofA}/${automation.id}`).set(CSRF_HEADERS).send({ enabled: false }).expect(404);
+        await orgA.ownerAgent.delete(`${ofA}/${automation.id}`).set(CSRF_HEADERS).expect(404);
+        await orgA.ownerAgent.get(`${ofA}/${automation.id}/runs`).expect(404);
+        expect((await orgA.ownerAgent.get(ofA).expect(200)).body.map((row: { id: string }) => row.id)).not.toContain(automation.id);
+        expect((await prisma.automation.findUniqueOrThrow({ where: { id: automation.id } })).enabled).toBe(true);
+      } finally {
+        await prisma.automation.deleteMany({ where: { id: automation.id } });
+      }
+    });
+
     it("A no pide la lectura comercial del sitio de B, ni metiendo el sitio de B bajo su organización (F6.4)", async () => {
       // Ambas se resuelven antes de leer métricas o llamar al modelo: las cifras de B nunca viajan.
       await orgA.ownerAgent.post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/ai/insights`).set(CSRF_HEADERS).send({ days: 7 }).expect(403);

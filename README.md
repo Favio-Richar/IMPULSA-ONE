@@ -6,8 +6,8 @@ captación, reservas, ventas y analítica) desde una sola URL.
 **Estado actual: Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
 (salud de página), F6.2 (motor de IA con modelos locales primero, ADR-010), F6.2b (conexiones de IA
 en la administración), F6.3 (asistente de textos en el constructor), F6.4 (lectura comercial con IA
-en Analítica), F6.5 (pruebas A/B, ADR-011) y F6.6 (Smart CTA) listas para revisión; sigue F6.7
-(automatizaciones). Modo
+en Analítica), F6.5 (pruebas A/B, ADR-011), F6.6 (Smart CTA) y F6.7 (automatizaciones) listas para
+revisión; F6.10 (aislamiento de la fase) se cierra con ellas. Modo
 agencia y marca blanca
 esperan la decisión #8. Fase 5 — Negocio digital — F5.1–F5.7 listas para revisión del propietario
 (backlog en `docs/BACKLOG_FASE_5.md`): reservas con disponibilidad y sin doble reserva, agenda,
@@ -37,7 +37,7 @@ reglas de trabajo del repositorio.
 | 3 — Conversión | F3.1–F3.8 | Terminada |
 | 4 — SaaS comercial | F4.1–F4.9 | En progreso |
 | 5 — Negocio digital | F5.1–F5.7 | Lista para revisión (cobros bloqueados por decisión #6) |
-| 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.6 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
+| 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.7 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
 
 ## Requisitos
 
@@ -1186,6 +1186,13 @@ Detalle, criterios y bitácora en `docs/BACKLOG_FASE_6.md`.
   horas?" se consulta aparte con caché de un minuto y solo si una regla lo usa. Sin geolocalización.
   Rige en vivo, sin publicar. `GET|PUT .../pages/:pageId/smart-cta` y
   `GET /public/sites/:slug/booking/available` (solo sí/no).
+- **Automatizaciones (F6.7):** en `/automatizaciones`, reglas "cuando → entonces" de un catálogo
+  cerrado: contacto nuevo, reserva creada o pedido → etiquetar al contacto, cambiar su estado
+  comercial o avisar por correo a dueños y administradores. La API encola el evento (solo ids, y
+  solo si hay reglas encendidas) después de confirmar lo ocurrido; el worker lo ejecuta **una vez
+  por evento** (fila única por automatización y evento), reintenta solo lo que falló y deja cada
+  ejecución en un registro visible (hecha, omitida con motivo, falló con motivo). Hasta 20 por
+  organización; cada cambio auditado.
 
 ## Sitio comercial: escena 3D del hero (ADR-009)
 

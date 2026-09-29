@@ -301,6 +301,16 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   la misma página) y al leer. En vivo, no va en `PageVersion`. Al sitio público viajan por la
   posición publicada del bloque, nunca por id, junto al horario de `BookingSettings`.
 
+## 9h. Automatizaciones (F6.7, `BACKLOG_FASE_6.md`)
+
+- **Automation** (Organization 1:N con `CASCADE`): name, trigger (`CHECK` en el catálogo:
+  `contact_created`/`booking_created`/`order_created`), action (JSON validado con
+  `automationActionSchema` al guardar y al ejecutar), enabled.
+- **AutomationRun** (Automation y Organization 1:N con `CASCADE`): event_key (`trigger:subjectId`),
+  trigger, subject_id, status (`PENDING`/`SUCCEEDED`/`FAILED`/`SKIPPED`), attempts (`CHECK >= 0`),
+  detail (motivo técnico, sin datos personales), finished_at (`CHECK`: nulo si y solo si `PENDING`).
+  **Único `(automation_id, event_key)`**: la garantía de "una vez por evento".
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 `Payment` (cobro propio; hoy bloqueado por la decisión #6), variantes/cupones/carrito,

@@ -5,6 +5,7 @@ import { Redis } from "ioredis";
 import { parseStorageConfig, parseVideoToolsConfig, S3StorageAdapter } from "@impulza/storage";
 import { ConsoleEmailAdapter } from "@impulza/auth";
 import { startAnalyticsWorkers } from "./analytics-workers.js";
+import { startAutomationWorkers } from "./automations.js";
 import { startBookingReminderWorkers } from "./booking-reminders.js";
 import { startCampaignDispatchWorkers } from "./campaign-dispatch.js";
 import { env } from "./env.js";
@@ -68,6 +69,15 @@ const campaignDispatch = await startCampaignDispatchWorkers({
   linkSecret: env.BOOKING_LINK_SECRET,
 });
 
+// Automatizaciones (F6.7): disparador → acción, una vez por evento. Aviso al equipo por consola hasta
+// que exista un proveedor de correo real, igual que el resto de los correos.
+const automations = startAutomationWorkers({
+  prisma,
+  email: new ConsoleEmailAdapter(),
+  connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+  dashboardBaseUrl: env.APP_BASE_URL,
+});
+
 const healthServer = createHealthServer([
   {
     name: "database",
@@ -99,6 +109,7 @@ async function shutdown(signal: string): Promise<void> {
   await mediaWorkers?.close();
   await bookingReminders.close();
   await campaignDispatch.close();
+  await automations.close();
   healthRedis.disconnect();
   await prisma.$disconnect();
   process.exit(0);

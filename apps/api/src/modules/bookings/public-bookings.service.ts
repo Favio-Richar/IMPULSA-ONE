@@ -12,6 +12,7 @@ import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AnalyticsService } from "../analytics/analytics.service.js";
+import { AutomationEventsService } from "../automations/automation-events.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
 import { BookingNotifier } from "./booking-notifier.js";
 import { BookingSetupService } from "./booking-setup.service.js";
@@ -42,6 +43,7 @@ export class PublicBookingsService {
     private readonly contactsService: ContactsService,
     private readonly analyticsService: AnalyticsService,
     private readonly notifier: BookingNotifier,
+    private readonly automationEvents: AutomationEventsService,
   ) {}
 
   private async enabledSiteOrThrow(siteSlug: string) {
@@ -243,6 +245,7 @@ export class PublicBookingsService {
     const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
     await this.notifier.notifyCustomer("confirmed", booking, site.name);
     await this.notifier.notifyOwners("created", booking, site.name);
+    await this.automationEvents.emit({ organizationId: site.organizationId, trigger: "booking_created", subjectId: bookingId, contactId: contactResult.contact.id });
     logger.info("reserva pública creada", { organizationId: site.organizationId, siteId: site.id, bookingId });
     return confirmation;
   }

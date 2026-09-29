@@ -26,4 +26,7 @@ export const env = loadEnv({
   // (F5.6, con otro propósito en la firma). El mismo en la API y el worker.
   // Opcional: sin él, los correos no traen enlace y la página de gestión no existe.
   BOOKING_LINK_SECRET: z.string().min(32).optional(),
+  // Automatizaciones (F6.7): origen del panel para el enlace del aviso al equipo. El mismo nombre
+  // que usa la API para sus correos. Opcional: sin él, el aviso va sin enlace.
+  APP_BASE_URL: urlSchema.optional(),
 });

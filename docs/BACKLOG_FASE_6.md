@@ -32,10 +32,10 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
 | F6.4 — IA comercial: lectura de métricas y recomendaciones | Lista para tu revisión (capturas en `docs/design/capturas/f64/`) |
 | F6.5 — Pruebas A/B | Lista para tu revisión (ADR-011; capturas en `docs/design/capturas/f65/`) |
 | F6.6 — Smart CTA | Lista para tu revisión (capturas en `docs/design/capturas/f66/`) |
-| F6.7 — Automatizaciones básicas | Pendiente |
+| F6.7 — Automatizaciones básicas | Lista para tu revisión (capturas en `docs/design/capturas/f67/`) |
 | F6.8 — Modo agencia | Bloqueado (decisión #8) |
 | F6.9 — Marca blanca | Bloqueado (decisión #8) |
-| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1, F6.2, F6.2b, F6.3, F6.4, F6.5 y F6.6 agregados; se completa con cada historia) |
+| F6.10 — Aislamiento y seguridad de Fase 6 | Lista para tu revisión (casos de F6.1–F6.7 en `multi-tenant-isolation.e2e.test.ts`; F6.8–F6.9 sumarán los suyos cuando se desbloqueen) |
 
 ### Bitácora de avance (para retomar)
 
@@ -287,6 +287,47 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
   - Hallazgo corregido por la revisión visual: el aviso "elige qué botón" quedaba visible después
     de corregirlo; ahora se limpia al cambiar cualquier regla (con aserción en Playwright).
   - Siguiente: F6.7 (automatizaciones básicas).
+
+- **2026-09-28 — F6.7 terminada**, en "Lista para tu revisión".
+  - `@impulza/validation` (`src/automations`): catálogo cerrado de disparadores (contacto nuevo,
+    reserva creada, pedido creado) y acciones (etiquetar, cambiar estado comercial, avisar al
+    equipo), esquemas de alta/edición, forma del trabajo en cola (solo ids), clave de evento, id de
+    trabajo sin `:` y el correo de aviso en texto plano (sin saltos en el asunto). 3 pruebas (538).
+  - Base: migración aditiva `20260929050000_f67_automations` (`Automation`, `AutomationRun` con
+    único `(automation_id, event_key)` y `CHECK`s).
+  - API: `organizations/:org/automations` (listar y registro: miembro; crear, editar, apagar,
+    borrar: `contact.manage`; hasta 20, 422 `AUTOMATION_LIMIT_REACHED`; auditoría de cada cambio).
+    `AutomationEventsService` encola **después** de confirmar lo ocurrido y solo si hay reglas
+    encendidas; nunca hace fallar la petición. Disparadores conectados en `ContactsService` (alta
+    manual y contactos que llegan por formulario, reserva o pedido), reserva pública y anotada a
+    mano, y pedido público. OpenAPI regenerado (143 rutas).
+  - Worker: `processAutomationEvent` registra la ejecución antes de actuar (lo terminado no se
+    repite aunque el trabajo llegue dos veces), etiqueta con un `UPDATE` atómico e idempotente,
+    omite con motivo si no hay contacto (o es de otra organización), avisa a dueños y
+    administradores activos con el detalle de la reserva o el pedido y enlace real del panel
+    (`APP_BASE_URL`, opcional), y ante una falla la deja `FAILED` con motivo y relanza para que
+    BullMQ reintente solo lo fallido. Organización bloqueada o regla inválida: no ejecuta.
+  - Panel: `/automatizaciones` en el menú: lista con la regla en una frase, interruptor accesible
+    (optimista, con contraste WCAG 1.4.11), ejecuciones de los últimos 30 días y la última,
+    registro (estado, intentos, motivo), borrar con confirmación, y diálogo de alta con vista
+    previa "Así quedará". Estados de carga, vacío (con ejemplo), error y éxito.
+  - Pruebas: worker 5 contra la base real (una vez por evento, aviso con detalle y enlace a
+    `/reservas`, omisiones, reintento solo de lo fallido, config inválida y organización
+    bloqueada); API e2e 4 (catálogo y auditoría, evento encolado solo con ids y ninguno sin reglas,
+    reserva pública, registro/tope/permisos) + caso central de aislamiento; panel 2. Playwright
+    `automatizaciones.spec.ts` 2/2 de punta a punta con el worker real: la regla creada en el panel
+    etiqueta a un contacto nuevo, el registro lo muestra y, apagada, ya no corre. **Verificadas
+    contra el código roto:** sin la protección de idempotencia, sin filtrar el contacto por
+    organización, sin el "no encolar si no hay reglas", con el enlace viejo `/agenda` y con el
+    título duplicado — todas fallan por la razón correcta. Suite completa de la API 471/471.
+    `pnpm build` 16/16.
+  - Errores encontrados y corregidos en el camino: BullMQ rechaza `:` en ids propios (el evento no
+    se encolaba — lo detectó la prueba); el aviso enlazaba a `/agenda` en vez de `/reservas`; el
+    título se duplicaba con el nombre automático; el aviso de error del diálogo quedaba pegado; el
+    interruptor apagado tenía contraste insuficiente. Una aserción de Playwright pasaba con el
+    título duplicado y se reemplazó por una que sí lo detecta.
+  - Siguiente: con F6.1–F6.7 y F6.10 listas, la Fase 6 queda completa salvo F6.8–F6.9 (agencia y
+    marca blanca), bloqueadas por la decisión #8.
 
 > **PUNTO DE CORTE (2026-09-28) — superado:** F6.3 se terminó después (ver la entrada de F6.3 arriba). Favio había pedido parar acá.
 > - Hecho, probado y commiteado: F6.1 (salud de página), F6.2 (motor de IA, ADR-010) y F6.2b

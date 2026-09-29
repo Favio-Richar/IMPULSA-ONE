@@ -163,6 +163,8 @@ model Organization {
   mediaAssets         MediaAsset[]
   aiUsage             AiUsage[]
   abTests             AbTest[]
+  automations         Automation[]
+  automationRuns      AutomationRun[]
 
   @@map("organizations")
 }
@@ -1392,4 +1394,57 @@ model AbTest {
   @@index([siteId, status])
   @@index([pageId, status])
   @@map("ab_tests")
+}
+
+// --- Automatizaciones básicas (F6.7) ---------------------------------------------------------------
+// Disparador → acción, de un catálogo cerrado (`createAutomationSchema` de `@impulza/validation`). La
+// API encola un evento (solo ids) y el worker lo procesa. `AutomationRun` es el registro por
+// ejecución y la garantía de idempotencia: único (automatización, evento).
+
+enum AutomationRunStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
+model Automation {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  trigger        String
+  // `automationActionSchema`: { type, ...config }. Validado al guardar y otra vez al ejecutar.
+  action         Json
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  runs         AutomationRun[]
+
+  @@index([organizationId, trigger, enabled])
+  @@map("automations")
+}
+
+model AutomationRun {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  automationId   String              @map("automation_id") @db.Uuid
+  // `trigger:subjectId`: el evento. Con `automation_id`, la clave única que evita correr dos veces.
+  eventKey       String              @map("event_key")
+  trigger        String
+  subjectId      String              @map("subject_id") @db.Uuid
+  status         AutomationRunStatus @default(PENDING)
+  attempts       Int                 @default(0)
+  // Motivo técnico de una falla u omisión, sin datos personales.
+  detail         String?
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  finishedAt     DateTime?           @map("finished_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  automation   Automation   @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@unique([automationId, eventKey])
+  @@index([organizationId, createdAt])
+  @@map("automation_runs")
 }

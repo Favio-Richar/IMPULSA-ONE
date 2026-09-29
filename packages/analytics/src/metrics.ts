@@ -10,6 +10,7 @@ import type { AnalyticsEventJob } from "./job.js";
 //   <tipo>:country:<CL>           por país aproximado
 //   <tipo>:utm_source:<valor>     por campaña (también utm_medium / utm_campaign)
 //   <tipo>:subject:<uuid>         por objeto concreto (página, bloque, formulario, enlace, QR)
+//   ab:<tipo>:<prueba>:<a|b>      por variante de una prueba A/B en curso (F6.5, ADR-011)
 
 const MAX_DIMENSION_LENGTH = 80;
 
@@ -40,6 +41,9 @@ export function metricsForEvent(job: AnalyticsEventJob): string[] {
   }
   if (job.subjectId) {
     metrics.push(`${job.type}:subject:${job.subjectId}`);
+  }
+  for (const experiment of job.experiments ?? []) {
+    metrics.push(`ab:${job.type}:${experiment.testId}:${experiment.variant}`);
   }
 
   return metrics;

@@ -1,8 +1,11 @@
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { PageBlocks } from "@impulza/blocks-renderer";
 import type { PublicFormResponse } from "@impulza/contracts";
-import { themeTokensSchema } from "@impulza/validation";
+import { AB_BUCKET_COOKIE, parseAbBucket, themeTokensSchema } from "@impulza/validation";
+import { hasExperiments, randomAbBucket, resolveExperimentBlocks } from "../lib/ab";
 import { getPublicForm, getPublicPage, getPublicSite } from "../lib/api";
+import { AbBucketCookie } from "./ab-bucket-cookie";
 import { AnalyticsTracker } from "./analytics-tracker";
 
 /** Todo bloque `contact_form` con un `formId` real, sin duplicados: varios bloques pueden apuntar
@@ -48,11 +51,19 @@ export async function SitePage({ siteSlug, pageSlug }: { siteSlug: string; pageS
       .filter((entry): entry is [string, PublicFormResponse] => entry[1] !== null),
   );
 
+  // F6.5: con una prueba A/B en curso, la variante se elige acá con el grupo del visitante (o uno
+  // nuevo, que se guarda al montar). Sin pruebas no se lee ni se crea ninguna cookie.
+  const experimenting = hasExperiments(page.blocks);
+  const storedBucket = experimenting ? parseAbBucket((await cookies()).get(AB_BUCKET_COOKIE)?.value) : null;
+  const bucket = experimenting ? (storedBucket ?? randomAbBucket()) : null;
+  const blocks = bucket === null ? page.blocks : resolveExperimentBlocks(page.blocks, bucket);
+
   return (
     <>
+      {bucket !== null && storedBucket === null ? <AbBucketCookie bucket={bucket} /> : null}
       <AnalyticsTracker siteSlug={siteSlug} pageSlug={page.slug} />
       <PageBlocks
-        blocks={page.blocks}
+        blocks={blocks}
         buttonStyle={tokens.buttonStyle}
         siteSlug={siteSlug}
         forms={forms}

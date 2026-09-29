@@ -12,4 +12,6 @@ export const VISITOR_PROXY_HEADERS = {
   userAgent: "x-impulza-visitor-ua",
   country: "x-impulza-visitor-country",
   city: "x-impulza-visitor-city",
+  /** Grupo A/B del visitante (0–99, cookie propia del sitio; F6.5, ADR-011). */
+  abBucket: "x-impulza-visitor-ab-bucket",
 } as const;

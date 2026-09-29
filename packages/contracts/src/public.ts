@@ -51,6 +51,12 @@ export const publicBlockResponse = z.object({
    * API anterior durante un despliegue) sigue siendo válida y simplemente no tiene acción principal.
    */
   primary: z.boolean().optional(),
+  /**
+   * Prueba A/B en curso sobre este bloque (F6.5, ADR-011). `apps/web` elige la variante con
+   * `abVariantFor(key, grupo)` y, en B, aplica `variantB` (solo texto/estilo) sobre `config`. Sin
+   * nombres, fechas ni resultados: nada interno. Opcional: sin prueba, no viene.
+   */
+  experiment: z.object({ key: z.string(), variantB: z.record(z.string(), z.unknown()) }).optional(),
 });
 
 // Duplicado a propósito de `SEO_ROBOTS_VALUES`/`SeoRobots` de `@impulza/validation` — mismo

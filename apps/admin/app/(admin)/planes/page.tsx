@@ -23,6 +23,7 @@ const LIMIT_FIELDS: Array<{ key: keyof PlanLimitsResponse; label: string; unit?:
   { key: "storageMb", label: "Almacenamiento", unit: "MB", note: "Aún no se aplica: no hay subida de archivos." },
   { key: "emailsPerHour", label: "Correos de campañas por hora" },
   { key: "aiRequestsPerMonth", label: "Solicitudes al asistente de IA por mes" },
+  { key: "abTestsRunning", label: "Pruebas A/B en curso a la vez" },
 ];
 
 export default function PlansPage(): React.JSX.Element {

@@ -2,6 +2,8 @@ import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@impulza/database";
 import type { StorageAdapter } from "@impulza/storage";
 import {
+  abVariantSchema,
+  isAbTestBlockType,
   backgroundForDisplay,
   isPrimaryActionBlockType,
   parseStoredBlock,
@@ -24,11 +26,20 @@ export interface PublicSiteView {
   pages: Array<{ slug: string; isHome: boolean; publishedAt: Date }>;
 }
 
+export interface PublicBlockView {
+  position: number;
+  type: string;
+  config: unknown;
+  primary: boolean;
+  /** Prueba A/B en curso (F6.5): clave pública y cambios de B, sin nada interno. */
+  experiment?: { key: string; variantB: Record<string, unknown> };
+}
+
 export interface PublicPageView {
   slug: string;
   isHome: boolean;
   seo: ResolvedSeo;
-  blocks: Array<{ position: number; type: string; config: unknown; primary: boolean }>;
+  blocks: PublicBlockView[];
 }
 
 const SITE_NOT_FOUND = "Sitio no encontrado.";
@@ -139,6 +150,7 @@ export class PublicSitesService {
 
     const snapshot = pageContentSnapshotSchema.parse(version.contentSnapshot);
     const now = Date.now();
+    const experiments = await this.runningExperiments(page.id);
 
     const blocks = snapshot.blocks
       .filter((block) => {
@@ -164,9 +176,14 @@ export class PublicSitesService {
         }
         // PP5: se vuelve a exigir que sea un bloque de acción — el snapshot no se da por bueno.
         const primary = block.isPrimary === true && isPrimaryActionBlockType(block.type);
-        return { position: block.position, type: block.type, config: parsed.config, primary };
+        const experiment = block.id ? experiments.get(block.id) : undefined;
+        const view: PublicBlockView = { position: block.position, type: block.type, config: parsed.config, primary };
+        if (experiment && experiment.blockType === block.type) {
+          view.experiment = { key: experiment.key, variantB: experiment.variantB };
+        }
+        return view;
       })
-      .filter((block): block is { position: number; type: string; config: unknown; primary: boolean } => block !== null);
+      .filter((block): block is PublicBlockView => block !== null);
 
     const canonicalOverridePath = await this.resolveCanonicalOverride(site.id, site.slug, snapshot.seoMeta);
 
@@ -183,6 +200,28 @@ export class PublicSitesService {
       }),
       blocks,
     };
+  }
+
+  /**
+   * Pruebas A/B en curso de la página por bloque (F6.5, ADR-011). La variante B se vuelve a validar
+   * al leer, igual que la configuración de cada bloque: lo guardado no se da por bueno.
+   */
+  private async runningExperiments(pageId: string): Promise<Map<string, { key: string; blockType: string; variantB: Record<string, unknown> }>> {
+    const tests = await this.prisma.abTest.findMany({
+      where: { pageId, status: "RUNNING" },
+      select: { blockId: true, key: true, blockType: true, variantB: true },
+    });
+    const byBlock = new Map<string, { key: string; blockType: string; variantB: Record<string, unknown> }>();
+    for (const test of tests) {
+      if (!isAbTestBlockType(test.blockType)) {
+        continue;
+      }
+      const variantB = abVariantSchema(test.blockType).safeParse(test.variantB);
+      if (variantB.success) {
+        byBlock.set(test.blockId, { key: test.key, blockType: test.blockType, variantB: variantB.data as Record<string, unknown> });
+      }
+    }
+    return byBlock;
   }
 
   private publicPath(siteSlug: string, page: { slug: string; isHome: boolean }): string {

@@ -99,6 +99,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
       <PagesSection organizationId={organizationId} siteId={siteId} />
       <BookingShortcut siteId={siteId} />
       <CatalogShortcut siteId={siteId} />
+      <AbTestsShortcut siteId={siteId} />
       <CustomDomains organizationId={organizationId} siteId={siteId} />
     </div>
   );
@@ -534,6 +535,23 @@ function BookingShortcut({ siteId }: { siteId: string }): React.JSX.Element {
         <p className="text-sm text-muted-foreground">Horario de atención, servicios con su duración y días bloqueados.</p>
         <Link href={`/sitios/${siteId}/reservas`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
           Configurar reservas
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Acceso a las pruebas A/B del sitio (F6.5), que tienen su propia pantalla. */
+function AbTestsShortcut({ siteId }: { siteId: string }): React.JSX.Element {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Pruebas A/B</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Compara dos versiones de un botón o del encabezado y quédate con la que consigue más clics.</p>
+        <Link href={`/sitios/${siteId}/pruebas`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+          Ver pruebas
         </Link>
       </CardContent>
     </Card>

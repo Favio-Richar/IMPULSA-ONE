@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { VISITOR_PROXY_HEADERS } from "@impulza/analytics";
+import { parseAbBucket } from "@impulza/validation";
 import type { Request } from "express";
 import { env } from "../env.js";
 
@@ -10,6 +11,8 @@ export interface VisitorContext {
   /** País ISO-3166 alfa-2 aproximado, si la plataforma de hosting de apps/web lo informa. */
   country: string | null;
   city: string | null;
+  /** Grupo A/B (0–99) que reenvía `apps/web` desde su cookie propia (F6.5). Nulo sin proxy de confianza. */
+  abBucket: number | null;
 }
 
 function header(request: Request, name: string): string | null {
@@ -50,6 +53,7 @@ export function resolveVisitorContext(request: Request): VisitorContext {
     userAgent: header(request, "user-agent"),
     country: null,
     city: null,
+    abBucket: null,
   };
 
   if (!isTrustedProxy(request)) {
@@ -66,5 +70,6 @@ export function resolveVisitorContext(request: Request): VisitorContext {
     userAgent: header(request, VISITOR_PROXY_HEADERS.userAgent),
     country: country && /^[A-Z]{2}$/.test(country) ? country : null,
     city: city ? safeDecode(city).slice(0, 80) : null,
+    abBucket: parseAbBucket(header(request, VISITOR_PROXY_HEADERS.abBucket)),
   };
 }

@@ -1649,6 +1649,37 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/${homeOfB}/ai/seo`).set(CSRF_HEADERS).send({}).expect(404);
     });
 
+    it("A no ve, empieza, termina ni aplica pruebas A/B de B por ninguna combinación de ids (F6.5)", async () => {
+      const pagesPathB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`;
+      const homeOfB = (await orgB.ownerAgent.get(pagesPathB).expect(200)).body[0].id;
+      const blockOfB = await orgB.ownerAgent
+        .post(`${pagesPathB}/${homeOfB}/blocks`)
+        .set(CSRF_HEADERS)
+        .send({ type: "link", config: { label: "Enlace de B", url: "https://b.example.com" } })
+        .expect(201);
+      await orgB.ownerAgent.post(`${pagesPathB}/${homeOfB}/publish`).set(CSRF_HEADERS).expect(201);
+      const testsOfB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/ab-tests`;
+      const testOfB = await orgB.ownerAgent.post(testsOfB).set(CSRF_HEADERS).send({ blockId: blockOfB.body.id, name: "Prueba de B", variantB: { label: "B de B" } }).expect(201);
+
+      try {
+        const testsA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/ab-tests`;
+        const crossed = `/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/ab-tests`;
+        await orgA.ownerAgent.get(testsOfB).expect(403);
+        await orgA.ownerAgent.get(crossed).expect(404);
+        await orgA.ownerAgent.get(`${testsA}/${testOfB.body.id}`).expect(404);
+        await orgA.ownerAgent.post(`${testsA}/${testOfB.body.id}/stop`).set(CSRF_HEADERS).expect(404);
+        await orgA.ownerAgent.post(`${testsA}/${testOfB.body.id}/apply`).set(CSRF_HEADERS).send({ variant: "b" }).expect(404);
+        // El bloque de B no se puede probar desde el sitio de A.
+        await orgA.ownerAgent.post(testsA).set(CSRF_HEADERS).send({ blockId: blockOfB.body.id, name: "Robada", variantB: { label: "X" } }).expect(404);
+        expect((await orgA.ownerAgent.get(testsA).expect(200)).body).toEqual([]);
+        const stillRunning = await prisma.abTest.findUniqueOrThrow({ where: { id: testOfB.body.id } });
+        expect(stillRunning).toMatchObject({ status: "RUNNING", appliedVariant: null });
+      } finally {
+        await prisma.abTest.deleteMany({ where: { id: testOfB.body.id } });
+        await prisma.block.deleteMany({ where: { id: blockOfB.body.id } });
+      }
+    });
+
     it("A no pide la lectura comercial del sitio de B, ni metiendo el sitio de B bajo su organización (F6.4)", async () => {
       // Ambas se resuelven antes de leer métricas o llamar al modelo: las cifras de B nunca viajan.
       await orgA.ownerAgent.post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/ai/insights`).set(CSRF_HEADERS).send({ days: 7 }).expect(403);

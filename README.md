@@ -5,8 +5,9 @@ captación, reservas, ventas y analítica) desde una sola URL.
 
 **Estado actual: Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
 (salud de página), F6.2 (motor de IA con modelos locales primero, ADR-010), F6.2b (conexiones de IA
-en la administración), F6.3 (asistente de textos en el constructor) y F6.4 (lectura comercial con IA
-en Analítica) listas para revisión; sigue F6.5 (pruebas A/B). Modo agencia y marca blanca
+en la administración), F6.3 (asistente de textos en el constructor), F6.4 (lectura comercial con IA
+en Analítica) y F6.5 (pruebas A/B, ADR-011) listas para revisión; sigue F6.6 (Smart CTA). Modo
+agencia y marca blanca
 esperan la decisión #8. Fase 5 — Negocio digital — F5.1–F5.7 listas para revisión del propietario
 (backlog en `docs/BACKLOG_FASE_5.md`): reservas con disponibilidad y sin doble reserva, agenda,
 correos con enlace firmado para cancelar o reprogramar, catálogo y pedidos con pago externo,
@@ -35,7 +36,7 @@ reglas de trabajo del repositorio.
 | 3 — Conversión | F3.1–F3.8 | Terminada |
 | 4 — SaaS comercial | F4.1–F4.9 | En progreso |
 | 5 — Negocio digital | F5.1–F5.7 | Lista para revisión (cobros bloqueados por decisión #6) |
-| 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.4 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
+| 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.5 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
 
 ## Requisitos
 
@@ -1168,6 +1169,14 @@ Detalle, criterios y bitácora en `docs/BACKLOG_FASE_6.md`.
   siquiera recibe el período anterior ni desgloses, y el panel muestra su propio aviso. La
   comparación con el período anterior respeta el historial de analítica del plan.
   `POST .../sites/:siteId/ai/insights` (cualquier miembro activo, como leer la analítica).
+- **Pruebas A/B (F6.5, ADR-011):** desde el constructor, "Probar una variante" en un botón de acción
+  (enlace, WhatsApp, reservas, tienda) o en el encabezado de perfil: B cambia solo texto o estilo,
+  nunca adónde lleva. La mitad de los visitantes ve cada variante, siempre la misma: `apps/web` elige
+  en el servidor (sin parpadeo) con el grupo de una cookie propia (número de 0 a 99, solo en páginas
+  con prueba en curso), y la API cuenta visitas, clics y conversiones en la variante que calcula ella
+  misma — el navegador nunca la declara. En `/sitios/:id/pruebas`, resultados por variante y un
+  veredicto honesto: ganadora solo con ≥ 200 visitas por variante, ≥ 30 clics y p < 0,05. "Aplicar
+  B" escribe el borrador del bloque y nunca publica. Límite `abTestsRunning` por plan.
 
 ## Sitio comercial: escena 3D del hero (ADR-009)
 

@@ -30,12 +30,12 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
 | F6.2b — Conexiones de IA en la superadministración | Lista para tu revisión (capturas en `docs/design/capturas/f62b/`) |
 | F6.3 — Asistente de textos: títulos, CTA, SEO y traducción | Lista para tu revisión (capturas en `docs/design/capturas/f63/`) |
 | F6.4 — IA comercial: lectura de métricas y recomendaciones | Lista para tu revisión (capturas en `docs/design/capturas/f64/`) |
-| F6.5 — Pruebas A/B | Pendiente |
+| F6.5 — Pruebas A/B | Lista para tu revisión (ADR-011; capturas en `docs/design/capturas/f65/`) |
 | F6.6 — Smart CTA | Pendiente |
 | F6.7 — Automatizaciones básicas | Pendiente |
 | F6.8 — Modo agencia | Bloqueado (decisión #8) |
 | F6.9 — Marca blanca | Bloqueado (decisión #8) |
-| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1, F6.2, F6.2b, F6.3 y F6.4 agregados; se completa con cada historia) |
+| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1, F6.2, F6.2b, F6.3, F6.4 y F6.5 agregados; se completa con cada historia) |
 
 ### Bitácora de avance (para retomar)
 
@@ -207,6 +207,52 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
     41/41). `pnpm build`: `apps/web` necesita la API arriba para prerenderizar la portada (con la API
     levantada compila); no cambió en esta historia.
   - Siguiente: F6.5 (pruebas A/B).
+
+- **2026-09-28 — F6.5 terminada**, en "Lista para tu revisión". Decisión en ADR-011. (Un corte del
+  entorno de desarrollo obligó a pausar antes de la corrida final; se retomó y completó.)
+  - `@impulza/validation` (`src/ab`): campos que B puede cambiar por tipo (texto/estilo de enlace,
+    WhatsApp, reservas y tienda; subtítulo del perfil — nunca URL, teléfono ni destino), mezcla
+    A+B, grupo de 0 a 99 (`parseAbBucket`), reparto `abVariantFor` exactamente 50/50 y estable, y
+    `evaluateAbTest` (prueba z de dos proporciones, dos colas; ganador solo con ≥ 200 exposiciones
+    por variante, ≥ 30 clics y p < 0,05). Límite `abTestsRunning` en el plan (provisorio 1/3/10/30;
+    1 para planes guardados antes). 6 pruebas nuevas (531 en total).
+  - Base: migración aditiva `20260929030000_f65_ab_tests` (`AbTest` con copia de A, `CHECK`s e índice
+    único parcial "una en curso por bloque"). Sin tabla de conteos: métricas
+    `ab:<evento>:<prueba>:<a|b>` en `AnalyticsAggregate` que suma el worker de siempre.
+  - Analítica: `apps/web` reenvía el grupo (cabecera de visitante, solo creída con el secreto) y
+    `AnalyticsService` calcula la variante de cada evento: exposición (vista de la página),
+    clic (del bloque probado; en el perfil, de cualquier bloque de la página) y conversión
+    (formulario, reserva, pedido). Ningún módulo de formularios, reservas ni pedidos cambió.
+  - API `organizations/:org/sites/:site/ab-tests`: listar y ver (miembro activo), empezar, terminar y
+    aplicar (`page.manage`). Empezar exige bloque publicado, B válida y distinta de A, sin otra prueba
+    en el bloque (409) y cupo del plan (402). Aplicar B escribe el **borrador actual** por la edición
+    normal; nunca publica. Auditoría de cada acción; logs sin contenido; invalidación de la caché del
+    sitio público al empezar/terminar. La página pública suma `experiment: { key, variantB }` al
+    bloque probado (revalidado al leer). OpenAPI regenerado (138 rutas).
+  - `apps/web`: elige la variante en el servidor (sin parpadeo) y guarda el grupo en una cookie
+    propia **solo** si la página tiene una prueba en curso.
+  - Panel: en el constructor, sección "Prueba A/B" en bloques compatibles (estado en curso o "Probar
+    una variante" con diálogo A/B lado a lado validado con el esquema del servidor); pantalla
+    `/sitios/:id/pruebas` con tarjetas por prueba (qué cambia, clics por visita con barra,
+    visitas/clics/conversiones, veredicto con cuánto falta, "Aplicar B al borrador", "Quedarme con
+    A", "Terminar sin aplicar"); acceso desde la ficha del sitio. Estados completos.
+  - Pruebas: API e2e `ab-tests.e2e.test.ts` 5 contra el pipeline real (validaciones de creación;
+    página pública solo con clave y B, sin nombre ni id, y sin nada al terminar; conteo por variante
+    calculada por la API, sin grupo o sin secreto no cuenta; veredicto con muestra y aplicar sin
+    publicar; límite del plan y ANALYST solo lee) + caso central de aislamiento. **Verificadas
+    contra el código roto:** variante fija, grupo creído sin secreto, sitio sin verificar la
+    organización y sitio público que no aplica B — todas fallan por la razón correcta. Una primera
+    versión de la prueba del secreto pasaba igual con el código roto (el evento se descartaba como
+    bot antes de llegar a la lógica A/B); se corrigió y ahora falla como debe. `apps/web` 3 nuevas,
+    panel 2 nuevas, analítica 1 nueva. Playwright `pruebas-ab.spec.ts` 2/2 (móvil y escritorio) con
+    el sitio público **en producción**: dos grupos ven variantes distintas, el mismo grupo siempre
+    la misma, un visitante nuevo recibe grupo, aplicar B no publica, y sin prueba en curso no se
+    crea cookie.
+  - Revisión final: "Aplicar" es idempotente (dos clics o dos pestañas no cambian la decisión ni
+    reescriben el borrador), con prueba verificada contra el código roto. Suite completa de la API
+    461/461 (una primera corrida tuvo 3 timeouts de 5 s en `analytics-reports` por carga; aislado
+    9/9 y la segunda corrida completa pasó entera). `pnpm build` 16/16 con la API arriba.
+  - Siguiente: F6.6 (Smart CTA).
 
 > **PUNTO DE CORTE (2026-09-28) — superado:** F6.3 se terminó después (ver la entrada de F6.3 arriba). Favio había pedido parar acá.
 > - Hecho, probado y commiteado: F6.1 (salud de página), F6.2 (motor de IA, ADR-010) y F6.2b

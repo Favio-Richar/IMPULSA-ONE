@@ -112,7 +112,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 
 | Requisito | Fuente | Fase |
 |---|---|---|
-| Asistente IA: estructura inicial, bloques, textos/CTA, SEO, traducción, análisis de métricas, propuestas A/B, detección de info faltante | PM §9.16 | Fase 6 — textos/CTA, SEO y traducción: F6.3 (en revisión); detección de info faltante: F6.1; análisis de métricas: F6.4 (en revisión); A/B: F6.5 |
+| Asistente IA: estructura inicial, bloques, textos/CTA, SEO, traducción, análisis de métricas, propuestas A/B, detección de info faltante | PM §9.16 | Fase 6 — textos/CTA, SEO y traducción: F6.3 (en revisión); detección de info faltante: F6.1; análisis de métricas: F6.4 (en revisión); A/B: F6.5 (en revisión, ADR-011) |
 | Interfaz `AIProvider` con adaptadores; IA propone, usuario confirma antes de publicar; registrar proveedor/modelo/tokens/costo; límites por plan; sin dependencia rígida de un proveedor | ST §13 | Fase 6 — `BACKLOG_FASE_6.md` F6.2 (en revisión, ADR-010): `packages/ai` con adaptador compatible con OpenAI (modelos locales primero) y Anthropic, respaldo entre conexiones, uso registrado sin contenido, cuota mensual por plan. Administración de conexiones: F6.2b (en revisión, `apps/admin` `/ia`). "IA propone, usuario confirma": F6.3 (en revisión): propuestas validadas contra el esquema del bloque, aplicadas solo con clic explícito como borrador |
 
 ## 13. Superadministración

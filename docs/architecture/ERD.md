@@ -283,6 +283,17 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   respuesta** (ADR-004). La cuota mensual cuenta solicitudes con al menos un intento `ok`.
 - **Plan.limits** suma `aiRequestsPerMonth` (con valor por defecto para planes anteriores).
 
+## 9f. Pruebas A/B (F6.5, `BACKLOG_FASE_6.md`, ADR-011)
+
+- **AbTest** (Organization, Site, Page y Block 1:N con `CASCADE`): name, key (única, pública y
+  opaca: decide el reparto), block_type, variant_a (copia de la configuración publicada al empezar),
+  variant_b (solo los campos que cambia B), status (`RUNNING`/`ENDED`), applied_variant (`a`/`b`,
+  `CHECK`, solo terminada), started_at, ended_at (`CHECK`: presente si y solo si está terminada).
+  Índice único parcial: a lo sumo una `RUNNING` por bloque.
+- Los conteos no tienen tabla propia: son métricas de **AnalyticsAggregate**
+  (`ab:<evento>:<prueba>:<a|b>`), escritas por el mismo worker, sin datos personales.
+- **Plan.limits** suma `abTestsRunning` (pruebas en curso por organización; 1 por defecto).
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 `Payment` (cobro propio; hoy bloqueado por la decisión #6), variantes/cupones/carrito,

@@ -162,6 +162,7 @@ model Organization {
   supportTickets      SupportTicket[]
   mediaAssets         MediaAsset[]
   aiUsage             AiUsage[]
+  abTests             AbTest[]
 
   @@map("organizations")
 }
@@ -379,6 +380,7 @@ model Site {
   forms               Form[]
   analyticsEvents     AnalyticsEvent[]
   analyticsAggregates AnalyticsAggregate[]
+  abTests             AbTest[]
 
   @@index([organizationId])
   @@map("sites")
@@ -457,6 +459,7 @@ model Page {
   site     Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
   blocks   Block[]
   versions PageVersion[]
+  abTests  AbTest[]
 
   // Resolución del render público: slug de página dentro del sitio (ERD.md §3).
   //
@@ -513,6 +516,7 @@ model Block {
 
   page     Page           @relation(fields: [pageId], references: [id], onDelete: Cascade)
   versions BlockVersion[]
+  abTests  AbTest[]
 
   @@index([pageId, position])
   @@map("blocks")
@@ -1339,4 +1343,49 @@ model AiUsage {
   @@index([connectionId, createdAt])
   @@index([requestId])
   @@map("ai_usage")
+}
+
+// --- Pruebas A/B (F6.5, ADR-011) -----------------------------------------------------------------
+// Una prueba compara la configuración publicada de un bloque de acción (o del encabezado de perfil)
+// con una variante B de solo texto/estilo (`abVariantSchema` de `@impulza/validation`). Los conteos
+// no viven acá: son métricas de `AnalyticsAggregate` (`ab:<evento>:<id>:<a|b>`), sin datos
+// personales. A lo sumo una prueba en curso por bloque: índice único parcial en la migración.
+
+enum AbTestStatus {
+  RUNNING
+  ENDED
+}
+
+model AbTest {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  siteId         String       @map("site_id") @db.Uuid
+  pageId         String       @map("page_id") @db.Uuid
+  blockId        String       @map("block_id") @db.Uuid
+  name           String
+  // Clave pública opaca que decide el reparto (`abVariantFor`) y viaja en la página pública en vez
+  // del id: no revela nada interno ni permite adivinar otras pruebas.
+  key            String       @unique
+  blockType      String       @map("block_type")
+  // Copia de la configuración publicada al empezar: la variante A que se comparó, aunque después
+  // se publique otra (p. ej. al aplicar B). El historial de la prueba no cambia con el bloque.
+  variantA       Json         @map("variant_a")
+  variantB       Json         @map("variant_b")
+  status         AbTestStatus @default(RUNNING)
+  // Variante que el usuario decidió aplicar al terminar (acción explícita), o nula.
+  appliedVariant String?      @map("applied_variant")
+  startedAt      DateTime     @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt        DateTime?    @map("ended_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  page         Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  block        Block        @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([siteId, status])
+  @@index([pageId, status])
+  @@map("ab_tests")
 }

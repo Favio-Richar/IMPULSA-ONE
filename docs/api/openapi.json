@@ -6475,6 +6475,23 @@
                           "config": {},
                           "primary": {
                             "type": "boolean"
+                          },
+                          "experiment": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "variantB": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "variantB"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -11888,6 +11905,12 @@
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
+                          },
+                          "abTestsRunning": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
                           }
                         },
                         "required": [
@@ -11901,7 +11924,8 @@
                           "analyticsHistoryDays",
                           "storageMb",
                           "emailsPerHour",
-                          "aiRequestsPerMonth"
+                          "aiRequestsPerMonth",
+                          "abTestsRunning"
                         ],
                         "additionalProperties": false
                       }
@@ -12065,6 +12089,12 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "abTestsRunning": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -12078,7 +12108,8 @@
                             "analyticsHistoryDays",
                             "storageMb",
                             "emailsPerHour",
-                            "aiRequestsPerMonth"
+                            "aiRequestsPerMonth",
+                            "abTestsRunning"
                           ],
                           "additionalProperties": false
                         }
@@ -25932,6 +25963,1462 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/ab-tests": {
+      "get": {
+        "description": "En curso primero, con sus conteos y veredicto (F6.5).",
+        "operationId": "AbTestsController_list",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pruebas con resultados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "siteId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "pageId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "blockId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "blockType": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "RUNNING",
+                          "ENDED"
+                        ]
+                      },
+                      "variantA": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "variantB": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "appliedVariant": {
+                        "nullable": true,
+                        "type": "string",
+                        "enum": [
+                          "a",
+                          "b"
+                        ]
+                      },
+                      "startedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "endedAt": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "results": {
+                        "type": "object",
+                        "properties": {
+                          "a": {
+                            "type": "object",
+                            "properties": {
+                              "exposures": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "clicks": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "conversions": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "exposures",
+                              "clicks",
+                              "conversions"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "b": {
+                            "type": "object",
+                            "properties": {
+                              "exposures": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "clicks": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "conversions": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "exposures",
+                              "clicks",
+                              "conversions"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "verdict": {
+                            "type": "string",
+                            "enum": [
+                              "insufficient_sample",
+                              "no_clear_difference",
+                              "winner"
+                            ]
+                          },
+                          "winner": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "a",
+                              "b"
+                            ]
+                          },
+                          "rateA": {
+                            "nullable": true,
+                            "type": "number"
+                          },
+                          "rateB": {
+                            "nullable": true,
+                            "type": "number"
+                          },
+                          "liftB": {
+                            "nullable": true,
+                            "type": "number"
+                          },
+                          "pValue": {
+                            "nullable": true,
+                            "type": "number"
+                          },
+                          "minimum": {
+                            "type": "object",
+                            "properties": {
+                              "exposuresPerVariant": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "totalClicks": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "exposuresPerVariant",
+                              "totalClicks"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "a",
+                          "b",
+                          "verdict",
+                          "winner",
+                          "rateA",
+                          "rateB",
+                          "liftB",
+                          "pValue",
+                          "minimum"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "siteId",
+                      "pageId",
+                      "blockId",
+                      "blockType",
+                      "name",
+                      "status",
+                      "variantA",
+                      "variantB",
+                      "appliedVariant",
+                      "startedAt",
+                      "endedAt",
+                      "results"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio, bloque o prueba no encontrados, o de otra organización (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Listar las pruebas A/B del sitio",
+        "tags": [
+          "ab-tests"
+        ]
+      },
+      "post": {
+        "description": "Compara el bloque publicado (A) con una variante B de solo texto o estilo. Solo botones de acción (enlace, WhatsApp, reservas, tienda) y el encabezado de perfil; una prueba en curso por bloque; cuenta en el límite `abTestsRunning` del plan. Los visitantes se reparten mitad y mitad de forma estable.",
+        "operationId": "AbTestsController_create",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "blockId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "variantB": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "blockId",
+                  "name",
+                  "variantB"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Prueba en curso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "siteId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "pageId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "blockId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "blockType": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "RUNNING",
+                        "ENDED"
+                      ]
+                    },
+                    "variantA": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "variantB": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "appliedVariant": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "a",
+                        "b"
+                      ]
+                    },
+                    "startedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "endedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "results": {
+                      "type": "object",
+                      "properties": {
+                        "a": {
+                          "type": "object",
+                          "properties": {
+                            "exposures": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "clicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "conversions": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposures",
+                            "clicks",
+                            "conversions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "b": {
+                          "type": "object",
+                          "properties": {
+                            "exposures": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "clicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "conversions": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposures",
+                            "clicks",
+                            "conversions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "verdict": {
+                          "type": "string",
+                          "enum": [
+                            "insufficient_sample",
+                            "no_clear_difference",
+                            "winner"
+                          ]
+                        },
+                        "winner": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "a",
+                            "b"
+                          ]
+                        },
+                        "rateA": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "rateB": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "liftB": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "pValue": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "minimum": {
+                          "type": "object",
+                          "properties": {
+                            "exposuresPerVariant": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "totalClicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposuresPerVariant",
+                            "totalClicks"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "a",
+                        "b",
+                        "verdict",
+                        "winner",
+                        "rateA",
+                        "rateB",
+                        "liftB",
+                        "pValue",
+                        "minimum"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "siteId",
+                    "pageId",
+                    "blockId",
+                    "blockType",
+                    "name",
+                    "status",
+                    "variantA",
+                    "variantB",
+                    "appliedVariant",
+                    "startedAt",
+                    "endedAt",
+                    "results"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "402": {
+            "description": "`PLAN_LIMIT_REACHED`: ya hay tantas pruebas en curso como permite el plan."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio, bloque o prueba no encontrados, o de otra organización (ADR-002)."
+          },
+          "409": {
+            "description": "`AB_TEST_ALREADY_RUNNING`: el bloque ya tiene una prueba en curso."
+          },
+          "422": {
+            "description": "`AB_BLOCK_NOT_SUPPORTED`, `AB_BLOCK_NOT_PUBLISHED` o `AB_VARIANT_INVALID` (campos no permitidos, bloque inválido o igual a A)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Empezar una prueba A/B",
+        "tags": [
+          "ab-tests"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/ab-tests/{testId}": {
+      "get": {
+        "description": "Conteos por variante (exposiciones, clics, conversiones) y veredicto: solo hay ganador con muestra suficiente y p < 0,05.",
+        "operationId": "AbTestsController_get",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "testId",
+            "required": true,
+            "in": "path",
+            "description": "Prueba.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prueba con resultados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "siteId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "pageId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "blockId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "blockType": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "RUNNING",
+                        "ENDED"
+                      ]
+                    },
+                    "variantA": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "variantB": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "appliedVariant": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "a",
+                        "b"
+                      ]
+                    },
+                    "startedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "endedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "results": {
+                      "type": "object",
+                      "properties": {
+                        "a": {
+                          "type": "object",
+                          "properties": {
+                            "exposures": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "clicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "conversions": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposures",
+                            "clicks",
+                            "conversions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "b": {
+                          "type": "object",
+                          "properties": {
+                            "exposures": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "clicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "conversions": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposures",
+                            "clicks",
+                            "conversions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "verdict": {
+                          "type": "string",
+                          "enum": [
+                            "insufficient_sample",
+                            "no_clear_difference",
+                            "winner"
+                          ]
+                        },
+                        "winner": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "a",
+                            "b"
+                          ]
+                        },
+                        "rateA": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "rateB": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "liftB": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "pValue": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "minimum": {
+                          "type": "object",
+                          "properties": {
+                            "exposuresPerVariant": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "totalClicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposuresPerVariant",
+                            "totalClicks"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "a",
+                        "b",
+                        "verdict",
+                        "winner",
+                        "rateA",
+                        "rateB",
+                        "liftB",
+                        "pValue",
+                        "minimum"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "siteId",
+                    "pageId",
+                    "blockId",
+                    "blockType",
+                    "name",
+                    "status",
+                    "variantA",
+                    "variantB",
+                    "appliedVariant",
+                    "startedAt",
+                    "endedAt",
+                    "results"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio, bloque o prueba no encontrados, o de otra organización (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Ver una prueba A/B",
+        "tags": [
+          "ab-tests"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/ab-tests/{testId}/stop": {
+      "post": {
+        "description": "Todos los visitantes vuelven a ver A. Los resultados se conservan. Terminar una prueba ya terminada no cambia nada.",
+        "operationId": "AbTestsController_stop",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "testId",
+            "required": true,
+            "in": "path",
+            "description": "Prueba.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prueba terminada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "siteId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "pageId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "blockId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "blockType": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "RUNNING",
+                        "ENDED"
+                      ]
+                    },
+                    "variantA": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "variantB": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "appliedVariant": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "a",
+                        "b"
+                      ]
+                    },
+                    "startedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "endedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "results": {
+                      "type": "object",
+                      "properties": {
+                        "a": {
+                          "type": "object",
+                          "properties": {
+                            "exposures": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "clicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "conversions": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposures",
+                            "clicks",
+                            "conversions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "b": {
+                          "type": "object",
+                          "properties": {
+                            "exposures": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "clicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "conversions": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposures",
+                            "clicks",
+                            "conversions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "verdict": {
+                          "type": "string",
+                          "enum": [
+                            "insufficient_sample",
+                            "no_clear_difference",
+                            "winner"
+                          ]
+                        },
+                        "winner": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "a",
+                            "b"
+                          ]
+                        },
+                        "rateA": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "rateB": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "liftB": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "pValue": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "minimum": {
+                          "type": "object",
+                          "properties": {
+                            "exposuresPerVariant": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "totalClicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposuresPerVariant",
+                            "totalClicks"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "a",
+                        "b",
+                        "verdict",
+                        "winner",
+                        "rateA",
+                        "rateB",
+                        "liftB",
+                        "pValue",
+                        "minimum"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "siteId",
+                    "pageId",
+                    "blockId",
+                    "blockType",
+                    "name",
+                    "status",
+                    "variantA",
+                    "variantB",
+                    "appliedVariant",
+                    "startedAt",
+                    "endedAt",
+                    "results"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio, bloque o prueba no encontrados, o de otra organización (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Terminar una prueba A/B",
+        "tags": [
+          "ab-tests"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/ab-tests/{testId}/apply": {
+      "post": {
+        "description": "Acción explícita del usuario: termina la prueba y, si es B, escribe sus cambios en el borrador del bloque (edición normal, con versión). No publica: llega a los visitantes al publicar la página.",
+        "operationId": "AbTestsController_apply",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "testId",
+            "required": true,
+            "in": "path",
+            "description": "Prueba.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "variant": {
+                    "type": "string",
+                    "enum": [
+                      "a",
+                      "b"
+                    ]
+                  }
+                },
+                "required": [
+                  "variant"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Prueba terminada con la variante aplicada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "siteId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "pageId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "blockId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "blockType": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "RUNNING",
+                        "ENDED"
+                      ]
+                    },
+                    "variantA": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "variantB": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "appliedVariant": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "a",
+                        "b"
+                      ]
+                    },
+                    "startedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "endedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "results": {
+                      "type": "object",
+                      "properties": {
+                        "a": {
+                          "type": "object",
+                          "properties": {
+                            "exposures": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "clicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "conversions": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposures",
+                            "clicks",
+                            "conversions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "b": {
+                          "type": "object",
+                          "properties": {
+                            "exposures": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "clicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "conversions": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposures",
+                            "clicks",
+                            "conversions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "verdict": {
+                          "type": "string",
+                          "enum": [
+                            "insufficient_sample",
+                            "no_clear_difference",
+                            "winner"
+                          ]
+                        },
+                        "winner": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "a",
+                            "b"
+                          ]
+                        },
+                        "rateA": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "rateB": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "liftB": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "pValue": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "minimum": {
+                          "type": "object",
+                          "properties": {
+                            "exposuresPerVariant": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "totalClicks": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "exposuresPerVariant",
+                            "totalClicks"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "a",
+                        "b",
+                        "verdict",
+                        "winner",
+                        "rateA",
+                        "rateB",
+                        "liftB",
+                        "pValue",
+                        "minimum"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "siteId",
+                    "pageId",
+                    "blockId",
+                    "blockType",
+                    "name",
+                    "status",
+                    "variantA",
+                    "variantB",
+                    "appliedVariant",
+                    "startedAt",
+                    "endedAt",
+                    "results"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio, bloque o prueba no encontrados, o de otra organización (ADR-002)."
+          },
+          "422": {
+            "description": "El bloque ya no acepta los cambios de B (por ejemplo, cambió de forma incompatible)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Aplicar una variante",
+        "tags": [
+          "ab-tests"
+        ]
+      }
+    },
     "/api/v1/admin/auth/login": {
       "post": {
         "description": "Correo, contraseña y código 2FA en la misma petición. Emite la cookie `impulza_admin_session` (`HttpOnly`, `SameSite=Strict`, `path=/api/v1/admin`, 8 h). El mensaje de error es el mismo para cualquier fallo, y un código incorrecto cuenta como intento fallido.",
@@ -26647,6 +28134,12 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "abTestsRunning": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -26660,7 +28153,8 @@
                             "analyticsHistoryDays",
                             "storageMb",
                             "emailsPerHour",
-                            "aiRequestsPerMonth"
+                            "aiRequestsPerMonth",
+                            "abTestsRunning"
                           ],
                           "additionalProperties": false
                         }
@@ -27047,6 +28541,12 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "abTestsRunning": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -27060,7 +28560,8 @@
                             "analyticsHistoryDays",
                             "storageMb",
                             "emailsPerHour",
-                            "aiRequestsPerMonth"
+                            "aiRequestsPerMonth",
+                            "abTestsRunning"
                           ],
                           "additionalProperties": false
                         }
@@ -27443,6 +28944,12 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "abTestsRunning": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -27456,7 +28963,8 @@
                             "analyticsHistoryDays",
                             "storageMb",
                             "emailsPerHour",
-                            "aiRequestsPerMonth"
+                            "aiRequestsPerMonth",
+                            "abTestsRunning"
                           ],
                           "additionalProperties": false
                         }
@@ -27841,6 +29349,12 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "abTestsRunning": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
                             }
                           },
                           "required": [
@@ -27854,7 +29368,8 @@
                             "analyticsHistoryDays",
                             "storageMb",
                             "emailsPerHour",
-                            "aiRequestsPerMonth"
+                            "aiRequestsPerMonth",
+                            "abTestsRunning"
                           ],
                           "additionalProperties": false
                         }
@@ -28306,6 +29821,12 @@
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
+                          },
+                          "abTestsRunning": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
                           }
                         },
                         "required": [
@@ -28319,7 +29840,8 @@
                           "analyticsHistoryDays",
                           "storageMb",
                           "emailsPerHour",
-                          "aiRequestsPerMonth"
+                          "aiRequestsPerMonth",
+                          "abTestsRunning"
                         ],
                         "additionalProperties": false
                       }
@@ -28482,6 +30004,13 @@
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 9007199254740991
+                      },
+                      "abTestsRunning": {
+                        "default": 1,
+                        "nullable": true,
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
                       }
                     },
                     "required": [
@@ -28614,6 +30143,12 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "abTestsRunning": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
@@ -28627,7 +30162,8 @@
                         "analyticsHistoryDays",
                         "storageMb",
                         "emailsPerHour",
-                        "aiRequestsPerMonth"
+                        "aiRequestsPerMonth",
+                        "abTestsRunning"
                       ],
                       "additionalProperties": false
                     }

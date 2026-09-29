@@ -7,9 +7,12 @@ import {
   detectDeviceType,
   isBotUserAgent,
 } from "@impulza/analytics";
+import type { PrismaClient } from "@impulza/database";
+import { AB_CLICK_EVENTS, AB_CONVERSION_EVENTS, abVariantFor } from "@impulza/validation";
 import type { Queue } from "bullmq";
 import type { Request } from "express";
 import { resolveVisitorContext, type VisitorContext } from "../../common/visitor-context.js";
+import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { ANALYTICS_QUEUE } from "./analytics.tokens.js";
@@ -24,7 +27,10 @@ export type RecordEventResult = "queued" | "ignored_bot" | "failed";
  */
 @Injectable()
 export class AnalyticsService {
-  constructor(@Inject(ANALYTICS_QUEUE) private readonly queue: Queue<AnalyticsEventJob>) {}
+  constructor(
+    @Inject(ANALYTICS_QUEUE) private readonly queue: Queue<AnalyticsEventJob>,
+    @Inject(PRISMA) private readonly prisma: PrismaClient,
+  ) {}
 
   /** Para quien tiene que decidir algo más que registrar el evento (p. ej. no sumar el contador
    *  de un enlace corto cuando la visita es la vista previa automática de un chat). */
@@ -79,6 +85,10 @@ export class AnalyticsService {
       idempotencyKey: params.idempotencyKey ?? null,
       occurredAt: occurredAt.toISOString(),
     };
+    const experiments = await this.experimentsFor(params, visitor.abBucket);
+    if (experiments.length > 0) {
+      job.experiments = experiments;
+    }
 
     try {
       await this.queue.add(params.type, job, {
@@ -97,6 +107,47 @@ export class AnalyticsService {
     } catch (error) {
       logger.error("No se pudo encolar un evento de analítica", { type: params.type, err: error });
       return "failed";
+    }
+  }
+
+  /**
+   * Pruebas A/B en curso a las que cuenta el evento y la variante del visitante (F6.5, ADR-011). La
+   * variante sale del grupo que reenvía `apps/web` con la misma función con que eligió qué mostrar
+   * (`abVariantFor`): el navegador nunca la declara. Exposición = vista de la página de la prueba;
+   * clic = clic en el bloque probado (o, si se prueba el encabezado de perfil, en cualquier bloque
+   * de esa página); conversión = envío de formulario, reserva o pedido en el sitio.
+   * Nunca lanza: sin grupo, sin sitio o ante un error, el evento se cuenta sin variantes.
+   */
+  private async experimentsFor(
+    params: { siteId: string | null; type: AnalyticsEventType; subjectId?: string | null },
+    bucket: number | null,
+  ): Promise<Array<{ testId: string; variant: "a" | "b" }>> {
+    if (bucket === null || !params.siteId) {
+      return [];
+    }
+    const subjectId = params.subjectId ?? null;
+    const isClick = (AB_CLICK_EVENTS as readonly string[]).includes(params.type);
+    const isConversion = (AB_CONVERSION_EVENTS as readonly string[]).includes(params.type);
+    let scope: Record<string, unknown> | null = null;
+    if (params.type === "page_view" && subjectId) {
+      scope = { pageId: subjectId };
+    } else if (isClick && subjectId) {
+      scope = { OR: [{ blockId: subjectId }, { blockType: "profile", page: { blocks: { some: { id: subjectId } } } }] };
+    } else if (isConversion) {
+      scope = {};
+    }
+    if (!scope) {
+      return [];
+    }
+    try {
+      const tests = await this.prisma.abTest.findMany({
+        where: { siteId: params.siteId, status: "RUNNING", ...scope },
+        select: { id: true, key: true },
+      });
+      return tests.map((test) => ({ testId: test.id, variant: abVariantFor(test.key, bucket) }));
+    } catch (error) {
+      logger.error("No se pudieron resolver las pruebas A/B de un evento", { type: params.type, err: error });
+      return [];
     }
   }
 }

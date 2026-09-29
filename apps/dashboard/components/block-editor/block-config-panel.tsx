@@ -3,6 +3,7 @@
 import {
   BLOCK_CATALOG,
   copyFieldsFor,
+  isAbTestBlockType,
   isBlockType,
   isPrimaryActionBlockType,
   translateFieldsFor,
@@ -22,6 +23,7 @@ import { sameConfig } from "../../lib/block-fields/same-config";
 import { toFormConfig } from "../../lib/block-fields/to-form-value";
 import { isAiTaskAvailable, useAiStatus } from "../../lib/hooks/use-ai";
 import { useUpdateBlock } from "../../lib/hooks/use-blocks";
+import { BlockAbSection } from "../ab-tests/block-ab-section";
 import { BlockAiDialog } from "../ai/ai-assistant-dialogs";
 import { ContactFormPicker } from "./contact-form-picker";
 import { PrimaryActionToggle } from "./primary-action-toggle";
@@ -216,6 +218,16 @@ export function BlockConfigPanel({
           canTranslate={isAiTaskAvailable(aiStatus.data, "translate") && translateFieldsFor(type, block.config).length > 0}
           onOpen={(mode) => void openAssistant(mode)}
         />
+        {isAbTestBlockType(type) ? (
+          <BlockAbSection
+            organizationId={organizationId}
+            siteId={siteId}
+            blockId={block.id}
+            blockType={type}
+            blockLabel={BLOCK_LABELS[type]}
+            currentConfig={(block.config ?? {}) as Record<string, unknown>}
+          />
+        ) : null}
         {aiMode ? (
           <BlockAiDialog
             mode={aiMode}

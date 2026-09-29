@@ -15,6 +15,7 @@ const LIMIT_MESSAGES: Record<PlanLimitKey, string> = {
   storageMb: "Llegaste al máximo de almacenamiento de tu plan.",
   emailsPerHour: "Llegaste al máximo de correos por hora de tu plan.",
   aiRequestsPerMonth: "Llegaste al máximo de solicitudes al asistente de IA de este mes en tu plan.",
+  abTestsRunning: "Llegaste al máximo de pruebas A/B en curso de tu plan. Termina una para empezar otra.",
 };
 
 /**

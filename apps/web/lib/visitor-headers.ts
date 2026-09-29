@@ -1,4 +1,5 @@
 import { VISITOR_PROXY_HEADERS } from "@impulza/analytics";
+import { abBucketFromCookieHeader } from "./ab";
 import { env } from "./env";
 
 /** Lo mínimo que se necesita de las cabeceras entrantes: sirve tanto `Request.headers` como el
@@ -66,6 +67,13 @@ export function visitorProxyHeaders(source: VisitorProxyHeaderSource): Record<st
   const city = firstHeader(source, CITY_HEADERS);
   if (city) {
     headers[VISITOR_PROXY_HEADERS.city] = city;
+  }
+
+  // F6.5: el grupo A/B de la cookie propia del sitio, para que la API cuente la variante que se le
+  // mostró (nunca la declara el navegador). Solo el número validado, no la cabecera de cookies.
+  const abBucket = abBucketFromCookieHeader(source.get("cookie"));
+  if (abBucket !== null) {
+    headers[VISITOR_PROXY_HEADERS.abBucket] = String(abBucket);
   }
 
   return headers;

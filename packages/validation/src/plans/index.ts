@@ -28,7 +28,12 @@ export const planLimitsSchema = z.object({
   /** Solicitudes al asistente de IA por mes calendario (F6.2). Un plan guardado antes de F6.2 no lo
    *  tiene: vale el mínimo (`DEFAULT_AI_REQUESTS_PER_MONTH`) hasta que el equipo lo ajuste. */
   aiRequestsPerMonth: limitValue.default(20),
+  /** Pruebas A/B en curso a la vez en toda la organización (F6.5). Un plan guardado antes de F6.5
+   *  no lo tiene: vale el mínimo (`DEFAULT_AB_TESTS_RUNNING`) hasta que el equipo lo ajuste. */
+  abTestsRunning: limitValue.default(1),
 });
+
+export const DEFAULT_AB_TESTS_RUNNING = 1;
 
 export const DEFAULT_AI_REQUESTS_PER_MONTH = 20;
 
@@ -89,6 +94,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       storageMb: 200,
       emailsPerHour: 50,
       aiRequestsPerMonth: 20,
+      abTestsRunning: 1,
     },
   },
   {
@@ -110,6 +116,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       storageMb: 2_000,
       emailsPerHour: 300,
       aiRequestsPerMonth: 300,
+      abTestsRunning: 3,
     },
   },
   {
@@ -131,6 +138,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       storageMb: 10_000,
       emailsPerHour: 1_000,
       aiRequestsPerMonth: 1_500,
+      abTestsRunning: 10,
     },
   },
   {
@@ -152,6 +160,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       storageMb: 50_000,
       emailsPerHour: 5_000,
       aiRequestsPerMonth: 5_000,
+      abTestsRunning: 30,
     },
   },
 ];

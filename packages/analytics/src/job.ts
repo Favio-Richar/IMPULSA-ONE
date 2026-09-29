@@ -30,4 +30,10 @@ export interface AnalyticsEventJob {
   /** Solo en eventos críticos (envío de formulario, lead, clic del navegador con id propio). */
   idempotencyKey: string | null;
   occurredAt: string;
+  /**
+   * Pruebas A/B en curso a las que cuenta este evento, con la variante que vio el visitante (F6.5,
+   * ADR-011). La calcula la API a partir del grupo del visitante, nunca la declara el navegador.
+   * Opcional: un trabajo encolado antes de F6.5 no lo trae.
+   */
+  experiments?: Array<{ testId: string; variant: "a" | "b" }>;
 }

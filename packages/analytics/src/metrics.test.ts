@@ -25,6 +25,11 @@ describe("metricsForEvent", () => {
     expect(metricsForEvent(job())).toEqual(["page_view"]);
   });
 
+  it("una métrica por variante de cada prueba A/B a la que cuenta el evento (F6.5)", () => {
+    const metrics = metricsForEvent(job({ type: "block_click", experiments: [{ testId: "t1", variant: "b" }, { testId: "t2", variant: "a" }] }));
+    expect(metrics).toEqual(["block_click", "ab:block_click:t1:b", "ab:block_click:t2:a"]);
+  });
+
   it("agrega una métrica por cada dimensión presente", () => {
     const metrics = metricsForEvent(
       job({

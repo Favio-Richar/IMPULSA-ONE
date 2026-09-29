@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  publicBookingAvailableResponse,
   publicFormResponse,
   publicPageResponse,
   publicSiteResponse,
@@ -74,6 +75,25 @@ export function getPublicForm(siteSlug: string, formId: string): Promise<PublicF
   );
 }
 
+/**
+ * Smart CTA (F6.6): ¿quedan horas para reservar? Caché propia de un minuto, aparte de la del sitio:
+ * cambia con cada reserva, no con cada publicación. Ante cualquier falla, `null` (la regla no se
+ * cumple: nunca se cambia el botón por adivinar).
+ */
+export async function getBookingAvailable(siteSlug: string): Promise<boolean | null> {
+  try {
+    const response = await fetch(`${env.API_BASE_URL}/public/sites/${encodeURIComponent(siteSlug)}/booking/available`, {
+      next: { revalidate: 60 },
+      headers: { "X-Requested-With": "impulza-one" },
+    });
+    if (!response.ok) {
+      return null;
+    }
+    return publicBookingAvailableResponse.parse(await response.json()).available;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Catálogo público de plantillas y de planes (PL1, F4.1) — no dependen de un sitio, así que no

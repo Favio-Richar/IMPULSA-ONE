@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { bookingAvailabilityResponse, publicBookingConfirmationResponse, publicBookingInfoResponse } from "@impulza/contracts";
+import { bookingAvailabilityResponse, publicBookingAvailableResponse, publicBookingConfirmationResponse, publicBookingInfoResponse } from "@impulza/contracts";
 import { bookingAvailabilityQuerySchema, publicBookingRequestSchema, type BookingAvailabilityQuery } from "@impulza/validation";
 import type { Request } from "express";
 import { CsrfGuard } from "../../common/csrf.guard.js";
@@ -30,6 +30,18 @@ export class PublicBookingsController {
   @ApiResponse({ status: 404, description: NOT_AVAILABLE })
   info(@Param("siteSlug") siteSlug: string) {
     return this.publicBookingsService.info(siteSlug);
+  }
+
+  @Get("available")
+  @RateLimit({ limit: 120, windowSeconds: 60, keyPrefix: "public-booking-available" })
+  @ApiOperation({
+    summary: "¿Quedan horas para reservar?",
+    description: "Solo sí o no, para la regla de Smart CTA \"sin horas disponibles\" (F6.6): mira los próximos 7 días de todos los servicios activos. Reservas apagadas = no.",
+  })
+  @ApiZodResponse(200, publicBookingAvailableResponse, "Si queda al menos una hora libre.")
+  @ApiResponse({ status: 404, description: "El sitio no existe o está archivado." })
+  available(@Param("siteSlug") siteSlug: string) {
+    return this.publicBookingsService.hasAvailability(siteSlug);
   }
 
   @Get("availability")

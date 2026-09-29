@@ -27,6 +27,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { SeoAiDialog } from "../../../../../../components/ai/ai-assistant-dialogs";
 import { ConfirmButton } from "../../../../../../components/confirm-button";
+import { SmartCtaCard } from "../../../../../../components/smart-cta/smart-cta-card";
 import { useActiveOrgStore } from "../../../../../../lib/active-org-store";
 import { ApiError } from "../../../../../../lib/api-client";
 import { isAiTaskAvailable, useAiStatus } from "../../../../../../lib/hooks/use-ai";
@@ -104,6 +105,7 @@ function PageDetail({
 
       <PageSettingsForm organizationId={organizationId} siteId={siteId} pageId={pageId} page={page} />
       <PublishCard organizationId={organizationId} siteId={siteId} pageId={pageId} status={page.status} />
+      <SmartCtaCard organizationId={organizationId} siteId={siteId} pageId={pageId} />
       <SeoForm
         organizationId={organizationId}
         siteId={siteId}

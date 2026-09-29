@@ -294,6 +294,13 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   (`ab:<evento>:<prueba>:<a|b>`), escritas por el mismo worker, sin datos personales.
 - **Plan.limits** suma `abTestsRunning` (pruebas en curso por organización; 1 por defecto).
 
+## 9g. Smart CTA (F6.6, `BACKLOG_FASE_6.md`)
+
+- **Page.smart_cta** (JSON nulo, migración aditiva): reglas en orden `{ condition, blockId }`
+  (`smartCtaSchema`, catálogo cerrado, máximo 5), validadas al guardar (el bloque es de acción y de
+  la misma página) y al leer. En vivo, no va en `PageVersion`. Al sitio público viajan por la
+  posición publicada del bloque, nunca por id, junto al horario de `BookingSettings`.
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 `Payment` (cobro propio; hoy bloqueado por la decisión #6), variantes/cupones/carrito,

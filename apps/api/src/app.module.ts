@@ -31,6 +31,7 @@ import { CampaignsModule } from "./modules/campaigns/campaigns.module.js";
 import { CatalogModule } from "./modules/catalog/catalog.module.js";
 import { AiModule } from "./modules/ai/ai.module.js";
 import { AbTestsModule } from "./modules/ab-tests/ab-tests.module.js";
+import { SmartCtaModule } from "./modules/smart-cta/smart-cta.module.js";
 
 // Módulo raíz — los módulos de dominio (sites, forms, ...) se agregan a partir de Fase 2, uno
 // por historia del backlog. Ver docs/BACKLOG_FASE_0_1.md.
@@ -65,6 +66,7 @@ import { AbTestsModule } from "./modules/ab-tests/ab-tests.module.js";
     CampaignsModule,
     AiModule,
     AbTestsModule,
+    SmartCtaModule,
     AdminModule,
     HealthModule,
   ],

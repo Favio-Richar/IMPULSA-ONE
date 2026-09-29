@@ -1680,6 +1680,31 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       }
     });
 
+    it("A no lee ni cambia el Smart CTA de B, ni apunta una regla suya a un bloque de B (F6.6)", async () => {
+      const pagesPathB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/pages`;
+      const homeOfB = (await orgB.ownerAgent.get(pagesPathB).expect(200)).body[0].id;
+      const blockOfB = await orgB.ownerAgent
+        .post(`${pagesPathB}/${homeOfB}/blocks`)
+        .set(CSRF_HEADERS)
+        .send({ type: "whatsapp", config: { phone: "+56911112222" } })
+        .expect(201);
+      const ctaOfB = `${pagesPathB}/${homeOfB}/smart-cta`;
+      const pagesPathA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/pages`;
+      const homeOfA = (await orgA.ownerAgent.get(pagesPathA).expect(200)).body[0].id;
+      const rule = { rules: [{ condition: { kind: "outside_hours" }, blockId: blockOfB.body.id }] };
+      try {
+        await orgA.ownerAgent.get(ctaOfB).expect(403);
+        await orgA.ownerAgent.put(ctaOfB).set(CSRF_HEADERS).send(rule).expect(403);
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/${homeOfB}/smart-cta`).expect(404);
+        await orgA.ownerAgent.put(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/pages/${homeOfB}/smart-cta`).set(CSRF_HEADERS).send(rule).expect(404);
+        // Desde su propia página, A no puede apuntar a un bloque de B.
+        await orgA.ownerAgent.put(`${pagesPathA}/${homeOfA}/smart-cta`).set(CSRF_HEADERS).send(rule).expect(422);
+        expect((await prisma.page.findUniqueOrThrow({ where: { id: homeOfB } })).smartCta).toBeNull();
+      } finally {
+        await prisma.block.deleteMany({ where: { id: blockOfB.body.id } });
+      }
+    });
+
     it("A no pide la lectura comercial del sitio de B, ni metiendo el sitio de B bajo su organización (F6.4)", async () => {
       // Ambas se resuelven antes de leer métricas o llamar al modelo: las cifras de B nunca viajan.
       await orgA.ownerAgent.post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/ai/insights`).set(CSRF_HEADERS).send({ days: 7 }).expect(403);

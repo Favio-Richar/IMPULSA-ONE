@@ -109,6 +109,8 @@ describe("Documento OpenAPI", () => {
       // Reserva pública (F5.2): el visitante no tiene sesión. CSRF, límite de tasa y antispam.
       "GET /api/v1/public/sites/{siteSlug}/booking",
       "GET /api/v1/public/sites/{siteSlug}/booking/availability",
+      // Smart CTA (F6.6): solo sí/no "¿quedan horas?", sin horarios; lo consulta apps/web.
+      "GET /api/v1/public/sites/{siteSlug}/booking/available",
       "POST /api/v1/public/sites/{siteSlug}/booking",
       // Catálogo y pedidos (F5.5): el visitante no tiene sesión. CSRF, límite de tasa y antispam.
       "GET /api/v1/public/sites/{siteSlug}/catalog",

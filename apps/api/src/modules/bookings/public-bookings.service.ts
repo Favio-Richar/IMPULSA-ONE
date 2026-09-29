@@ -18,6 +18,8 @@ import { BookingSetupService } from "./booking-setup.service.js";
 
 const NOT_AVAILABLE = "Este sitio no está recibiendo reservas.";
 export const SLOT_TAKEN = "Esa hora ya no está disponible. Elige otra.";
+/** Días hacia adelante que mira el Smart CTA para decidir si "quedan horas" (F6.6). */
+export const AVAILABILITY_LOOKAHEAD_DAYS = 7;
 
 /** `true` si el error es la restricción de exclusión `bookings_no_overlap` (dos reservas que se pisan). */
 function isOverlapViolation(error: unknown): boolean {
@@ -84,6 +86,39 @@ export class PublicBookingsService {
         hasPaymentLink: service.paymentUrl !== null,
       })),
     };
+  }
+
+  /**
+   * Smart CTA (F6.6): ¿queda al menos una hora libre en los próximos días? Solo sí o no, sin
+   * horarios. Reservas apagadas, sin servicios activos o sin horas = `false`. Un sitio inexistente o
+   * archivado es 404, como el resto de las rutas públicas.
+   */
+  async hasAvailability(siteSlug: string, now = new Date()): Promise<{ available: boolean }> {
+    const site = await this.prisma.site.findFirst({
+      where: { slug: siteSlug, status: { not: "ARCHIVED" }, ...ACTIVE_ORGANIZATION },
+      select: { id: true },
+    });
+    if (!site) {
+      throw new NotFoundException("Sitio no encontrado.");
+    }
+    const settings = await this.setup.settingsFor(site.id);
+    if (!settings.configured || !settings.enabled) {
+      return { available: false };
+    }
+    const services = await this.prisma.bookableService.findMany({
+      where: { siteId: site.id, active: true },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      take: 20,
+      select: { durationMinutes: true },
+    });
+    const from = localDateOf(now, settings.timeZone);
+    for (const service of services) {
+      const { days } = await this.setup.computeAvailability(site.id, settings, service, from, AVAILABILITY_LOOKAHEAD_DAYS, now);
+      if (days.some((day) => day.slots.length > 0)) {
+        return { available: true };
+      }
+    }
+    return { available: false };
   }
 
   async availability(siteSlug: string, query: BookingAvailabilityQuery, now = new Date()) {

@@ -450,6 +450,10 @@ model Page {
   isHome     Boolean        @default(false) @map("is_home")
   // Título, descripción, canonical, robots y Open Graph (F2.8). Validado por Zod en servidor.
   seoMeta    Json?          @map("seo_meta")
+  // Smart CTA (F6.6): reglas que cambian la acción principal (`smartCtaSchema` de
+  // `@impulza/validation`, validado al guardar y otra vez al leer). En vivo, como el tema y las
+  // pruebas A/B: no va en la publicación. `null` = sin reglas.
+  smartCta   Json?          @map("smart_cta")
   // Borrado lógico (F2.3): borrar una página no puede destruir su historial de versiones — es
   // trabajo del usuario (CLAUDE.md). La purga definitiva es una operación aparte y explícita.
   deletedAt  DateTime?      @map("deleted_at") @db.Timestamptz(6)

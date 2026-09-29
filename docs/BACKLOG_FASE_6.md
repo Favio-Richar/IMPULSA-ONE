@@ -31,11 +31,11 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
 | F6.3 — Asistente de textos: títulos, CTA, SEO y traducción | Lista para tu revisión (capturas en `docs/design/capturas/f63/`) |
 | F6.4 — IA comercial: lectura de métricas y recomendaciones | Lista para tu revisión (capturas en `docs/design/capturas/f64/`) |
 | F6.5 — Pruebas A/B | Lista para tu revisión (ADR-011; capturas en `docs/design/capturas/f65/`) |
-| F6.6 — Smart CTA | Pendiente |
+| F6.6 — Smart CTA | Lista para tu revisión (capturas en `docs/design/capturas/f66/`) |
 | F6.7 — Automatizaciones básicas | Pendiente |
 | F6.8 — Modo agencia | Bloqueado (decisión #8) |
 | F6.9 — Marca blanca | Bloqueado (decisión #8) |
-| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1, F6.2, F6.2b, F6.3, F6.4 y F6.5 agregados; se completa con cada historia) |
+| F6.10 — Aislamiento y seguridad de Fase 6 | En progreso (casos de F6.1, F6.2, F6.2b, F6.3, F6.4, F6.5 y F6.6 agregados; se completa con cada historia) |
 
 ### Bitácora de avance (para retomar)
 
@@ -253,6 +253,40 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
     461/461 (una primera corrida tuvo 3 timeouts de 5 s en `analytics-reports` por carga; aislado
     9/9 y la segunda corrida completa pasó entera). `pnpm build` 16/16 con la API arriba.
   - Siguiente: F6.6 (Smart CTA).
+
+- **2026-09-28 — F6.6 terminada**, en "Lista para tu revisión".
+  - `@impulza/validation` (`src/smart-cta`): catálogo cerrado de condiciones (fuera de horario,
+    dispositivo, `utm_source`, `utm_campaign`, sin horas para reservar), hasta 5 reglas en orden,
+    valores de campaña normalizados como las dimensiones UTM, `isWithinHours` en la zona horaria del
+    negocio (reusa las utilidades de F5.1) y `evaluateSmartCta` (gana la primera; sin horario o sin
+    saber si hay reservas, esa regla **no** se cumple: nunca se adivina). 4 pruebas nuevas (535).
+  - Base: columna nula `pages.smart_cta` (migración aditiva `20260929040000_f66_smart_cta`). En vivo.
+  - API: `GET|PUT organizations/:org/sites/:site/pages/:page/smart-cta` (leer: miembro; guardar:
+    `page.manage`); cada regla debe apuntar a un bloque de acción **de esa página** (422
+    `SMART_CTA_BLOCK_INVALID`); auditoría sin contenido; invalida la caché del sitio. La página
+    pública suma `smartCta` con las reglas por posición publicada (omite bloques ocultos, no
+    publicados o que ya no son de acción) y el horario del sitio (el de reservas). Nuevo
+    `GET public/sites/:slug/booking/available`: solo sí/no, próximos 7 días de los servicios
+    activos. OpenAPI regenerado (140 rutas) y ruta pública declarada en la lista de `openapi.test`.
+  - `apps/web`: evalúa las reglas en cada visita en el servidor con la hora real, el dispositivo
+    del user-agent y la campaña de la URL; solo cambia la marca de acción principal. La consulta
+    "¿quedan horas?" tiene caché propia de 60 s y solo se hace si una regla la usa. La caché de la
+    página no cambia.
+  - Panel: tarjeta "Acción principal inteligente" en la pantalla de la página (reglas en orden con
+    subir/bajar/quitar, campos según la condición, botón destino entre los de acción de la página,
+    aviso si "fuera de horario" no tiene horario configurado con enlace a Reservas, estado vacío
+    si no hay botones de acción). Validación con el mismo esquema antes de enviar.
+  - Pruebas: API e2e `smart-cta.e2e.test.ts` 4 (reglas válidas y rechazos; página pública por
+    posición, sin ids, con horario y sin lo invisible; "¿quedan horas?" sí/no; ANALYST solo lee) +
+    caso central de aislamiento. `apps/web` 3 nuevas. Playwright `smart-cta.spec.ts` 2/2 con el
+    sitio en producción y JavaScript apagado (el botón correcto viene en el HTML). **Verificadas
+    contra el código roto:** reglas hacia bloques de otra página, reglas hacia bloques invisibles y
+    un sitio público que ignora las reglas — todas fallan por la razón correcta. Suite completa de
+    la API 466/466 (una primera corrida mostró la ruta pública sin declarar en `openapi.test` —
+    corregido — y 2 timeouts de carga en `site-background`, que pasan aislados). `pnpm build` 16/16.
+  - Hallazgo corregido por la revisión visual: el aviso "elige qué botón" quedaba visible después
+    de corregirlo; ahora se limpia al cambiar cualquier regla (con aserción en Playwright).
+  - Siguiente: F6.7 (automatizaciones básicas).
 
 > **PUNTO DE CORTE (2026-09-28) — superado:** F6.3 se terminó después (ver la entrada de F6.3 arriba). Favio había pedido parar acá.
 > - Hecho, probado y commiteado: F6.1 (salud de página), F6.2 (motor de IA, ADR-010) y F6.2b

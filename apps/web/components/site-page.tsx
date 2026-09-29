@@ -1,10 +1,12 @@
-import { cookies } from "next/headers";
+import { detectDeviceType } from "@impulza/analytics";
+import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { PageBlocks } from "@impulza/blocks-renderer";
 import type { PublicFormResponse } from "@impulza/contracts";
 import { AB_BUCKET_COOKIE, parseAbBucket, themeTokensSchema } from "@impulza/validation";
 import { hasExperiments, randomAbBucket, resolveExperimentBlocks } from "../lib/ab";
-import { getPublicForm, getPublicPage, getPublicSite } from "../lib/api";
+import { getBookingAvailable, getPublicForm, getPublicPage, getPublicSite } from "../lib/api";
+import { applySmartCta, smartCtaNeedsBookings } from "../lib/smart-cta";
 import { AbBucketCookie } from "./ab-bucket-cookie";
 import { AnalyticsTracker } from "./analytics-tracker";
 
@@ -26,7 +28,21 @@ function formIdsReferencedBy(blocks: { type: string; config: unknown }[]): strin
  * página le pasan acá; todo lo demás (buscar la página, 404 si no está publicada, pintar sus
  * bloques con el tema del sitio) es exactamente el mismo trabajo.
  */
-export async function SitePage({ siteSlug, pageSlug }: { siteSlug: string; pageSlug: string }) {
+/** Campaña de la visita (F6.6): solo `utm_source` y `utm_campaign`, el primer valor de cada una. */
+export function utmFrom(searchParams: Record<string, string | string[] | undefined>): { source: string | null; campaign: string | null } {
+  const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)?.slice(0, 120) ?? null;
+  return { source: first(searchParams.utm_source), campaign: first(searchParams.utm_campaign) };
+}
+
+export async function SitePage({
+  siteSlug,
+  pageSlug,
+  utm = { source: null, campaign: null },
+}: {
+  siteSlug: string;
+  pageSlug: string;
+  utm?: { source: string | null; campaign: string | null };
+}) {
   const [site, page] = await Promise.all([
     getPublicSite(siteSlug),
     getPublicPage(siteSlug, pageSlug),
@@ -56,7 +72,18 @@ export async function SitePage({ siteSlug, pageSlug }: { siteSlug: string; pageS
   const experimenting = hasExperiments(page.blocks);
   const storedBucket = experimenting ? parseAbBucket((await cookies()).get(AB_BUCKET_COOKIE)?.value) : null;
   const bucket = experimenting ? (storedBucket ?? randomAbBucket()) : null;
-  const blocks = bucket === null ? page.blocks : resolveExperimentBlocks(page.blocks, bucket);
+  const tested = bucket === null ? page.blocks : resolveExperimentBlocks(page.blocks, bucket);
+
+  // F6.6: la acción principal de esta visita según las reglas de Smart CTA (hora real del negocio,
+  // dispositivo, campaña). "¿Quedan reservas?" solo se consulta si alguna regla lo necesita.
+  const blocks = page.smartCta
+    ? applySmartCta(tested, page.smartCta, {
+        now: new Date(),
+        device: detectDeviceType((await headers()).get("user-agent")),
+        utm,
+        bookingsAvailable: smartCtaNeedsBookings(page.smartCta) ? await getBookingAvailable(siteSlug) : null,
+      })
+    : tested;
 
   return (
     <>

@@ -6,7 +6,8 @@ captación, reservas, ventas y analítica) desde una sola URL.
 **Estado actual: Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
 (salud de página), F6.2 (motor de IA con modelos locales primero, ADR-010), F6.2b (conexiones de IA
 en la administración), F6.3 (asistente de textos en el constructor), F6.4 (lectura comercial con IA
-en Analítica) y F6.5 (pruebas A/B, ADR-011) listas para revisión; sigue F6.6 (Smart CTA). Modo
+en Analítica), F6.5 (pruebas A/B, ADR-011) y F6.6 (Smart CTA) listas para revisión; sigue F6.7
+(automatizaciones). Modo
 agencia y marca blanca
 esperan la decisión #8. Fase 5 — Negocio digital — F5.1–F5.7 listas para revisión del propietario
 (backlog en `docs/BACKLOG_FASE_5.md`): reservas con disponibilidad y sin doble reserva, agenda,
@@ -36,7 +37,7 @@ reglas de trabajo del repositorio.
 | 3 — Conversión | F3.1–F3.8 | Terminada |
 | 4 — SaaS comercial | F4.1–F4.9 | En progreso |
 | 5 — Negocio digital | F5.1–F5.7 | Lista para revisión (cobros bloqueados por decisión #6) |
-| 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.5 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
+| 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.6 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
 
 ## Requisitos
 
@@ -1177,6 +1178,14 @@ Detalle, criterios y bitácora en `docs/BACKLOG_FASE_6.md`.
   misma — el navegador nunca la declara. En `/sitios/:id/pruebas`, resultados por variante y un
   veredicto honesto: ganadora solo con ≥ 200 visitas por variante, ≥ 30 clics y p < 0,05. "Aplicar
   B" escribe el borrador del bloque y nunca publica. Límite `abTestsRunning` por plan.
+- **Smart CTA (F6.6):** en la pantalla de la página, "Acción principal inteligente": hasta 5 reglas en
+  orden (fuera del horario de atención, teléfono/tablet/computador, `utm_source`, `utm_campaign`, sin
+  horas para reservar) que eligen qué botón de acción pasa a ser el principal. Gana la primera que se
+  cumple; si ninguna, el de siempre. `apps/web` las evalúa en cada visita en el servidor (hora real en
+  la zona del negocio, dispositivo, campaña de la URL) sin tocar la caché de la página; "¿quedan
+  horas?" se consulta aparte con caché de un minuto y solo si una regla lo usa. Sin geolocalización.
+  Rige en vivo, sin publicar. `GET|PUT .../pages/:pageId/smart-cta` y
+  `GET /public/sites/:slug/booking/available` (solo sí/no).
 
 ## Sitio comercial: escena 3D del hero (ADR-009)
 

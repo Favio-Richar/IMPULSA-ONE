@@ -98,6 +98,17 @@ export const publicPageResponse = z.object({
    * publicaron.
    */
   blocks: z.array(publicBlockResponse),
+  /**
+   * Smart CTA (F6.6): reglas que cambian la acción principal, con el bloque por su `position`
+   * publicada (nunca un id), y el horario del sitio para evaluar "fuera de horario". `apps/web` las
+   * evalúa en cada visita. Opcional: sin reglas, no viene.
+   */
+  smartCta: z
+    .object({
+      rules: z.array(z.object({ condition: z.record(z.string(), z.unknown()), position: z.number().int() })),
+      hours: z.object({ timeZone: z.string(), weeklyHours: z.record(z.string(), z.array(z.object({ start: z.string(), end: z.string() }))) }).nullable(),
+    })
+    .optional(),
 });
 
 export type PublicThemeResponse = z.infer<typeof publicThemeResponse>;

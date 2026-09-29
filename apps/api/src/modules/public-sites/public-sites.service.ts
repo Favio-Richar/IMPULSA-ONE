@@ -4,6 +4,10 @@ import type { StorageAdapter } from "@impulza/storage";
 import {
   abVariantSchema,
   isAbTestBlockType,
+  smartCtaSchema,
+  weeklyHoursSchema,
+  type PublicSmartCtaRule,
+  type WeeklyHours,
   backgroundForDisplay,
   isPrimaryActionBlockType,
   parseStoredBlock,
@@ -40,6 +44,8 @@ export interface PublicPageView {
   isHome: boolean;
   seo: ResolvedSeo;
   blocks: PublicBlockView[];
+  /** Smart CTA (F6.6): reglas por posición publicada y horario del sitio. */
+  smartCta?: { rules: PublicSmartCtaRule[]; hours: { timeZone: string; weeklyHours: WeeklyHours } | null };
 }
 
 const SITE_NOT_FOUND = "Sitio no encontrado.";
@@ -186,8 +192,10 @@ export class PublicSitesService {
       .filter((block): block is PublicBlockView => block !== null);
 
     const canonicalOverridePath = await this.resolveCanonicalOverride(site.id, site.slug, snapshot.seoMeta);
+    const smartCta = await this.resolveSmartCta(site.id, page.smartCta, snapshot.blocks, blocks);
 
     return {
+      ...(smartCta ? { smartCta } : {}),
       slug: page.slug,
       isHome: page.isHome,
       seo: resolveSeo({
@@ -199,6 +207,38 @@ export class PublicSitesService {
         selfPath: this.publicPath(site.slug, page),
       }),
       blocks,
+    };
+  }
+
+  /**
+   * Smart CTA (F6.6): reglas guardadas (revalidadas al leer) traducidas a la posición publicada del
+   * bloque. Una regla cuyo bloque no está en lo que ve el visitante (oculto, no publicado, degradado
+   * o que ya no es de acción) se omite. Con el horario del sitio (el de reservas) para "fuera de
+   * horario". Sin reglas aplicables, `null`.
+   */
+  private async resolveSmartCta(
+    siteId: string,
+    stored: unknown,
+    snapshotBlocks: Array<{ id?: string; position: number }>,
+    visible: PublicBlockView[],
+  ): Promise<PublicPageView["smartCta"] | null> {
+    const parsed = smartCtaSchema.safeParse(stored ?? { rules: [] });
+    if (!parsed.success || parsed.data.rules.length === 0) {
+      return null;
+    }
+    const actionPositions = new Set(visible.filter((block) => isPrimaryActionBlockType(block.type)).map((block) => block.position));
+    const positionById = new Map(snapshotBlocks.filter((block) => block.id).map((block) => [block.id!, block.position]));
+    const rules = parsed.data.rules
+      .map((rule) => ({ condition: rule.condition, position: positionById.get(rule.blockId) }))
+      .filter((rule): rule is PublicSmartCtaRule => rule.position !== undefined && actionPositions.has(rule.position));
+    if (rules.length === 0) {
+      return null;
+    }
+    const settings = await this.prisma.bookingSettings.findUnique({ where: { siteId }, select: { timeZone: true, weeklyHours: true } });
+    const weeklyHours = settings ? weeklyHoursSchema.safeParse(settings.weeklyHours) : null;
+    return {
+      rules,
+      hours: settings && weeklyHours?.success ? { timeZone: settings.timeZone, weeklyHours: weeklyHours.data } : null,
     };
   }
 

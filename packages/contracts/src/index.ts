@@ -31,3 +31,4 @@ export * from "./campaigns.js";
 export * from "./ab-tests.js";
 export * from "./smart-cta.js";
 export * from "./automations.js";
+export * from "./billing.js";

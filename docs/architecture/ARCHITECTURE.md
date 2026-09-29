@@ -112,6 +112,14 @@ En `apps/api`, `AiService` (módulo `ai`) es la única puerta: lee conexiones y 
 base, aplica la cuota del plan y el límite por usuario, y registra el uso sin contenido. Las
 conexiones las administra solo la superadministración (F6.2b).
 
+**Pagos (F4.6a, ADR-012):** `packages/payments` define el puerto `MerchantRecurringGateway` con
+el adaptador `WebpayOneclickGateway` (REST de Transbank con `fetch` y respuestas validadas con Zod)
+y `FakeRecurringGateway` para pruebas; también las reglas puras del cobro (IVA, períodos, orden de
+compra determinista, morosidad, retracto) y los correos de la suscripción. En `apps/api`, el módulo
+`billing` contrata (aceptación legal, inscripción, primer cobro, retorno idempotente); en
+`apps/worker`, `billing.ts` renueva cada hora, concilia cobros sin respuesta y cierra suscripciones.
+El plan efectivo lo sigue decidiendo solo `PlansService`.
+
 ## 6. Decisiones abiertas de infraestructura
 
 - Proxy inverso: Caddy, Traefik o Nginx — a decidir y documentar en un ADR antes de Fase 4

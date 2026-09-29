@@ -9,6 +9,7 @@ import {
   redisUrlSchema,
   urlSchema,
 } from "@impulza/config";
+import { webpayConfigFromEnv, webpayEnvShape } from "@impulza/payments";
 
 // Se valida una sola vez, al importar este módulo (primer import en main.ts) — si falta o es
 // inválida una variable requerida, el proceso no debe arrancar (ST §15, F1.2).
@@ -59,4 +60,11 @@ export const env = loadEnv({
   // Secreto de la firma del enlace "gestiona tu reserva" (F5.4). El mismo en la API y el worker.
   // Opcional: sin él, los correos no traen enlace y la página de gestión no existe.
   BOOKING_LINK_SECRET: z.string().min(32).optional(),
+  // Cobro de suscripciones (F4.6, ADR-012): credenciales de Webpay Oneclick (todas o ninguna) y la
+  // URL pública de esta API, a la que Transbank devuelve al cliente. Sin ambas, Webpay no se ofrece.
+  ...webpayEnvShape,
+  API_PUBLIC_URL: urlSchema.optional(),
 });
+
+// Todas o ninguna: una configuración de Webpay a medias detiene el arranque aquí (ST §15).
+export const webpayConfig = webpayConfigFromEnv(env);

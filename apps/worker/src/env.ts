@@ -1,4 +1,5 @@
-import { databaseUrlSchema, loadEnv, nodeEnvSchema, portSchema, redisUrlSchema, urlSchema } from "@impulza/config";
+import { databaseUrlSchema, encryptionKeySchema, loadEnv, nodeEnvSchema, portSchema, redisUrlSchema, urlSchema } from "@impulza/config";
+import { webpayConfigFromEnv, webpayEnvShape } from "@impulza/payments";
 import { z } from "zod";
 
 export const env = loadEnv({
@@ -29,4 +30,12 @@ export const env = loadEnv({
   // Automatizaciones (F6.7): origen del panel para el enlace del aviso al equipo. El mismo nombre
   // que usa la API para sus correos. Opcional: sin él, el aviso va sin enlace.
   APP_BASE_URL: urlSchema.optional(),
+  // Renovación de suscripciones (F4.6a, ADR-012): el worker cobra cada período con Webpay Oneclick.
+  // Necesita las mismas credenciales que la API y la clave que descifra la referencia de la tarjeta.
+  // Opcionales: sin ellas, la renovación no corre y lo avisa en el log al arrancar.
+  ...webpayEnvShape,
+  AUTH_ENCRYPTION_KEY: encryptionKeySchema.optional(),
 });
+
+// Todas o ninguna (ST §15), igual que en la API.
+export const webpayConfig = webpayConfigFromEnv(env);

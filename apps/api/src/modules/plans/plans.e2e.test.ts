@@ -122,6 +122,9 @@ describe("Planes y plan efectivo (e2e) — F4.1", () => {
     let body = organizationPlanResponse.parse((await agent.get(`/api/v1/organizations/${organizationId}/plan`).expect(200)).body);
     expect(body.plan.code).toBe("free");
 
+    // Desde F4.6a hay a lo más una suscripción viva por organización (`subscriptions_one_live_per_org`):
+    // la vencida la cierra el worker antes de que exista otra, igual que acá.
+    await prisma.subscription.updateMany({ where: { organizationId }, data: { status: "CANCELED" } });
     await prisma.subscription.create({
       data: {
         organizationId,

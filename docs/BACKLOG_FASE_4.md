@@ -20,7 +20,7 @@ bloqueado explícitamente.
 |---|---|---|---|
 | 2 | Mercado de lanzamiento | Moneda de los precios | Precios guardados como `(monto en unidad mínima, moneda ISO)` — cambiar de moneda es un dato, no código |
 | 4 | Límites exactos de cada plan | Los números de F4.1 | Catálogo editable desde superadministración (F4.4); valores iniciales **provisorios** y rotulados así |
-| 5 | Pasarela de suscripción | F4.6 completa | F4.1–F4.5 no cobran: el MVP de pagos (ST §12) es plan gratuito + límites + asignación manual / enlace externo |
+| 5 | Pasarela de suscripción | F4.6 completa | **Resuelta 2026-09-29 (ADR-012):** Webpay Oneclick y Mercado Pago, freemium con plan Gratis, cumplimiento de la Ley 19.496/21.398 (retracto de 10 días, cancelación desde el panel, precio con IVA) |
 | 1 | Nombre y dominio definitivos | F4.7 (dominio de la plataforma para CNAME) | El dominio base es configuración de entorno |
 | 7 | Cuotas de almacenamiento/tráfico | Límite de storage en F4.1 | No hay subida de archivos todavía: el límite existe en el catálogo pero no se aplica hasta que exista media |
 | 9 | Política de moderación | Moderación en F4.4 | F4.4 solo incluye bloqueo/restauración manual auditado; reportes de abuso quedan para cuando exista la política |
@@ -37,7 +37,10 @@ bloqueado explícitamente.
 | F4.3 — Plan y uso en el panel | Terminada |
 | F4.4 — Superadministración mínima (`apps/admin`) | Terminada (local; ver deudas) |
 | F4.5 — Soporte mínimo | Terminada (local; ver deudas) |
-| F4.6 — Cobro recurrente con pasarela | Bloqueada (decisión #5) |
+| F4.6a — Motor de facturación y Webpay Oneclick | Lista para tu revisión (sin pantalla: se revisa por API, pruebas y el smoke contra Transbank; la pantalla es F4.6c) |
+| F4.6b — Mercado Pago Suscripciones | Pendiente |
+| F4.6c — Elegir plan, pagar, cancelar y retracto en el panel | Pendiente |
+| F4.6d — Pagos, ingresos (MRR) y documentos tributarios en la superadministración | Pendiente |
 | F4.7 — Dominios personalizados | Lista para tu revisión (SSL depende de F4.8; límite por plan, de la decisión #4) |
 | F4.8 — Producción y monitoreo | Bloqueada (decisión de hosting) |
 | F4.9 — Aislamiento y seguridad de Fase 4 | Lista para tu revisión (el caso de dominios se suma con F4.7, que todavía no existe) |
@@ -289,7 +292,73 @@ bloqueado explícitamente.
 >   Propuesta como primera tarea de F4.9.
 > - **CI y staging:** lo mismo que en F4.4.
 
-### F4.6 — Cobro recurrente con pasarela *(bloqueada por la decisión #5)*
+### F4.6 — Cobro recurrente con pasarela *(desbloqueada 2026-09-29, ADR-012)*
+Se divide en cuatro historias; el aislamiento de todas se suma a F4.9 (suite central).
+
+**F4.6a — Motor de facturación y Webpay Oneclick**
+- `packages/payments`: puerto `SubscriptionGateway`, adaptador `WEBPAY_ONECLICK` por HTTP con
+  respuestas validadas con Zod, pruebas sin red. Credenciales validadas al iniciar; sin ellas la
+  pasarela no se ofrece.
+- Modelo: `Subscription` ampliada (pasarela, ciclo, `cancelAtPeriodEnd`, referencia cifrada,
+  reintentos), `Payment` con `buyOrder` único, `PaymentWebhookEvent`, `LegalAcceptance`. Migración
+  aditiva con `down.sql`.
+- API: iniciar inscripción (exige aceptación de Términos y retracto, permiso `billing.manage`, solo OWNER),
+  retorno de Transbank que confirma la inscripción y hace el primer cobro, sin doble cobro si el
+  retorno llega dos veces.
+- Worker: renovación diaria de lo vencido, gracia de 7 días con reintentos 1/3/6, vuelta a Gratis
+  al agotarse; nunca borra contenido.
+- Auditoría de cada cambio de suscripción y logs estructurados sin datos de tarjeta.
+
+> **Estado (2026-09-29): F4.6a lista para revisión.**
+> - `packages/payments`: `WebpayOneclickGateway` (REST v1.2, Zod en cada respuesta, sin
+>   redirecciones, timeout), `FakeRecurringGateway`, reglas puras (IVA con neto + IVA = total,
+>   períodos que no se saltan febrero, `buyOrderFor` determinista de 24 caracteres, gracia de 7 días
+>   con reintentos 1/3/6, retracto de 10 días), configuración todas-o-ninguna y correos con
+>   comprobante. 25 pruebas.
+> - Base: migración aditiva `20260929060000_f46a_billing` con `down.sql` (probado en local),
+>   `Payment` con `RESTRICT` (registro contable), índice único parcial de una suscripción viva por
+>   organización y `CHECK`s de montos, reembolso, pago y últimos 4 dígitos.
+> - API: `GET/POST organizations/:org/billing[/checkout]` (leer: miembro; contratar: `billing.manage`,
+>   solo OWNER, límite 10/10 min) y `POST|GET billing/webpay/return` sin sesión (solo el token,
+>   reclamado con `updateMany` condicional). Primer cobro con `Payment` PENDING creado **antes** de
+>   llamar a Transbank; aprobado → `ACTIVE`; rechazado → cancelada y se borra la inscripción; sin
+>   respuesta → queda para conciliar y no da el plan. Contratación duplicada (dos pestañas) →
+>   reembolso automático. Auditoría `billing.checkout_started`/`billing.subscription_started`, logs
+>   sin datos de tarjeta. OpenAPI regenerado (145 rutas).
+> - Worker: `runBillingCycle` cada hora (vence sesiones abiertas, concilia PENDING con
+>   `chargeStatus`, cierra canceladas y morosas, renueva con reclamo por `nextChargeAt`). 8 pruebas
+>   contra la base real, incluidas tres corridas simultáneas que cobran una sola vez.
+> - Pruebas: API e2e de facturación 10, suite central de aislamiento 66/66 (caso nuevo de
+>   facturación), suite completa de la API 482/482, `pnpm build` 17/17. **Verificadas contra el
+>   código roto:** sin el reclamo del token el retorno repetido falla; sin la extensión de la gracia
+>   fallan dos pruebas del worker.
+> - **Error encontrado con el smoke contra la integración real de Transbank:** una orden
+>   desconocida responde **422** "buy order not found", no 404; tratado como rechazo, un cobro que
+>   nunca llegó habría quedado PENDING para siempre y la suscripción sin renovar. Corregido, con
+>   prueba de la respuesta literal. Inscripción real verificada (token de 64 y formulario POST).
+> - Ajuste de una prueba existente (`plans.e2e`): creaba dos suscripciones `ACTIVE` a la vez, estado
+>   que el índice nuevo ya no permite; ahora cierra la vencida primero, como hace el worker.
+> - **Falta para cerrar F4.6 completa (no se marca como hecha):** pantalla de contratar, cancelar y
+>   retracto (F4.6c), Mercado Pago (F4.6b), MRR y boletas (F4.6d). Para cobrar en producción:
+>   contrato Oneclick Mall, proveedor de boletas electrónicas, texto legal revisado y staging (F4.8).
+
+**F4.6b — Mercado Pago Suscripciones**
+- Adaptador `MERCADO_PAGO` (`preapproval`), webhook con firma `x-signature` verificada antes de
+  leer, registrado por id único, y conciliación diaria.
+
+**F4.6c — Elegir plan, pagar, cancelar y retracto en el panel**
+- Comparador de planes con precio "IVA incluido", ciclo mensual/anual, elección de pasarela,
+  casillas de Términos y retracto; estados de carga/vacío/error/éxito; responsive.
+- Cancelar por el mismo medio (un botón, activa hasta fin de período) y "Cancelar y pedir
+  reembolso" en los 10 días del primer cobro. Historial de pagos con comprobante.
+- Correos: suscripción creada, cobro, cobro fallido, aviso de renovación anual, cancelación,
+  reembolso.
+
+**F4.6d — Pagos, MRR y documentos tributarios en la superadministración**
+- MRR/ARR, altas y bajas del mes, suscripciones morosas, lista de pagos, reembolso manual
+  auditado y lista de documentos tributarios pendientes (neto, IVA, total) con marca de emitido.
+
+**Criterios originales (siguen aplicando a las cuatro):**
 **Criterios de aceptación:**
 - Contrato `PaymentProvider` con adaptador del proveedor elegido (ARCHITECTURE.md §5).
 - Webhooks firmados e idempotentes; solo referencias del proveedor, nunca datos de tarjeta.

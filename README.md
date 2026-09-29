@@ -3,7 +3,8 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
+**Estado actual: Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
+facturación y Webpay Oneclick) lista para revisión; F4.6b–F4.6d pendientes. Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
 (salud de página), F6.2 (motor de IA con modelos locales primero, ADR-010), F6.2b (conexiones de IA
 en la administración), F6.3 (asistente de textos en el constructor), F6.4 (lectura comercial con IA
 en Analítica), F6.5 (pruebas A/B, ADR-011), F6.6 (Smart CTA) y F6.7 (automatizaciones) listas para
@@ -1231,11 +1232,33 @@ cada alta y visibles en el panel.
   altas simultáneas; 402 `PLAN_LIMIT_REACHED` con límite, uso y plan. Los contactos que llegan por
   formulario público nunca se pierden; bajar de plan no borra nada.
 - **Panel**: `/plan` con medidores de uso y comparador; cada formulario de creación avisa el límite
-  alcanzado con el camino a Planes. Sin cobro todavía (F4.6 bloqueada por la decisión #5): el cambio
-  de plan se solicita por `NEXT_PUBLIC_PLAN_UPGRADE_URL`.
+  alcanzado con el camino a Planes. El cobro llega con F4.6 (ver "Cobro de suscripciones").
 
 Verificado: 270/270 en `@impulza/api` (incluida la carrera de altas simultáneas), Playwright 35/35.
 Detalle en `docs/BACKLOG_FASE_4.md`.
+
+## Cobro de suscripciones (F4.6a, ADR-012)
+
+Freemium: el plan Gratis atrae y los planes de pago se contratan con **Webpay Oneclick** (Mercado
+Pago llega en F4.6b). Nunca se guarda una tarjeta: solo la referencia de Transbank, cifrada, y
+marca y últimos 4 dígitos.
+
+- **`packages/payments`**: adaptador REST de Transbank (Zod en cada respuesta, sin redirecciones,
+  timeout), pasarela simulada para pruebas, reglas puras (IVA 19 % con neto + IVA = total, períodos
+  que no se saltan febrero, orden de compra determinista, gracia y reintentos, retracto de 10 días)
+  y correos con comprobante.
+- **API** (`organizations/:org/billing`): ver estado (miembro) y contratar (solo OWNER,
+  `billing.manage`). Contratar exige aceptar Términos y aviso de retracto, que se guardan con su
+  versión (`LegalAcceptance`). El retorno de Transbank (`/billing/webpay/return`) no usa sesión:
+  solo el token de un solo uso; un retorno repetido no cobra dos veces.
+- **Worker**: ciclo horario que renueva, concilia cobros sin respuesta consultando a Transbank,
+  maneja morosidad (7 días de gracia, reintentos días 1, 3 y 6) y vuelve a Gratis **sin borrar
+  contenido**.
+- **Configuración**: `WEBPAY_*` (todas o ninguna) y `API_PUBLIC_URL`. En local, las credenciales
+  públicas de integración de Transbank (no cobran de verdad).
+
+Pendiente para cobrar en producción: contrato Oneclick Mall, proveedor de boletas electrónicas y
+texto legal revisado (ver ADR-012, "Seguimiento"). Detalle en `docs/BACKLOG_FASE_4.md`.
 
 ## Superadministración (F4.4, `apps/admin`)
 

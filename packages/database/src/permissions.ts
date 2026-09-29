@@ -22,6 +22,7 @@ export const PERMISSIONS = {
   CATALOG_MANAGE: "catalog.manage",
   ORDER_MANAGE: "order.manage",
   CAMPAIGN_MANAGE: "campaign.manage",
+  BILLING_MANAGE: "billing.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -107,6 +108,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.CAMPAIGN_MANAGE,
     description: "Crear y enviar campañas de email a los contactos que aceptaron recibirlas (F5.6).",
   },
+  {
+    key: PERMISSIONS.BILLING_MANAGE,
+    description: "Contratar, cambiar o cancelar el plan de pago y pedir reembolso por retracto (F4.6).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -137,6 +142,9 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.CATALOG_MANAGE,
     PERMISSIONS.ORDER_MANAGE,
     PERMISSIONS.CAMPAIGN_MANAGE,
+    // Contratar o cancelar un plan compromete dinero del negocio (F4.6, ADR-012): solo el dueño,
+    // igual que dar de baja o transferir la organización.
+    PERMISSIONS.BILLING_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,

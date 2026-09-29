@@ -18,6 +18,7 @@
     "@impulza/ai": "workspace:*",
     "@impulza/analytics": "workspace:*",
     "@impulza/auth": "workspace:*",
+    "@impulza/payments": "workspace:*",
     "@impulza/config": "workspace:*",
     "@impulza/contracts": "workspace:*",
     "@impulza/database": "workspace:*",

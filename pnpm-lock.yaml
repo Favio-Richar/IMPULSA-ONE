@@ -284,6 +284,9 @@ importers:
       '@impulza/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@impulza/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
       '@impulza/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -572,6 +575,9 @@ importers:
       '@impulza/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@impulza/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
       '@impulza/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -883,6 +889,31 @@ importers:
       '@sentry/node':
         specifier: 10.74.0
         version: 10.74.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(supports-color@7.2.0)
+    devDependencies:
+      '@impulza/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@impulza/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 26.5.1
+        version: 26.5.1
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vite:
+        specifier: 8.3.0
+        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+      vitest:
+        specifier: 5.0.0
+        version: 5.0.0(@opentelemetry/api@1.9.1)(@types/node@26.5.1)(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+
+  packages/payments:
+    dependencies:
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@impulza/eslint-config':
         specifier: workspace:*

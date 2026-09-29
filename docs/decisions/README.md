@@ -44,3 +44,5 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 | [ADR-008](./ADR-008-direccion-visual-link-in-bio.md) | Adoptar el patrón visual de las apps de enlace en bio para la página pública | Aceptado |
 | [ADR-009](./ADR-009-three-js-sitio-comercial.md) | Usar three.js para gráficos 3D, solo en el sitio comercial | Aceptado |
 | [ADR-010](./ADR-010-proveedores-ia.md) | IA con proveedores intercambiables, modelos locales primero | Aceptado |
+| [ADR-011](./ADR-011-pruebas-ab.md) | Pruebas A/B con reparto en el servidor y variante calculada por la API | Aceptado |
+| [ADR-012](./ADR-012-cobro-suscripciones-chile.md) | Cobro de suscripciones con Webpay Oneclick y Mercado Pago, con cumplimiento de consumo chileno | Aceptado |

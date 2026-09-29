@@ -1728,4 +1728,36 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/ai/insights`).set(CSRF_HEADERS).send({ days: 7 }).expect(404);
     });
   });
+
+  describe("Cobro de suscripciones (F4.6a/F4.9): la facturación de una organización no se cruza", () => {
+    it("A no lee la suscripción ni los pagos de B, no contrata a nombre de B, y los pagos de B nunca aparecen en A", async () => {
+      const plan = await prisma.plan.findUniqueOrThrow({ where: { code: "profesional" } });
+      const start = new Date();
+      const subscription = await prisma.subscription.create({
+        data: { organizationId: orgB.id, planId: plan.id, status: "ACTIVE", gateway: "WEBPAY_ONECLICK", currentPeriodStart: start, currentPeriodEnd: new Date(start.getTime() + 30 * 24 * 3_600_000), cardLast4: "4242" },
+      });
+      const payment = await prisma.payment.create({
+        data: { organizationId: orgB.id, subscriptionId: subscription.id, gateway: "WEBPAY_ONECLICK", buyOrder: `ISO${Date.now().toString(36).toUpperCase()}`, amount: 7_990, netAmount: 6_714, vatAmount: 1_276, currency: "CLP", periodStart: start, periodEnd: subscription.currentPeriodEnd, status: "APPROVED", paidAt: start },
+      });
+      try {
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/billing`).expect(403);
+        await orgA.ownerAgent
+          .post(`/api/v1/organizations/${orgB.id}/billing/checkout`)
+          .set(CSRF_HEADERS)
+          .send({ planCode: "profesional", cycle: "MONTHLY", gateway: "WEBPAY_ONECLICK", acceptTerms: true, acceptWithdrawalNotice: true })
+          .expect(403);
+        expect(await prisma.billingCheckout.count({ where: { organizationId: orgB.id } })).toBe(0);
+
+        const ofA = (await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/billing`).expect(200)).body;
+        expect(ofA.subscription).toBeNull();
+        expect(JSON.stringify(ofA)).not.toContain(payment.id);
+        expect(JSON.stringify(ofA)).not.toContain("4242");
+        // El plan de A no se mueve por la suscripción de B.
+        expect((await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/plan`).expect(200)).body.source).not.toBe("subscription");
+      } finally {
+        await prisma.payment.deleteMany({ where: { id: payment.id } });
+        await prisma.subscription.deleteMany({ where: { id: subscription.id } });
+      }
+    });
+  });
 });

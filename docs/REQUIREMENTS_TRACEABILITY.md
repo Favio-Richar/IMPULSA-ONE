@@ -89,7 +89,8 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 |---|---|---|
 | Planes: Gratis, Profesional, Negocio, Agencia; mensual/anual; comparador y límites | PM §7.5 | Fase 4 |
 | MVP de pagos: plan gratuito + límites, modelo interno de planes/suscripciones, enlaces externos de pago, sin custodiar dinero de terceros | ST §12 | Fase 4 |
-| Post-MVP: cobro recurrente del SaaS con proveedor compatible con Chile, webhooks firmados e idempotentes, solo referencias de proveedor (nunca tarjetas completas), reintentos/morosidad/gracia | ST §12 | Fase 4 |
+| Post-MVP: cobro recurrente del SaaS con proveedor compatible con Chile, webhooks firmados e idempotentes, solo referencias de proveedor (nunca tarjetas completas), reintentos/morosidad/gracia | ST §12 | Fase 4 — ADR-012 (decisión #5 resuelta 2026-09-29: Webpay Oneclick y Mercado Pago). F4.6a (en revisión): `packages/payments`, motor de facturación con `buyOrder` único, renovación en el worker, gracia de 7 días con reintentos 1/3/6, vuelta a Gratis sin borrar contenido, aceptación legal guardada. F4.6b (Mercado Pago y webhooks firmados), F4.6c (panel: pagar, cancelar, retracto) y F4.6d (MRR y boletas en administración) pendientes |
+| Cumplimiento de consumo chileno en el cobro: precio con IVA, aviso y derecho a retracto de 10 días, término por el mismo medio, comprobante por correo, documento tributario por cada cobro | Ley 19.496 / 21.398, ADR-012 | Fase 4 — F4.6a: aceptación de Términos y retracto con versión, comprobante con neto/IVA; F4.6c: cancelar y retracto desde el panel; F4.6d: boletas pendientes. Texto legal final: decisión del propietario con abogado |
 | Fase avanzada: checkout de clientes/marketplace solo tras resolver KYC, tributación, reembolsos, contracargos | ST §12 | Diferido explícitamente |
 
 ## 10. Negocio digital (reservas, tienda)
@@ -149,7 +150,7 @@ Del PM §21 — deben resolverse **antes de fases que dependan de ellas** (marca
 2. Mercado de lanzamiento — antes de Fase 4 (monedas, pasarela).
 3. Segmento principal del MVP — recomendable antes de Fase 2 (afecta plantillas/bloques prioritarios).
 4. Límites exactos de cada plan — antes de Fase 4 (planes y límites).
-5. Pasarela de suscripción — antes de Fase 4.
+5. ~~Pasarela de suscripción — antes de Fase 4.~~ **Resuelta 2026-09-29 (ADR-012):** Webpay Oneclick y Mercado Pago, freemium.
 6. Responsabilidad de pagos de terceros — antes de Fase 5 (pagos de negocios).
 7. Cuotas de almacenamiento/tráfico — antes de Fase 4 (límites de plan) y Fase 2 (media).
 8. Alcance inicial de agencia — antes de Fase 6.

@@ -51,7 +51,9 @@ Plan (1) ──< UsageCounter >── (1) Organization
   plan asignado → Gratis. Por eso una organización sin `plan_id` ni suscripción ya está en Gratis
   sin necesidad de reescribir filas.
 - **Subscription**: id, organization_id, plan_id, status, current_period_start/end,
-  external_provider_ref (referencia del proveedor de pago, nunca datos de tarjeta).
+  external_provider_ref (referencia del proveedor de pago, nunca datos de tarjeta). Desde F4.6a
+  (ADR-012) también pasarela, ciclo, referencia cifrada del medio de pago, marca y últimos 4
+  dígitos, cancelación al fin del período, primer cobro (retracto) y morosidad; detalle en §9i.
 - **UsageCounter**: id, organization_id, metric, period, value — para aplicar límites de plan.
 
 ## 3. Sitios, páginas y bloques
@@ -311,8 +313,32 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   detail (motivo técnico, sin datos personales), finished_at (`CHECK`: nulo si y solo si `PENDING`).
   **Único `(automation_id, event_key)`**: la garantía de "una vez por evento".
 
+## 9i. Cobro de suscripciones (F4.6a, `BACKLOG_FASE_4.md`, ADR-012)
+
+- **Subscription** (ampliada): `status` suma `INCOMPLETE` (inscrita, primer cobro sin aprobar; **no**
+  da derecho al plan). `gateway` (`WEBPAY_ONECLICK`/`MERCADO_PAGO`), `billing_cycle`
+  (`MONTHLY`/`YEARLY`), `payment_method_ref_encrypted` (`tbk_user` cifrado con
+  `AUTH_ENCRYPTION_KEY`), `card_brand`, `card_last4` (`CHECK` 4 dígitos), `cancel_at_period_end`,
+  `canceled_at`, `first_paid_at` (inicio del retracto), `failed_attempts` (`CHECK >= 0`),
+  `next_charge_at` (nulo = cobro en vuelo o no habrá más), `past_due_since` (vencimiento original
+  durante la gracia). **Índice único parcial `subscriptions_one_live_per_org`**: a lo más una
+  `TRIALING`/`ACTIVE`/`PAST_DUE` por organización.
+- **Payment** (Organization y Subscription 1:N con **`RESTRICT`**: registro contable que el SII exige
+  conservar): `buy_order` **único** y determinista (suscripción + vencimiento + intento → nunca dos
+  cobros), amount/net_amount/vat_amount en pesos (`CHECK` neto + IVA = monto), period_start/end,
+  attempt, status (`PENDING`/`APPROVED`/`REJECTED`/`REFUNDED`; `CHECK` paid_at presente si y solo si
+  aprobado o reembolsado), response/authorization code, failure_reason, refunded_amount (`CHECK`
+  ≤ monto), `tax_document_status` (`PENDING`/`ISSUED`/`NOT_REQUIRED`) y número de documento.
+- **BillingCheckout** (Organization, User 1:N con `CASCADE`; Plan): una pasada por la pasarela.
+  `token` único (TBK_TOKEN), status (`OPEN`/`PROCESSING`/`COMPLETED`/`FAILED`/`EXPIRED`), vence a
+  los 30 minutos. El retorno de la pasarela solo confía en este registro.
+- **PaymentWebhookEvent**: único `(gateway, event_id)`; se registra antes de procesar (F4.6b).
+- **LegalAcceptance** (User `CASCADE`, Organization `SET NULL`): document (`CHECK`: `terms`,
+  `withdrawal_notice`, `privacy`), version, context, accepted_at. Prueba de la aceptación de
+  Términos y aviso de retracto antes de pagar (Ley 19.496).
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
-`Payment` (cobro propio; hoy bloqueado por la decisión #6), variantes/cupones/carrito,
+Cobro de los negocios a sus clientes (checkout propio; bloqueado por la decisión #6), variantes/cupones/carrito,
 `Campaign`/email marketing, `Course`/`Membership` (contenido). Se diseñan cuando se inicie la Fase 5
 para evitar tablas vacías o esquemas prematuros (restricción explícita de ST §6.2).

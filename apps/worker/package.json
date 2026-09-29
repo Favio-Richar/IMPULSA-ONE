@@ -14,6 +14,7 @@
   "dependencies": {
     "@impulza/analytics": "workspace:*",
     "@impulza/auth": "workspace:*",
+    "@impulza/payments": "workspace:*",
     "@impulza/config": "workspace:*",
     "@impulza/database": "workspace:*",
     "@impulza/observability": "workspace:*",

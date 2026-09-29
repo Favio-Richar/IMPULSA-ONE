@@ -4,11 +4,13 @@ import { initSentry } from "@impulza/observability";
 import { Redis } from "ioredis";
 import { parseStorageConfig, parseVideoToolsConfig, S3StorageAdapter } from "@impulza/storage";
 import { ConsoleEmailAdapter } from "@impulza/auth";
+import { WebpayOneclickGateway } from "@impulza/payments";
 import { startAnalyticsWorkers } from "./analytics-workers.js";
 import { startAutomationWorkers } from "./automations.js";
+import { startBillingWorkers } from "./billing.js";
 import { startBookingReminderWorkers } from "./booking-reminders.js";
 import { startCampaignDispatchWorkers } from "./campaign-dispatch.js";
-import { env } from "./env.js";
+import { env, webpayConfig } from "./env.js";
 import { createHealthServer } from "./health-server.js";
 import { startMediaWorkers } from "./media-workers.js";
 import { logger } from "./observability/logger.js";
@@ -78,6 +80,23 @@ const automations = startAutomationWorkers({
   dashboardBaseUrl: env.APP_BASE_URL,
 });
 
+// Renovación de suscripciones (F4.6a, ADR-012): Webpay Oneclick no cobra solo, lo hace este ciclo.
+// Sin credenciales de Webpay o sin la clave de cifrado no corre (y lo dice): nadie queda cobrado a medias.
+const billing =
+  webpayConfig && env.AUTH_ENCRYPTION_KEY
+    ? await startBillingWorkers({
+        prisma,
+        connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+        gateway: new WebpayOneclickGateway(webpayConfig),
+        email: new ConsoleEmailAdapter(),
+        encryptionKey: env.AUTH_ENCRYPTION_KEY,
+        dashboardBaseUrl: env.APP_BASE_URL,
+      })
+    : null;
+if (!billing) {
+  logger.warn("Webpay o AUTH_ENCRYPTION_KEY no configurados: la renovación de suscripciones no se inicia");
+}
+
 const healthServer = createHealthServer([
   {
     name: "database",
@@ -110,6 +129,7 @@ async function shutdown(signal: string): Promise<void> {
   await bookingReminders.close();
   await campaignDispatch.close();
   await automations.close();
+  await billing?.close();
   healthRedis.disconnect();
   await prisma.$disconnect();
   process.exit(0);

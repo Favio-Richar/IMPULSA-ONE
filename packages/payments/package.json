@@ -1,0 +1,25 @@
+{
+  "name": "@impulza/payments",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@impulza/eslint-config": "workspace:*",
+    "@impulza/tsconfig": "workspace:*",
+    "@types/node": "26.5.1",
+    "typescript": "6.0.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.0"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  }
+}

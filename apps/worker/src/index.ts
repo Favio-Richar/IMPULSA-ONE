@@ -2,7 +2,7 @@ import "./load-dotenv.js";
 import { prisma } from "@impulza/database";
 import { initSentry } from "@impulza/observability";
 import { Redis } from "ioredis";
-import { parseStorageConfig, parseVideoToolsConfig, S3StorageAdapter } from "@impulza/storage";
+import { parseStorageConfig, parseVideoToolsConfig, privateStorageAdapter, S3StorageAdapter } from "@impulza/storage";
 import { ConsoleEmailAdapter } from "@impulza/auth";
 import { MercadoPagoGateway, MercadoPagoOAuth, WebpayOneclickGateway } from "@impulza/payments";
 import { startAnalyticsWorkers } from "./analytics-workers.js";
@@ -44,6 +44,7 @@ const mediaWorkers = storageConfig
   ? await startMediaWorkers({
       prisma,
       storage: new S3StorageAdapter(storageConfig),
+      privateStorage: privateStorageAdapter(storageConfig),
       connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
       videoTools,
     })

@@ -18,6 +18,9 @@ const storageEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  // Bucket privado para archivos en venta (F5.11b, ADR-015): mismas credenciales, sin lectura pública.
+  // Opcional: sin él, la venta de archivos no se ofrece.
+  STORAGE_PRIVATE_BUCKET: z.string().min(3).max(63).optional(),
 });
 
 const REQUIRED_KEYS = [
@@ -36,11 +39,16 @@ export interface StorageConfig {
   secretAccessKey: string;
   publicBaseUrl: string;
   forcePathStyle: boolean;
+  /** Bucket privado de archivos en venta (ADR-015), o `null` si no está configurado. */
+  privateBucket: string | null;
 }
 
 export function parseStorageConfig(source: Record<string, string | undefined>): StorageConfig | null {
   const present = REQUIRED_KEYS.filter((key) => source[key] !== undefined && source[key] !== "");
   if (present.length === 0) {
+    if (source.STORAGE_PRIVATE_BUCKET) {
+      throw new Error("STORAGE_PRIVATE_BUCKET necesita el resto de la configuración de almacenamiento (STORAGE_*).");
+    }
     return null;
   }
   if (present.length !== REQUIRED_KEYS.length) {
@@ -53,6 +61,10 @@ export function parseStorageConfig(source: Record<string, string | undefined>): 
     throw new Error(`Configuración de almacenamiento inválida en: ${fields}.`);
   }
   const env = parsed.data;
+  // Un bucket privado igual al público dejaría los archivos en venta legibles por cualquiera.
+  if (env.STORAGE_PRIVATE_BUCKET && env.STORAGE_PRIVATE_BUCKET === env.STORAGE_BUCKET) {
+    throw new Error("STORAGE_PRIVATE_BUCKET tiene que ser un bucket distinto de STORAGE_BUCKET (ADR-015).");
+  }
   return {
     endpoint: env.STORAGE_ENDPOINT,
     region: env.STORAGE_REGION,
@@ -61,5 +73,6 @@ export function parseStorageConfig(source: Record<string, string | undefined>): 
     secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY,
     publicBaseUrl: env.STORAGE_PUBLIC_BASE_URL,
     forcePathStyle: env.STORAGE_FORCE_PATH_STYLE,
+    privateBucket: env.STORAGE_PRIVATE_BUCKET ?? null,
   };
 }

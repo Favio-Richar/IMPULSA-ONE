@@ -1,6 +1,6 @@
-import { MediaStatus, type PrismaClient } from "@impulza/database";
+import { MediaStatus, type PrismaClient, ProductFileStatus } from "@impulza/database";
 import type { StorageAdapter } from "./adapter.js";
-import { originalKey } from "./keys.js";
+import { originalKey, productFileKey } from "./keys.js";
 
 /** Una URL prefirmada vence a los 10 minutos: pasada una hora, nadie va a confirmar esa subida. */
 const ABANDONED_UPLOAD_MS = 60 * 60 * 1000;
@@ -27,5 +27,28 @@ export async function cleanupAbandonedMedia(prisma: PrismaClient, storage: Stora
   }
   await storage.deleteObjects(stale.map((asset) => originalKey(asset.organizationId, asset.id)));
   await prisma.mediaAsset.deleteMany({ where: { id: { in: stale.map((asset) => asset.id) } } });
+  return stale.length;
+}
+
+/**
+ * Lo mismo para los archivos en venta del bucket privado (F5.11b, ADR-015): subidas pedidas y nunca
+ * confirmadas, y rechazadas viejas. Un archivo `READY` nunca se toca acá.
+ */
+export async function cleanupAbandonedProductFiles(prisma: PrismaClient, privateStorage: StorageAdapter, now = new Date()): Promise<number> {
+  const stale = await prisma.productFile.findMany({
+    where: {
+      OR: [
+        { status: ProductFileStatus.PENDING_UPLOAD, createdAt: { lt: new Date(now.getTime() - ABANDONED_UPLOAD_MS) } },
+        { status: ProductFileStatus.FAILED, createdAt: { lt: new Date(now.getTime() - FAILED_RETENTION_MS) } },
+      ],
+    },
+    select: { id: true, organizationId: true, productId: true },
+    take: 500,
+  });
+  if (stale.length === 0) {
+    return 0;
+  }
+  await privateStorage.deleteObjects(stale.map((file) => productFileKey(file.organizationId, file.productId, file.id)));
+  await prisma.productFile.deleteMany({ where: { id: { in: stale.map((file) => file.id) }, status: { not: ProductFileStatus.READY } } });
   return stale.length;
 }

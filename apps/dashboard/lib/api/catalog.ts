@@ -1,11 +1,29 @@
-import type { OrderListResponse, OrderResponse, ProductCategoryResponse, ProductResponse } from "@impulza/contracts";
-import type { OrderStatusValue, ProductCategoryInput, ProductInput, UpdateProductInput } from "@impulza/validation";
+import type { OrderListResponse, OrderResponse, ProductCategoryResponse, ProductFileUploadResponse, ProductResponse } from "@impulza/contracts";
+import type { OrderStatusValue, ProductCategoryInput, ProductInput, RequestProductFileUploadInput, UpdateProductInput } from "@impulza/validation";
 import { apiFetch } from "../api-client";
 
 // Catálogo y pedidos (F5.5).
 
 function base(organizationId: string, siteId: string): string {
   return `/organizations/${organizationId}/sites/${siteId}/catalog`;
+}
+
+// Archivo en venta de un producto digital (F5.11b, ADR-015).
+
+function fileBase(organizationId: string, siteId: string, productId: string): string {
+  return `${base(organizationId, siteId)}/products/${productId}/file`;
+}
+
+export function requestProductFileUpload(organizationId: string, siteId: string, productId: string, body: RequestProductFileUploadInput): Promise<ProductFileUploadResponse> {
+  return apiFetch<ProductFileUploadResponse>(fileBase(organizationId, siteId, productId), { method: "POST", body });
+}
+
+export function confirmProductFile(organizationId: string, siteId: string, productId: string, fileId: string): Promise<ProductResponse> {
+  return apiFetch<ProductResponse>(`${fileBase(organizationId, siteId, productId)}/${fileId}/confirm`, { method: "POST" });
+}
+
+export function removeProductFile(organizationId: string, siteId: string, productId: string): Promise<ProductResponse> {
+  return apiFetch<ProductResponse>(fileBase(organizationId, siteId, productId), { method: "DELETE" });
 }
 
 export function listProductCategories(organizationId: string, siteId: string): Promise<ProductCategoryResponse[]> {

@@ -134,6 +134,7 @@ jobs:
       STORAGE_SECRET_ACCESS_KEY: ci-minio-secret-not-real
       STORAGE_PUBLIC_BASE_URL: http://localhost:9000/impulza-media
       STORAGE_FORCE_PATH_STYLE: "true"
+      STORAGE_PRIVATE_BUCKET: impulza-private
       # PP6 (ADR-007): ffmpeg de la distribución, instalado en un paso de este job.
       FFMPEG_PATH: /usr/bin/ffmpeg
       FFPROBE_PATH: /usr/bin/ffprobe
@@ -212,6 +213,7 @@ jobs:
       STORAGE_SECRET_ACCESS_KEY: ci-minio-secret-not-real
       STORAGE_PUBLIC_BASE_URL: http://localhost:9000/impulza-media
       STORAGE_FORCE_PATH_STYLE: "true"
+      STORAGE_PRIVATE_BUCKET: impulza-private
       # PP6 (ADR-007): ffmpeg de la distribución, instalado en un paso de este job.
       FFMPEG_PATH: /usr/bin/ffmpeg
       FFPROBE_PATH: /usr/bin/ffprobe

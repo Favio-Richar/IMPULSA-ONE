@@ -22,8 +22,8 @@ export class UploadError extends Error {
   }
 }
 
-/** `fetch` no informa el avance de una subida; `XMLHttpRequest` sí. */
-function putWithProgress(url: string, file: File, headers: Record<string, string>, onPercent: (percent: number) => void): Promise<void> {
+/** `fetch` no informa el avance de una subida; `XMLHttpRequest` sí. También lo usan los archivos en venta (F5.11b). */
+export function putWithProgress(url: string, file: File, headers: Record<string, string>, onPercent: (percent: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", url);

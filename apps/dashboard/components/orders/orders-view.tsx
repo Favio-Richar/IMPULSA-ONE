@@ -62,7 +62,8 @@ const ACTIONS: Record<OrderStatusValue, Array<{ to: OrderStatusValue; label: str
 
 /**
  * Pedidos del negocio (F5.5): pestañas por estado con su conteo, pedidos del más nuevo al más
- * antiguo y las acciones de cada uno. El pago se marca a mano: Impulza no cobra (decisión #6).
+ * antiguo y las acciones de cada uno. El pago se marca a mano, salvo los cobrados con la cuenta de
+ * Mercado Pago del negocio (F5.9), que se marcan solos; esos se pueden devolver desde acá (F5.11a).
  */
 export function OrdersView({ organizationId, sites }: { organizationId: string; sites: readonly SiteResponse[] }): React.JSX.Element {
   const [siteId, setSiteId] = useState("");

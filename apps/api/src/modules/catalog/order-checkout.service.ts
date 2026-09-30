@@ -12,6 +12,7 @@ import { AuditService } from "../audit/audit.service.js";
 import { PaymentAccountsService } from "../payment-accounts/payment-accounts.service.js";
 import { DISPUTE_STATUSES } from "../payment-accounts/checkout-refunds.service.js";
 import { MERCADO_PAGO_CHECKOUT, type CheckoutConfig } from "../payment-accounts/checkout.tokens.js";
+import { downloadState, orderDownloadPageUrl } from "./download-access.js";
 import { OrderNotifier } from "./order-notifier.js";
 
 export const ORDER_STATUS_NOT_FOUND = "El enlace no es válido o el pedido ya no existe.";
@@ -244,6 +245,13 @@ export class OrderCheckoutService {
       }
     }
     const site = await this.prisma.site.findUniqueOrThrow({ where: { id: order.siteId }, select: { slug: true, name: true } });
+    // Archivo comprado (F5.11b): el enlace se muestra cuando el pedido ya lo entrega (o agotó sus
+    // descargas: la página lo explica).
+    const file = order.productKind === "DIGITAL" && order.productId
+      ? await this.prisma.productFile.findFirst({ where: { productId: order.productId, status: "READY" }, select: { id: true } })
+      : null;
+    const delivery = downloadState(order, file !== null);
+    const downloadUrl = delivery === "ready" || delivery === "limit_reached" ? orderDownloadPageUrl(order.id) : null;
     const canPay = order.status === "NEW" && order.paymentStatus !== "approved" && order.checkoutUrl !== null && (order.checkoutExpiresAt?.getTime() ?? 0) > Date.now();
     return {
       siteSlug: site.slug,
@@ -255,6 +263,7 @@ export class OrderCheckoutService {
       status: order.status,
       paymentStatus: order.paymentStatus,
       checkoutUrl: canPay ? order.checkoutUrl : null,
+      downloadUrl,
     };
   }
 }

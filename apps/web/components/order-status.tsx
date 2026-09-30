@@ -99,6 +99,13 @@ export function OrderStatus({ order, refreshHref }: { order: PublicOrderStatusRe
           <p className="text-xs text-[var(--site-color-muted-foreground)]">Pagas en el sitio de Mercado Pago y el dinero lo recibe directamente el negocio.</p>
         </>
       ) : null}
+      {order.downloadUrl ? (
+        // Archivo comprado (F5.11b): lleva a la página de descarga, que es la que cuenta cada descarga.
+        <a href={order.downloadUrl} className={PRIMARY}>
+          <Icon name="box" className="h-4 w-4" />
+          Ir a tu descarga
+        </a>
+      ) : null}
       {waiting ? (
         <a href={refreshHref} className={SECONDARY}>
           Actualizar estado

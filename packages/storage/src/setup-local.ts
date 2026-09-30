@@ -64,3 +64,29 @@ try {
 }
 
 console.log(`Listo: ${config.bucket} con lectura pública en ${config.publicBaseUrl}.`);
+
+// Bucket privado de archivos en venta (F5.11b, ADR-015): **sin** política de lectura pública (lo
+// único que lo lee es una URL prefirmada de pocos minutos) y con subida desde el panel.
+if (config.privateBucket) {
+  const privateExists = await client.send(new HeadBucketCommand({ Bucket: config.privateBucket })).then(
+    () => true,
+    () => false,
+  );
+  if (!privateExists) {
+    await client.send(new CreateBucketCommand({ Bucket: config.privateBucket }));
+    console.log(`Bucket privado ${config.privateBucket} creado.`);
+  }
+  try {
+    await client.send(
+      new PutBucketCorsCommand({
+        Bucket: config.privateBucket,
+        CORSConfiguration: {
+          CORSRules: [{ AllowedOrigins: [dashboardOrigin], AllowedMethods: ["PUT"], AllowedHeaders: ["content-type"], MaxAgeSeconds: 3600 }],
+        },
+      }),
+    );
+  } catch {
+    console.log("CORS por bucket no disponible en este MinIO (usa el CORS global del servidor).");
+  }
+  console.log(`Listo: ${config.privateBucket} privado (sin lectura pública).`);
+}

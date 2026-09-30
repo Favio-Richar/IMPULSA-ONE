@@ -31,10 +31,41 @@ export const productResponse = z.object({
   stock: z.number().int().nullable(),
   active: z.boolean(),
   position: z.number().int(),
+  /** Archivo que se entrega al pagar (F5.11b, ADR-015), solo en productos digitales. */
+  downloadFile: z
+    .object({ id: uuid, fileName: z.string(), contentType: z.string(), sizeBytes: z.number().int(), uploadedAt: isoDateTime })
+    .nullable(),
   createdAt: isoDateTime,
   updatedAt: isoDateTime,
 });
 export type ProductResponse = z.infer<typeof productResponse>;
+
+/** Subida del archivo en venta de un producto (F5.11b): al bucket privado, con URL prefirmada. */
+export const productFileUploadResponse = z.object({
+  fileId: uuid,
+  upload: z.object({ url: z.string(), method: z.literal("PUT"), headers: z.record(z.string(), z.string()), expiresAt: isoDateTime }),
+});
+export type ProductFileUploadResponse = z.infer<typeof productFileUploadResponse>;
+
+/**
+ * Página de descarga de un pedido (F5.11b). `ready`: se puede descargar; `awaiting_payment`: el
+ * pedido todavía no está pagado; `revoked`: cancelado, devuelto o con contracargo; `limit_reached`:
+ * se usaron todas las descargas; `unavailable`: el producto ya no tiene archivo.
+ */
+export const publicDownloadResponse = z.object({
+  siteSlug: z.string(),
+  siteName: z.string(),
+  productName: z.string(),
+  fileName: z.string().nullable(),
+  sizeBytes: z.number().int().nullable(),
+  status: z.enum(["ready", "awaiting_payment", "revoked", "limit_reached", "unavailable"]),
+  downloadsLeft: z.number().int(),
+});
+export type PublicDownloadResponse = z.infer<typeof publicDownloadResponse>;
+
+/** URL firmada de pocos minutos para bajar el archivo (cada una cuenta como una descarga). */
+export const publicDownloadUrlResponse = z.object({ url: z.string(), expiresAt: isoDateTime, downloadsLeft: z.number().int() });
+export type PublicDownloadUrlResponse = z.infer<typeof publicDownloadUrlResponse>;
 
 /** Catálogo que ve la página pública: solo productos activos, sin enlace de pago ni stock exacto. */
 export const publicCatalogResponse = z.object({
@@ -88,6 +119,8 @@ export const publicOrderStatusResponse = z.object({
   paymentStatus: z.string().nullable(),
   /** Dónde pagar, solo mientras el pedido espera pago y el cobro no venció. */
   checkoutUrl: z.string().nullable(),
+  /** Página de descarga del archivo comprado (F5.11b), si el pedido ya lo entrega. */
+  downloadUrl: z.string().nullable(),
 });
 export type PublicOrderStatusResponse = z.infer<typeof publicOrderStatusResponse>;
 
@@ -118,6 +151,8 @@ export const orderResponse = z.object({
       refundedAmount: z.number().int(),
     })
     .nullable(),
+  /** Descargas entregadas del archivo en venta (F5.11b); 0 si el producto no tiene archivo. */
+  downloadCount: z.number().int(),
   paidAt: isoDateTime.nullable(),
   deliveredAt: isoDateTime.nullable(),
   cancelledAt: isoDateTime.nullable(),

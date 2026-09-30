@@ -1,6 +1,7 @@
-import { Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException, ServiceUnavailableException, UnprocessableEntityException } from "@nestjs/common";
 import type { ProductCategoryResponse, ProductResponse } from "@impulza/contracts";
-import { Prisma, type PrismaClient, type Product, type ProductCategory } from "@impulza/database";
+import { Prisma, type PrismaClient, type Product, type ProductCategory, type ProductFile, ProductFileStatus } from "@impulza/database";
+import { productFileKey, type StorageAdapter } from "@impulza/storage";
 import {
   IMAGE_ALT_REQUIRED_MESSAGE,
   MAX_CATEGORIES_PER_SITE,
@@ -13,9 +14,11 @@ import {
 } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
+import { PRIVATE_STORAGE } from "../../storage/storage.module.js";
 import { AuditService } from "../audit/audit.service.js";
 
 export const PRODUCT_NOT_FOUND = "Producto no encontrado: no existe, o pertenece a otro sitio u organización (ADR-002).";
+export const FILE_BLOCKS_KIND_CHANGE = "Este producto tiene un archivo en venta: quítalo antes de cambiar el tipo de producto.";
 export const CATEGORY_NOT_FOUND = "Categoría no encontrada: no existe, o pertenece a otro sitio u organización (ADR-002).";
 
 /** Imagen guardada en la base, o `null` si falta o dejó de ser válida. */
@@ -39,6 +42,7 @@ export class CatalogSetupService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
+    @Inject(PRIVATE_STORAGE) private readonly privateStorage: StorageAdapter | null,
   ) {}
 
   private async assertSiteInOrganization(organizationId: string, siteId: string): Promise<void> {
@@ -127,7 +131,8 @@ export class CatalogSetupService {
 
   // --- Productos ---
 
-  toProductResponse(product: Product): ProductResponse {
+  /** `readyFile`: el archivo en venta listo (F5.11b), si el producto lo tiene. */
+  toProductResponse(product: Product, readyFile: ProductFile | null = null): ProductResponse {
     return {
       id: product.id,
       siteId: product.siteId,
@@ -142,9 +147,23 @@ export class CatalogSetupService {
       stock: product.stock,
       active: product.active,
       position: product.position,
+      downloadFile: readyFile
+        ? {
+            id: readyFile.id,
+            fileName: readyFile.fileName,
+            contentType: readyFile.contentType,
+            sizeBytes: readyFile.sizeBytes,
+            uploadedAt: (readyFile.readyAt ?? readyFile.createdAt).toISOString(),
+          }
+        : null,
       createdAt: product.createdAt.toISOString(),
       updatedAt: product.updatedAt.toISOString(),
     };
+  }
+
+  /** El archivo listo de un producto, o `null`. */
+  async readyFileOf(productId: string): Promise<ProductFile | null> {
+    return this.prisma.productFile.findFirst({ where: { productId, status: ProductFileStatus.READY } });
   }
 
   private async getProductOrThrow(organizationId: string, siteId: string, productId: string): Promise<Product> {
@@ -160,8 +179,9 @@ export class CatalogSetupService {
     const products = await this.prisma.product.findMany({
       where: { siteId, organizationId },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      include: { files: { where: { status: ProductFileStatus.READY }, take: 1 } },
     });
-    return products.map((product) => this.toProductResponse(product));
+    return products.map(({ files, ...product }) => this.toProductResponse(product, files[0] ?? null));
   }
 
   async createProduct(organizationId: string, actorId: string, siteId: string, input: ProductInput): Promise<ProductResponse> {
@@ -209,6 +229,11 @@ export class CatalogSetupService {
     if (changes.image) {
       assertImageAlt(changes.image);
     }
+    const readyFile = await this.readyFileOf(current.id);
+    // El archivo solo se entrega en productos digitales: cambiar el tipo lo dejaría huérfano.
+    if (changes.kind !== undefined && changes.kind !== "DIGITAL" && readyFile) {
+      throw new UnprocessableEntityException(FILE_BLOCKS_KIND_CHANGE);
+    }
     const data: Prisma.ProductUncheckedUpdateInput = {
       ...(changes.name === undefined ? {} : { name: changes.name }),
       ...(changes.description === undefined ? {} : { description: changes.description }),
@@ -232,12 +257,25 @@ export class CatalogSetupService {
       targetId: current.id,
       metadata: { siteId, fields: Object.keys(changes) },
     });
-    return this.toProductResponse(updated);
+    return this.toProductResponse(updated, readyFile);
   }
 
-  /** Borra el producto; sus pedidos se conservan con su foto de datos (FK `SET NULL`). */
+  /**
+   * Borra el producto; sus pedidos se conservan con su foto de datos (FK `SET NULL`). Sus archivos en
+   * venta (F5.11b) se borran con él, también del bucket privado: sus descargas dejan de estar
+   * disponibles (el panel lo advierte antes).
+   */
   async deleteProduct(organizationId: string, actorId: string, siteId: string, productId: string): Promise<void> {
     const current = await this.getProductOrThrow(organizationId, siteId, productId);
+    const files = await this.prisma.productFile.findMany({ where: { productId: current.id }, select: { id: true } });
+    if (files.length > 0) {
+      // Primero los objetos: si el bucket falla, el producto no se borra (nunca quedan archivos sin
+      // dueño en el bucket privado) y se puede reintentar.
+      if (!this.privateStorage) {
+        throw new ServiceUnavailableException("No se puede borrar el archivo en venta ahora: el almacenamiento privado no está disponible.");
+      }
+      await this.privateStorage.deleteObjects(files.map((file) => productFileKey(organizationId, current.id, file.id)));
+    }
     await this.prisma.product.delete({ where: { id: current.id } });
     await this.auditService.record({
       organizationId,

@@ -4,9 +4,9 @@ Plataforma SaaS multiusuario y multiempresa para construir un centro digital de 
 captación, reservas, ventas y analítica) desde una sola URL.
 
 **Estado actual (2026-09-30): cobros de los negocios (F5.8–F5.11, ADR-013) en curso — F5.8, F5.9 (cobro
-de pedidos con Checkout Pro) y F5.10 (seña de reservas) y F5.11a (reembolsos y
-contracargos) listas para revisión; sigue F5.11b (descargas pagadas, necesita un ADR de
-almacenamiento privado). Lo pendiente de todo el plan
+de pedidos con Checkout Pro) y F5.10 (seña de reservas), F5.11a (reembolsos y
+contracargos) y F5.11b (descargas pagadas, ADR-015) listas para revisión: los cobros de los
+negocios quedan completos. Lo pendiente de todo el plan
 está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
 superadministración) listas para revisión, igual que F4.6b (Mercado Pago, pendiente de probar con credenciales reales). Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
@@ -1303,6 +1303,13 @@ pago tardío reconfirma la reserva si la hora sigue libre, o avisa al negocio pa
 parte de un pedido o una seña desde el panel, sin riesgo de devolver dos veces. Las devoluciones
 hechas desde Mercado Pago y los contracargos o reclamos llegan por aviso: quedan registrados y el
 negocio recibe el aviso.
+
+**F5.11b — descargas pagadas (ADR-015).** Un producto digital lleva su archivo (PDF, ZIP, EPUB, MP3,
+MP4, PNG o JPG, hasta 200 MB, cuenta para el almacenamiento del plan) en un bucket **privado**
+aparte (`STORAGE_PRIVATE_BUCKET`, que `pnpm --filter @impulza/storage run setup:local` crea sin
+lectura pública). El comprador recibe su enlace de descarga cuando el pedido queda pagado; cada clic
+en "Descargar" entrega una URL firmada de 5 minutos (20 descargas por pedido). Cancelar, devolver
+todo o un contracargo cortan la descarga.
 
 ## Superadministración (F4.4, `apps/admin`)
 

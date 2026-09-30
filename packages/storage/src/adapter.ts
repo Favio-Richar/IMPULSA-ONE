@@ -27,4 +27,20 @@ export interface StorageAdapter {
   deleteObjects(keys: string[]): Promise<void>;
   /** URL pública de lectura (dominio de medios / CDN). */
   publicUrl(key: string): string;
+  /**
+   * URL prefirmada de **lectura** que vence en `expiresInSeconds` y fuerza la descarga con el nombre
+   * dado (F5.11b, ADR-015). Es la única forma de leer un objeto del bucket privado.
+   */
+  createDownloadUrl(input: { key: string; expiresInSeconds: number; fileName: string }): Promise<{ url: string; expiresAt: Date }>;
+}
+
+/**
+ * `Content-Disposition` de descarga con el nombre original: versión ASCII segura y `filename*` en
+ * UTF-8 (RFC 6266), sin comillas ni saltos que puedan romper la cabecera.
+ */
+export function attachmentDisposition(fileName: string): string {
+  const ascii = fileName.normalize("NFKD").replace(/[^\x20-\x7e]/g, "").replace(/["\\]/g, "").trim() || "archivo";
+  // RFC 5987: `'`, `(`, `)` y `*` tampoco van sin codificar (encodeURIComponent los deja pasar).
+  const encoded = encodeURIComponent(fileName).replace(/['()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }

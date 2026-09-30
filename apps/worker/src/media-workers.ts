@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@impulza/database";
 import {
   cleanupAbandonedMedia,
+  cleanupAbandonedProductFiles,
   MEDIA_PROCESS_QUEUE,
   MEDIA_VIDEO_QUEUE,
   type MediaProcessJob,
@@ -25,10 +26,12 @@ export interface MediaWorkers {
 export async function startMediaWorkers(options: {
   prisma: PrismaClient;
   storage: StorageAdapter;
+  /** Bucket privado de archivos en venta (F5.11b, ADR-015); su limpieza va en el mismo trabajo. */
+  privateStorage: StorageAdapter | null;
   connection: ConnectionOptions;
   videoTools: VideoToolsConfig | null;
 }): Promise<MediaWorkers> {
-  const { prisma, storage, connection, videoTools } = options;
+  const { prisma, storage, privateStorage, connection, videoTools } = options;
 
   const processJob = (job: Job<MediaProcessJob>) =>
     processMediaAsset(prisma, storage, job.data.assetId, {
@@ -61,8 +64,9 @@ export async function startMediaWorkers(options: {
     `${MEDIA_PROCESS_QUEUE}-maintenance`,
     async () => {
       const removed = await cleanupAbandonedMedia(prisma, storage);
-      logger.info("media.cleanup", { removed });
-      return removed;
+      const removedFiles = privateStorage ? await cleanupAbandonedProductFiles(prisma, privateStorage) : 0;
+      logger.info("media.cleanup", { removed, removedProductFiles: removedFiles });
+      return removed + removedFiles;
     },
     { connection },
   );

@@ -200,6 +200,7 @@ model Organization {
   bookings            Booking[]
   productCategories   ProductCategory[]
   products            Product[]
+  productFiles        ProductFile[]
   orders              Order[]
   campaigns           Campaign[]
   themes              Theme[]
@@ -1238,6 +1239,7 @@ model Product {
   site         Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
   category     ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   orders       Order[]
+  files        ProductFile[]
 
   @@index([siteId, position])
   @@index([organizationId])
@@ -1284,6 +1286,9 @@ model Order {
   refundedAmount       Int      @default(0) @map("refunded_amount")
   // SHA-256 del enlace "Tu pedido" que recibe el comprador (el enlace en sí nunca se guarda).
   statusTokenHash      String?  @unique @map("status_token_hash")
+  // F5.11b (ADR-015): descargas entregadas del archivo en venta (tope por pedido) y la última.
+  downloadCount        Int       @default(0) @map("download_count")
+  lastDownloadedAt     DateTime? @map("last_downloaded_at") @db.Timestamptz(6)
   createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1296,6 +1301,38 @@ model Order {
   @@index([siteId, createdAt])
   @@index([contactId])
   @@map("orders")
+}
+
+enum ProductFileStatus {
+  PENDING_UPLOAD
+  READY
+  FAILED
+}
+
+// Archivo que se vende con un producto digital (F5.11b, ADR-015). Vive en el bucket PRIVADO: solo se
+// lee con una URL prefirmada de pocos minutos que la API entrega a un pedido pagado. Un producto
+// tiene a lo más un archivo `READY` (índice único parcial en la migración); reemplazarlo borra el
+// anterior. Cuenta para la cuota de almacenamiento del plan, igual que los medios.
+model ProductFile {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  productId      String            @map("product_id") @db.Uuid
+  // Nombre con que se descarga (validado: sin rutas ni caracteres de control). La clave del bucket
+  // la decide el servidor y nunca usa este nombre.
+  fileName       String            @map("file_name")
+  contentType    String            @map("content_type")
+  sizeBytes      Int               @map("size_bytes")
+  status         ProductFileStatus @default(PENDING_UPLOAD)
+  uploadedById   String?           @map("uploaded_by_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  readyAt        DateTime?         @map("ready_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, status])
+  @@index([organizationId, status])
+  @@map("product_files")
 }
 
 enum CampaignStatus {

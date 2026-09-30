@@ -1,6 +1,6 @@
 import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
 import type { OrganizationPlanResponse, PlanResponse, PlanUsageResponse } from "@impulza/contracts";
-import { MediaStatus, MembershipStatus, type Plan, type Prisma, type PrismaClient, SiteStatus, SubscriptionStatus } from "@impulza/database";
+import { MediaStatus, MembershipStatus, type Plan, type Prisma, type PrismaClient, ProductFileStatus, SiteStatus, SubscriptionStatus } from "@impulza/database";
 import { DEFAULT_PLAN_CODE, type EnforcedLimitKey, planLimitsSchema } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
@@ -167,11 +167,12 @@ export class PlansService {
    * Bytes de medios que cuentan para la cuota (ADR-006 §6): lo guardado de los assets listos, lo
    * declarado de los que están en proceso, y lo declarado de las subidas pedidas en la última hora
    * (una URL prefirmada vence a los 10 minutos: pasada una hora, esa reserva ya no puede usarse).
-   * Los `FAILED` no cuentan.
+   * Los `FAILED` no cuentan. Los archivos en venta del bucket privado (F5.11b, ADR-015) suman con la
+   * misma regla: listos por su tamaño, y las subidas pedidas en la última hora como reserva.
    */
   async storageBytesUsed(organizationId: string, db: Db = this.prisma): Promise<number> {
     const pendingSince = new Date(Date.now() - PENDING_UPLOAD_RESERVATION_MS);
-    const [ready, reserved] = await Promise.all([
+    const [ready, reserved, productFiles] = await Promise.all([
       db.mediaAsset.aggregate({ where: { organizationId, status: MediaStatus.READY }, _sum: { storedBytes: true } }),
       db.mediaAsset.aggregate({
         where: {
@@ -183,8 +184,15 @@ export class PlansService {
         },
         _sum: { sizeBytes: true },
       }),
+      db.productFile.aggregate({
+        where: {
+          organizationId,
+          OR: [{ status: ProductFileStatus.READY }, { status: ProductFileStatus.PENDING_UPLOAD, createdAt: { gte: pendingSince } }],
+        },
+        _sum: { sizeBytes: true },
+      }),
     ]);
-    return (ready._sum.storedBytes ?? 0) + (reserved._sum.sizeBytes ?? 0);
+    return (ready._sum.storedBytes ?? 0) + (reserved._sum.sizeBytes ?? 0) + (productFiles._sum.sizeBytes ?? 0);
   }
 
   /**

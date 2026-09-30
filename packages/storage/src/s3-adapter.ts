@@ -8,7 +8,7 @@ import {
   S3ServiceException,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import type { StorageAdapter, StoredObjectInfo, UploadTarget } from "./adapter.js";
+import { attachmentDisposition, type StorageAdapter, type StoredObjectInfo, type UploadTarget } from "./adapter.js";
 import type { StorageConfig } from "./config.js";
 
 /**
@@ -100,4 +100,23 @@ export class S3StorageAdapter implements StorageAdapter {
   publicUrl(key: string): string {
     return `${this.config.publicBaseUrl}/${key}`;
   }
+
+  async createDownloadUrl(input: { key: string; expiresInSeconds: number; fileName: string }): Promise<{ url: string; expiresAt: Date }> {
+    const command = new GetObjectCommand({
+      Bucket: this.config.bucket,
+      Key: input.key,
+      ResponseContentDisposition: attachmentDisposition(input.fileName),
+    });
+    const url = await getSignedUrl(this.client, command, { expiresIn: input.expiresInSeconds });
+    return { url, expiresAt: new Date(Date.now() + input.expiresInSeconds * 1000) };
+  }
+}
+
+/**
+ * Adaptador del bucket privado de archivos en venta (F5.11b, ADR-015): mismo proveedor y
+ * credenciales, otro bucket. No tiene URL pública: pedirla es un error de programación.
+ */
+export function privateStorageAdapter(config: StorageConfig): S3StorageAdapter | null {
+  if (!config.privateBucket) return null;
+  return new S3StorageAdapter({ ...config, bucket: config.privateBucket, publicBaseUrl: "private-bucket-has-no-public-url:" });
 }

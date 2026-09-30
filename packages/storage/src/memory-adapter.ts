@@ -1,4 +1,4 @@
-import type { StorageAdapter, StoredObjectInfo, UploadTarget } from "./adapter.js";
+import { attachmentDisposition, type StorageAdapter, type StoredObjectInfo, type UploadTarget } from "./adapter.js";
 
 interface StoredObject {
   body: Uint8Array;
@@ -68,6 +68,15 @@ export class MemoryStorageAdapter implements StorageAdapter {
 
   publicUrl(key: string): string {
     return `${this.publicBaseUrl}/${key}`;
+  }
+
+  /** URL de descarga simulada: lleva la clave, el vencimiento y el nombre, como la firmada de verdad. */
+  async createDownloadUrl(input: { key: string; expiresInSeconds: number; fileName: string }): Promise<{ url: string; expiresAt: Date }> {
+    const expiresAt = new Date(Date.now() + input.expiresInSeconds * 1000);
+    return {
+      url: `memory://download/${input.key}?expires=${expiresAt.getTime()}&disposition=${encodeURIComponent(attachmentDisposition(input.fileName))}`,
+      expiresAt,
+    };
   }
 
   keysWithPrefix(prefix: string): string[] {

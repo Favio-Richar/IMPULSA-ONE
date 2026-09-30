@@ -34,7 +34,7 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
 | F5.9 — Cobro de pedidos de la tienda con Checkout Pro y confirmación automática | Lista para tu revisión (capturas en `docs/design/capturas/f59/`; falta probar con tu aplicación real de Mercado Pago) |
 | F5.10 — Seña de reservas cobrada al reservar | Lista para tu revisión (capturas en `docs/design/capturas/f510/`; falta probar con tu aplicación real de Mercado Pago) |
 | F5.11a — Reembolsos y contracargos de pedidos y señas | Lista para tu revisión (capturas en `docs/design/capturas/f511a/`; falta probar con tu aplicación real de Mercado Pago) |
-| F5.11b — Descargas pagadas (productos digitales con enlace firmado tras el pago) | Pendiente (necesita almacenamiento privado: ADR nuevo) |
+| F5.11b — Descargas pagadas (productos digitales con enlace firmado tras el pago) | Lista para tu revisión (ADR-015; capturas en `docs/design/capturas/f511b/`; falta crear el bucket privado en R2 de producción) |
 | — Afiliados | Sin fase (se diseña con uso real) |
 | — Profesionales y sucursales múltiples, integración de calendario externo/videollamada | Después de F5.4 (se diseña con uso real) |
 
@@ -192,6 +192,36 @@ bucket público —, y esa es una decisión de arquitectura aparte).
 > descarga de la API que valida el pedido pagado y redirige a una URL firmada de pocos minutos; un
 > reembolso total o un contracargo lo revoca. Requiere ADR (almacenamiento privado, límites de
 > tamaño por plan) antes de implementar.
+>
+> **Estado (2026-09-30): F5.11b lista para revisión** (ADR-015, aprobado al pedir continuar).
+> - `packages/storage`: `STORAGE_PRIVATE_BUCKET` opcional (junto al resto de `STORAGE_*`, nunca igual
+>   al bucket público: se valida al arrancar), `privateStorageAdapter`, `createDownloadUrl` (GET
+>   prefirmado con `Content-Disposition: attachment` y nombre en UTF-8, RFC 6266/5987),
+>   `matchesDownloadType` por bytes mágicos (PDF, ZIP, EPUB, MP3, MP4, PNG, JPEG), limpieza de
+>   subidas abandonadas en el worker. `setup:local` crea el bucket privado **sin** política pública.
+>   **Probado contra MinIO real:** sin firma responde 403; firmado entrega el archivo con su nombre.
+> - `packages/auth`: enlace de descarga HMAC con propósito propio (una firma de reserva o de baja no
+>   sirve). Base: migración aditiva `20260930060000_f511b_product_files` (`ProductFile`, único
+>   parcial de un archivo listo por producto, `CHECK`s; contador de descargas en `orders`) con
+>   `down.sql` probado.
+> - API: subir/confirmar/quitar el archivo (`catalog.manage`, solo productos digitales, cuota del
+>   plan, verificación de tamaño y tipo real, reemplazo atómico bajo candado); borrar un producto
+>   borra antes sus objetos (si el bucket falla, no se borra); con archivo no se cambia el tipo.
+>   Pública: ver el estado (no cuenta) y pedir la URL (cuenta, incremento condicional, tope 20,
+>   URL de 5 minutos). Regla única `downloadState`: pagado o entregado, no cancelado, sin devolución
+>   total ni contracargo. Enlace en los correos de pago y entrega, y en "Tu pedido".
+> - Web: `/pedido/descarga/:token` (sin indexar, sin referer); "Descargar" es un **formulario POST**
+>   para que la precarga o la vista previa de un enlace no gasten descargas. Panel: archivo del
+>   producto con progreso, reemplazar y quitar; aviso al borrar un producto con archivo.
+> - Pruebas: almacenamiento +6 (y la de integración con MinIO), auth +3, API e2e 9 + casos en la
+>   suite central, web +2, Playwright `descargas.spec.ts` 4/4 de punta a punta (subida real al
+>   bucket privado, 403 directo, descarga con nombre y contenido exactos). Playwright encontró que
+>   en el teléfono el nombre del archivo quedaba apretado junto a los botones (corregido). Suite
+>   completa de la API 548/549: la única falla fue un timeout de carga en analítica que pasa 9/9
+>   sola; en el worker, `campaign-dispatch` falló una vez en la corrida completa y pasó en las tres
+>   siguientes (inestabilidad bajo carga, no relacionada).
+> - Pendiente para producción: crear en Cloudflare R2 el bucket privado (sin dominio público), su
+>   regla CORS de subida desde el panel, y definir `STORAGE_PRIVATE_BUCKET`.
 - Reembolso desde el panel del negocio (con su token), contracargos informados, y productos
   digitales con enlace de descarga firmado que solo se entrega tras el pago.
 

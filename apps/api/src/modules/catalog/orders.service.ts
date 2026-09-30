@@ -54,6 +54,7 @@ export class OrdersService {
       onlinePayment: order.checkoutPreferenceId
         ? { status: order.paymentStatus, paymentId: order.providerPaymentId, refundedAmount: order.refundedAmount }
         : null,
+      downloadCount: order.downloadCount,
       paidAt: order.paidAt?.toISOString() ?? null,
       deliveredAt: order.deliveredAt?.toISOString() ?? null,
       cancelledAt: order.cancelledAt?.toISOString() ?? null,

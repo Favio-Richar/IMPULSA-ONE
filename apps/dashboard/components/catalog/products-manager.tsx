@@ -18,6 +18,7 @@ import { useCreateProduct, useDeleteProduct, useProductCategories, useProducts, 
 import { priceLabel } from "../bookings/bookable-services";
 import { ConfirmButton } from "../confirm-button";
 import { MediaPicker } from "../media/media-picker";
+import { ProductFile } from "./product-file";
 
 const CURRENCIES = ["CLP", "USD", "ARS", "PEN", "COP", "MXN", "UYU", "EUR"].map((code) => ({ value: code, label: code }));
 const KIND_OPTIONS = PRODUCT_KINDS.map((kind) => ({ value: kind, label: PRODUCT_KIND_LABELS[kind] }));
@@ -125,8 +126,8 @@ export function ProductsManager({ organizationId, siteId }: { organizationId: st
         <div>
           <CardTitle>Productos</CardTitle>
           <CardDescription>
-            Físicos, digitales o servicios. Si cobras en línea, pega tu enlace de pago (Mercado Pago, Flow u otro): Impulza no cobra, solo lo
-            muestra al confirmar el pedido.
+            Físicos, digitales o servicios. Si conectaste tu cuenta de Mercado Pago en Cobros, los pedidos se pagan en línea y el dinero
+            llega directo a tu cuenta; si no, puedes pegar tu propio enlace de pago y se muestra al confirmar el pedido.
           </CardDescription>
         </div>
         {!adding && !full ? (
@@ -187,7 +188,7 @@ function ProductRow({
   }
 
   return (
-    <li className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center" data-product={product.name}>
+    <li className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center" data-product={product.name}>
       <div className="flex min-w-0 flex-1 items-center gap-3">
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element -- miniatura de la biblioteca de medios (ya optimizada), no una imagen del proyecto
@@ -225,10 +226,19 @@ function ProductRow({
           <Pencil className="size-4" aria-hidden="true" />
           Editar
         </Button>
-        <ConfirmButton variant="ghost" size="sm" confirmLabel="¿Borrar?" loading={remove.isPending} onConfirm={() => remove.mutate(product.id)} aria-label={`Borrar ${product.name}`}>
+        <ConfirmButton
+          variant="ghost"
+          size="sm"
+          // Con archivo en venta, borrar corta las descargas de quienes ya compraron (F5.11b).
+          confirmLabel={product.downloadFile ? "¿Borrar? Sus compradores ya no podrán descargar" : "¿Borrar?"}
+          loading={remove.isPending}
+          onConfirm={() => remove.mutate(product.id)}
+          aria-label={`Borrar ${product.name}`}
+        >
           Borrar
         </ConfirmButton>
       </div>
+      {product.kind === "DIGITAL" ? <ProductFile organizationId={organizationId} siteId={siteId} product={product} /> : null}
       {update.error || remove.error ? (
         <p role="alert" className="text-sm text-danger sm:basis-full">
           {apiMessage(update.error ?? remove.error)}

@@ -375,8 +375,19 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   reembolsos: la fuente de verdad es Mercado Pago y cada devolución queda en la auditoría.
 - Permiso nuevo `payments.refund` (solo OWNER).
 
+## 9n. Descargas pagadas (F5.11b, `BACKLOG_FASE_5.md`, ADR-015)
+
+- **ProductFile** (Organization y Product 1:N con `CASCADE`): file_name (el del usuario, validado;
+  nunca forma la clave), content_type, size_bytes (`CHECK` > 0), status
+  (`PENDING_UPLOAD`/`READY`/`FAILED`; `CHECK`: `READY` si y solo si tiene `ready_at`), uploaded_by_id.
+  **Índice único parcial `product_files_one_ready_per_product`**: a lo más un archivo listo por
+  producto. El objeto vive en el bucket **privado** (`org/{org}/products/{producto}/{archivo}`) y
+  cuenta para la cuota de almacenamiento del plan.
+- **Order.download_count** (`CHECK` ≥ 0; tope por pedido en la API, incremento condicional) y
+  **last_downloaded_at**.
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
-Descargas pagadas con almacenamiento privado (F5.11b), variantes/cupones/carrito,
+Variantes/cupones/carrito,
 `Campaign`/email marketing, `Course`/`Membership` (contenido). Se diseñan cuando se inicie la Fase 5
 para evitar tablas vacías o esquemas prematuros (restricción explícita de ST §6.2).

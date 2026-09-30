@@ -2,6 +2,7 @@ import { z } from "zod";
 import { imageSchema, phoneSchema, plainTextSchema, safeUrlSchema } from "../blocks/primitives.js";
 
 export * from "./messages.js";
+export * from "./downloads.js";
 
 // Catálogo y pedidos (F5.5). Esquemas compartidos por la API (que siempre revalida) y el panel.
 

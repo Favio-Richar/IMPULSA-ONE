@@ -10,6 +10,12 @@ export interface OrderMessageData {
   paymentUrl: string | null;
   /** Enlace "Tu pedido" (F5.9): solo si el pedido se cobra con la cuenta conectada del negocio. */
   statusUrl?: string | null;
+  /** Página de descarga del archivo comprado (F5.11b): solo cuando el pedido ya lo entrega. */
+  downloadUrl?: string | null;
+}
+
+function downloadLines(data: OrderMessageData): string[] {
+  return data.downloadUrl ? ["Descarga tu archivo aquí (el enlace es personal):", data.downloadUrl, ""] : [];
 }
 
 export interface OrderEmailContent {
@@ -64,7 +70,7 @@ export function orderStatusEmail(status: OrderStatusNotice, data: OrderMessageDa
   const text = STATUS_TEXT[status];
   return {
     subject: oneLine(`${text.subject} en ${data.siteName}`),
-    text: [text.body, "", ...lines(data), "", `${data.siteName}`].join("\n"),
+    text: [text.body, "", ...lines(data), "", ...(status === "CANCELLED" ? [] : downloadLines(data)), `${data.siteName}`].join("\n"),
   };
 }
 
@@ -77,6 +83,7 @@ export function orderPaidOnlineEmail(data: OrderMessageData): OrderEmailContent 
       "",
       ...lines(data),
       "",
+      ...downloadLines(data),
       ...(data.statusUrl ? ["Estado de tu pedido:", data.statusUrl, ""] : []),
       `${data.siteName}`,
     ].join("\n"),

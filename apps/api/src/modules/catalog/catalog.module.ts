@@ -6,18 +6,32 @@ import { ContactsModule } from "../contacts/contacts.module.js";
 import { PaymentAccountsModule } from "../payment-accounts/payment-accounts.module.js";
 import { CatalogSetupController } from "./catalog-setup.controller.js";
 import { CatalogSetupService } from "./catalog-setup.service.js";
+import { ProductFilesController, PublicDownloadsController } from "./downloads.controller.js";
+import { DownloadsService } from "./downloads.service.js";
 import { OrderPaymentWebhookController, PublicOrderStatusController } from "./order-checkout.controller.js";
 import { OrderCheckoutService } from "./order-checkout.service.js";
 import { OrderNotifier } from "./order-notifier.js";
 import { OrdersController } from "./orders.controller.js";
 import { OrdersService } from "./orders.service.js";
+import { ProductFilesService } from "./product-files.service.js";
 import { PublicCatalogController } from "./public-catalog.controller.js";
 import { PublicCatalogService } from "./public-catalog.service.js";
 
-/** Catálogo y pedidos (F5.5), y su cobro con la cuenta de Mercado Pago del negocio (F5.9). */
+/**
+ * Catálogo y pedidos (F5.5), su cobro con la cuenta de Mercado Pago del negocio (F5.9) y la entrega
+ * de archivos comprados (F5.11b).
+ */
 @Module({
   imports: [ContactsModule, AnalyticsModule, AuthModule, AutomationsModule, PaymentAccountsModule],
-  controllers: [CatalogSetupController, PublicCatalogController, OrdersController, OrderPaymentWebhookController, PublicOrderStatusController],
-  providers: [CatalogSetupService, PublicCatalogService, OrdersService, OrderNotifier, OrderCheckoutService],
+  controllers: [
+    CatalogSetupController,
+    PublicCatalogController,
+    OrdersController,
+    OrderPaymentWebhookController,
+    PublicOrderStatusController,
+    ProductFilesController,
+    PublicDownloadsController,
+  ],
+  providers: [CatalogSetupService, PublicCatalogService, OrdersService, OrderNotifier, OrderCheckoutService, ProductFilesService, DownloadsService],
 })
 export class CatalogModule {}

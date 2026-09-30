@@ -1776,6 +1776,16 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         // Tampoco devuelve su pago (F5.11a): ni bajo su organización ni bajo la de B.
         await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/orders/${order.id}/refund`).set(CSRF_HEADERS).send({}).expect(404);
         await orgA.ownerAgent.post(`/api/v1/organizations/${orgB.id}/orders/${order.id}/refund`).set(CSRF_HEADERS).send({}).expect(403);
+        // Ni sube, confirma o quita el archivo en venta de un producto de B (F5.11b).
+        const productB = await prisma.product.create({
+          data: { organizationId: orgB.id, siteId: orgB.siteId, name: "Guía de B", kind: "DIGITAL", priceAmount: 1_000, priceCurrency: "CLP" },
+        });
+        const fileBase = (orgId: string) => `/api/v1/organizations/${orgId}/sites/${orgB.siteId}/catalog/products/${productB.id}/file`;
+        await orgA.ownerAgent.post(fileBase(orgA.id)).set(CSRF_HEADERS).send({ fileName: "a.pdf", contentType: "application/pdf", sizeBytes: 10 }).expect(404);
+        await orgA.ownerAgent.post(fileBase(orgB.id)).set(CSRF_HEADERS).send({ fileName: "a.pdf", contentType: "application/pdf", sizeBytes: 10 }).expect(403);
+        await orgA.ownerAgent.delete(fileBase(orgA.id)).set(CSRF_HEADERS).expect(404);
+        expect(await prisma.productFile.count({ where: { productId: productB.id } })).toBe(0);
+        await prisma.product.delete({ where: { id: productB.id } });
         const listA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/orders`).expect(200);
         expect(JSON.stringify(listA.body)).not.toContain(order.providerPaymentId!);
         expect((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).status).toBe("PAID");

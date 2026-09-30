@@ -18,6 +18,11 @@ export function videoKey(organizationId: string, assetId: string): string {
   return `${assetPrefix(organizationId, assetId)}video.mp4`;
 }
 
+/** Archivo en venta de un producto (F5.11b), en el bucket privado. */
+export function productFileKey(organizationId: string, productId: string, fileId: string): string {
+  return `org/${organizationId}/products/${productId}/${fileId}`;
+}
+
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const MEDIA_PATH = new RegExp(`^org/(${UUID})/(${UUID})/`, "i");
 

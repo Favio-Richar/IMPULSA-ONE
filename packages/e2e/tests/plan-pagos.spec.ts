@@ -198,3 +198,40 @@ test("pasados los 10 días ya no se ofrece el retracto, solo cancelar", async ({
   await expect(card.getByRole("button", { name: "Cancelar y pedir reembolso" })).toBeHidden();
   await expect(card).not.toContainText("derecho a retracto");
 });
+
+test("con dos pasarelas se elige cómo pagar, y Mercado Pago lleva a su sitio", async ({ page }, testInfo) => {
+  await clearBilling();
+  // Este ambiente local no tiene credenciales de Mercado Pago: se simula solo lo que la API
+  // respondería con ellas (la lista de pasarelas y la URL de autorización). La API real está
+  // probada en apps/api con la pasarela simulada.
+  await page.route("**/api/v1/organizations/*/billing", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    await route.fulfill({ response, json: { ...body, gateways: ["WEBPAY_ONECLICK", "MERCADO_PAGO"] } });
+  });
+  let requested: unknown = null;
+  await page.route("**/api/v1/organizations/*/billing/checkout", async (route) => {
+    requested = route.request().postDataJSON();
+    await route.fulfill({ status: 201, json: { url: "https://www.mercadopago.cl/subscriptions/checkout?preapproval_id=2c9380849", method: "GET", fields: {} } });
+  });
+  await page.route("https://www.mercadopago.cl/**", (route) =>
+    route.fulfill({ status: 200, contentType: "text/html", body: "<html><body><h1>Mercado Pago (simulado en la prueba)</h1></body></html>" }),
+  );
+
+  await page.goto("/plan");
+  await page.getByTestId("plan-card-profesional").getByRole("button", { name: "Elegir Profesional" }).click();
+  const dialog = page.getByRole("dialog", { name: "Contratar el plan Profesional" });
+  await expect(dialog.getByRole("group", { name: "¿Cómo quieres pagar?" })).toBeVisible();
+  await expect(dialog.getByTestId("pay-button")).toContainText("con Webpay");
+
+  await dialog.getByRole("radio", { name: /Mercado Pago/ }).check();
+  await expect(dialog.getByTestId("pay-button")).toContainText("Pagar $7.990 con Mercado Pago");
+  await expect(dialog).toContainText("Autorizarás el cobro en el sitio de Mercado Pago");
+  await dialog.getByLabel(/Acepto los Términos del servicio/).check();
+  await dialog.getByLabel(/derecho a retracto/).check();
+  await capture(page, `mercado-pago-${testInfo.project.name}.png`);
+  await dialog.getByTestId("pay-button").click();
+
+  await expect(page.getByRole("heading", { name: "Mercado Pago (simulado en la prueba)" })).toBeVisible();
+  expect(requested).toMatchObject({ planCode: "profesional", cycle: "MONTHLY", gateway: "MERCADO_PAGO", acceptTerms: true, acceptWithdrawalNotice: true });
+});

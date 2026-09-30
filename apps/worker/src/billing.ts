@@ -6,6 +6,7 @@ import {
   type ChargeResult,
   customerRefFor,
   graceEndsAt,
+  type MercadoPagoLike,
   type MerchantRecurringGateway,
   nextRetryAt,
   PaymentGatewayError,
@@ -15,6 +16,8 @@ import {
   splitVat,
   subscriptionEndedEmail,
   subscriptionStartedEmail,
+  syncAuthorizedPayment,
+  syncPreapproval,
   WITHDRAWAL_DAYS,
 } from "@impulza/payments";
 import { type ConnectionOptions, Queue, Worker } from "bullmq";
@@ -38,12 +41,26 @@ const RENEWABLE = [SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE];
 const LIVE = [SubscriptionStatus.TRIALING, SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE];
 
 export interface BillingRunOptions {
-  gateway: MerchantRecurringGateway;
+  /** Webpay Oneclick: la cobra este ciclo. `null` si no está configurado. */
+  gateway: MerchantRecurringGateway | null;
+  /** Mercado Pago (F4.6b): cobra sola; este ciclo solo concilia. `null`/ausente si no está configurado. */
+  mercadoPago?: MercadoPagoLike | null;
   email: EmailAdapter;
   encryptionKey: string;
   /** Origen del panel, para el enlace "Plan y pagos" de los correos. */
   dashboardBaseUrl?: string;
+  /**
+   * Acota el ciclo a estas organizaciones (sin él, recorre toda la plataforma). Para atender un caso
+   * puntual desde operación, y para que las pruebas — que adelantan el reloj — nunca toquen datos de
+   * otras suites que corren en paralelo sobre la misma base.
+   */
+  scope?: { organizationIds: string[] };
   now?: Date;
+}
+
+/** Filtro por organización del alcance, o ninguno. */
+function inScope(options: Pick<BillingRunOptions, "scope">): { organizationId?: { in: string[] } } {
+  return options.scope ? { organizationId: { in: options.scope.organizationIds } } : {};
 }
 
 /** Lo que necesita aplicar un resultado o cerrar una suscripción (todo menos el reloj). */
@@ -61,12 +78,14 @@ type SubscriptionWithPlan = Subscription & { plan: Plan; organization: { name: s
 export async function runBillingCycle(prisma: PrismaClient, options: BillingRunOptions): Promise<BillingRunResult> {
   const now = options.now ?? new Date();
   const result: BillingRunResult = { reconciled: 0, renewed: 0, failed: 0, ended: 0 };
-  await expireOpenCheckouts(prisma, now);
-  result.reconciled = await reconcilePendingPayments(prisma, options, now);
+  await expireOpenCheckouts(prisma, options, now);
+  if (options.gateway) result.reconciled += await reconcilePendingPayments(prisma, options, now);
+  if (options.mercadoPago) result.reconciled += await reconcileMercadoPago(prisma, options, now);
   result.ended = await endFinishedSubscriptions(prisma, options, now);
+  if (!options.gateway) return result;
 
   const due = await prisma.subscription.findMany({
-    where: { status: { in: RENEWABLE }, gateway: "WEBPAY_ONECLICK", cancelAtPeriodEnd: false, nextChargeAt: { lte: now } },
+    where: { ...inScope(options), status: { in: RENEWABLE }, gateway: "WEBPAY_ONECLICK", cancelAtPeriodEnd: false, nextChargeAt: { lte: now } },
     include: { plan: true, organization: { select: { name: true, status: true } } },
     orderBy: { nextChargeAt: "asc" },
     take: BATCH,
@@ -80,8 +99,8 @@ export async function runBillingCycle(prisma: PrismaClient, options: BillingRunO
   return result;
 }
 
-async function expireOpenCheckouts(prisma: PrismaClient, now: Date): Promise<void> {
-  await prisma.billingCheckout.updateMany({ where: { status: BillingCheckoutStatus.OPEN, expiresAt: { lt: now } }, data: { status: BillingCheckoutStatus.EXPIRED } });
+async function expireOpenCheckouts(prisma: PrismaClient, options: BillingDeps, now: Date): Promise<void> {
+  await prisma.billingCheckout.updateMany({ where: { ...inScope(options), status: BillingCheckoutStatus.OPEN, expiresAt: { lt: now } }, data: { status: BillingCheckoutStatus.EXPIRED } });
 }
 
 /** Fecha a la que corresponde el cobro en curso: el vencimiento original, aunque se esté reintentando. */
@@ -132,7 +151,7 @@ async function renewOne(prisma: PrismaClient, subscription: SubscriptionWithPlan
 
   let charge: ChargeResult;
   try {
-    charge = await options.gateway.charge({ customerRef: customerRefFor(subscription.organizationId), paymentMethodRef, buyOrder: payment.buyOrder, amount });
+    charge = await options.gateway!.charge({ customerRef: customerRefFor(subscription.organizationId), paymentMethodRef, buyOrder: payment.buyOrder, amount });
   } catch (error) {
     logger.warn("billing.renewal.no_response", { paymentId: payment.id, code: error instanceof PaymentGatewayError ? error.code : "unknown" });
     return "pending";
@@ -147,7 +166,7 @@ async function renewOne(prisma: PrismaClient, subscription: SubscriptionWithPlan
  */
 async function reconcilePendingPayments(prisma: PrismaClient, options: BillingRunOptions, now: Date): Promise<number> {
   const pending = await prisma.payment.findMany({
-    where: { status: PaymentStatus.PENDING, gateway: "WEBPAY_ONECLICK", createdAt: { lt: new Date(now.getTime() - PENDING_SETTLE_MS) } },
+    where: { ...inScope(options), status: PaymentStatus.PENDING, gateway: "WEBPAY_ONECLICK", createdAt: { lt: new Date(now.getTime() - PENDING_SETTLE_MS) } },
     orderBy: { createdAt: "asc" },
     take: BATCH,
   });
@@ -155,7 +174,7 @@ async function reconcilePendingPayments(prisma: PrismaClient, options: BillingRu
   for (const payment of pending) {
     let status: ChargeResult | null;
     try {
-      status = await options.gateway.chargeStatus(payment.buyOrder);
+      status = await options.gateway!.chargeStatus(payment.buyOrder);
     } catch (error) {
       logger.warn("billing.reconcile.unavailable", { paymentId: payment.id, code: error instanceof PaymentGatewayError ? error.code : "unknown" });
       continue;
@@ -254,6 +273,7 @@ export async function applyChargeResult(
 async function endFinishedSubscriptions(prisma: PrismaClient, options: BillingRunOptions, now: Date): Promise<number> {
   const finished = await prisma.subscription.findMany({
     where: {
+      ...inScope(options),
       status: { in: LIVE },
       OR: [
         { cancelAtPeriodEnd: true, currentPeriodEnd: { lte: now } },
@@ -291,8 +311,15 @@ async function endSubscription(
     },
   });
   if (ended.count !== 1) return;
+  // Mercado Pago cobra solo: si la cerramos (p. ej. gracia vencida), hay que cancelarla allá o
+  // seguiría reintentando cobrar a una cuenta que ya está en Gratis.
+  if (subscription.gateway === "MERCADO_PAGO" && subscription.externalProviderRef && options.mercadoPago) {
+    await options.mercadoPago
+      .cancelSubscription(subscription.externalProviderRef)
+      .catch((error: unknown) => logger.error("billing.mercado_pago.cancel_failed", { subscriptionId: subscription.id, err: error }));
+  }
   // La tarjeta ya no se usará: se borra la inscripción en la pasarela y nuestra referencia.
-  if (subscription.paymentMethodRefEncrypted) {
+  if (subscription.paymentMethodRefEncrypted && options.gateway) {
     const paymentMethodRef = decryptSecret(subscription.paymentMethodRefEncrypted, options.encryptionKey);
     await options.gateway
       .removeEnrollment({ customerRef: customerRefFor(subscription.organizationId), paymentMethodRef })
@@ -302,6 +329,55 @@ async function endSubscription(
   const planUrl = options.dashboardBaseUrl ? `${options.dashboardBaseUrl.replace(/\/+$/, "")}/plan` : null;
   await sendAll(options.email, recipients, subscriptionEndedEmail({ organizationName: subscription.organization.name, planName: subscription.plan.name, planUrl, reason }));
   logger.info("billing.subscription.ended", { subscriptionId: subscription.id, reason });
+}
+
+/**
+ * Conciliación con Mercado Pago (F4.6b): el respaldo del webhook. Consulta su API por lo que pudo
+ * quedar sin avisar — suscripciones vivas (¿la canceló el cliente allá?), contrataciones recientes
+ * sin suscripción (¿la autorizó y el aviso se perdió?) y cuotas en confirmación — con las mismas
+ * funciones idempotentes que usa el webhook.
+ */
+async function reconcileMercadoPago(prisma: PrismaClient, options: BillingDeps, now: Date): Promise<number> {
+  const deps = {
+    prisma,
+    gateway: options.mercadoPago!,
+    planUrl: options.dashboardBaseUrl ? `${options.dashboardBaseUrl.replace(/\/+$/, "")}/plan` : null,
+    sendEmail: async (to: string, content: { subject: string; text: string }) => {
+      await options.email.send({ to, subject: content.subject, text: content.text });
+    },
+    now,
+  };
+  let touched = 0;
+  const attempt = async (label: string, work: () => Promise<unknown>) => {
+    try {
+      await work();
+      touched += 1;
+    } catch (error) {
+      logger.warn("billing.mercado_pago.reconcile_failed", { item: label, code: error instanceof PaymentGatewayError ? error.code : "unknown" });
+    }
+  };
+
+  const live = await prisma.subscription.findMany({
+    where: { ...inScope(options), gateway: "MERCADO_PAGO", status: { in: LIVE }, cancelAtPeriodEnd: false, externalProviderRef: { not: null } },
+    select: { externalProviderRef: true },
+    take: BATCH,
+  });
+  for (const subscription of live) await attempt("preapproval", () => syncPreapproval(deps, subscription.externalProviderRef!));
+
+  const checkouts = await prisma.billingCheckout.findMany({
+    where: { ...inScope(options), gateway: "MERCADO_PAGO", subscriptionId: null, status: { in: ["OPEN", "EXPIRED"] }, createdAt: { gte: new Date(now.getTime() - 2 * DAY_MS) } },
+    select: { token: true },
+    take: BATCH,
+  });
+  for (const checkout of checkouts) await attempt("checkout", () => syncPreapproval(deps, checkout.token));
+
+  const pending = await prisma.payment.findMany({
+    where: { ...inScope(options), gateway: "MERCADO_PAGO", status: PaymentStatus.PENDING, createdAt: { lt: new Date(now.getTime() - 60 * 60 * 1000) } },
+    select: { buyOrder: true },
+    take: BATCH,
+  });
+  for (const payment of pending) await attempt("authorized_payment", () => syncAuthorizedPayment(deps, payment.buyOrder.replace(/^MP/, "")));
+  return touched;
 }
 
 async function ownerEmails(prisma: PrismaClient, organizationId: string): Promise<string[]> {
@@ -330,7 +406,8 @@ export interface BillingWorkers {
 export async function startBillingWorkers(options: {
   prisma: PrismaClient;
   connection: ConnectionOptions;
-  gateway: MerchantRecurringGateway;
+  gateway: MerchantRecurringGateway | null;
+  mercadoPago?: MercadoPagoLike | null;
   email: EmailAdapter;
   encryptionKey: string;
   dashboardBaseUrl?: string;

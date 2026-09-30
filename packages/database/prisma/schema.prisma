@@ -1537,6 +1537,9 @@ model Payment {
   status            PaymentStatus     @default(PENDING)
   responseCode      Int?              @map("response_code")
   authorizationCode String?           @map("authorization_code")
+  // Id del pago en la pasarela cuando es distinto de la orden (Mercado Pago, F4.6b): con él se
+  // reembolsa. En Webpay el reembolso usa `buyOrder` y esto queda nulo.
+  providerPaymentId String?           @map("provider_payment_id")
   // Motivo técnico de un rechazo, sin datos de tarjeta.
   failureReason     String?           @map("failure_reason")
   paidAt            DateTime?         @map("paid_at") @db.Timestamptz(6)

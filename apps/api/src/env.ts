@@ -9,7 +9,7 @@ import {
   redisUrlSchema,
   urlSchema,
 } from "@impulza/config";
-import { webpayConfigFromEnv, webpayEnvShape } from "@impulza/payments";
+import { mercadoPagoConfigFromEnv, mercadoPagoEnvShape, webpayConfigFromEnv, webpayEnvShape } from "@impulza/payments";
 
 // Se valida una sola vez, al importar este módulo (primer import en main.ts) — si falta o es
 // inválida una variable requerida, el proceso no debe arrancar (ST §15, F1.2).
@@ -63,8 +63,11 @@ export const env = loadEnv({
   // Cobro de suscripciones (F4.6, ADR-012): credenciales de Webpay Oneclick (todas o ninguna) y la
   // URL pública de esta API, a la que Transbank devuelve al cliente. Sin ambas, Webpay no se ofrece.
   ...webpayEnvShape,
+  // Mercado Pago (F4.6b): token de acceso y clave de firma de webhooks, los dos o ninguno.
+  ...mercadoPagoEnvShape,
   API_PUBLIC_URL: urlSchema.optional(),
 });
 
 // Todas o ninguna: una configuración de Webpay a medias detiene el arranque aquí (ST §15).
 export const webpayConfig = webpayConfigFromEnv(env);
+export const mercadoPagoConfig = mercadoPagoConfigFromEnv(env);

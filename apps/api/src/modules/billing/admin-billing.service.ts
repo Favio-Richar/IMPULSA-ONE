@@ -5,7 +5,6 @@ import { PaymentStatus, type Prisma, type PrismaClient, SubscriptionStatus, TaxD
 import {
   csvRow,
   currentSantiagoMonth,
-  type MerchantRecurringGateway,
   monthlyRecurringAmount,
   PaymentGatewayError,
   paymentRefundedEmail,
@@ -18,7 +17,6 @@ import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { BillingService } from "./billing.service.js";
-import { MERCHANT_GATEWAY } from "./merchant-gateway.token.js";
 
 const PAYMENT_INCLUDE = { organization: { select: { id: true, name: true } }, subscription: { select: { plan: { select: { name: true } } } } } as const;
 type PaymentWithRelations = Prisma.PaymentGetPayload<{ include: typeof PAYMENT_INCLUDE }>;
@@ -37,7 +35,6 @@ const TAX_LABELS: Record<TaxDocumentStatus, string> = { PENDING: "Pendiente", IS
 export class AdminBillingService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
-    @Inject(MERCHANT_GATEWAY) private readonly webpay: MerchantRecurringGateway | null,
     @Inject(EMAIL_ADAPTER) private readonly emailAdapter: EmailAdapter,
     private readonly audit: AuditService,
     private readonly billing: BillingService,
@@ -182,7 +179,7 @@ export class AdminBillingService {
     if (payment.status !== PaymentStatus.APPROVED || pending <= 0) {
       throw new ConflictException({ code: "NOT_REFUNDABLE", message: "Solo se reembolsa un cobro pagado que no se haya devuelto." });
     }
-    if (payment.gateway !== "WEBPAY_ONECLICK" || !this.webpay) {
+    if (!this.billing.canRefund(payment)) {
       throw new UnprocessableEntityException({ code: "GATEWAY_UNAVAILABLE", message: "La pasarela de este cobro no está configurada en este ambiente." });
     }
     const creditNoteRequired = payment.taxDocumentStatus === TaxDocumentStatus.ISSUED;
@@ -201,14 +198,14 @@ export class AdminBillingService {
     }
 
     try {
-      await this.webpay.refund({ buyOrder: payment.buyOrder, amount: pending });
+      await this.billing.refundAtGateway(payment, pending);
     } catch (error) {
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: { status: PaymentStatus.APPROVED, refundedAmount: payment.refundedAmount, refundedAt: payment.refundedAt, taxDocumentStatus: payment.taxDocumentStatus },
       });
       logger.error("admin.billing: falló el reembolso manual", { paymentId: payment.id, code: error instanceof PaymentGatewayError ? error.code : "unknown" });
-      throw new BadGatewayException({ code: "REFUND_FAILED", message: "Transbank no procesó el reembolso. El cobro quedó como estaba." });
+      throw new BadGatewayException({ code: "REFUND_FAILED", message: `${payment.gateway === "MERCADO_PAGO" ? "Mercado Pago" : "Transbank"} no procesó el reembolso. El cobro quedó como estaba.` });
     }
 
     await this.audit.record({

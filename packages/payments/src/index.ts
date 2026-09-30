@@ -9,7 +9,7 @@ export {
   type WebpayOneclickConfig,
 } from "./webpay-oneclick.js";
 export { FakeRecurringGateway } from "./fake.js";
-export { webpayEnvShape, webpayConfigFromEnv } from "./config.js";
+export { webpayEnvShape, webpayConfigFromEnv, mercadoPagoEnvShape, mercadoPagoConfigFromEnv } from "./config.js";
 export {
   formatClp,
   formatDate,
@@ -24,3 +24,23 @@ export {
   type SubscriptionEmail,
 } from "./emails.js";
 export { santiagoMonthRange, currentSantiagoMonth, monthlyRecurringAmount, csvCell, csvRow } from "./reporting.js";
+export {
+  MercadoPagoGateway,
+  FakeMercadoPagoGateway,
+  verifyMercadoPagoSignature,
+  MERCADO_PAGO_API,
+  type MercadoPagoConfig,
+  type MercadoPagoLike,
+  type Preapproval,
+  type PreapprovalStatus,
+  type AuthorizedPayment,
+} from "./mercado-pago.js";
+export {
+  syncPreapproval,
+  syncAuthorizedPayment,
+  mercadoPagoBuyOrder,
+  MERCADO_PAGO_GRACE_DAYS,
+  type SyncDeps,
+  type PreapprovalSyncResult,
+  type AuthorizedPaymentSyncResult,
+} from "./mercado-pago-sync.js";

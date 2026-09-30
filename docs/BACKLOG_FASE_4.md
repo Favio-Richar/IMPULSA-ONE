@@ -38,7 +38,7 @@ bloqueado explícitamente.
 | F4.4 — Superadministración mínima (`apps/admin`) | Terminada (local; ver deudas) |
 | F4.5 — Soporte mínimo | Terminada (local; ver deudas) |
 | F4.6a — Motor de facturación y Webpay Oneclick | Lista para tu revisión (sin pantalla: se revisa por API, pruebas y el smoke contra Transbank; la pantalla es F4.6c) |
-| F4.6b — Mercado Pago Suscripciones | Pendiente |
+| F4.6b — Mercado Pago Suscripciones | Lista para tu revisión (sin prueba contra Mercado Pago real: necesita tus credenciales de prueba) |
 | F4.6c — Elegir plan, pagar, cancelar y retracto en el panel | Lista para tu revisión (capturas en `docs/design/capturas/f46c/`) |
 | F4.6d — Pagos, ingresos (MRR) y documentos tributarios en la superadministración | Lista para tu revisión (capturas en `docs/design/capturas/f46d/`) |
 | F4.6e — Cambiar de plan con uno activo (subir/bajar con prorrateo) | Propuesta (surgió en F4.6c) |
@@ -346,6 +346,51 @@ Se divide en cuatro historias; el aislamiento de todas se suma a F4.9 (suite cen
 **F4.6b — Mercado Pago Suscripciones**
 - Adaptador `MERCADO_PAGO` (`preapproval`), webhook con firma `x-signature` verificada antes de
   leer, registrado por id único, y conciliación diaria.
+
+> **Estado (2026-09-30): F4.6b lista para revisión.**
+> - `packages/payments`: `MercadoPagoGateway` (REST `/preapproval`, `/authorized_payments/{id}`,
+>   `/v1/payments/{id}/refunds`, Zod en cada respuesta, sin redirecciones) y
+>   `verifyMercadoPagoSignature` (HMAC-SHA256 sobre `id:{data.id en minúsculas};request-id:…;ts:…;`,
+>   comparación en tiempo constante), según la documentación oficial y los tipos de su SDK.
+>   `mercado-pago-sync.ts`: `syncPreapproval` y `syncAuthorizedPayment`, **las mismas** para el
+>   webhook (API) y la conciliación (worker); parten siempre del estado que da la API de Mercado Pago,
+>   nunca del cuerpo del aviso, y cada transición es condicional (idempotente). Configuración
+>   `MERCADOPAGO_ACCESS_TOKEN` + `MERCADOPAGO_WEBHOOK_SECRET`, las dos o ninguna.
+> - Base: migración aditiva `20260930010000_f46b_mercado_pago` (`payments.provider_payment_id` +
+>   único parcial por pasarela) con `down.sql`.
+> - API: contratar con `MERCADO_PAGO` crea la suscripción `pending` allá con la contratación como
+>   `external_reference`; `GET billing/mercadopago/return` consulta el estado real;
+>   `POST billing/mercadopago/webhook` verifica la firma **antes** de leer, registra el aviso por id
+>   (uno ya procesado responde sin efecto; uno fallido se reprocesa al reintentar Mercado Pago).
+>   Cancelar detiene los cobros **primero en Mercado Pago** (si falla, nada cambia acá); reanudar no
+>   existe con Mercado Pago (409, lo dice el panel); retracto y reembolso manual reembolsan por el id
+>   del pago. Dos pestañas: si ya hay un plan vivo, la suscripción de Mercado Pago se cancela allá.
+> - Mercado Pago cobra solo (sin `nextChargeAt`); cuota rechazada → morosa con 10 días de gracia
+>   (sus reintentos), cuota aprobada → activa; el worker cierra la vencida **y la cancela allá**.
+> - Worker: conciliación horaria de suscripciones vivas, contrataciones recientes sin suscripción y
+>   cuotas en confirmación.
+> - Panel: si hay dos pasarelas, "¿Cómo quieres pagar?" (Webpay / Mercado Pago) con su texto de
+>   seguridad; la tarjeta de la suscripción dice "Pagas con tu cuenta de Mercado Pago"; textos de
+>   resultado neutros respecto de la pasarela.
+> - Pruebas: pagos 43 (firma válida/alterada/mal formada, minúsculas, cuerpo de la API, errores),
+>   API e2e de facturación 33 (repetidas 3 veces), worker 12, Playwright `plan-pagos` + `plan` +
+>   `facturacion-admin` 24/24. **Verificadas contra el código roto:** sin la condición de la
+>   aprobación se mandan dos comprobantes; sin verificar la firma, el aviso falso se acepta; sin
+>   cancelar allá al cerrar una morosa, Mercado Pago seguiría cobrando.
+> - Errores encontrados en el camino: (1) ante un error de base distinto de "suscripción duplicada",
+>   la sincronización cancelaba la suscripción en Mercado Pago — un error nuestro no puede cortar el
+>   cobro de un cliente; ahora libera la contratación y reintenta. (2) La pasarela simulada repetía
+>   ids entre corridas y la base de pruebas conserva los avisos procesados: los avisos nuevos se
+>   tomaban por repetidos. Mercado Pago nunca repite ids; la simulación tampoco.
+> - (3) **Interferencia entre suites:** las pruebas del worker corren el ciclo con el reloj adelantado
+>   y el ciclo recorría toda la base: vencía contrataciones que la suite de la API estaba procesando
+>   en paralelo (un 404 "sin suscripción" en `billing.e2e`). El ciclo acepta ahora un `scope` de
+>   organizaciones (útil también para operar un caso puntual) y las pruebas del worker lo usan.
+>   Prueba nueva: sin el alcance, una contratación ajena queda `EXPIRED`; con él, intacta.
+> - **Pendiente para producción:** probar contra Mercado Pago real con tus credenciales de prueba
+>   (usuarios de prueba vendedor/comprador), registrar la URL del webhook en tu cuenta, y confirmar
+>   que `payer_email` deba coincidir con la cuenta de Mercado Pago del pagador (si es así, el panel
+>   debe pedir ese correo al elegir Mercado Pago).
 
 **F4.6c — Elegir plan, pagar, cancelar y retracto en el panel**
 - Comparador de planes con precio "IVA incluido", ciclo mensual/anual, elección de pasarela,

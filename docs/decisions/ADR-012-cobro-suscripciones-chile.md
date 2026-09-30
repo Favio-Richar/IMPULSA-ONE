@@ -111,6 +111,16 @@ reglamento de exclusiones al retracto publicado en 2024; Ley 21.719 de datos per
   Política de Privacidad revisado por un abogado. Revisar esta decisión si las comisiones de ambas
   pasarelas superan a las de un agregador en más de un 1 % del ingreso mensual.
 
+## Nota de implementación de Mercado Pago (F4.6b, 2026-09-30)
+
+- La suscripción se crea `pending` con `external_reference` = `BillingCheckout.id`; el cliente la
+  autoriza en el sitio de Mercado Pago y desde ahí Mercado Pago cobra cada período.
+- El webhook se valida con `x-signature` antes de leer nada, y el estado se toma **siempre** de la API
+  de Mercado Pago (el cuerpo del aviso no es fuente de verdad). La misma sincronización corre en la
+  conciliación horaria del worker.
+- Cancelar es definitivo en Mercado Pago: no existe "reanudar"; se vuelve a contratar.
+- Gracia de 10 días en Mercado Pago (su propia ventana de reintentos), en vez de 7 como en Webpay.
+
 ## Restricciones asociadas
 
 - Nunca datos de tarjeta en nuestros servidores, registros ni correos: solo referencias de la

@@ -44,17 +44,17 @@ export const PAYMENT_OUTCOMES: Record<PaymentOutcome, { tone: "success" | "warni
   exito: {
     tone: "success",
     title: "¡Listo! Tu plan ya está activo",
-    body: "Te enviamos el comprobante por correo. Ya puedes usar todo lo que incluye tu nuevo plan.",
+    body: "Ya puedes usar todo lo que incluye tu nuevo plan. El comprobante te llega por correo apenas se confirma el cobro.",
   },
   pendiente: {
     tone: "info",
     title: "Estamos confirmando tu pago",
-    body: "Webpay no nos respondió a tiempo. No vuelvas a pagar: en unos minutos lo confirmamos y esta página se actualiza sola.",
+    body: "La pasarela todavía no confirma tu pago. No vuelvas a pagar: en unos minutos lo confirmamos y esta página se actualiza sola.",
   },
   rechazado: {
     tone: "warning",
     title: "El pago no se completó",
-    body: "El banco no autorizó la tarjeta o cancelaste el pago en Webpay. No se hizo ningún cobro. Puedes intentarlo de nuevo con la misma u otra tarjeta.",
+    body: "El banco no autorizó el pago o lo cancelaste en la pasarela. No se hizo ningún cobro. Puedes intentarlo de nuevo con el mismo u otro medio de pago.",
   },
   vencido: {
     tone: "warning",
@@ -64,7 +64,7 @@ export const PAYMENT_OUTCOMES: Record<PaymentOutcome, { tone: "success" | "warni
   error: {
     tone: "danger",
     title: "No pudimos completar el pago",
-    body: "Algo falló al volver de Webpay. Revisa tu historial de pagos más abajo antes de reintentar; si ves un cobro que no corresponde, escríbenos desde Soporte.",
+    body: "Algo falló al volver de la pasarela. Revisa tu historial de pagos más abajo antes de reintentar; si ves un cobro que no corresponde, escríbenos desde Soporte.",
   },
 };
 
@@ -82,7 +82,7 @@ export function subscriptionStatusLabel(input: { status: string; cancelAtPeriodE
     return { tone: "neutral", label: "Terminado", detail: `Terminó el ${formatDate(input.currentPeriodEnd)}. Tu cuenta está en el plan Gratis.` };
   }
   if (input.status === "INCOMPLETE") {
-    return { tone: "warning", label: "Confirmando pago", detail: "Estamos confirmando tu primer pago con Webpay." };
+    return { tone: "warning", label: "Confirmando pago", detail: "Estamos confirmando tu primer pago con la pasarela." };
   }
   if (input.cancelAtPeriodEnd) {
     return { tone: "warning", label: "Cancelado", detail: `Sigue activo hasta el ${formatDate(input.currentPeriodEnd)}. No se volverá a cobrar.` };
@@ -102,6 +102,20 @@ export function subscriptionStatusLabel(input: { status: string; cancelAtPeriodE
     detail: input.nextChargeAt ? `Se renueva el ${formatDate(input.nextChargeAt)}.` : `Vigente hasta el ${formatDate(input.currentPeriodEnd)}.`,
   };
 }
+
+/** Cómo se presenta cada pasarela al elegir cómo pagar. */
+export const GATEWAY_OPTIONS: Record<"WEBPAY_ONECLICK" | "MERCADO_PAGO", { name: string; detail: string; security: string }> = {
+  WEBPAY_ONECLICK: {
+    name: "Webpay",
+    detail: "Tarjeta de crédito, débito (Redcompra) o prepago.",
+    security: "Pagarás en el sitio seguro de Webpay (Transbank). Impulza One nunca ve ni guarda los datos de tu tarjeta.",
+  },
+  MERCADO_PAGO: {
+    name: "Mercado Pago",
+    detail: "Con tu cuenta de Mercado Pago: tarjetas guardadas o dinero en cuenta.",
+    security: "Autorizarás el cobro en el sitio de Mercado Pago. Impulza One nunca ve ni guarda tus medios de pago.",
+  },
+};
 
 export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   APPROVED: "Pagado",

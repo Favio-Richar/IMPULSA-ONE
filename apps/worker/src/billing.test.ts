@@ -1,7 +1,7 @@
 import "./load-dotenv.js";
 import { encryptSecret, type EmailAdapter, type EmailMessage } from "@impulza/auth";
 import { PrismaClient, type Subscription } from "@impulza/database";
-import { buyOrderFor, FakeRecurringGateway, periodEnd } from "@impulza/payments";
+import { buyOrderFor, FakeMercadoPagoGateway, FakeRecurringGateway, mercadoPagoBuyOrder, periodEnd } from "@impulza/payments";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { runBillingCycle } from "./billing.js";
 
@@ -23,6 +23,7 @@ describe("renovación de suscripciones (F4.6a)", () => {
   const prisma = new PrismaClient();
   const email = new RecordingEmail();
   const gateway = new FakeRecurringGateway();
+  const mercadoPago = new FakeMercadoPagoGateway();
   const encryptionKey = process.env.AUTH_ENCRYPTION_KEY!;
   const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   const ownerEmail = `owner-${suffix}@billing-worker.test`;
@@ -32,7 +33,8 @@ describe("renovación de suscripciones (F4.6a)", () => {
   let planId: string;
 
   function run(now: Date) {
-    return runBillingCycle(prisma, { gateway, email, encryptionKey, dashboardBaseUrl: "http://panel.test", now });
+    // Solo las organizaciones de esta suite: el reloj adelantado no debe tocar datos de otras suites.
+    return runBillingCycle(prisma, { gateway, mercadoPago, email, encryptionKey, dashboardBaseUrl: "http://panel.test", now, scope: { organizationIds } });
   }
 
   /** Organización con una suscripción mensual del plan Profesional que vence en `dueAt`. */
@@ -216,5 +218,86 @@ describe("renovación de suscripciones (F4.6a)", () => {
     await prisma.organization.update({ where: { id: subscription.organizationId }, data: { status: "BLOCKED", blockedAt: new Date(), blockedReason: "prueba" } });
     await run(new Date());
     expect(await prisma.payment.count({ where: { subscriptionId: subscription.id } })).toBe(0);
+  });
+
+  it("con alcance, el ciclo no toca organizaciones de fuera aunque adelante el reloj", async () => {
+    const outsider = await prisma.organization.create({ data: { name: "Fuera del alcance", slug: `fuera-${suffix}` } });
+    const checkout = await prisma.billingCheckout.create({
+      data: { organizationId: outsider.id, userId: ownerId, planId, billingCycle: "MONTHLY", gateway: "WEBPAY_ONECLICK", token: `tok-fuera-${suffix}`, expiresAt: new Date(Date.now() + HOUR) },
+    });
+    try {
+      await run(new Date(Date.now() + 6 * DAY));
+      expect((await prisma.billingCheckout.findUniqueOrThrow({ where: { id: checkout.id } })).status).toBe("OPEN");
+    } finally {
+      await prisma.organization.delete({ where: { id: outsider.id } });
+    }
+  });
+
+  describe("Mercado Pago: conciliación (F4.6b)", () => {
+    /** Organización con dueño y una contratación de Mercado Pago cuya suscripción allá es `preapprovalId`. */
+    async function mpCheckout() {
+      const organization = await prisma.organization.create({ data: { name: "Tienda MP", slug: `mp-${suffix}-${organizationIds.length}` } });
+      organizationIds.push(organization.id);
+      await prisma.membership.create({ data: { organizationId: organization.id, userId: ownerId, roleId: ownerRoleId, status: "ACTIVE" } });
+      const checkoutId = crypto.randomUUID();
+      const preapproval = await mercadoPago.createSubscription({ externalReference: checkoutId, payerEmail: ownerEmail, amount: 7_990 });
+      await prisma.billingCheckout.create({
+        data: { id: checkoutId, organizationId: organization.id, userId: ownerId, planId, billingCycle: "MONTHLY", gateway: "MERCADO_PAGO", token: preapproval.id, expiresAt: new Date(Date.now() - 60_000) },
+      });
+      return { organizationId: organization.id, preapprovalId: preapproval.id };
+    }
+
+    it("si el aviso de autorización se perdió, la conciliación activa el plan", async () => {
+      const { organizationId, preapprovalId } = await mpCheckout();
+      mercadoPago.authorize(preapprovalId);
+      await run(new Date());
+      expect(await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ gateway: "MERCADO_PAGO", status: "ACTIVE", externalProviderRef: preapprovalId });
+    });
+
+    it("una cuota que quedó en confirmación se concilia con lo que dice Mercado Pago", async () => {
+      const { organizationId, preapprovalId } = await mpCheckout();
+      mercadoPago.authorize(preapprovalId);
+      await run(new Date());
+      const subscription = await prisma.subscription.findFirstOrThrow({ where: { organizationId } });
+      const chargeId = mercadoPago.charge(preapprovalId, "approved");
+      await prisma.payment.create({
+        data: {
+          organizationId,
+          subscriptionId: subscription.id,
+          gateway: "MERCADO_PAGO",
+          buyOrder: mercadoPagoBuyOrder(chargeId),
+          amount: 7_990,
+          netAmount: 6_714,
+          vatAmount: 1_276,
+          currency: "CLP",
+          periodStart: new Date(),
+          periodEnd: periodEnd(new Date(), "MONTHLY"),
+          createdAt: new Date(Date.now() - 2 * HOUR),
+        },
+      });
+      await run(new Date());
+      expect(await prisma.payment.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "APPROVED" });
+      expect((await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).firstPaidAt).not.toBeNull();
+    });
+
+    it("si el cliente la canceló en Mercado Pago, se respeta el período y no se renueva", async () => {
+      const { organizationId, preapprovalId } = await mpCheckout();
+      mercadoPago.authorize(preapprovalId);
+      await run(new Date());
+      mercadoPago.subscriptions.get(preapprovalId)!.status = "cancelled";
+      await run(new Date());
+      expect(await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "ACTIVE", cancelAtPeriodEnd: true });
+    });
+
+    it("al cerrar una morosa de Mercado Pago (gracia vencida) se cancela también allá", async () => {
+      const { organizationId, preapprovalId } = await mpCheckout();
+      mercadoPago.authorize(preapprovalId);
+      await run(new Date());
+      await prisma.subscription.updateMany({ where: { organizationId }, data: { status: "PAST_DUE", pastDueSince: new Date(Date.now() - 11 * DAY), currentPeriodStart: new Date(Date.now() - 41 * DAY), currentPeriodEnd: new Date(Date.now() - HOUR) } });
+      await run(new Date());
+      expect(await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "CANCELED" });
+      expect(mercadoPago.canceled).toContain(preapprovalId);
+      expect(email.messages.some((m) => m.to === ownerEmail && m.subject === "Tu cuenta pasó al plan Gratis")).toBe(true);
+    });
   });
 });

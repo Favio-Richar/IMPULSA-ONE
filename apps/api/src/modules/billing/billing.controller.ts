@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Param, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiExcludeEndpoint, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { billingOverviewResponse, billingSubscriptionResponse, checkoutRedirectResponse, withdrawalResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
@@ -141,5 +141,45 @@ export class WebpayReturnController {
   private async finish(token: unknown, res: Response): Promise<void> {
     const outcome = await this.billing.completeWebpayReturn(typeof token === "string" ? token : undefined);
     res.redirect(HttpStatus.SEE_OTHER, `${env.APP_BASE_URL.replace(/\/+$/, "")}/plan?pago=${outcome}`);
+  }
+}
+
+/**
+ * Mercado Pago (F4.6b): el regreso del cliente tras autorizar y los avisos (webhooks). Ninguno lleva
+ * sesión: el regreso solo sirve para consultar a Mercado Pago el estado real, y el aviso vale solo si
+ * su firma `x-signature` es correcta.
+ */
+@ApiTags("billing")
+@Controller("billing/mercadopago")
+export class MercadoPagoController {
+  constructor(private readonly billing: BillingService) {}
+
+  @Get("return")
+  @HttpCode(HttpStatus.SEE_OTHER)
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ limit: 30, windowSeconds: 600, keyPrefix: "billing-mp-return" })
+  @ApiExcludeEndpoint()
+  async returnGet(@Query("preapproval_id") preapprovalId: unknown, @Res() res: Response) {
+    const outcome = await this.billing.completeMercadoPagoReturn(typeof preapprovalId === "string" ? preapprovalId : undefined);
+    res.redirect(HttpStatus.SEE_OTHER, `${env.APP_BASE_URL.replace(/\/+$/, "")}/plan?pago=${outcome}`);
+  }
+
+  @Post("webhook")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ limit: 600, windowSeconds: 60, keyPrefix: "billing-mp-webhook" })
+  @ApiExcludeEndpoint()
+  async webhook(
+    @Headers("x-signature") signature: string | undefined,
+    @Headers("x-request-id") requestId: string | undefined,
+    @Query() query: Record<string, unknown>,
+    @Body() body: Record<string, unknown> | undefined,
+  ) {
+    // Mercado Pago manda el id del recurso en `?data.id=` (y también en el cuerpo). La firma se calcula
+    // sobre el de la URL; el tipo se toma de la URL o del cuerpo.
+    const dataId = typeof query["data.id"] === "string" ? query["data.id"] : undefined;
+    const type = typeof query.type === "string" ? query.type : typeof body?.type === "string" ? body.type : undefined;
+    const notificationId = typeof body?.id === "string" || typeof body?.id === "number" ? String(body.id) : undefined;
+    return this.billing.handleMercadoPagoWebhook({ signature, requestId, dataId, type, notificationId });
   }
 }

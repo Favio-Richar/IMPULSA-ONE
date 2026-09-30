@@ -332,7 +332,10 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - **BillingCheckout** (Organization, User 1:N con `CASCADE`; Plan): una pasada por la pasarela.
   `token` único (TBK_TOKEN), status (`OPEN`/`PROCESSING`/`COMPLETED`/`FAILED`/`EXPIRED`), vence a
   los 30 minutos. El retorno de la pasarela solo confía en este registro.
-- **PaymentWebhookEvent**: único `(gateway, event_id)`; se registra antes de procesar (F4.6b).
+- **PaymentWebhookEvent**: único `(gateway, event_id)`; se registra antes de procesar y se marca
+  `processed_at` al terminar: uno procesado no se repite, uno fallido se reprocesa (F4.6b).
+- **Payment.provider_payment_id** (F4.6b): id del pago en Mercado Pago, para reembolsar; único
+  parcial por `(gateway, provider_payment_id)`. En Mercado Pago `buy_order` es `MP{id de la cuota}`.
 - **LegalAcceptance** (User `CASCADE`, Organization `SET NULL`): document (`CHECK`: `terms`,
   `withdrawal_notice`, `privacy`), version, context, accepted_at. Prueba de la aceptación de
   Términos y aviso de retracto antes de pagar (Ley 19.496).

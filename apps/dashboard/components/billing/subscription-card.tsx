@@ -65,6 +65,12 @@ export function SubscriptionCard({
 
       <p className="text-sm text-muted-foreground">{status.detail}</p>
 
+      {subscription.gateway === "MERCADO_PAGO" && !ended ? (
+        <p className="flex items-center gap-2 text-sm text-foreground">
+          <CreditCard className="size-4 text-muted-foreground" aria-hidden="true" />
+          Pagas con tu cuenta de Mercado Pago
+        </p>
+      ) : null}
       {subscription.card && !ended ? (
         <p className="flex items-center gap-2 text-sm text-foreground">
           <CreditCard className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -91,7 +97,9 @@ export function SubscriptionCard({
 
       {canManage && !ended ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
-          {subscription.cancelAtPeriodEnd ? (
+          {subscription.cancelAtPeriodEnd && subscription.gateway === "MERCADO_PAGO" ? (
+            <p className="text-sm text-muted-foreground">Con Mercado Pago no se puede reanudar: cuando termine el período, vuelve a contratar tu plan.</p>
+          ) : subscription.cancelAtPeriodEnd ? (
             <Button
               variant="primary"
               size="sm"

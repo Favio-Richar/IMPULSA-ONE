@@ -3,7 +3,7 @@ import { Test } from "@nestjs/testing";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
 import { adminBillingSummaryResponse, adminPaymentListResponse, adminRefundResponse, billingOverviewResponse, checkoutRedirectResponse } from "@impulza/contracts";
 import type { PrismaClient } from "@impulza/database";
-import { FakeRecurringGateway } from "@impulza/payments";
+import { FakeMercadoPagoGateway, FakeRecurringGateway } from "@impulza/payments";
 import cookieParser from "cookie-parser";
 import type { Redis } from "ioredis";
 import { generate } from "otplib";
@@ -18,7 +18,7 @@ import { grantSuperAdmin } from "../admin/superadmin-grants.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { AdminBillingService } from "./admin-billing.service.js";
 import { BillingService } from "./billing.service.js";
-import { MERCHANT_GATEWAY } from "./merchant-gateway.token.js";
+import { MERCADO_PAGO_GATEWAY, MERCHANT_GATEWAY } from "./merchant-gateway.token.js";
 
 class FakeEmailAdapter implements EmailAdapter {
   messages: EmailMessage[] = [];
@@ -41,16 +41,20 @@ describe("Cobro de suscripciones con Webpay Oneclick (e2e) — F4.6a", () => {
   let redis: Redis;
   let emailAdapter: FakeEmailAdapter;
   let gateway: FakeRecurringGateway;
+  let mercadoPago: FakeMercadoPagoGateway;
   let httpServer: Parameters<typeof request>[0];
 
   beforeAll(async () => {
     emailAdapter = new FakeEmailAdapter();
     gateway = new FakeRecurringGateway();
+    mercadoPago = new FakeMercadoPagoGateway();
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(EMAIL_ADAPTER)
       .useValue(emailAdapter)
       .overrideProvider(MERCHANT_GATEWAY)
       .useValue(gateway)
+      .overrideProvider(MERCADO_PAGO_GATEWAY)
+      .useValue(mercadoPago)
       .compile();
     app = moduleRef.createNestApplication();
     app.use(cookieParser());
@@ -109,7 +113,7 @@ describe("Cobro de suscripciones con Webpay Oneclick (e2e) — F4.6a", () => {
     const { agent, organizationId } = await createOrg();
     const res = await agent.get(`/api/v1/organizations/${organizationId}/billing`).expect(200);
     const body = billingOverviewResponse.parse(res.body);
-    expect(body).toMatchObject({ subscription: null, gateways: ["WEBPAY_ONECLICK"], payments: [], legal: { withdrawalDays: 10 } });
+    expect(body).toMatchObject({ subscription: null, gateways: ["WEBPAY_ONECLICK", "MERCADO_PAGO"], payments: [], legal: { withdrawalDays: 10 } });
   });
 
   it("contratar exige aceptar Términos y retracto, y no se contrata el plan Gratis", async () => {
@@ -120,8 +124,7 @@ describe("Cobro de suscripciones con Webpay Oneclick (e2e) — F4.6a", () => {
     const free = await agent.post(url).set(CSRF_HEADERS).send({ ...CHECKOUT, planCode: "free" }).expect(422);
     expect(free.body.code).toBe("PLAN_NOT_PURCHASABLE");
     await agent.post(url).set(CSRF_HEADERS).send({ ...CHECKOUT, planCode: "no-existe" }).expect(404);
-    const mp = await agent.post(url).set(CSRF_HEADERS).send({ ...CHECKOUT, gateway: "MERCADO_PAGO" }).expect(422);
-    expect(mp.body.code).toBe("GATEWAY_UNAVAILABLE");
+    await agent.post(url).set(CSRF_HEADERS).send({ ...CHECKOUT, gateway: "PAYPAL" }).expect(400);
     expect(await prisma.billingCheckout.count({ where: { organizationId } })).toBe(0);
   });
 
@@ -520,6 +523,174 @@ describe("Cobro de suscripciones con Webpay Oneclick (e2e) — F4.6a", () => {
       expect(line).toContain(`"'=HYPERLINK(""http://malo.test"")"`);
       expect(line).toContain("6714,1276,7990");
       await agent.get(`${admin}/payments.csv`).expect(400);
+    });
+  });
+
+  describe("Mercado Pago (F4.6b)", () => {
+    const MP_CHECKOUT = { ...CHECKOUT, gateway: "MERCADO_PAGO" };
+    let requestSeq = 0;
+
+    /** Aviso de Mercado Pago firmado como lo firma Mercado Pago. */
+    function notify(type: string, dataId: string, options: { signature?: string; notificationId?: string } = {}) {
+      requestSeq += 1;
+      const requestId = `req-${Date.now()}-${requestSeq}`;
+      return request(httpServer)
+        .post(`/api/v1/billing/mercadopago/webhook?data.id=${dataId}&type=${type}`)
+        .set("x-request-id", requestId)
+        .set("x-signature", options.signature ?? mercadoPago.sign(dataId, requestId))
+        .send({ id: options.notificationId ?? `${type}-${dataId}-${requestId}`, type, action: "updated", data: { id: dataId } });
+    }
+
+    /** Contrata con Mercado Pago: devuelve el id de la suscripción allá. */
+    async function startMp(agent: ReturnType<typeof request.agent>, organizationId: string) {
+      const res = await agent.post(`/api/v1/organizations/${organizationId}/billing/checkout`).set(CSRF_HEADERS).send(MP_CHECKOUT).expect(201);
+      expect(res.body.method).toBe("GET");
+      const preapprovalId = new URL(res.body.url).searchParams.get("preapproval_id")!;
+      return preapprovalId;
+    }
+
+    async function activeMp() {
+      const org = await createOrg();
+      const preapprovalId = await startMp(org.agent, org.organizationId);
+      mercadoPago.authorize(preapprovalId);
+      await request(httpServer).get(`/api/v1/billing/mercadopago/return?preapproval_id=${preapprovalId}`).expect(303);
+      return { ...org, preapprovalId };
+    }
+
+    it("contratar crea la suscripción pendiente allá, ligada a nuestra contratación, y vuelve según su estado real", async () => {
+      const { agent, organizationId } = await createOrg();
+      const preapprovalId = await startMp(agent, organizationId);
+      const checkout = await prisma.billingCheckout.findFirstOrThrow({ where: { organizationId } });
+      expect(checkout).toMatchObject({ gateway: "MERCADO_PAGO", token: preapprovalId, status: "OPEN" });
+      expect(mercadoPago.subscriptions.get(preapprovalId)).toMatchObject({ externalReference: checkout.id, amount: 7_990 });
+
+      // Volvió sin autorizar: sigue pendiente y no da el plan.
+      const early = await request(httpServer).get(`/api/v1/billing/mercadopago/return?preapproval_id=${preapprovalId}`).expect(303);
+      expect(early.headers.location).toMatch(/pago=pendiente$/);
+      expect((await agent.get(`/api/v1/organizations/${organizationId}/plan`).expect(200)).body.plan.code).toBe("free");
+
+      mercadoPago.authorize(preapprovalId);
+      const back = await request(httpServer).get(`/api/v1/billing/mercadopago/return?preapproval_id=${preapprovalId}`).expect(303);
+      expect(back.headers.location).toMatch(/pago=exito$/);
+      expect((await agent.get(`/api/v1/organizations/${organizationId}/plan`).expect(200)).body).toMatchObject({ plan: { code: "profesional" }, source: "subscription" });
+      const subscription = await prisma.subscription.findFirstOrThrow({ where: { organizationId } });
+      // Mercado Pago cobra solo: nuestro worker nunca la cobra (sin `nextChargeAt`) y aún no hay pago.
+      expect(subscription).toMatchObject({ gateway: "MERCADO_PAGO", externalProviderRef: preapprovalId, status: "ACTIVE", nextChargeAt: null, firstPaidAt: null });
+
+      const unknown = await request(httpServer).get("/api/v1/billing/mercadopago/return?preapproval_id=no-existe").expect(303);
+      expect(unknown.headers.location).toMatch(/pago=error$/);
+    });
+
+    it("un aviso con firma inválida se rechaza sin tocar nada", async () => {
+      const { preapprovalId, organizationId } = await activeMp();
+      const chargeId = mercadoPago.charge(preapprovalId, "approved");
+      await notify("subscription_authorized_payment", chargeId, { signature: `ts=1,v1=${"0".repeat(64)}` }).expect(401);
+      await notify("subscription_authorized_payment", chargeId, { signature: "" }).expect(401);
+      expect(await prisma.payment.count({ where: { organizationId } })).toBe(0);
+    });
+
+    it("cuota cobrada: pago con neto e IVA, primer cobro (retracto) y comprobante — y el aviso repetido no duplica nada", async () => {
+      const { preapprovalId, organizationId, email } = await activeMp();
+      const chargeId = mercadoPago.charge(preapprovalId, "approved");
+      const notificationId = `notif-${chargeId}-${Date.now()}`;
+
+      expect((await notify("subscription_authorized_payment", chargeId, { notificationId }).expect(200)).body).toEqual({ processed: true });
+      const payment = await prisma.payment.findFirstOrThrow({ where: { organizationId } });
+      expect(payment).toMatchObject({ gateway: "MERCADO_PAGO", status: "APPROVED", amount: 7_990, netAmount: 6_714, vatAmount: 1_276 });
+      expect(payment.providerPaymentId).toBe(mercadoPago.authorizedPayments.get(chargeId)!.payment!.id);
+      expect((await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).firstPaidAt).not.toBeNull();
+      // Cualquier comprobante cuenta (activación o renovación): un aviso repetido no debe mandar ninguno más.
+      const receipts = () => emailAdapter.messages.filter((m) => m.to === email && /^(Tu plan .* está activo|Renovamos tu plan)/.test(m.subject)).length;
+      expect(receipts()).toBe(1);
+
+      // Mismo aviso otra vez (Mercado Pago reintenta): no procesa de nuevo.
+      expect((await notify("subscription_authorized_payment", chargeId, { notificationId }).expect(200)).body).toEqual({ processed: false });
+      // Otro aviso del mismo cobro: sincroniza, pero la transición ya ocurrió — sin segundo correo ni pago.
+      await notify("subscription_authorized_payment", chargeId).expect(200);
+      expect(await prisma.payment.count({ where: { organizationId } })).toBe(1);
+      expect(receipts()).toBe(1);
+    });
+
+    it("cuota rechazada: morosa con el plan vigente mientras Mercado Pago reintenta; al cobrarse, vuelve a activa", async () => {
+      const { preapprovalId, organizationId, email } = await activeMp();
+      const chargeId = mercadoPago.charge(preapprovalId, "rejected");
+      await notify("subscription_authorized_payment", chargeId).expect(200);
+      let subscription = await prisma.subscription.findFirstOrThrow({ where: { organizationId } });
+      expect(subscription).toMatchObject({ status: "PAST_DUE", failedAttempts: 1 });
+      expect((await prisma.payment.findFirstOrThrow({ where: { organizationId } })).status).toBe("REJECTED");
+      expect(emailAdapter.messages.some((m) => m.to === email && m.subject === "No pudimos cobrar tu plan Profesional")).toBe(true);
+
+      // El reintento de Mercado Pago sobre la misma cuota sale aprobado.
+      const charge = mercadoPago.authorizedPayments.get(chargeId)!;
+      charge.status = "processed";
+      charge.payment = { id: charge.payment!.id, status: "approved" };
+      await notify("subscription_authorized_payment", chargeId).expect(200);
+      subscription = await prisma.subscription.findFirstOrThrow({ where: { organizationId } });
+      expect(subscription).toMatchObject({ status: "ACTIVE", failedAttempts: 0, pastDueSince: null });
+      expect(await prisma.payment.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "APPROVED" });
+      expect(await prisma.payment.count({ where: { organizationId } })).toBe(1);
+    });
+
+    it("si la cuota llega antes que el aviso de la suscripción, primero la activa", async () => {
+      const { agent, organizationId } = await createOrg();
+      const preapprovalId = await startMp(agent, organizationId);
+      mercadoPago.authorize(preapprovalId);
+      const chargeId = mercadoPago.charge(preapprovalId, "approved");
+      await notify("subscription_authorized_payment", chargeId).expect(200);
+      expect(await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "ACTIVE", gateway: "MERCADO_PAGO" });
+      expect(await prisma.payment.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "APPROVED" });
+    });
+
+    it("cancelar detiene los cobros en Mercado Pago primero; no se puede reanudar; si Mercado Pago falla, nada cambia", async () => {
+      const { agent, organizationId, preapprovalId } = await activeMp();
+      const original = mercadoPago.cancelSubscription.bind(mercadoPago);
+      mercadoPago.cancelSubscription = async () => {
+        throw new Error("Mercado Pago caído");
+      };
+      try {
+        await agent.post(`/api/v1/organizations/${organizationId}/billing/cancel`).set(CSRF_HEADERS).expect(502);
+      } finally {
+        mercadoPago.cancelSubscription = original;
+      }
+      expect((await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).cancelAtPeriodEnd).toBe(false);
+
+      const canceled = (await agent.post(`/api/v1/organizations/${organizationId}/billing/cancel`).set(CSRF_HEADERS).expect(200)).body;
+      expect(canceled).toMatchObject({ cancelAtPeriodEnd: true, status: "ACTIVE" });
+      expect(mercadoPago.canceled).toContain(preapprovalId);
+      expect((await agent.post(`/api/v1/organizations/${organizationId}/billing/resume`).set(CSRF_HEADERS).expect(409)).body.code).toBe("NOT_RESUMABLE");
+    });
+
+    it("si el cliente cancela desde Mercado Pago, se respeta el período pagado y no se vuelve a cobrar", async () => {
+      const { organizationId, preapprovalId } = await activeMp();
+      mercadoPago.subscriptions.get(preapprovalId)!.status = "cancelled";
+      await notify("subscription_preapproval", preapprovalId).expect(200);
+      expect(await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "ACTIVE", cancelAtPeriodEnd: true });
+    });
+
+    it("retracto con Mercado Pago: reembolsa por el id del pago y cancela allá", async () => {
+      const { agent, organizationId, preapprovalId } = await activeMp();
+      const chargeId = mercadoPago.charge(preapprovalId, "approved");
+      await notify("subscription_authorized_payment", chargeId).expect(200);
+      const paymentId = mercadoPago.authorizedPayments.get(chargeId)!.payment!.id;
+
+      const res = await agent.post(`/api/v1/organizations/${organizationId}/billing/withdraw`).set(CSRF_HEADERS).expect(200);
+      expect(res.body).toEqual({ refundedAmount: 7_990 });
+      expect(mercadoPago.refunds).toContainEqual({ paymentId, amount: 7_990 });
+      expect(mercadoPago.canceled).toContain(preapprovalId);
+      expect(await prisma.payment.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "REFUNDED", refundedAmount: 7_990 });
+      expect((await agent.get(`/api/v1/organizations/${organizationId}/plan`).expect(200)).body.plan.code).toBe("free");
+    });
+
+    it("dos pestañas: si ya se activó otro plan, la suscripción de Mercado Pago se cancela allá y nunca cobra", async () => {
+      const { agent, organizationId } = await createOrg();
+      const preapprovalId = await startMp(agent, organizationId);
+      await checkoutAndReturn(agent, organizationId); // se pagó con Webpay en otra pestaña
+      mercadoPago.authorize(preapprovalId);
+      const back = await request(httpServer).get(`/api/v1/billing/mercadopago/return?preapproval_id=${preapprovalId}`).expect(303);
+      expect(back.headers.location).toMatch(/pago=error$/);
+      expect(mercadoPago.canceled).toContain(preapprovalId);
+      expect(await prisma.subscription.count({ where: { organizationId } })).toBe(1);
+      expect((await prisma.billingCheckout.findFirstOrThrow({ where: { organizationId, gateway: "MERCADO_PAGO" } })).failureReason).toBe("duplicate_subscription");
     });
   });
 });

@@ -5,7 +5,7 @@ captación, reservas, ventas y analítica) desde una sola URL.
 
 **Estado actual: Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
-superadministración) listas para revisión; F4.6b (Mercado Pago) pendiente. Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
+superadministración) listas para revisión, igual que F4.6b (Mercado Pago, pendiente de probar con credenciales reales). Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
 (salud de página), F6.2 (motor de IA con modelos locales primero, ADR-010), F6.2b (conexiones de IA
 en la administración), F6.3 (asistente de textos en el constructor), F6.4 (lectura comercial con IA
 en Analítica), F6.5 (pruebas A/B, ADR-011), F6.6 (Smart CTA) y F6.7 (automatizaciones) listas para
@@ -1240,8 +1240,9 @@ Detalle en `docs/BACKLOG_FASE_4.md`.
 
 ## Cobro de suscripciones (F4.6a, ADR-012)
 
-Freemium: el plan Gratis atrae y los planes de pago se contratan con **Webpay Oneclick** (Mercado
-Pago llega en F4.6b). Nunca se guarda una tarjeta: solo la referencia de Transbank, cifrada, y
+Freemium: el plan Gratis atrae y los planes de pago se contratan con **Webpay Oneclick** o
+**Mercado Pago Suscripciones** (F4.6b: Mercado Pago cobra solo y avisa por webhook firmado; el
+worker concilia por si se pierde un aviso). Nunca se guarda una tarjeta: solo la referencia de Transbank, cifrada, y
 marca y últimos 4 dígitos.
 
 - **`packages/payments`**: adaptador REST de Transbank (Zod en cada respuesta, sin redirecciones,

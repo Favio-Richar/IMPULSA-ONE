@@ -4,7 +4,7 @@ import type { BillingOverviewResponse, CheckoutRedirectResponse, PlanResponse } 
 import { Button, Dialog, cn } from "@impulza/ui";
 import { Check, Lock, Sparkles } from "lucide-react";
 import { useId, useState } from "react";
-import { billingErrorMessage, formatClp, formatDate, renewalDate, vatBreakdown, yearlySavings } from "../../lib/billing-text";
+import { billingErrorMessage, formatClp, formatDate, GATEWAY_OPTIONS, renewalDate, vatBreakdown, yearlySavings } from "../../lib/billing-text";
 import { env } from "../../lib/env";
 import { useStartCheckout } from "../../lib/hooks/use-billing";
 
@@ -218,7 +218,9 @@ function CheckoutDialog({
   const { net, vat } = vatBreakdown(total);
   const nextCharge = renewalDate(new Date(), cycle);
   const termsUrl = `${env.NEXT_PUBLIC_WEB_BASE_URL.replace(/\/+$/, "")}/terminos`;
-  const gateway = gateways[0]!;
+  const [gateway, setGateway] = useState(gateways[0]!);
+  const gatewayInfo = GATEWAY_OPTIONS[gateway];
+  const gatewayGroupId = useId();
   const busy = checkout.isPending || redirecting;
 
   function pay() {
@@ -246,7 +248,7 @@ function CheckoutDialog({
           </Button>
           <Button onClick={pay} disabled={!acceptTerms || !acceptWithdrawal} loading={busy} data-testid="pay-button">
             <Lock className="size-4" aria-hidden="true" />
-            {redirecting ? "Abriendo Webpay…" : `Pagar ${formatClp(total)} con Webpay`}
+            {redirecting ? `Abriendo ${gatewayInfo.name}…` : `Pagar ${formatClp(total)} con ${gatewayInfo.name}`}
           </Button>
         </>
       }
@@ -279,6 +281,34 @@ function CheckoutDialog({
           Se renueva automáticamente el <strong>{formatDate(nextCharge)}</strong> por {formatClp(total)}, y así cada {cycle === "MONTHLY" ? "mes" : "año"}{" "}
           hasta que lo canceles desde esta misma pantalla, con un clic.
         </p>
+
+        {gateways.length > 1 ? (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-medium text-foreground">¿Cómo quieres pagar?</legend>
+            {gateways.map((option) => (
+              <label
+                key={option}
+                className={cn(
+                  "flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm transition-colors",
+                  gateway === option ? "border-primary bg-primary/5" : "border-border hover:border-border-strong",
+                )}
+              >
+                <input
+                  type="radio"
+                  name={gatewayGroupId}
+                  value={option}
+                  checked={gateway === option}
+                  onChange={() => setGateway(option)}
+                  className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
+                />
+                <span className="flex flex-col">
+                  <span className="font-medium text-foreground">{GATEWAY_OPTIONS[option].name}</span>
+                  <span className="text-muted-foreground">{GATEWAY_OPTIONS[option].detail}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        ) : null}
 
         <fieldset className="flex flex-col gap-3">
           <legend className="sr-only">Aceptaciones</legend>
@@ -324,7 +354,7 @@ function CheckoutDialog({
 
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <Lock className="size-3.5" aria-hidden="true" />
-          Pagarás en el sitio seguro de Webpay (Transbank). Impulza One nunca ve ni guarda los datos de tu tarjeta.
+          {gatewayInfo.security}
         </p>
       </div>
     </Dialog>

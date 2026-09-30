@@ -4,13 +4,13 @@ import { initSentry } from "@impulza/observability";
 import { Redis } from "ioredis";
 import { parseStorageConfig, parseVideoToolsConfig, S3StorageAdapter } from "@impulza/storage";
 import { ConsoleEmailAdapter } from "@impulza/auth";
-import { WebpayOneclickGateway } from "@impulza/payments";
+import { MercadoPagoGateway, WebpayOneclickGateway } from "@impulza/payments";
 import { startAnalyticsWorkers } from "./analytics-workers.js";
 import { startAutomationWorkers } from "./automations.js";
 import { startBillingWorkers } from "./billing.js";
 import { startBookingReminderWorkers } from "./booking-reminders.js";
 import { startCampaignDispatchWorkers } from "./campaign-dispatch.js";
-import { env, webpayConfig } from "./env.js";
+import { env, mercadoPagoConfig, webpayConfig } from "./env.js";
 import { createHealthServer } from "./health-server.js";
 import { startMediaWorkers } from "./media-workers.js";
 import { logger } from "./observability/logger.js";
@@ -82,19 +82,22 @@ const automations = startAutomationWorkers({
 
 // Renovación de suscripciones (F4.6a, ADR-012): Webpay Oneclick no cobra solo, lo hace este ciclo.
 // Sin credenciales de Webpay o sin la clave de cifrado no corre (y lo dice): nadie queda cobrado a medias.
+// Mercado Pago (F4.6b) cobra solo; el ciclo concilia sus avisos perdidos y cancela allá lo que cierra.
+const webpayReady = Boolean(webpayConfig && env.AUTH_ENCRYPTION_KEY);
 const billing =
-  webpayConfig && env.AUTH_ENCRYPTION_KEY
+  (webpayReady || mercadoPagoConfig) && env.AUTH_ENCRYPTION_KEY
     ? await startBillingWorkers({
         prisma,
         connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
-        gateway: new WebpayOneclickGateway(webpayConfig),
+        gateway: webpayReady ? new WebpayOneclickGateway(webpayConfig!) : null,
+        mercadoPago: mercadoPagoConfig ? new MercadoPagoGateway(mercadoPagoConfig) : null,
         email: new ConsoleEmailAdapter(),
         encryptionKey: env.AUTH_ENCRYPTION_KEY,
         dashboardBaseUrl: env.APP_BASE_URL,
       })
     : null;
 if (!billing) {
-  logger.warn("Webpay o AUTH_ENCRYPTION_KEY no configurados: la renovación de suscripciones no se inicia");
+  logger.warn("Sin pasarela de pago configurada (o sin AUTH_ENCRYPTION_KEY): el ciclo de facturación no se inicia");
 }
 
 const healthServer = createHealthServer([

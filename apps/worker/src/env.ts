@@ -1,5 +1,5 @@
 import { databaseUrlSchema, encryptionKeySchema, loadEnv, nodeEnvSchema, portSchema, redisUrlSchema, urlSchema } from "@impulza/config";
-import { webpayConfigFromEnv, webpayEnvShape } from "@impulza/payments";
+import { mercadoPagoConfigFromEnv, mercadoPagoEnvShape, webpayConfigFromEnv, webpayEnvShape } from "@impulza/payments";
 import { z } from "zod";
 
 export const env = loadEnv({
@@ -34,8 +34,11 @@ export const env = loadEnv({
   // Necesita las mismas credenciales que la API y la clave que descifra la referencia de la tarjeta.
   // Opcionales: sin ellas, la renovación no corre y lo avisa en el log al arrancar.
   ...webpayEnvShape,
+  // Mercado Pago (F4.6b): el worker concilia sus suscripciones y cuotas por si se pierde un aviso.
+  ...mercadoPagoEnvShape,
   AUTH_ENCRYPTION_KEY: encryptionKeySchema.optional(),
 });
 
 // Todas o ninguna (ST §15), igual que en la API.
 export const webpayConfig = webpayConfigFromEnv(env);
+export const mercadoPagoConfig = mercadoPagoConfigFromEnv(env);

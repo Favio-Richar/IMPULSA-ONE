@@ -914,6 +914,9 @@ importers:
 
   packages/payments:
     dependencies:
+      '@impulza/database':
+        specifier: workspace:*
+        version: link:../database
       zod:
         specifier: 4.6.5
         version: 4.6.5

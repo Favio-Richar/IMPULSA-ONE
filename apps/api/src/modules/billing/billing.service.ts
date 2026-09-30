@@ -1,4 +1,5 @@
-import { BadGatewayException, ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
+import { BadGatewayException, ConflictException, Inject, Injectable, NotFoundException, UnauthorizedException, UnprocessableEntityException } from "@nestjs/common";
 import { decryptSecret, encryptSecret, type EmailAdapter } from "@impulza/auth";
 import type { BillingOverviewResponse, BillingSubscriptionResponse, CheckoutRedirectResponse } from "@impulza/contracts";
 import {
@@ -14,6 +15,7 @@ import {
 import {
   buyOrderFor,
   customerRefFor,
+  type MercadoPagoLike,
   type MerchantRecurringGateway,
   PaymentGatewayError,
   periodEnd,
@@ -21,6 +23,8 @@ import {
   splitVat,
   subscriptionCanceledEmail,
   subscriptionStartedEmail,
+  syncAuthorizedPayment,
+  syncPreapproval,
   withdrawalRefundedEmail,
   WITHDRAWAL_DAYS,
   withinWithdrawalWindow,
@@ -32,7 +36,7 @@ import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
-import { MERCHANT_GATEWAY } from "./merchant-gateway.token.js";
+import { MERCADO_PAGO_GATEWAY, MERCHANT_GATEWAY } from "./merchant-gateway.token.js";
 
 /** Estados con derecho al plan (los mismos que `PlansService`). */
 const LIVE_STATUSES = [SubscriptionStatus.TRIALING, SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE];
@@ -55,13 +59,16 @@ export class BillingService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(MERCHANT_GATEWAY) private readonly webpay: MerchantRecurringGateway | null,
+    @Inject(MERCADO_PAGO_GATEWAY) private readonly mercadoPago: MercadoPagoLike | null,
     @Inject(EMAIL_ADAPTER) private readonly emailAdapter: EmailAdapter,
     private readonly audit: AuditService,
   ) {}
 
   /** Pasarelas que este ambiente puede ofrecer. Webpay necesita además la URL pública de la API. */
   availableGateways(): Array<"WEBPAY_ONECLICK" | "MERCADO_PAGO"> {
-    return this.webpay && env.API_PUBLIC_URL ? ["WEBPAY_ONECLICK"] : [];
+    // Las dos necesitan la URL pública de la API: Webpay vuelve a ella y Mercado Pago avisa a ella.
+    if (!env.API_PUBLIC_URL) return [];
+    return [...(this.webpay ? (["WEBPAY_ONECLICK"] as const) : []), ...(this.mercadoPago ? (["MERCADO_PAGO"] as const) : [])];
   }
 
   async overview(organizationId: string, roleId: string): Promise<BillingOverviewResponse> {
@@ -101,8 +108,6 @@ export class BillingService {
     if (!this.availableGateways().includes(input.gateway)) {
       throw new UnprocessableEntityException({ code: "GATEWAY_UNAVAILABLE", message: "Ese medio de pago no está disponible por ahora." });
     }
-    const gateway = this.webpay!;
-
     const plan = await this.prisma.plan.findUnique({ where: { code: input.planCode } });
     if (!plan) throw new NotFoundException("Plan no encontrado.");
     const amount = priceFor(plan, input.cycle);
@@ -123,6 +128,11 @@ export class BillingService {
       ],
     });
 
+    if (input.gateway === "MERCADO_PAGO") {
+      return this.startMercadoPagoCheckout(organizationId, user, input, plan, amount);
+    }
+
+    const gateway = this.webpay!;
     let redirect;
     try {
       redirect = await gateway.startEnrollment({
@@ -156,6 +166,132 @@ export class BillingService {
     });
     logger.info("billing: inscripción iniciada", { organizationId, checkoutId: checkout.id, planCode: plan.code, cycle: input.cycle });
     return { url: redirect.url, method: redirect.method, fields: redirect.fields };
+  }
+
+  /**
+   * Mercado Pago (F4.6b): se crea la suscripción `pending` en Mercado Pago con nuestra contratación
+   * como `external_reference`, y el cliente la autoriza en su sitio. Mercado Pago cobra solo cada
+   * período; lo que pase llega por webhook (y por la conciliación del worker).
+   */
+  private async startMercadoPagoCheckout(
+    organizationId: string,
+    user: { id: string; email: string },
+    input: StartCheckoutInput,
+    plan: Plan,
+    amount: number,
+  ): Promise<CheckoutRedirectResponse> {
+    const gateway = this.mercadoPago!;
+    const checkoutId = randomUUID();
+    let preapproval;
+    try {
+      preapproval = await gateway.createSubscription({
+        reason: `Impulza One — plan ${plan.name} (${input.cycle === "MONTHLY" ? "mensual" : "anual"})`,
+        externalReference: checkoutId,
+        payerEmail: user.email,
+        amount,
+        frequencyMonths: input.cycle === "MONTHLY" ? 1 : 12,
+        backUrl: `${env.API_PUBLIC_URL!.replace(/\/+$/, "")}/api/v1/billing/mercadopago/return`,
+      });
+    } catch (error) {
+      logger.error("billing: no se pudo crear la suscripción en Mercado Pago", { organizationId, error: describe(error) });
+      throw new UnprocessableEntityException({ code: "GATEWAY_ERROR", message: "Mercado Pago no respondió. Intenta de nuevo en unos minutos." });
+    }
+    const checkout = await this.prisma.billingCheckout.create({
+      data: {
+        id: checkoutId,
+        organizationId,
+        userId: user.id,
+        planId: plan.id,
+        billingCycle: input.cycle,
+        gateway: "MERCADO_PAGO",
+        token: preapproval.id,
+        expiresAt: new Date(Date.now() + CHECKOUT_TTL_MS),
+      },
+    });
+    await this.audit.record({
+      organizationId,
+      actorId: user.id,
+      action: "billing.checkout_started",
+      targetType: "billing_checkout",
+      targetId: checkout.id,
+      metadata: { planCode: plan.code, cycle: input.cycle, gateway: "MERCADO_PAGO", amount },
+    });
+    logger.info("billing: suscripción de Mercado Pago creada", { organizationId, checkoutId, planCode: plan.code });
+    return { url: preapproval.initPoint!, method: "GET", fields: {} };
+  }
+
+  private mercadoPagoSyncDeps() {
+    return {
+      prisma: this.prisma,
+      gateway: this.mercadoPago!,
+      planUrl: this.planUrl(),
+      sendEmail: async (to: string, content: { subject: string; text: string }) => {
+        await this.emailAdapter.send({ to, subject: content.subject, text: content.text });
+      },
+    };
+  }
+
+  /** El cliente vuelve de Mercado Pago (`back_url?preapproval_id=…`). Se consulta el estado real. */
+  async completeMercadoPagoReturn(preapprovalId: string | undefined): Promise<CheckoutOutcome> {
+    if (!this.mercadoPago || !preapprovalId || preapprovalId.length > 128) return "error";
+    const checkout = await this.prisma.billingCheckout.findUnique({ where: { token: preapprovalId } });
+    if (!checkout || checkout.gateway !== "MERCADO_PAGO") return "error";
+    try {
+      await syncPreapproval(this.mercadoPagoSyncDeps(), preapprovalId);
+    } catch (error) {
+      logger.warn("billing: no se pudo consultar Mercado Pago al volver", { checkoutId: checkout.id, error: describe(error) });
+      return "pendiente";
+    }
+    const settled = await this.prisma.billingCheckout.findUniqueOrThrow({ where: { id: checkout.id } });
+    if (settled.status === BillingCheckoutStatus.COMPLETED) return "exito";
+    if (settled.status === BillingCheckoutStatus.FAILED) return "error";
+    // Aún `pending` en Mercado Pago (o autorizando): el webhook lo resolverá.
+    return "pendiente";
+  }
+
+  /**
+   * Notificación de Mercado Pago. La firma se verifica **antes** de leer nada; después se registra
+   * el aviso (único por pasarela + id) y se sincroniza consultando la API de Mercado Pago — el
+   * cuerpo del aviso nunca se usa como verdad. Un aviso ya procesado responde sin efecto; uno que
+   * falló se vuelve a procesar cuando Mercado Pago reintente.
+   */
+  async handleMercadoPagoWebhook(input: {
+    signature: string | undefined;
+    requestId: string | undefined;
+    dataId: string | undefined;
+    type: string | undefined;
+    notificationId: string | undefined;
+  }): Promise<{ processed: boolean }> {
+    if (!this.mercadoPago) throw new NotFoundException();
+    if (!this.mercadoPago.verifyWebhookSignature({ signature: input.signature, requestId: input.requestId, dataId: input.dataId })) {
+      logger.warn("billing: aviso de Mercado Pago con firma inválida", { type: input.type });
+      throw new UnauthorizedException("Firma inválida.");
+    }
+    const dataId = input.dataId!;
+    const topic = input.type ?? "unknown";
+    const eventId = (input.notificationId ?? `${topic}:${dataId}:${input.requestId ?? ""}`).slice(0, 200);
+
+    const existing = await this.prisma.paymentWebhookEvent.findUnique({ where: { gateway_eventId: { gateway: "MERCADO_PAGO", eventId } } });
+    if (existing?.processedAt) return { processed: false };
+    const event =
+      existing ??
+      (await this.prisma.paymentWebhookEvent
+        .create({ data: { gateway: "MERCADO_PAGO", eventId, topic } })
+        .catch(async (error: unknown) => {
+          if (!isUniqueViolation(error)) throw error;
+          return this.prisma.paymentWebhookEvent.findUniqueOrThrow({ where: { gateway_eventId: { gateway: "MERCADO_PAGO", eventId } } });
+        }));
+
+    const deps = this.mercadoPagoSyncDeps();
+    if (topic === "subscription_preapproval") {
+      await syncPreapproval(deps, dataId);
+    } else if (topic === "subscription_authorized_payment") {
+      await syncAuthorizedPayment(deps, dataId);
+    } else {
+      logger.info("billing: aviso de Mercado Pago ignorado", { topic });
+    }
+    await this.prisma.paymentWebhookEvent.update({ where: { id: event.id }, data: { processedAt: new Date() } });
+    return { processed: true };
   }
 
   /**
@@ -315,6 +451,10 @@ export class BillingService {
    */
   async cancel(organizationId: string, user: { id: string; email: string }): Promise<BillingSubscriptionResponse> {
     const live = await this.liveSubscriptionOrThrow(organizationId);
+    if (live.gateway === "MERCADO_PAGO" && !live.cancelAtPeriodEnd) {
+      // Mercado Pago cobra solo: si no se cancela allá, seguiría cobrando. Primero allá, después acá.
+      await this.cancelAtMercadoPago(live.externalProviderRef);
+    }
     const updated = await this.prisma.subscription.updateMany({
       where: { id: live.id, status: { in: LIVE_STATUSES }, cancelAtPeriodEnd: false },
       data: { cancelAtPeriodEnd: true, canceledAt: new Date() },
@@ -339,6 +479,10 @@ export class BillingService {
   /** Deshacer la cancelación mientras el período pagado siga vigente. */
   async resume(organizationId: string, user: { id: string }): Promise<BillingSubscriptionResponse> {
     const live = await this.liveSubscriptionOrThrow(organizationId);
+    if (live.gateway === "MERCADO_PAGO") {
+      // Una suscripción cancelada en Mercado Pago no se puede reactivar allá.
+      throw new ConflictException({ code: "NOT_RESUMABLE", message: "Con Mercado Pago no se puede reanudar: cuando termine el período, vuelve a contratar tu plan." });
+    }
     const updated = await this.prisma.subscription.updateMany({
       where: { id: live.id, status: SubscriptionStatus.ACTIVE, cancelAtPeriodEnd: true, currentPeriodEnd: { gt: new Date() } },
       data: { cancelAtPeriodEnd: false, canceledAt: null },
@@ -364,10 +508,9 @@ export class BillingService {
         message: `El plazo de retracto es de ${WITHDRAWAL_DAYS} días desde el primer cobro y ya pasó. Puedes cancelar tu plan: seguirá activo hasta el fin del período pagado.`,
       });
     }
-    if (live.gateway !== "WEBPAY_ONECLICK" || !this.webpay) {
+    if (live.gateway === "WEBPAY_ONECLICK" ? !this.webpay : live.gateway === "MERCADO_PAGO" ? !this.mercadoPago : true) {
       throw new UnprocessableEntityException({ code: "GATEWAY_UNAVAILABLE", message: "No podemos procesar el reembolso ahora. Escríbenos desde Soporte." });
     }
-    const gateway = this.webpay;
     const now = new Date();
     const claimed = await this.prisma.subscription.updateMany({
       where: { id: live.id, status: { in: LIVE_STATUSES } },
@@ -389,7 +532,7 @@ export class BillingService {
       const pending = payment.amount - payment.refundedAmount;
       if (pending <= 0) continue;
       try {
-        const refund = await gateway.refund({ buyOrder: payment.buyOrder, amount: pending });
+        const refund = await this.refundAtGateway(payment, pending);
         await this.prisma.payment.update({
           where: { id: payment.id },
           data: {
@@ -422,7 +565,13 @@ export class BillingService {
       }
     }
 
-    await this.forgetPaymentMethod(live, gateway);
+    if (live.gateway === "MERCADO_PAGO") {
+      await this.cancelAtMercadoPago(live.externalProviderRef).catch((error: unknown) =>
+        logger.error("billing: no se pudo cancelar en Mercado Pago tras el retracto", { subscriptionId: live.id, error: describe(error) }),
+      );
+    } else {
+      await this.forgetPaymentMethod(live, this.webpay!);
+    }
     await this.audit.record({
       organizationId,
       actorId: user.id,
@@ -435,6 +584,37 @@ export class BillingService {
     const content = withdrawalRefundedEmail({ organizationName: live.organization.name, planName: live.plan.name, refundedAmount, planUrl: this.planUrl() });
     await this.sendQuietly(user.email, content, live.id);
     return { refundedAmount };
+  }
+
+  /** Si este ambiente puede reembolsar el cobro por su pasarela. */
+  canRefund(payment: Pick<Payment, "gateway" | "providerPaymentId">): boolean {
+    return payment.gateway === "MERCADO_PAGO" ? Boolean(this.mercadoPago && payment.providerPaymentId) : Boolean(this.webpay);
+  }
+
+  /** Reembolso por la pasarela del cobro: Webpay por orden de compra, Mercado Pago por id de pago. */
+  async refundAtGateway(payment: Payment, amount: number): Promise<{ refundedAmount: number }> {
+    if (payment.gateway === "MERCADO_PAGO") {
+      if (!this.mercadoPago || !payment.providerPaymentId) {
+        throw new UnprocessableEntityException({ code: "GATEWAY_UNAVAILABLE", message: "Este cobro de Mercado Pago no se puede reembolsar desde acá." });
+      }
+      const refund = await this.mercadoPago.refundPayment(payment.providerPaymentId, amount);
+      return { refundedAmount: refund.refundedAmount || amount };
+    }
+    if (!this.webpay) throw new UnprocessableEntityException({ code: "GATEWAY_UNAVAILABLE", message: "Webpay no está configurado en este ambiente." });
+    return this.webpay.refund({ buyOrder: payment.buyOrder, amount });
+  }
+
+  /** Detiene los cobros en Mercado Pago. Si falla, no se toca nada acá: el cliente reintenta. */
+  private async cancelAtMercadoPago(preapprovalId: string | null): Promise<void> {
+    if (!this.mercadoPago || !preapprovalId) {
+      throw new UnprocessableEntityException({ code: "GATEWAY_UNAVAILABLE", message: "No podemos cancelar en Mercado Pago ahora. Escríbenos desde Soporte." });
+    }
+    try {
+      await this.mercadoPago.cancelSubscription(preapprovalId);
+    } catch (error) {
+      logger.error("billing: Mercado Pago no canceló la suscripción", { preapprovalId, error: describe(error) });
+      throw new BadGatewayException({ code: "GATEWAY_ERROR", message: "Mercado Pago no respondió. Tu plan sigue igual: intenta de nuevo en unos minutos." });
+    }
   }
 
   private async liveSubscriptionOrThrow(organizationId: string) {

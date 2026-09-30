@@ -8,3 +8,37 @@
    apps/web usa para el render público — necesita el mismo tratamiento. */
 @source "../../../packages/ui/src";
 @source "../../../packages/blocks-renderer/src";
+
+/* Movimiento del panel (F4.6c): entradas y confirmaciones breves y sutiles. Solo si la persona no
+   pidió reducir el movimiento — sin esta preferencia, todo aparece directo. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes impulza-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes impulza-pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    70% {
+      opacity: 1;
+      transform: scale(1.08);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  .motion-rise {
+    animation: impulza-rise 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .motion-pop {
+    animation: impulza-pop 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}

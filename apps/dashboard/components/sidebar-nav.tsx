@@ -24,7 +24,7 @@ const NAV_ITEMS = [
   { href: "/pedidos", label: "Pedidos", icon: ShoppingBag },
   { href: "/enlaces", label: "Enlaces y QR", icon: Link2 },
   { href: "/medios", label: "Medios", icon: ImageIcon },
-  { href: "/plan", label: "Plan y uso", icon: Gauge },
+  { href: "/plan", label: "Plan y pagos", icon: Gauge },
   { href: "/soporte", label: "Soporte", icon: LifeBuoy },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];

@@ -30,6 +30,9 @@ export function MarketingFooter({ bienvenidaHref, loginHref }: { bienvenidaHref:
           <Link href="/planes#faq" className="text-[#64748b] hover:text-[#0f172a]">
             Preguntas frecuentes
           </Link>
+          <Link href="/terminos" className="text-[#64748b] hover:text-[#0f172a]">
+            Términos del servicio
+          </Link>
         </div>
 
         <div className="flex flex-col gap-2 text-sm">

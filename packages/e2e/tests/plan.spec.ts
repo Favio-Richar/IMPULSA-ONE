@@ -1,26 +1,31 @@
 import { expect, test } from "@playwright/test";
 
-// F4.3 — plan y uso en el panel. La pantalla de plan con datos reales de la API (la organización
-// sembrada está en Gratis), y el aviso de "límite alcanzado" en un formulario de creación.
+// F4.3 — plan y uso en el panel (rediseñada en F4.6c como "Plan y pagos"). La pantalla con datos
+// reales de la API (la organización sembrada está en Gratis), y el aviso de "límite alcanzado" en
+// un formulario de creación.
 
-test("la pantalla de plan muestra el plan, el uso y el comparador", async ({ page }) => {
+test("la pantalla de plan muestra el plan, el uso y el comparador completo", async ({ page }) => {
   await page.goto("/plan");
-  await expect(page.getByRole("heading", { name: "Plan Gratis" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Uso del plan Gratis" })).toBeVisible();
   await expect(page.getByRole("meter", { name: "Sitios" })).toHaveAttribute("aria-valuetext", /de 1$/);
-  await expect(page.getByRole("heading", { name: "Comparar planes" })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: /Agencia/ })).toBeAttached();
+
+  // El comparador completo sigue disponible, plegado bajo las tarjetas.
+  await page.getByText("Ver la comparación completa de planes").click();
+  await expect(page.getByRole("columnheader", { name: /Agencia/ })).toBeVisible();
 
   // Mensual ↔ anual cambia los precios mostrados.
-  await page.getByRole("radio", { name: "Anual" }).click();
-  await expect(page.getByText("al año").first()).toBeVisible();
+  const profesional = page.getByTestId("plan-card-profesional");
+  await expect(profesional).toContainText("/mes");
+  await page.getByRole("radio", { name: /Anual/ }).click();
+  await expect(profesional).toContainText("/año");
+  await expect(profesional).toContainText("meses gratis");
 });
 
 test("la pantalla de plan no genera desplazamiento horizontal de la página", async ({ page }) => {
   await page.goto("/plan");
-  await expect(page.getByRole("heading", { name: "Comparar planes" })).toBeVisible();
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
+  await expect(page.getByRole("heading", { name: "Elige el plan para tu negocio" })).toBeVisible();
+  await page.getByText("Ver la comparación completa de planes").click();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
 

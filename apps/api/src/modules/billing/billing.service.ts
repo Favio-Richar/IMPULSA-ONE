@@ -1,9 +1,10 @@
-import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
-import { encryptSecret, type EmailAdapter } from "@impulza/auth";
+import { BadGatewayException, ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
+import { decryptSecret, encryptSecret, type EmailAdapter } from "@impulza/auth";
 import type { BillingOverviewResponse, BillingSubscriptionResponse, CheckoutRedirectResponse } from "@impulza/contracts";
 import {
   BillingCheckoutStatus,
   PaymentStatus,
+  PERMISSIONS,
   type Payment,
   type Plan,
   type PrismaClient,
@@ -18,8 +19,11 @@ import {
   periodEnd,
   priceFor,
   splitVat,
+  subscriptionCanceledEmail,
   subscriptionStartedEmail,
+  withdrawalRefundedEmail,
   WITHDRAWAL_DAYS,
+  withinWithdrawalWindow,
 } from "@impulza/payments";
 import { LEGAL_DOCUMENT_VERSIONS, type StartCheckoutInput } from "@impulza/validation";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
@@ -60,15 +64,17 @@ export class BillingService {
     return this.webpay && env.API_PUBLIC_URL ? ["WEBPAY_ONECLICK"] : [];
   }
 
-  async overview(organizationId: string): Promise<BillingOverviewResponse> {
-    const [live, payments] = await Promise.all([
+  async overview(organizationId: string, roleId: string): Promise<BillingOverviewResponse> {
+    const [live, payments, grant] = await Promise.all([
       this.currentSubscription(organizationId),
       this.prisma.payment.findMany({ where: { organizationId }, orderBy: { createdAt: "desc" }, take: 24 }),
+      this.prisma.rolePermission.findFirst({ where: { roleId, permission: { key: PERMISSIONS.BILLING_MANAGE } } }),
     ]);
     return {
       subscription: live ? this.toSubscriptionResponse(live) : null,
       gateways: this.availableGateways(),
       payments: payments.map((payment) => this.toPaymentResponse(payment)),
+      canManage: grant !== null,
       legal: {
         termsVersion: LEGAL_DOCUMENT_VERSIONS.terms,
         withdrawalNoticeVersion: LEGAL_DOCUMENT_VERSIONS.withdrawal_notice,
@@ -290,7 +296,7 @@ export class BillingService {
       planName: checkout.plan.name,
       cycle: checkout.billingCycle,
       amount,
-      planUrl: `${env.APP_BASE_URL.replace(/\/+$/, "")}/plan`,
+      planUrl: this.planUrl(),
       periodEnd: end,
       cardBrand: enrollment.cardBrand,
       cardLast4: enrollment.cardLast4,
@@ -300,6 +306,164 @@ export class BillingService {
       .send({ to: checkout.user.email, subject: content.subject, text: content.text })
       .catch((error: unknown) => logger.warn("billing: no se pudo enviar el comprobante", { subscriptionId: subscription.id, error: describe(error) }));
     return "exito";
+  }
+
+  /**
+   * Cancelar por el mismo medio en que se contrató (Ley 19.496, ADR-012 §3): un clic, sin trámites.
+   * El plan sigue vigente hasta el fin del período pagado y no se vuelve a cobrar; el worker lo
+   * cierra ese día. No borra la tarjeta todavía: así "reanudar" no exige inscribirla de nuevo.
+   */
+  async cancel(organizationId: string, user: { id: string; email: string }): Promise<BillingSubscriptionResponse> {
+    const live = await this.liveSubscriptionOrThrow(organizationId);
+    const updated = await this.prisma.subscription.updateMany({
+      where: { id: live.id, status: { in: LIVE_STATUSES }, cancelAtPeriodEnd: false },
+      data: { cancelAtPeriodEnd: true, canceledAt: new Date() },
+    });
+    if (updated.count !== 1) {
+      throw new ConflictException({ code: "ALREADY_CANCELED", message: "Tu plan ya estaba cancelado." });
+    }
+    await this.audit.record({
+      organizationId,
+      actorId: user.id,
+      action: "billing.subscription_canceled",
+      targetType: "subscription",
+      targetId: live.id,
+      metadata: { planCode: live.plan.code, activeUntil: live.currentPeriodEnd.toISOString() },
+    });
+    logger.info("billing: suscripción cancelada al fin del período", { organizationId, subscriptionId: live.id });
+    const content = subscriptionCanceledEmail({ organizationName: live.organization.name, planName: live.plan.name, activeUntil: live.currentPeriodEnd, planUrl: this.planUrl() });
+    await this.sendQuietly(user.email, content, live.id);
+    return this.toSubscriptionResponse(await this.prisma.subscription.findUniqueOrThrow({ where: { id: live.id }, include: { plan: true } }));
+  }
+
+  /** Deshacer la cancelación mientras el período pagado siga vigente. */
+  async resume(organizationId: string, user: { id: string }): Promise<BillingSubscriptionResponse> {
+    const live = await this.liveSubscriptionOrThrow(organizationId);
+    const updated = await this.prisma.subscription.updateMany({
+      where: { id: live.id, status: SubscriptionStatus.ACTIVE, cancelAtPeriodEnd: true, currentPeriodEnd: { gt: new Date() } },
+      data: { cancelAtPeriodEnd: false, canceledAt: null },
+    });
+    if (updated.count !== 1) {
+      throw new ConflictException({ code: "NOT_RESUMABLE", message: "Tu plan no está cancelado o ya terminó." });
+    }
+    await this.audit.record({ organizationId, actorId: user.id, action: "billing.subscription_resumed", targetType: "subscription", targetId: live.id });
+    return this.toSubscriptionResponse(await this.prisma.subscription.findUniqueOrThrow({ where: { id: live.id }, include: { plan: true } }));
+  }
+
+  /**
+   * Derecho a retracto (Ley 19.496 art. 3 bis b, ADR-012 §3): en los 10 días desde el primer cobro,
+   * cancela de inmediato y devuelve el 100 % por la misma pasarela. Se **reclama** la suscripción
+   * (pasa a CANCELED de forma condicional) antes de reembolsar, así dos clics no reembolsan dos
+   * veces; si la pasarela falla antes de devolver nada, se revierte y el cliente puede reintentar.
+   */
+  async withdraw(organizationId: string, user: { id: string; email: string }): Promise<{ refundedAmount: number }> {
+    const live = await this.liveSubscriptionOrThrow(organizationId);
+    if (!live.firstPaidAt || !withinWithdrawalWindow(live.firstPaidAt)) {
+      throw new UnprocessableEntityException({
+        code: "WITHDRAWAL_EXPIRED",
+        message: `El plazo de retracto es de ${WITHDRAWAL_DAYS} días desde el primer cobro y ya pasó. Puedes cancelar tu plan: seguirá activo hasta el fin del período pagado.`,
+      });
+    }
+    if (live.gateway !== "WEBPAY_ONECLICK" || !this.webpay) {
+      throw new UnprocessableEntityException({ code: "GATEWAY_UNAVAILABLE", message: "No podemos procesar el reembolso ahora. Escríbenos desde Soporte." });
+    }
+    const gateway = this.webpay;
+    const now = new Date();
+    const claimed = await this.prisma.subscription.updateMany({
+      where: { id: live.id, status: { in: LIVE_STATUSES } },
+      data: {
+        status: SubscriptionStatus.CANCELED,
+        canceledAt: now,
+        nextChargeAt: null,
+        cancelAtPeriodEnd: false,
+        currentPeriodEnd: now > live.currentPeriodStart ? now : live.currentPeriodEnd,
+      },
+    });
+    if (claimed.count !== 1) {
+      throw new ConflictException({ code: "ALREADY_CANCELED", message: "Tu plan ya estaba cancelado." });
+    }
+
+    const payments = await this.prisma.payment.findMany({ where: { subscriptionId: live.id, status: PaymentStatus.APPROVED }, orderBy: { createdAt: "asc" } });
+    let refundedAmount = 0;
+    for (const payment of payments) {
+      const pending = payment.amount - payment.refundedAmount;
+      if (pending <= 0) continue;
+      try {
+        const refund = await gateway.refund({ buyOrder: payment.buyOrder, amount: pending });
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: PaymentStatus.REFUNDED,
+            refundedAmount: payment.refundedAmount + refund.refundedAmount,
+            refundedAt: new Date(),
+            // Sin boleta emitida todavía: ya no hace falta. Si ya se emitió, requiere nota de crédito (F4.6d).
+            ...(payment.taxDocumentStatus === "PENDING" ? { taxDocumentStatus: "NOT_REQUIRED" as const } : {}),
+          },
+        });
+        refundedAmount += refund.refundedAmount;
+      } catch (error) {
+        logger.error("billing: falló el reembolso por retracto", { paymentId: payment.id, error: describe(error) });
+        if (refundedAmount === 0) {
+          // Nada devuelto: se deshace la cancelación para que el cliente pueda reintentar.
+          await this.prisma.subscription.update({
+            where: { id: live.id },
+            data: {
+              status: live.status,
+              canceledAt: live.canceledAt,
+              nextChargeAt: live.nextChargeAt,
+              cancelAtPeriodEnd: live.cancelAtPeriodEnd,
+              currentPeriodEnd: live.currentPeriodEnd,
+            },
+          });
+          throw new BadGatewayException({ code: "REFUND_FAILED", message: "Webpay no pudo procesar el reembolso. Tu plan sigue igual: intenta de nuevo en unos minutos." });
+        }
+        // Parte devuelta: la suscripción queda cancelada y el saldo lo resuelve el equipo (F4.6d).
+        await this.prisma.payment.update({ where: { id: payment.id }, data: { failureReason: "withdrawal_refund_failed" } });
+      }
+    }
+
+    await this.forgetPaymentMethod(live, gateway);
+    await this.audit.record({
+      organizationId,
+      actorId: user.id,
+      action: "billing.withdrawal_refunded",
+      targetType: "subscription",
+      targetId: live.id,
+      metadata: { planCode: live.plan.code, refundedAmount },
+    });
+    logger.info("billing: retracto con reembolso", { organizationId, subscriptionId: live.id, refundedAmount });
+    const content = withdrawalRefundedEmail({ organizationName: live.organization.name, planName: live.plan.name, refundedAmount, planUrl: this.planUrl() });
+    await this.sendQuietly(user.email, content, live.id);
+    return { refundedAmount };
+  }
+
+  private async liveSubscriptionOrThrow(organizationId: string) {
+    const live = await this.prisma.subscription.findFirst({
+      where: { organizationId, status: { in: LIVE_STATUSES } },
+      include: { plan: true, organization: { select: { name: true } } },
+    });
+    if (!live) throw new NotFoundException({ code: "NO_SUBSCRIPTION", message: "No tienes un plan de pago activo." });
+    return live;
+  }
+
+  /** Borra la inscripción en la pasarela y nuestra referencia: la tarjeta ya no se usará. */
+  private async forgetPaymentMethod(subscription: Subscription, gateway: MerchantRecurringGateway): Promise<void> {
+    if (!subscription.paymentMethodRefEncrypted) return;
+    const paymentMethodRef = decryptSecret(subscription.paymentMethodRefEncrypted, env.AUTH_ENCRYPTION_KEY);
+    await gateway
+      .removeEnrollment({ customerRef: customerRefFor(subscription.organizationId), paymentMethodRef })
+      .catch((error: unknown) => logger.warn("billing: no se pudo borrar la inscripción", { subscriptionId: subscription.id, error: describe(error) }));
+    await this.prisma.subscription.update({ where: { id: subscription.id }, data: { paymentMethodRefEncrypted: null } });
+  }
+
+  private planUrl(): string {
+    return `${env.APP_BASE_URL.replace(/\/+$/, "")}/plan`;
+  }
+
+  private async sendQuietly(to: string, content: { subject: string; text: string }, subscriptionId: string): Promise<void> {
+    await this.emailAdapter
+      .send({ to, subject: content.subject, text: content.text })
+      .catch((error: unknown) => logger.warn("billing: no se pudo enviar el correo", { subscriptionId, error: describe(error) }));
   }
 
   /** El token ya no está abierto: repetir el resultado que tuvo, sin tocar nada. */

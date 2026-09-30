@@ -17,6 +17,7 @@
     "@impulza/tsconfig": "workspace:*",
     "@playwright/test": "1.63.0",
     "@types/node": "26.5.1",
+    "ioredis": "6.0.0",
     "otplib": "13.5.0",
     "typescript": "6.0.3"
   }

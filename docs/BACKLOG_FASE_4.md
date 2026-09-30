@@ -39,8 +39,9 @@ bloqueado explícitamente.
 | F4.5 — Soporte mínimo | Terminada (local; ver deudas) |
 | F4.6a — Motor de facturación y Webpay Oneclick | Lista para tu revisión (sin pantalla: se revisa por API, pruebas y el smoke contra Transbank; la pantalla es F4.6c) |
 | F4.6b — Mercado Pago Suscripciones | Pendiente |
-| F4.6c — Elegir plan, pagar, cancelar y retracto en el panel | Pendiente |
+| F4.6c — Elegir plan, pagar, cancelar y retracto en el panel | Lista para tu revisión (capturas en `docs/design/capturas/f46c/`) |
 | F4.6d — Pagos, ingresos (MRR) y documentos tributarios en la superadministración | Pendiente |
+| F4.6e — Cambiar de plan con uno activo (subir/bajar con prorrateo) | Propuesta (surgió en F4.6c) |
 | F4.7 — Dominios personalizados | Lista para tu revisión (SSL depende de F4.8; límite por plan, de la decisión #4) |
 | F4.8 — Producción y monitoreo | Bloqueada (decisión de hosting) |
 | F4.9 — Aislamiento y seguridad de Fase 4 | Lista para tu revisión (el caso de dominios se suma con F4.7, que todavía no existe) |
@@ -353,6 +354,40 @@ Se divide en cuatro historias; el aislamiento de todas se suma a F4.9 (suite cen
   reembolso" en los 10 días del primer cobro. Historial de pagos con comprobante.
 - Correos: suscripción creada, cobro, cobro fallido, aviso de renovación anual, cancelación,
   reembolso.
+
+> **Estado (2026-09-29): F4.6c lista para revisión.**
+> - API: `POST organizations/:org/billing/cancel` (fin del período, sin volver a cobrar, correo),
+>   `.../resume` (mientras el período siga vigente) y `.../withdraw` (retracto: dentro de 10 días,
+>   cancela de inmediato, reembolsa el 100 % por Transbank, borra la inscripción de la tarjeta y
+>   marca la boleta como no requerida si no se había emitido). Todas con `billing.manage`, límite de
+>   tasa y auditoría. `canManage` en la respuesta lo decide el servidor. Si el reembolso falla sin
+>   haber devuelto nada, la cancelación se revierte y se puede reintentar (502 `REFUND_FAILED`).
+>   OpenAPI regenerado (148 rutas). API e2e de facturación 17.
+> - **Prueba de concurrencia rehecha:** la primera versión ("tres retractos simultáneos reembolsan
+>   una vez") pasaba con el reclamo condicional quitado, porque las peticiones nunca se cruzaban. Se
+>   forzó el peor caso con una barrera (los tres leen la suscripción antes de que ninguno la
+>   reclame): con el código roto reembolsan los tres; con el correcto, uno.
+> - Panel `/plan` → "Plan y pagos": aviso del resultado de Webpay (con foco para lectores de
+>   pantalla y consulta cada 10 s si el pago quedó en confirmación), tarjeta de la suscripción
+>   (estado, próximo cobro, tarjeta •••• 6623, plazo de retracto, cancelar con confirmación en
+>   pantalla, reanudar, cancelar y pedir reembolso), tarjetas de planes con precio final, ahorro
+>   anual y "Recomendado", diálogo de pago con neto/IVA/total, renovación explícita, las dos
+>   aceptaciones obligatorias con enlace a los Términos y salida a Webpay por POST de formulario;
+>   comparador completo plegable e historial de pagos con neto e IVA. Animaciones de entrada solo
+>   con `prefers-reduced-motion: no-preference`. Menú: "Plan y pagos".
+> - Sitio comercial: `/terminos` (servicio, precios con IVA, renovación, cancelación por el mismo
+>   medio, retracto, reembolsos, documentos tributarios, uso aceptable, datos personales) y enlace en
+>   el pie. Slugs `terminos`, `privacidad` y `legal` reservados. **El texto es un borrador técnico:
+>   debe revisarlo un abogado antes de cobrar en producción.**
+> - Contraste medido (no supuesto): los badges verde y ámbar sobre fondo al 10 % daban 4,38 y 4,39
+>   (AA exige 4,5); se bajaron al 5 % con borde (4,70 y 4,68).
+> - Pruebas: panel 20 (textos de facturación), Playwright `plan.spec.ts` (actualizada al rediseño)
+>   y `plan-pagos.spec.ts` 16/16 en teléfono y escritorio, repetible: contratar con token **real**
+>   de Transbank (64 hex por POST), resultados al volver, cancelar/reanudar, retracto con Webpay
+>   fallando (se informa y el plan queda igual) y sin retracto pasados 10 días.
+> - Fuera de alcance, declarado: **cambiar de plan** con uno activo (subir o bajar con prorrateo) —
+>   hoy se cancela al fin del período y se contrata el otro; queda propuesto como F4.6e. El plan
+>   Agencia no se ofrece en línea hasta la decisión #8.
 
 **F4.6d — Pagos, MRR y documentos tributarios en la superadministración**
 - MRR/ARR, altas y bajas del mes, suscripciones morosas, lista de pagos, reembolso manual

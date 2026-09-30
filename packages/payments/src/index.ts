@@ -17,6 +17,8 @@ export {
   renewalChargedEmail,
   chargeFailedEmail,
   subscriptionEndedEmail,
+  subscriptionCanceledEmail,
+  withdrawalRefundedEmail,
   type BillingEmailBase,
   type SubscriptionEmail,
 } from "./emails.js";

@@ -48,6 +48,9 @@ export const billingOverviewResponse = z.object({
   /** Pasarelas configuradas en este ambiente: el panel solo ofrece estas. */
   gateways: z.array(gateway),
   payments: z.array(billingPaymentResponse),
+  /** Si quien pregunta puede contratar, cancelar o pedir el retracto (`billing.manage`). Lo decide
+   *  el servidor; el panel solo muestra u oculta los botones. */
+  canManage: z.boolean(),
   legal: z.object({ termsVersion: z.string(), withdrawalNoticeVersion: z.string(), withdrawalDays: z.number().int() }),
 });
 
@@ -58,6 +61,9 @@ export const checkoutRedirectResponse = z.object({
   fields: z.record(z.string(), z.string()),
 });
 
+export const withdrawalResponse = z.object({ refundedAmount: z.number().int() });
+
+export type WithdrawalResponse = z.infer<typeof withdrawalResponse>;
 export type BillingSubscriptionResponse = z.infer<typeof billingSubscriptionResponse>;
 export type BillingPaymentResponse = z.infer<typeof billingPaymentResponse>;
 export type BillingOverviewResponse = z.infer<typeof billingOverviewResponse>;

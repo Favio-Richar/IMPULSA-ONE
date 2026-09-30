@@ -1,23 +1,17 @@
 "use client";
 
 import type { OrganizationPlanResponse, PlanLimitsResponse, PlanResponse } from "@impulza/contracts";
-import {
-  Button,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  cn,
-} from "@impulza/ui";
-import { AlertTriangle, Check, CircleAlert } from "lucide-react";
-import { useState } from "react";
+import { EmptyState, ErrorState, LoadingState, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, cn } from "@impulza/ui";
+import { AlertTriangle, CircleAlert } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { PaymentHistory } from "../../../components/billing/payment-history";
+import { PaymentResultBanner } from "../../../components/billing/payment-result-banner";
+import { PlanChooser } from "../../../components/billing/plan-chooser";
+import { SubscriptionCard } from "../../../components/billing/subscription-card";
 import { useActiveOrgStore } from "../../../lib/active-org-store";
-import { env } from "../../../lib/env";
+import { parsePaymentOutcome } from "../../../lib/billing-text";
+import { useBilling } from "../../../lib/hooks/use-billing";
 import { useOrganizationPlan, usePlanCatalog } from "../../../lib/hooks/use-plans";
 
 type UsageKey = keyof OrganizationPlanResponse["usage"];
@@ -55,13 +49,6 @@ const SOURCE_LABELS: Record<OrganizationPlanResponse["source"], string> = {
 
 const integer = new Intl.NumberFormat("es-CL");
 
-function formatPrice(amount: number, currency: string): string {
-  if (amount === 0) {
-    return "Gratis";
-  }
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-}
-
 function formatLimit(value: number | null, unit?: string): string {
   if (value === null) {
     return "Sin límite";
@@ -73,55 +60,70 @@ export default function PlanPage(): React.JSX.Element {
   const activeOrganizationId = useActiveOrgStore((state) => state.activeOrganizationId);
 
   if (!activeOrganizationId) {
-    return (
-      <EmptyState title="Selecciona una organización" description="Elige una organización arriba para ver su plan." />
-    );
+    return <EmptyState title="Selecciona una organización" description="Elige una organización arriba para ver su plan." />;
   }
 
-  return <PlanOverview organizationId={activeOrganizationId} />;
+  // `useSearchParams` (el resultado de Webpay) exige un límite de Suspense en el App Router.
+  return (
+    <Suspense fallback={<LoadingState label="Cargando tu plan…" />}>
+      <PlanOverview organizationId={activeOrganizationId} />
+    </Suspense>
+  );
 }
 
 function PlanOverview({ organizationId }: { organizationId: string }): React.JSX.Element {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const outcome = parsePaymentOutcome(searchParams.get("pago"));
+
   const planQuery = useOrganizationPlan(organizationId);
   const catalogQuery = usePlanCatalog();
+  const billingQuery = useBilling(organizationId, { pollWhilePending: outcome === "pendiente" });
 
-  if (planQuery.isPending || catalogQuery.isPending) {
+  if (planQuery.isPending || catalogQuery.isPending || billingQuery.isPending) {
     return <LoadingState label="Cargando tu plan…" />;
   }
-  if (planQuery.isError || catalogQuery.isError) {
+  if (planQuery.isError || catalogQuery.isError || billingQuery.isError) {
     return (
       <ErrorState
         onRetry={() => {
           void planQuery.refetch();
           void catalogQuery.refetch();
+          void billingQuery.refetch();
         }}
       />
     );
   }
 
   const { plan, source, usage } = planQuery.data;
+  const billing = billingQuery.data;
+  const plans = [...catalogQuery.data].sort((a, b) => a.sortOrder - b.sortOrder);
+  // "Agencia" no se contrata en línea hasta definir el modo agencia (decisión #8).
+  const purchasable = plans.filter((item) => item.code !== "agencia");
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold text-foreground">Plan y uso</h1>
+        <h1 className="text-lg font-semibold text-foreground">Plan y pagos</h1>
         <p className="text-sm text-muted-foreground">
-          Lo que incluye tu plan y cuánto estás usando. Bajar de plan nunca borra nada: si algo
-          queda por encima del nuevo límite, se conserva y solo no puedes crear más.
+          Lo que incluye tu plan, cuánto estás usando y tus pagos. Cambiar o terminar un plan nunca borra nada: si algo queda por encima del límite, se
+          conserva y solo no puedes crear más.
         </p>
       </div>
 
-      <section aria-labelledby="plan-actual" className="flex flex-col gap-4 rounded-lg border border-border bg-background p-4">
+      {outcome ? <PaymentResultBanner outcome={outcome} onDismiss={() => router.replace(pathname)} /> : null}
+
+      {billing.subscription ? <SubscriptionCard organizationId={organizationId} subscription={billing.subscription} canManage={billing.canManage} /> : null}
+
+      <section aria-labelledby="plan-actual" className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div>
             <h2 id="plan-actual" className="text-base font-semibold text-foreground">
-              Plan {plan.name}
+              Uso del plan {plan.name}
             </h2>
             <p className="text-sm text-muted-foreground">{SOURCE_LABELS[source]}</p>
           </div>
-          <p className="text-sm text-foreground">
-            {plan.priceMonthly === 0 ? "Gratis" : `${formatPrice(plan.priceMonthly, plan.currency)} al mes`}
-          </p>
         </div>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {USAGE_ROWS.map((row) => (
@@ -130,7 +132,18 @@ function PlanOverview({ organizationId }: { organizationId: string }): React.JSX
         </ul>
       </section>
 
-      <PlanComparator plans={catalogQuery.data} currentCode={plan.code} />
+      <PlanChooser organizationId={organizationId} plans={purchasable} currentCode={plan.code} billing={billing} />
+
+      <details className="group rounded-lg border border-border bg-background">
+        <summary className="cursor-pointer select-none rounded-lg px-5 py-3 text-sm font-medium text-foreground hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]">
+          Ver la comparación completa de planes
+        </summary>
+        <div className="border-t border-border p-4">
+          <PlanComparator plans={plans} currentCode={plan.code} />
+        </div>
+      </details>
+
+      <PaymentHistory payments={billing.payments} />
     </div>
   );
 }
@@ -140,17 +153,7 @@ function PlanOverview({ organizationId }: { organizationId: string }): React.JSX
  * además se escribe con ícono y texto — nunca solo con color (WCAG). El riel es un tono más claro
  * de la misma escala.
  */
-function UsageMeter({
-  label,
-  hint,
-  used,
-  max,
-}: {
-  label: string;
-  hint?: string;
-  used: number;
-  max: number | null;
-}): React.JSX.Element {
+function UsageMeter({ label, hint, used, max }: { label: string; hint?: string; used: number; max: number | null }): React.JSX.Element {
   const ratio = max === null || max === 0 ? 0 : used / max;
   const state = max === null ? "unlimited" : used > max ? "over" : used >= max ? "full" : ratio >= 0.8 ? "near" : "ok";
 
@@ -172,14 +175,11 @@ function UsageMeter({
           aria-valuemax={max}
           aria-valuenow={Math.min(used, max)}
           aria-valuetext={`${used} de ${max}`}
-          className={cn(
-            "h-2 w-full rounded-sm",
-            state === "over" || state === "full" ? "bg-danger/15" : state === "near" ? "bg-warning/15" : "bg-primary/15",
-          )}
+          className={cn("h-2 w-full rounded-sm", state === "over" || state === "full" ? "bg-danger/15" : state === "near" ? "bg-warning/15" : "bg-primary/15")}
         >
           <div
             className={cn(
-              "h-2 rounded-sm",
+              "h-2 rounded-sm transition-[width] duration-500 ease-out",
               state === "over" || state === "full" ? "bg-danger" : state === "near" ? "bg-warning" : "bg-primary",
             )}
             style={{ width: `${Math.min(Math.max(ratio * 100, used > 0 ? 3 : 0), 100)}%` }}
@@ -204,120 +204,35 @@ function UsageMeter({
 }
 
 function PlanComparator({ plans, currentCode }: { plans: PlanResponse[]; currentCode: string }): React.JSX.Element {
-  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
-  const upgradeUrl = env.NEXT_PUBLIC_PLAN_UPGRADE_URL;
-
-  function upgradeHref(code: string): string | null {
-    if (!upgradeUrl) {
-      return null;
-    }
-    if (upgradeUrl.startsWith("mailto:")) {
-      const subject = encodeURIComponent(`Cambio al plan ${code}`);
-      return `${upgradeUrl}${upgradeUrl.includes("?") ? "&" : "?"}subject=${subject}`;
-    }
-    const url = new URL(upgradeUrl);
-    url.searchParams.set("plan", code);
-    return url.toString();
-  }
-
   return (
-    <section aria-labelledby="comparador" className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="comparador" className="text-base font-semibold text-foreground">
-          Comparar planes
-        </h2>
-        <div role="radiogroup" aria-label="Forma de pago" className="inline-flex rounded-md border border-border p-0.5">
-          {(["monthly", "yearly"] as const).map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="radio"
-              aria-checked={billing === key}
-              onClick={() => setBilling(key)}
-              className={cn(
-                "rounded-sm px-3 py-1 text-sm transition-colors",
-                billing === key ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-surface",
-              )}
-            >
-              {key === "monthly" ? "Mensual" : "Anual"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {/* Primera columna fija: en un teléfono la tabla se desplaza de lado y sin esto se pierde
-                de vista qué fila es cuál. */}
-            <TableHead className="sticky left-0 z-10 bg-surface">
-              <span className="sr-only">Característica</span>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          {/* Primera columna fija: en un teléfono la tabla se desplaza de lado y sin esto se pierde
+              de vista qué fila es cuál. */}
+          <TableHead className="sticky left-0 z-10 bg-surface">
+            <span className="sr-only">Característica</span>
+          </TableHead>
+          {plans.map((plan) => (
+            <TableHead key={plan.code} className={cn("text-center", plan.code === currentCode && "bg-primary/10")}>
+              <span className="block text-foreground">{plan.name}</span>
+              {plan.code === currentCode ? <span className="block text-xs font-normal normal-case text-primary">Tu plan</span> : null}
             </TableHead>
-            {plans.map((plan) => (
-              <TableHead key={plan.code} className={cn("text-center", plan.code === currentCode && "bg-primary/10")}>
-                <span className="block text-foreground">{plan.name}</span>
-                {plan.code === currentCode ? <span className="block text-xs font-normal normal-case text-primary">Tu plan</span> : null}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow>
-            <TableCell className="sticky left-0 z-10 bg-background font-medium">Precio</TableCell>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {COMPARATOR_ROWS.map((row) => (
+          <TableRow key={row.key}>
+            <TableCell className="sticky left-0 z-10 bg-background">{row.label}</TableCell>
             {plans.map((plan) => (
               <TableCell key={plan.code} className={cn("text-center tabular-nums", plan.code === currentCode && "bg-primary/5")}>
-                {formatPrice(billing === "monthly" ? plan.priceMonthly : plan.priceYearly, plan.currency)}
-                {(billing === "monthly" ? plan.priceMonthly : plan.priceYearly) > 0 ? (
-                  <span className="block text-xs text-muted-foreground">{billing === "monthly" ? "al mes" : "al año"}</span>
-                ) : null}
+                {formatLimit(plan.limits[row.key], row.unit)}
               </TableCell>
             ))}
           </TableRow>
-          {COMPARATOR_ROWS.map((row) => (
-            <TableRow key={row.key}>
-              <TableCell className="sticky left-0 z-10 bg-background">{row.label}</TableCell>
-              {plans.map((plan) => (
-                <TableCell key={plan.code} className={cn("text-center tabular-nums", plan.code === currentCode && "bg-primary/5")}>
-                  {formatLimit(plan.limits[row.key], row.unit)}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-          <TableRow>
-            <TableCell className="sticky left-0 z-10 bg-background">
-              <span className="sr-only">Acción</span>
-            </TableCell>
-            {plans.map((plan) => {
-              const href = upgradeHref(plan.code);
-              return (
-                <TableCell key={plan.code} className={cn("text-center", plan.code === currentCode && "bg-primary/5")}>
-                  {plan.code === currentCode ? (
-                    <span className="inline-flex items-center gap-1 text-sm text-primary">
-                      <Check className="size-4" aria-hidden="true" />
-                      Actual
-                    </span>
-                  ) : href ? (
-                    <Button asChild size="sm" variant="secondary">
-                      <a href={href} target="_blank" rel="noopener noreferrer">
-                        Solicitar
-                      </a>
-                    </Button>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-              );
-            })}
-          </TableRow>
-        </TableBody>
-      </Table>
-
-      <p className="text-xs text-muted-foreground">
-        Precios en pesos chilenos, valores provisorios.{" "}
-        {upgradeUrl
-          ? "El pago en línea llega pronto: por ahora, el cambio de plan se solicita y lo activa el equipo de Impulza One."
-          : "El pago en línea llega pronto. Por ahora, para cambiar de plan escríbele al equipo de Impulza One."}
-      </p>
-    </section>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

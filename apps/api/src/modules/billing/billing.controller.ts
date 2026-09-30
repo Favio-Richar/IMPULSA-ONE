@@ -1,6 +1,6 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiExcludeEndpoint, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { billingOverviewResponse, checkoutRedirectResponse } from "@impulza/contracts";
+import { billingOverviewResponse, billingSubscriptionResponse, checkoutRedirectResponse, withdrawalResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import { startCheckoutSchema, type StartCheckoutInput } from "@impulza/validation";
 import type { Response } from "express";
@@ -14,6 +14,7 @@ import { ApiOrganizationIdParam, ApiOrganizationScopedErrors, ApiRateLimited, Ap
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
 import { OrganizationMembershipGuard } from "../organizations/guards/organization-membership.guard.js";
+import type { RequestWithMembership } from "../organizations/request-with-membership.js";
 import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
 import { BillingService } from "./billing.service.js";
@@ -35,8 +36,8 @@ export class BillingController {
     description: "La suscripción con derecho (o la última terminada), los últimos 24 cobros y las pasarelas que este ambiente ofrece. Nunca datos de tarjeta más allá de marca y últimos 4 dígitos (F4.6a).",
   })
   @ApiZodResponse(200, billingOverviewResponse, "Estado de facturación de la organización.")
-  async overview(@Param("organizationId") organizationId: string) {
-    return this.billing.overview(organizationId);
+  async overview(@Param("organizationId") organizationId: string, @Req() req: RequestWithMembership) {
+    return this.billing.overview(organizationId, req.membership.roleId);
   }
 
   @Post("checkout")
@@ -56,6 +57,56 @@ export class BillingController {
   @ApiRateLimited(10, 600)
   async checkout(@Param("organizationId") organizationId: string, @CurrentUser() user: User, @Body(new ZodValidationPipe(startCheckoutSchema)) body: StartCheckoutInput) {
     return this.billing.startCheckout(organizationId, user, body);
+  }
+
+  @Post("cancel")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.BILLING_MANAGE)
+  @RateLimit({ limit: 10, windowSeconds: 600, keyPrefix: "billing-cancel" })
+  @ApiOperation({
+    summary: "Cancelar el plan de pago",
+    description: "Término por el mismo medio en que se contrató (Ley 19.496): sin trámites. Sigue vigente hasta el fin del período pagado y no se vuelve a cobrar.",
+  })
+  @ApiZodResponse(200, billingSubscriptionResponse, "Suscripción cancelada al fin del período.")
+  @ApiResponse({ status: 404, description: "`NO_SUBSCRIPTION`: no hay un plan de pago activo." })
+  @ApiResponse({ status: 409, description: "`ALREADY_CANCELED`." })
+  @ApiRateLimited(10, 600)
+  async cancel(@Param("organizationId") organizationId: string, @CurrentUser() user: User) {
+    return this.billing.cancel(organizationId, user);
+  }
+
+  @Post("resume")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.BILLING_MANAGE)
+  @RateLimit({ limit: 10, windowSeconds: 600, keyPrefix: "billing-resume" })
+  @ApiOperation({ summary: "Reanudar un plan cancelado", description: "Solo mientras el período pagado siga vigente; vuelve a renovarse con la misma tarjeta." })
+  @ApiZodResponse(200, billingSubscriptionResponse, "Suscripción reanudada.")
+  @ApiResponse({ status: 404, description: "`NO_SUBSCRIPTION`." })
+  @ApiResponse({ status: 409, description: "`NOT_RESUMABLE`: no está cancelada o ya terminó." })
+  @ApiRateLimited(10, 600)
+  async resume(@Param("organizationId") organizationId: string, @CurrentUser() user: User) {
+    return this.billing.resume(organizationId, user);
+  }
+
+  @Post("withdraw")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.BILLING_MANAGE)
+  @RateLimit({ limit: 5, windowSeconds: 600, keyPrefix: "billing-withdraw" })
+  @ApiOperation({
+    summary: "Ejercer el derecho a retracto",
+    description: "Dentro de los 10 días desde el primer cobro (Ley 19.496 art. 3 bis b): cancela de inmediato y reembolsa el 100 % por la misma pasarela. La cuenta vuelve a Gratis sin perder contenido.",
+  })
+  @ApiZodResponse(200, withdrawalResponse, "Plan cancelado y monto reembolsado.")
+  @ApiResponse({ status: 404, description: "`NO_SUBSCRIPTION`." })
+  @ApiResponse({ status: 409, description: "`ALREADY_CANCELED`." })
+  @ApiResponse({ status: 422, description: "`WITHDRAWAL_EXPIRED` o `GATEWAY_UNAVAILABLE`." })
+  @ApiResponse({ status: 502, description: "`REFUND_FAILED`: la pasarela no reembolsó; el plan sigue igual." })
+  @ApiRateLimited(5, 600)
+  async withdraw(@Param("organizationId") organizationId: string, @CurrentUser() user: User) {
+    return this.billing.withdraw(organizationId, user);
   }
 }
 

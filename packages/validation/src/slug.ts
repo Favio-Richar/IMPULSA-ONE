@@ -43,6 +43,10 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "producto",
   "productos",
   "precios",
+  // Páginas legales del sitio comercial (F4.6c, `apps/web/app/terminos`) y las que vendrán.
+  "terminos",
+  "privacidad",
+  "legal",
   // Catálogo y pedidos (F5.5): reservados de entrada para futuras rutas propias.
   "catalogo",
   "pedido",

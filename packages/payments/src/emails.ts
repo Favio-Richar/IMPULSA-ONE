@@ -120,3 +120,35 @@ export function subscriptionEndedEmail(input: { organizationName: string; planNa
     ].join("\n"),
   };
 }
+
+export function subscriptionCanceledEmail(input: { organizationName: string; planName: string; activeUntil: Date; planUrl: string | null }): SubscriptionEmail {
+  return {
+    subject: `Cancelaste tu plan ${input.planName}`,
+    text: [
+      `Hola, ${input.organizationName}:`,
+      "",
+      `Recibimos la cancelación de tu plan ${input.planName}. No volveremos a cobrarte.`,
+      "",
+      `Tu plan sigue activo hasta el ${formatDate(input.activeUntil)}. Después, tu cuenta pasa al plan Gratis sin perder nada de lo que creaste.`,
+      "",
+      `¿Cambiaste de opinión? Puedes reanudarlo antes de esa fecha desde "Plan y pagos".`,
+      ...(input.planUrl ? ["", `Plan y pagos: ${input.planUrl}`] : []),
+    ].join("\n"),
+  };
+}
+
+export function withdrawalRefundedEmail(input: { organizationName: string; planName: string; refundedAmount: number; planUrl: string | null }): SubscriptionEmail {
+  return {
+    subject: `Reembolsamos tu plan ${input.planName}`,
+    text: [
+      `Hola, ${input.organizationName}:`,
+      "",
+      `Ejerciste tu derecho a retracto (Ley 19.496, art. 3 bis): cancelamos tu plan ${input.planName} y reembolsamos ${formatClp(input.refundedAmount)} al mismo medio de pago.`,
+      "",
+      "Según tu banco, el reembolso puede tardar algunos días hábiles en verse en tu estado de cuenta.",
+      "",
+      "Tu cuenta pasó al plan Gratis y conserva todo lo que creaste.",
+      ...(input.planUrl ? ["", `Plan y pagos: ${input.planUrl}`] : []),
+    ].join("\n"),
+  };
+}

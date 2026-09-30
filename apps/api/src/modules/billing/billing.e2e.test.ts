@@ -13,6 +13,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { listenForTests } from "../../test-support/http.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
+import { BillingService } from "./billing.service.js";
 import { MERCHANT_GATEWAY } from "./merchant-gateway.token.js";
 
 class FakeEmailAdapter implements EmailAdapter {
@@ -231,5 +232,130 @@ describe("Cobro de suscripciones con Webpay Oneclick (e2e) — F4.6a", () => {
     const missing = await request(httpServer).get("/api/v1/billing/webpay/return").expect(303);
     expect(missing.headers.location).toMatch(/pago=error$/);
     expect(await prisma.subscription.count({ where: { organizationId } })).toBe(0);
+  });
+
+  describe("Cancelar, reanudar y retracto (F4.6c)", () => {
+    const base = (organizationId: string) => `/api/v1/organizations/${organizationId}/billing`;
+
+    it("canManage lo decide el servidor: el dueño sí, un ADMIN no", async () => {
+      const { agent, organizationId } = await createOrg();
+      expect((await agent.get(base(organizationId)).expect(200)).body.canManage).toBe(true);
+
+      const admin = await registerUser();
+      const user = await prisma.user.findUniqueOrThrow({ where: { email: admin.email } });
+      const role = await prisma.role.findUniqueOrThrow({ where: { name: "ADMIN" } });
+      await prisma.membership.create({ data: { userId: user.id, organizationId, roleId: role.id, status: "ACTIVE", acceptedAt: new Date() } });
+      expect((await admin.agent.get(base(organizationId)).expect(200)).body.canManage).toBe(false);
+      await admin.agent.post(`${base(organizationId)}/cancel`).set(CSRF_HEADERS).expect(403);
+      await admin.agent.post(`${base(organizationId)}/withdraw`).set(CSRF_HEADERS).expect(403);
+    });
+
+    it("cancelar: sigue vigente hasta el fin del período, sin próximo cobro, con correo; y se puede reanudar", async () => {
+      const { agent, organizationId, email } = await createOrg();
+      await checkoutAndReturn(agent, organizationId);
+
+      const canceled = (await agent.post(`${base(organizationId)}/cancel`).set(CSRF_HEADERS).expect(200)).body;
+      expect(canceled).toMatchObject({ status: "ACTIVE", cancelAtPeriodEnd: true, nextChargeAt: null });
+      expect((await agent.get(`/api/v1/organizations/${organizationId}/plan`).expect(200)).body.plan.code).toBe("profesional");
+      expect(emailAdapter.messages.some((m) => m.to === email && m.subject === "Cancelaste tu plan Profesional")).toBe(true);
+      expect((await agent.post(`${base(organizationId)}/cancel`).set(CSRF_HEADERS).expect(409)).body.code).toBe("ALREADY_CANCELED");
+
+      const resumed = (await agent.post(`${base(organizationId)}/resume`).set(CSRF_HEADERS).expect(200)).body;
+      expect(resumed).toMatchObject({ status: "ACTIVE", cancelAtPeriodEnd: false });
+      expect(resumed.nextChargeAt).not.toBeNull();
+      expect((await agent.post(`${base(organizationId)}/resume`).set(CSRF_HEADERS).expect(409)).body.code).toBe("NOT_RESUMABLE");
+
+      const actions = (await prisma.auditLog.findMany({ where: { organizationId, action: { in: ["billing.subscription_canceled", "billing.subscription_resumed"] } } })).map((a) => a.action);
+      expect(actions.sort()).toEqual(["billing.subscription_canceled", "billing.subscription_resumed"]);
+    });
+
+    it("sin plan de pago, cancelar o pedir retracto responde 404", async () => {
+      const { agent, organizationId } = await createOrg();
+      expect((await agent.post(`${base(organizationId)}/cancel`).set(CSRF_HEADERS).expect(404)).body.code).toBe("NO_SUBSCRIPTION");
+      await agent.post(`${base(organizationId)}/withdraw`).set(CSRF_HEADERS).expect(404);
+    });
+
+    it("retracto: reembolsa el 100 %, vuelve a Gratis de inmediato, borra la tarjeta y la boleta ya no hace falta", async () => {
+      const { agent, organizationId, email } = await createOrg();
+      await checkoutAndReturn(agent, organizationId);
+      const refundsBefore = gateway.refunds.length;
+      const removedBefore = gateway.removed.length;
+
+      const res = await agent.post(`${base(organizationId)}/withdraw`).set(CSRF_HEADERS).expect(200);
+      expect(res.body).toEqual({ refundedAmount: 7_990 });
+      expect(gateway.refunds.length).toBe(refundsBefore + 1);
+      expect(gateway.removed.length).toBe(removedBefore + 1);
+
+      expect((await agent.get(`/api/v1/organizations/${organizationId}/plan`).expect(200)).body.plan.code).toBe("free");
+      const payment = await prisma.payment.findFirstOrThrow({ where: { organizationId } });
+      expect(payment).toMatchObject({ status: "REFUNDED", refundedAmount: 7_990, taxDocumentStatus: "NOT_REQUIRED" });
+      expect(await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "CANCELED", paymentMethodRefEncrypted: null });
+      expect(emailAdapter.messages.some((m) => m.to === email && m.subject === "Reembolsamos tu plan Profesional")).toBe(true);
+
+      // Un segundo clic no reembolsa de nuevo.
+      await agent.post(`${base(organizationId)}/withdraw`).set(CSRF_HEADERS).expect(404);
+      expect(gateway.refunds.length).toBe(refundsBefore + 1);
+    });
+
+    it("dos pedidos de retracto simultáneos reembolsan una sola vez", async () => {
+      const { agent, organizationId, email } = await createOrg();
+      await checkoutAndReturn(agent, organizationId);
+      const refundsBefore = gateway.refunds.length;
+      // Directo al servicio: por HTTP, el agente de supertest reutiliza una conexión y las
+      // peticiones llegan en fila, así que nunca se cruzarían de verdad. Así sí se intercalan.
+      const billing = app.get(BillingService);
+      const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+      // Peor caso, forzado con una barrera: los tres leen la suscripción viva y recién entonces
+      // siguen. Sin el reclamo condicional, los tres reembolsarían.
+      type Internals = { liveSubscriptionOrThrow: (organizationId: string) => Promise<unknown> };
+      const internals = billing as unknown as Internals;
+      const read = internals.liveSubscriptionOrThrow.bind(billing);
+      let arrived = 0;
+      let release!: () => void;
+      const barrier = new Promise<void>((resolve) => (release = resolve));
+      internals.liveSubscriptionOrThrow = async (id: string) => {
+        const live = await read(id);
+        arrived += 1;
+        if (arrived === 3) release();
+        await barrier;
+        return live;
+      };
+      try {
+        const results = await Promise.allSettled([1, 2, 3].map(() => billing.withdraw(organizationId, { id: user.id, email })));
+        expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+        expect(results.filter((r) => r.status === "rejected").map((r) => (r as PromiseRejectedResult).reason.response?.code)).toEqual(["ALREADY_CANCELED", "ALREADY_CANCELED"]);
+      } finally {
+        internals.liveSubscriptionOrThrow = read;
+      }
+      expect(gateway.refunds.length).toBe(refundsBefore + 1);
+    });
+
+    it("pasados los 10 días, el retracto se rechaza y el plan sigue igual", async () => {
+      const { agent, organizationId } = await createOrg();
+      await checkoutAndReturn(agent, organizationId);
+      await prisma.subscription.updateMany({ where: { organizationId }, data: { firstPaidAt: new Date(Date.now() - 11 * 24 * 3_600_000) } });
+
+      const res = await agent.post(`${base(organizationId)}/withdraw`).set(CSRF_HEADERS).expect(422);
+      expect(res.body.code).toBe("WITHDRAWAL_EXPIRED");
+      expect((await agent.get(`/api/v1/organizations/${organizationId}/plan`).expect(200)).body.plan.code).toBe("profesional");
+      expect((await agent.get(base(organizationId)).expect(200)).body.subscription.withdrawalUntil).toBeNull();
+    });
+
+    it("si la pasarela no reembolsa, el plan queda como estaba y se puede reintentar", async () => {
+      const { agent, organizationId } = await createOrg();
+      await checkoutAndReturn(agent, organizationId);
+      const original = gateway.refund.bind(gateway);
+      gateway.refund = async () => {
+        throw new Error("Transbank caído");
+      };
+      try {
+        expect((await agent.post(`${base(organizationId)}/withdraw`).set(CSRF_HEADERS).expect(502)).body.code).toBe("REFUND_FAILED");
+      } finally {
+        gateway.refund = original;
+      }
+      expect(await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "ACTIVE", cancelAtPeriodEnd: false });
+      expect(await prisma.payment.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "APPROVED", refundedAmount: 0 });
+      await agent.post(`${base(organizationId)}/withdraw`).set(CSRF_HEADERS).expect(200);
+    });
   });
 });

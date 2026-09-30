@@ -194,7 +194,16 @@ export class AdminService {
       throw new NotFoundException(ORGANIZATION_NOT_FOUND);
     }
 
-    const plan = await this.plansService.organizationPlan(organizationId);
+    const [plan, subscription, recentPayments] = await Promise.all([
+      this.plansService.organizationPlan(organizationId),
+      // La suscripción que cuenta: la viva, o si no hay, la última (terminada o sin completar).
+      this.prisma.subscription.findFirst({
+        where: { organizationId },
+        orderBy: [{ createdAt: "desc" }],
+        include: { plan: { select: { name: true } } },
+      }),
+      this.prisma.payment.findMany({ where: { organizationId }, orderBy: { createdAt: "desc" }, take: 5 }),
+    ]);
 
     return {
       id: organization.id,
@@ -207,6 +216,27 @@ export class AdminService {
       plan: plan.plan,
       planSource: plan.source,
       usage: plan.usage,
+      billing: {
+        subscription: subscription
+          ? {
+              status: subscription.status,
+              planName: subscription.plan.name,
+              cycle: subscription.billingCycle,
+              currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+              cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+              nextChargeAt: subscription.nextChargeAt?.toISOString() ?? null,
+              failedAttempts: subscription.failedAttempts,
+              cardLast4: subscription.cardLast4,
+            }
+          : null,
+        recentPayments: recentPayments.map((payment) => ({
+          id: payment.id,
+          amount: payment.amount,
+          status: payment.status,
+          taxDocumentStatus: payment.taxDocumentStatus,
+          createdAt: payment.createdAt.toISOString(),
+        })),
+      },
       members: organization.memberships.map((membership) => ({
         membershipId: membership.id,
         email: membership.user.email,

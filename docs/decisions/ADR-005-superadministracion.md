@@ -63,6 +63,11 @@ Lo que ya existe y condiciona la decisión:
    requiere un ADR propio. Ver el detalle de una organización también queda auditado
    (`admin.organization_viewed`): nada de acceso silencioso.
 
+   *Precisión (2026-09-29, F4.6d, ADR-012):* los cobros de Impulza a una organización (su
+   suscripción, sus pagos, montos y boletas) son datos de la **plataforma**, no datos comerciales
+   de la organización: la superadministración los ve (Facturación y detalle de la organización).
+   Se muestran solo marca y últimos 4 dígitos de la tarjeta; nunca la referencia de la pasarela.
+
 6. **Bloqueo de organización.** `Organization.status` (`ACTIVE` | `BLOCKED`), con fecha y motivo.
    Bloquear y restaurar exigen un motivo escrito y quedan auditados con el actor real.
    - Superficies públicas: el sitio, sus páginas, formularios, enlaces cortos, QR y eventos de

@@ -8,7 +8,10 @@ import { cn } from "../lib/cn.js";
 
 export const Table = forwardRef<HTMLTableElement, HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    <div className="w-full overflow-x-auto rounded-lg border border-border">
+    // `relative`: un hijo `position: absolute` (p. ej. el texto `sr-only` de un encabezado) queda
+    // dentro de este contenedor con desplazamiento; sin esto escapa del recorte y ensancha toda la
+    // página en un teléfono (detectado en F4.6d: 270 px de desborde).
+    <div className="relative w-full overflow-x-auto rounded-lg border border-border">
       <table ref={ref} className={cn("w-full border-collapse text-sm", className)} {...props} />
     </div>
   ),

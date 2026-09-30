@@ -4,11 +4,15 @@ import type {
   AdminAiRoutesResponse,
   AdminAiUsageResponse,
   AdminAuditListResponse,
+  AdminBillingSummaryResponse,
   AdminIdentityResponse,
   AdminLoginResponse,
   AdminOrganizationDetailResponse,
   AdminOrganizationListResponse,
   AdminOverviewResponse,
+  AdminPaymentListResponse,
+  AdminPaymentResponse,
+  AdminRefundResponse,
   AdminSupportTicketDetailResponse,
   AdminSupportTicketListResponse,
   AdminUserListResponse,
@@ -16,7 +20,7 @@ import type {
   PlanResponse,
 } from "@impulza/contracts";
 import type { AiRoutesInput, CreateAiConnectionInput, UpdateAiConnectionInput } from "@impulza/validation";
-import { apiFetch } from "./api-client";
+import { apiDownload, apiFetch } from "./api-client";
 
 // Un archivo, una función por endpoint de `/api/v1/admin` (F4.4). Los tipos salen de
 // `@impulza/contracts`, los mismos que las pruebas e2e de la API validan contra respuestas reales.
@@ -80,4 +84,18 @@ export const adminApi = {
   aiRoutes: () => apiFetch<AdminAiRoutesResponse>("/admin/ai/routes"),
   setAiRoutes: (body: AiRoutesInput) => apiFetch<AdminAiRoutesResponse>("/admin/ai/routes", { method: "PUT", body }),
   aiUsage: () => apiFetch<AdminAiUsageResponse>("/admin/ai/usage"),
+
+  // Ingresos (F4.6d, ADR-012).
+  billingSummary: (month?: string) => apiFetch<AdminBillingSummaryResponse>(`/admin/billing/summary${query({ month })}`),
+  payments: (params: {
+    month?: string;
+    status?: "PENDING" | "APPROVED" | "REJECTED" | "REFUNDED";
+    taxDocument?: "PENDING" | "ISSUED" | "NOT_REQUIRED";
+    page: number;
+    pageSize: number;
+  }) => apiFetch<AdminPaymentListResponse>(`/admin/billing/payments${query(params)}`),
+  markTaxDocument: (id: string, documentNumber: string) =>
+    apiFetch<AdminPaymentResponse>(`/admin/billing/payments/${id}/tax-document`, { method: "POST", body: { documentNumber } }),
+  refundPayment: (id: string, reason: string) => apiFetch<AdminRefundResponse>(`/admin/billing/payments/${id}/refund`, { method: "POST", body: { reason } }),
+  downloadPaymentsCsv: (month: string) => apiDownload(`/admin/billing/payments.csv${query({ month })}`, `impulza-cobros-${month}.csv`),
 };

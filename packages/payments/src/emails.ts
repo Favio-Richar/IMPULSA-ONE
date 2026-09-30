@@ -152,3 +152,18 @@ export function withdrawalRefundedEmail(input: { organizationName: string; planN
     ].join("\n"),
   };
 }
+
+/** Reembolso hecho por el equipo (F4.6d), fuera del retracto: un cobro por error, un duplicado. */
+export function paymentRefundedEmail(input: { organizationName: string; planName: string; refundedAmount: number; planUrl: string | null }): SubscriptionEmail {
+  return {
+    subject: `Te devolvimos ${formatClp(input.refundedAmount)}`,
+    text: [
+      `Hola, ${input.organizationName}:`,
+      "",
+      `Reembolsamos ${formatClp(input.refundedAmount)} de un cobro de tu plan ${input.planName} al mismo medio de pago.`,
+      "",
+      "Según tu banco, el reembolso puede tardar algunos días hábiles en verse en tu estado de cuenta.",
+      ...(input.planUrl ? ["", `Plan y pagos: ${input.planUrl}`] : []),
+    ].join("\n"),
+  };
+}

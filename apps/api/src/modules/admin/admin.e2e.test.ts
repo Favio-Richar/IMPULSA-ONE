@@ -330,9 +330,12 @@ describe("Superadministración (e2e) — F4.4 / ADR-005", () => {
       const { agent } = await loggedInAdmin();
       const owner = await createOwnerWithOrg();
       const response = await agent.get(`/api/v1/admin/organizations/${owner.organizationId}`).expect(200);
+      // `billing` (F4.6d) es lo que la organización le paga a Impulza, no datos de sus clientes: se
+      // permite, pero solo con su forma exacta — nunca contactos, envíos ni contenido.
       expect(Object.keys(response.body).sort()).toEqual(
-        ["blockedAt", "blockedReason", "createdAt", "id", "members", "name", "plan", "planSource", "sites", "slug", "status", "usage"].sort(),
+        ["billing", "blockedAt", "blockedReason", "createdAt", "id", "members", "name", "plan", "planSource", "sites", "slug", "status", "usage"].sort(),
       );
+      expect(Object.keys(response.body.billing).sort()).toEqual(["recentPayments", "subscription"]);
     });
 
     it("una organización inexistente responde 404 y un id mal formado 400", async () => {

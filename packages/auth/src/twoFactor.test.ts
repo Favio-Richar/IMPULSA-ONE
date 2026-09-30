@@ -20,4 +20,16 @@ describe("generateTwoFactorSecret / verifyTwoFactorCode", () => {
     const { secret } = generateTwoFactorSecret("usuario@impulza.dev");
     await expect(verifyTwoFactorCode(secret, "000000")).resolves.toBe(false);
   });
+
+  it("acepta el código de la ventana anterior (llegó justo después del cambio), pero no uno más viejo ni uno futuro", async () => {
+    const { secret } = generateTwoFactorSecret("usuario@impulza.dev");
+    // Instante fijo, en el segundo 1 de una ventana de 30 s.
+    const now = Math.floor(Date.UTC(2026, 8, 29, 12, 0, 1) / 1000);
+    const previous = await generate({ secret, epoch: now - 30 });
+    const older = await generate({ secret, epoch: now - 61 });
+    const future = await generate({ secret, epoch: now + 30 });
+    await expect(verifyTwoFactorCode(secret, previous, now)).resolves.toBe(true);
+    await expect(verifyTwoFactorCode(secret, older, now)).resolves.toBe(false);
+    await expect(verifyTwoFactorCode(secret, future, now)).resolves.toBe(false);
+  });
 });

@@ -83,6 +83,30 @@ export const adminOrganizationDetailResponse = z.object({
       live: z.boolean(),
     }),
   ),
+  /** Su suscripción de pago y sus últimos cobros (F4.6d): lo que paga a Impulza, no datos de sus clientes. */
+  billing: z.object({
+    subscription: z
+      .object({
+        status: z.enum(["TRIALING", "ACTIVE", "PAST_DUE", "CANCELED", "INCOMPLETE"]),
+        planName: z.string(),
+        cycle: z.enum(["MONTHLY", "YEARLY"]),
+        currentPeriodEnd: isoDateTime,
+        cancelAtPeriodEnd: z.boolean(),
+        nextChargeAt: isoDateTime.nullable(),
+        failedAttempts: z.number().int(),
+        cardLast4: z.string().nullable(),
+      })
+      .nullable(),
+    recentPayments: z.array(
+      z.object({
+        id: uuid,
+        amount: z.number().int(),
+        status: z.enum(["PENDING", "APPROVED", "REJECTED", "REFUNDED"]),
+        taxDocumentStatus: z.enum(["PENDING", "ISSUED", "NOT_REQUIRED"]),
+        createdAt: isoDateTime,
+      }),
+    ),
+  }),
 });
 
 export const adminUserSummaryResponse = z.object({

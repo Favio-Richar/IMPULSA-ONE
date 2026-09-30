@@ -23,3 +23,30 @@ export const startCheckoutSchema = z.object({
 });
 
 export type StartCheckoutInput = z.infer<typeof startCheckoutSchema>;
+
+// ── Superadministración (F4.6d) ────────────────────────────────────────────────────────────────
+
+/** Mes contable `YYYY-MM` (hora de Chile). */
+export const billingMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Usa el formato AAAA-MM");
+
+export const listAdminPaymentsQuerySchema = z.object({
+  month: billingMonthSchema.optional(),
+  status: z.enum(["PENDING", "APPROVED", "REJECTED", "REFUNDED"]).optional(),
+  taxDocument: z.enum(["PENDING", "ISSUED", "NOT_REQUIRED"]).optional(),
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(25),
+});
+
+/** Folio de la boleta o factura electrónica emitida ante el SII. */
+export const markTaxDocumentSchema = z.object({
+  documentNumber: z.string().trim().regex(/^\d{1,12}$/, "El folio son solo dígitos (hasta 12)"),
+});
+
+export const adminRefundSchema = z.object({
+  /** Obligatorio: queda en la auditoría (mismo criterio que bloquear una organización). */
+  reason: z.string().trim().min(10, "Explica el motivo (al menos 10 caracteres)").max(500),
+});
+
+export type ListAdminPaymentsQuery = z.infer<typeof listAdminPaymentsQuerySchema>;
+export type MarkTaxDocumentInput = z.infer<typeof markTaxDocumentSchema>;
+export type AdminRefundInput = z.infer<typeof adminRefundSchema>;

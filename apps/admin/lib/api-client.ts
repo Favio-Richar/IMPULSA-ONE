@@ -47,3 +47,19 @@ export async function apiFetch<T>(path: string, options: Omit<RequestInit, "body
   }
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
 }
+
+/** Descarga un archivo (CSV) de la API con la misma sesión, y lo entrega al navegador con `nombre`. */
+export async function apiDownload(path: string, filename: string): Promise<void> {
+  const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, { credentials: "include" });
+  if (!response.ok) {
+    throw new ApiError(response.status, await response.json().catch(() => undefined));
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}

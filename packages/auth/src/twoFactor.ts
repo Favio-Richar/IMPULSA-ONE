@@ -15,9 +15,17 @@ export function generateTwoFactorSecret(accountLabel: string, issuer = "Impulza 
   return { secret, otpauthUrl };
 }
 
-export async function verifyTwoFactorCode(secret: string, code: string): Promise<boolean> {
+/**
+ * Tolerancia hacia atrás de un paso (30 s), nunca hacia adelante (RFC 6238 §5.2): un código escrito
+ * en los últimos segundos de su ventana llega al servidor cuando ya empezó la siguiente, y sin esto
+ * se rechazaría aunque sea correcto. La anti-repetición (cada código vale una vez, recordado 2 min
+ * en la administración) cubre esta ventana ampliada.
+ */
+export const TOTP_PAST_TOLERANCE_SECONDS = 30;
+
+export async function verifyTwoFactorCode(secret: string, code: string, epoch?: number): Promise<boolean> {
   try {
-    const result = await verify({ secret, token: code });
+    const result = await verify({ secret, token: code, epochTolerance: [TOTP_PAST_TOLERANCE_SECONDS, 0], ...(epoch !== undefined ? { epoch } : {}) });
     return result.valid;
   } catch {
     return false;

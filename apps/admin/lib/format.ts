@@ -64,3 +64,21 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "admin.support_closed": "Cerró una solicitud de soporte",
   "support.ticket_opened": "Abrió una solicitud de soporte",
 };
+
+const clp = new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 });
+
+/** Dinero en pesos (F4.6d): a diferencia de `formatPrice`, un 0 se muestra como $0, no "Gratis". */
+export function formatClp(amount: number): string {
+  return clp.format(amount);
+}
+
+/** Mes en curso en hora de Chile, `YYYY-MM` (el mes contable del negocio). */
+export function currentMonth(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit" }).format(new Date()).slice(0, 7);
+}
+
+/** "2026-09" → "septiembre de 2026". */
+export function formatMonth(month: string): string {
+  const [year, monthIndex] = month.split("-").map(Number);
+  return new Intl.DateTimeFormat("es-CL", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(year!, monthIndex! - 1, 15)));
+}

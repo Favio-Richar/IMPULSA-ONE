@@ -40,7 +40,7 @@ bloqueado explícitamente.
 | F4.6a — Motor de facturación y Webpay Oneclick | Lista para tu revisión (sin pantalla: se revisa por API, pruebas y el smoke contra Transbank; la pantalla es F4.6c) |
 | F4.6b — Mercado Pago Suscripciones | Pendiente |
 | F4.6c — Elegir plan, pagar, cancelar y retracto en el panel | Lista para tu revisión (capturas en `docs/design/capturas/f46c/`) |
-| F4.6d — Pagos, ingresos (MRR) y documentos tributarios en la superadministración | Pendiente |
+| F4.6d — Pagos, ingresos (MRR) y documentos tributarios en la superadministración | Lista para tu revisión (capturas en `docs/design/capturas/f46d/`) |
 | F4.6e — Cambiar de plan con uno activo (subir/bajar con prorrateo) | Propuesta (surgió en F4.6c) |
 | F4.7 — Dominios personalizados | Lista para tu revisión (SSL depende de F4.8; límite por plan, de la decisión #4) |
 | F4.8 — Producción y monitoreo | Bloqueada (decisión de hosting) |
@@ -392,6 +392,49 @@ Se divide en cuatro historias; el aislamiento de todas se suma a F4.9 (suite cen
 **F4.6d — Pagos, MRR y documentos tributarios en la superadministración**
 - MRR/ARR, altas y bajas del mes, suscripciones morosas, lista de pagos, reembolso manual
   auditado y lista de documentos tributarios pendientes (neto, IVA, total) con marca de emitido.
+
+> **Estado (2026-09-29): F4.6d lista para revisión.**
+> - API `admin/billing` (sesión de superadministración con TOTP, como todo `/admin/*`): `summary`
+>   (MRR y ARR con los anuales divididos en 12, MRR en riesgo, activas/morosas/cancelando, altas y
+>   bajas del mes, cobrado con neto e IVA, reembolsado, cobros fallidos, boletas pendientes y MRR por
+>   plan; el mes es el de **Chile**, con su cambio de horario), `payments` (filtros por mes, estado y
+>   boleta), `payments.csv` (planilla para el contador, auditada, con BOM para Excel y **celdas
+>   protegidas contra inyección de fórmulas**: el nombre de una organización lo escribe el cliente),
+>   `payments/:id/tax-document` (folio, una sola vez) y `payments/:id/refund` (motivo obligatorio,
+>   reclamo antes de llamar a Transbank, reversión si falla, aviso al dueño, `creditNoteRequired` si
+>   la boleta ya estaba emitida; no cancela la suscripción). OpenAPI regenerado (153 rutas).
+> - El detalle de una organización en la administración suma "Suscripción y pagos" (estado, plan,
+>   próximo cobro, tarjeta •••• y los 5 últimos cobros) con enlace a Facturación. Son los cobros de
+>   Impulza a la organización, no datos de sus clientes: compatible con ADR-005 §5 (la prueba que
+>   fija las claves del detalle lo documenta).
+> - Panel de administración: "Facturación" en el menú, cifras del mes, MRR por plan (barras de un
+>   solo tono con el valor escrito: una serie, sin leyenda), lista de cobros con filtros, diálogo de
+>   folio y de reembolso, descarga del CSV. "Cambiar plan" ya no dice "mientras no hay cobro en
+>   línea": ahora es para acuerdos fuera de línea.
+> - **Suite central de aislamiento mejorada:** la lista de rutas `/admin/*` que un usuario de
+>   organización no puede abrir estaba escrita a mano (le faltaban las de IA); ahora sale del OpenAPI
+>   publicado, en todos sus métodos. Verificada contra el código roto: quitando el guard de
+>   `AdminBillingController` falla con "GET /admin/billing/summary: 200 en vez de 401".
+> - **Errores encontrados y corregidos en el camino:**
+>   - **2FA sin tolerancia:** `verifyTwoFactorCode` usaba tolerancia 0 (la de otplib), así que un
+>     código escrito en los últimos segundos de su ventana se rechazaba al llegar. Se acepta un paso
+>     hacia atrás, nunca hacia adelante (RFC 6238 §5.2); la anti-repetición cubre la ventana. Salió
+>     como fallo intermitente de `admin.e2e` al correr junto a facturación. Prueba con instantes fijos,
+>     verificada contra tolerancia 0.
+>   - **Desborde de 270 px en teléfonos** en toda tabla con un encabezado `sr-only`: el texto
+>     absoluto escapaba del contenedor con desplazamiento. `Table` (`packages/ui`) ahora es `relative`:
+>     arregla todas las tablas del sistema.
+>   - La prueba de reembolsos simultáneos usaba un id de administrador inventado (la auditoría lo
+>     rechaza): se usa uno real. Verificada contra el código roto (sin el reclamo, reembolsan los tres).
+> - Pruebas: pagos 33 (meses de Chile con cambio de hora, MRR, CSV), API e2e de facturación 24, suite
+>   central 66, admin 26, Playwright `facturacion-admin.spec.ts` 6/6 (y 38/38 junto a planes, pagos,
+>   panel angosto y admin).
+> - **Deuda declarada — suite de la API inestable bajo carga (prioridad alta):** con 496 pruebas,
+>   cada corrida completa pierde ~5 por *timeout* de 5 s en módulos distintos cada vez (bloques,
+>   analítica pública, catálogo, `site-insights`); todas pasan aisladas y ninguna toca facturación.
+>   Ocurre en Windows con los 5 servidores de desarrollo encendidos contra la misma base. Propuesta:
+>   base de pruebas separada de la de desarrollo, `pool` con concurrencia acotada y medir qué consulta
+>   se demora antes de subir tiempos — no subir el timeout a ciegas.
 
 **Criterios originales (siguen aplicando a las cuatro):**
 **Criterios de aceptación:**

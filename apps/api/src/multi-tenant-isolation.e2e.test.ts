@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type { PrismaClient } from "@impulza/database";
@@ -1528,23 +1529,25 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
   });
 
   describe("Administración (F4.4/F4.9): un usuario de organización nunca la alcanza", () => {
-    it("ni el OWNER ni un ADMIN de una organización abren una ruta de administración", async () => {
-      const paths = [
-        "/api/v1/admin/auth/me",
-        "/api/v1/admin/overview",
-        "/api/v1/admin/organizations",
-        `/api/v1/admin/organizations/${orgB.id}`,
-        "/api/v1/admin/users",
-        "/api/v1/admin/plans",
-        "/api/v1/admin/audit-logs",
-        "/api/v1/admin/support-tickets",
-      ];
+    it("ni el OWNER ni un ADMIN de una organización abren ninguna ruta de administración, en ningún método", async () => {
+      // Todas las rutas `/admin/*` salen del OpenAPI publicado (el mismo que verifica openapi.test):
+      // una ruta de administración nueva queda cubierta sin tocar esta prueba. Solo se excluye el
+      // login, que por diseño no exige sesión.
+      const document = JSON.parse(readFileSync(new URL("../../../docs/api/openapi.json", import.meta.url), "utf8")) as {
+        paths: Record<string, Record<string, unknown>>;
+      };
+      const routes = Object.entries(document.paths)
+        .filter(([path]) => path.startsWith("/api/v1/admin/") && path !== "/api/v1/admin/auth/login")
+        .flatMap(([path, methods]) => Object.keys(methods).map((method) => ({ method, path: path.replace(/\{organizationId\}/g, orgB.id).replace(/\{[^}]+\}/g, "00000000-0000-4000-8000-000000000000") })));
+      // Salvaguarda: si el documento no se leyó bien, la prueba no puede "pasar" sin probar nada.
+      expect(routes.length).toBeGreaterThan(25);
+
       for (const agent of [orgA.ownerAgent, orgA.adminAgent]) {
-        for (const path of paths) {
-          const response = await agent.get(path);
-          expect(response.status, path).toBe(401);
+        for (const { method, path } of routes) {
+          const call = agent[method as "get" | "post" | "put" | "patch" | "delete"](path);
+          const response = method === "get" ? await call : await call.set(CSRF_HEADERS).send({ reason: "intento de una organización" });
+          expect(response.status, `${method.toUpperCase()} ${path}`).toBe(401);
         }
-        await agent.post(`/api/v1/admin/organizations/${orgB.id}/block`).set(CSRF_HEADERS).send({ reason: "intento" }).expect(401);
       }
     });
 

@@ -1,18 +1,22 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
-import { billingOverviewResponse, checkoutRedirectResponse } from "@impulza/contracts";
+import { adminBillingSummaryResponse, adminPaymentListResponse, adminRefundResponse, billingOverviewResponse, checkoutRedirectResponse } from "@impulza/contracts";
 import type { PrismaClient } from "@impulza/database";
 import { FakeRecurringGateway } from "@impulza/payments";
 import cookieParser from "cookie-parser";
 import type { Redis } from "ioredis";
+import { generate } from "otplib";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "../../app.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
+import { env } from "../../env.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { listenForTests } from "../../test-support/http.js";
+import { grantSuperAdmin } from "../admin/superadmin-grants.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
+import { AdminBillingService } from "./admin-billing.service.js";
 import { BillingService } from "./billing.service.js";
 import { MERCHANT_GATEWAY } from "./merchant-gateway.token.js";
 
@@ -70,7 +74,7 @@ describe("Cobro de suscripciones con Webpay Oneclick (e2e) — F4.6a", () => {
     emailAdapter.messages = [];
     gateway.nextCharges = [];
     gateway.nextEnrollment = "approved";
-    const keys = await redis.keys("ratelimit:*");
+    const keys = [...(await redis.keys("ratelimit:*")), ...(await redis.keys("admin-totp-used:*"))];
     if (keys.length > 0) await redis.del(...keys);
   });
 
@@ -356,6 +360,166 @@ describe("Cobro de suscripciones con Webpay Oneclick (e2e) — F4.6a", () => {
       expect(await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "ACTIVE", cancelAtPeriodEnd: false });
       expect(await prisma.payment.findFirstOrThrow({ where: { organizationId } })).toMatchObject({ status: "APPROVED", refundedAmount: 0 });
       await agent.post(`${base(organizationId)}/withdraw`).set(CSRF_HEADERS).expect(200);
+    });
+  });
+
+  describe("Ingresos en la superadministración (F4.6d)", () => {
+    const admin = "/api/v1/admin/billing";
+
+    // Una sola sesión de administración para todo el bloque: el inicio de sesión admite 5 intentos
+    // cada 5 minutos por IP, y otras suites que corren en paralelo también inician sesión.
+    let adminAgent: ReturnType<typeof request.agent> | null = null;
+    async function loggedInAdmin() {
+      adminAgent ??= await openAdminSession();
+      return adminAgent;
+    }
+
+    async function openAdminSession() {
+      const { email } = await registerUser();
+      const grant = await grantSuperAdmin(prisma, email, env.AUTH_ENCRYPTION_KEY);
+      const agent = request.agent(httpServer);
+      const code = await generate({ secret: grant.twoFactorEnrollment!.secret });
+      await agent.post("/api/v1/admin/auth/login").set(CSRF_HEADERS).send({ email, password: "password1234", code }).expect(201);
+      return agent;
+    }
+
+    /** Organización con un plan Profesional pagado; devuelve su pago. */
+    async function paidOrganization(name = "Estudio Aurora") {
+      const org = await createOrg();
+      await prisma.organization.update({ where: { id: org.organizationId }, data: { name } });
+      await checkoutAndReturn(org.agent, org.organizationId);
+      const payment = await prisma.payment.findFirstOrThrow({ where: { organizationId: org.organizationId } });
+      return { ...org, payment };
+    }
+
+    it("una sesión del panel nunca alcanza los ingresos de la plataforma", async () => {
+      const { agent } = await createOrg();
+      await agent.get(`${admin}/summary`).expect(401);
+      await agent.get(`${admin}/payments`).expect(401);
+      await request(httpServer).get(`${admin}/summary`).expect(401);
+    });
+
+    it("el resumen suma MRR (anual / 12), cobrado con neto e IVA y boletas pendientes", async () => {
+      const agent = await loggedInAdmin();
+      const before = adminBillingSummaryResponse.parse((await agent.get(`${admin}/summary`).expect(200)).body);
+
+      await paidOrganization();
+      const yearly = await createOrg();
+      const started = await yearly.agent.post(`/api/v1/organizations/${yearly.organizationId}/billing/checkout`).set(CSRF_HEADERS).send({ ...CHECKOUT, cycle: "YEARLY" }).expect(201);
+      const token = new URL(started.body.url).searchParams.get("TBK_TOKEN")!;
+      await request(httpServer).post("/api/v1/billing/webpay/return").type("form").send({ TBK_TOKEN: token }).expect(303);
+
+      const after = adminBillingSummaryResponse.parse((await agent.get(`${admin}/summary`).expect(200)).body);
+      expect(after.mrr - before.mrr).toBe(7_990 + Math.round(79_900 / 12));
+      expect(after.arr).toBe(after.mrr * 12);
+      expect(after.collected.total - before.collected.total).toBe(7_990 + 79_900);
+      expect(after.collected.net + after.collected.vat).toBe(after.collected.total);
+      expect(after.taxDocumentsPending.count - before.taxDocumentsPending.count).toBe(2);
+      expect(after.movement.newSubscriptions - before.movement.newSubscriptions).toBe(2);
+      expect(after.byPlan.find((row) => row.planCode === "profesional")?.subscriptions).toBeGreaterThanOrEqual(2);
+      expect(after.month).toMatch(/^\d{4}-\d{2}$/);
+      await agent.get(`${admin}/summary?month=2026-13`).expect(400);
+    });
+
+    it("marcar la boleta: solo una vez, con folio numérico, y queda auditado", async () => {
+      const agent = await loggedInAdmin();
+      const { payment, organizationId } = await paidOrganization();
+
+      const pending = adminPaymentListResponse.parse((await agent.get(`${admin}/payments?taxDocument=PENDING&pageSize=100`).expect(200)).body);
+      expect(pending.items.map((item) => item.id)).toContain(payment.id);
+
+      await agent.post(`${admin}/payments/${payment.id}/tax-document`).set(CSRF_HEADERS).send({ documentNumber: "abc" }).expect(400);
+      const issued = (await agent.post(`${admin}/payments/${payment.id}/tax-document`).set(CSRF_HEADERS).send({ documentNumber: "104233" }).expect(200)).body;
+      expect(issued).toMatchObject({ taxDocumentStatus: "ISSUED", taxDocumentNumber: "104233" });
+      expect((await agent.post(`${admin}/payments/${payment.id}/tax-document`).set(CSRF_HEADERS).send({ documentNumber: "104234" }).expect(409)).body.code).toBe("TAX_DOCUMENT_NOT_PENDING");
+      await agent.post(`${admin}/payments/00000000-0000-4000-8000-000000000000/tax-document`).set(CSRF_HEADERS).send({ documentNumber: "1" }).expect(404);
+
+      const audit = await prisma.auditLog.findFirst({ where: { organizationId, action: "admin.billing.tax_document_issued" } });
+      expect(audit?.metadata).toMatchObject({ documentNumber: "104233" });
+    });
+
+    it("reembolso manual: devuelve, avisa al dueño, pide nota de crédito si la boleta ya se emitió, y no dos veces", async () => {
+      const agent = await loggedInAdmin();
+      const { payment, email, organizationId } = await paidOrganization();
+      await agent.post(`${admin}/payments/${payment.id}/tax-document`).set(CSRF_HEADERS).send({ documentNumber: "555" }).expect(200);
+      const refundsBefore = gateway.refunds.length;
+
+      await agent.post(`${admin}/payments/${payment.id}/refund`).set(CSRF_HEADERS).send({ reason: "corto" }).expect(400);
+      const res = adminRefundResponse.parse(
+        (await agent.post(`${admin}/payments/${payment.id}/refund`).set(CSRF_HEADERS).send({ reason: "Cobro duplicado reportado por soporte" }).expect(200)).body,
+      );
+      expect(res).toMatchObject({ creditNoteRequired: true, payment: { status: "REFUNDED", refundedAmount: 7_990, taxDocumentStatus: "ISSUED" } });
+      expect(gateway.refunds.length).toBe(refundsBefore + 1);
+      expect(emailAdapter.messages.some((m) => m.to === email && m.subject === "Te devolvimos $7.990")).toBe(true);
+      expect((await agent.post(`${admin}/payments/${payment.id}/refund`).set(CSRF_HEADERS).send({ reason: "Otra vez por las dudas" }).expect(409)).body.code).toBe("NOT_REFUNDABLE");
+
+      const audit = await prisma.auditLog.findFirst({ where: { organizationId, action: "admin.billing.payment_refunded" } });
+      expect(audit?.metadata).toMatchObject({ refundedAmount: 7_990, reason: "Cobro duplicado reportado por soporte", creditNoteRequired: true });
+      // El reembolso manual no cancela la suscripción: eso lo decide el cliente.
+      expect((await prisma.subscription.findFirstOrThrow({ where: { organizationId } })).status).toBe("ACTIVE");
+    });
+
+    it("dos reembolsos manuales simultáneos devuelven una sola vez", async () => {
+      // Directo al servicio (sin HTTP) con un superadministrador real: la auditoría lo referencia.
+      const { email: adminEmail } = await registerUser();
+      const adminUser = await prisma.user.findUniqueOrThrow({ where: { email: adminEmail } });
+      const { payment } = await paidOrganization();
+      const service = app.get(AdminBillingService);
+      const refundsBefore = gateway.refunds.length;
+      // Peor caso forzado: los tres leen el pago antes de que ninguno lo reclame.
+      const original = prisma.payment.findUnique.bind(prisma.payment);
+      let arrived = 0;
+      let release!: () => void;
+      const barrier = new Promise<void>((resolve) => (release = resolve));
+      (prisma.payment as { findUnique: unknown }).findUnique = async (args: Parameters<typeof original>[0]) => {
+        const row = await original(args);
+        arrived += 1;
+        if (arrived === 3) release();
+        await barrier;
+        return row;
+      };
+      try {
+        const results = await Promise.allSettled([1, 2, 3].map(() => service.refund(adminUser.id, payment.id, { reason: "Prueba de concurrencia" })));
+        expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      } finally {
+        (prisma.payment as { findUnique: unknown }).findUnique = original;
+      }
+      expect(gateway.refunds.length).toBe(refundsBefore + 1);
+    });
+
+    it("si Transbank no reembolsa, el cobro queda exactamente como estaba", async () => {
+      const agent = await loggedInAdmin();
+      const { payment } = await paidOrganization();
+      const original = gateway.refund.bind(gateway);
+      gateway.refund = async () => {
+        throw new Error("Transbank caído");
+      };
+      try {
+        expect((await agent.post(`${admin}/payments/${payment.id}/refund`).set(CSRF_HEADERS).send({ reason: "Cobro por error del sistema" }).expect(502)).body.code).toBe("REFUND_FAILED");
+      } finally {
+        gateway.refund = original;
+      }
+      expect(await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).toMatchObject({ status: "APPROVED", refundedAmount: 0, refundedAt: null, taxDocumentStatus: "PENDING" });
+    });
+
+    it("la planilla del mes lleva neto, IVA y folio, y neutraliza fórmulas en los nombres", async () => {
+      const agent = await loggedInAdmin();
+      const { payment } = await paidOrganization("=HYPERLINK(\"http://malo.test\")");
+      const month = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit" }).format(new Date()).slice(0, 7);
+      const res = await agent.get(`${admin}/payments.csv?month=${month}`).buffer(true).parse((response, callback) => {
+        let data = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk: string) => (data += chunk));
+        response.on("end", () => callback(null, data));
+      }).expect(200);
+      const csv = res.body as string;
+      expect(res.headers["content-type"]).toContain("text/csv");
+      expect(csv.charCodeAt(0)).toBe(0xfeff);
+      expect(csv).toContain('"Fecha","Organización","Plan","Neto","IVA","Total"');
+      const line = csv.split("\r\n").find((row) => row.includes(payment.buyOrder))!;
+      expect(line).toContain(`"'=HYPERLINK(""http://malo.test"")"`);
+      expect(line).toContain("6714,1276,7990");
+      await agent.get(`${admin}/payments.csv`).expect(400);
     });
   });
 });

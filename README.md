@@ -4,8 +4,8 @@ Plataforma SaaS multiusuario y multiempresa para construir un centro digital de 
 captación, reservas, ventas y analítica) desde una sola URL.
 
 **Estado actual: Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
-facturación y Webpay Oneclick) y F4.6c (Plan y pagos en el panel) listas para revisión; F4.6b y
-F4.6d pendientes. Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
+facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
+superadministración) listas para revisión; F4.6b (Mercado Pago) pendiente. Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
 (salud de página), F6.2 (motor de IA con modelos locales primero, ADR-010), F6.2b (conexiones de IA
 en la administración), F6.3 (asistente de textos en el constructor), F6.4 (lectura comercial con IA
 en Analítica), F6.5 (pruebas A/B, ADR-011), F6.6 (Smart CTA) y F6.7 (automatizaciones) listas para
@@ -1262,6 +1262,10 @@ marca y últimos 4 dígitos.
   pago con neto/IVA y las dos aceptaciones, resultado al volver de Webpay, tarjeta de la suscripción
   con cancelar (un clic, sigue hasta fin de período), reanudar y retracto con reembolso total en 10
   días, e historial de pagos. Términos del servicio en `/terminos` del sitio comercial.
+
+- **Facturación en la superadministración (F4.6d)**: MRR/ARR, cobrado del mes con neto e IVA,
+  boletas por emitir (con su folio), reembolso manual auditado y planilla CSV del mes para el
+  contador; el detalle de cada organización muestra su suscripción y sus pagos.
 
 Pendiente para cobrar en producción: contrato Oneclick Mall, proveedor de boletas electrónicas y
 texto legal revisado (ver ADR-012, "Seguimiento"). Detalle en `docs/BACKLOG_FASE_4.md`.

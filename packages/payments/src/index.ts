@@ -19,6 +19,8 @@ export {
   subscriptionEndedEmail,
   subscriptionCanceledEmail,
   withdrawalRefundedEmail,
+  paymentRefundedEmail,
   type BillingEmailBase,
   type SubscriptionEmail,
 } from "./emails.js";
+export { santiagoMonthRange, currentSantiagoMonth, monthlyRecurringAmount, csvCell, csvRow } from "./reporting.js";

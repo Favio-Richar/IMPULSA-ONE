@@ -24,7 +24,7 @@ import { PageHeader, Section, StatusBadge, Tag } from "../../../../components/ui
 import { UsageMeter } from "../../../../components/usage-meter";
 import { ApiError } from "../../../../lib/api-client";
 import { adminApi } from "../../../../lib/api";
-import { AUDIT_ACTION_LABELS, PLAN_SOURCE_LABELS, ROLE_LABELS, formatDate, formatDateTime, formatPrice } from "../../../../lib/format";
+import { AUDIT_ACTION_LABELS, PLAN_SOURCE_LABELS, ROLE_LABELS, formatClp, formatDate, formatDateTime, formatPrice } from "../../../../lib/format";
 
 type Detail = AdminOrganizationDetailResponse;
 
@@ -121,6 +121,8 @@ export default function OrganizationDetailPage(): React.JSX.Element {
 
         <ChangePlanForm org={org} />
       </div>
+
+      <BillingSection billing={org.billing} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Section title="Miembros" description="Correo y rol. Sin acceso a su contenido.">
@@ -232,7 +234,7 @@ function ChangePlanForm({ org }: { org: Detail }): React.JSX.Element {
   const error = touched ? reasonError(reason) : undefined;
 
   return (
-    <Section title="Cambiar plan" description="Para pagos por transferencia o acuerdos mientras no hay cobro en línea.">
+    <Section title="Cambiar plan" description="Para acuerdos fuera de línea (transferencia, cortesía). Una suscripción pagada en línea manda sobre esta asignación.">
       {plansQuery.isError ? (
         <ErrorState title="No pudimos cargar los planes" onRetry={() => plansQuery.refetch()} />
       ) : (
@@ -381,6 +383,87 @@ function OrganizationActivity({ organizationId }: { organizationId: string }): R
           })}
         </ol>
       )}
+    </Section>
+  );
+}
+
+const SUBSCRIPTION_STATUS: Record<Detail["billing"]["recentPayments"][number]["status"] | NonNullable<Detail["billing"]["subscription"]>["status"], string> = {
+  TRIALING: "En prueba",
+  ACTIVE: "Activa",
+  PAST_DUE: "Morosa",
+  CANCELED: "Terminada",
+  INCOMPLETE: "Sin completar",
+  PENDING: "Confirmando",
+  APPROVED: "Pagado",
+  REJECTED: "Rechazado",
+  REFUNDED: "Reembolsado",
+};
+
+/** Lo que esta organización paga a Impulza (F4.6d): su suscripción y sus últimos cobros. */
+function BillingSection({ billing }: { billing: Detail["billing"] }): React.JSX.Element {
+  const subscription = billing.subscription;
+  return (
+    <Section
+      title="Suscripción y pagos"
+      description="Lo que esta organización paga por su plan."
+      actions={
+        <Link href="/facturacion" className="text-sm font-medium text-primary hover:underline">
+          Ver facturación
+        </Link>
+      }
+    >
+      {subscription ? (
+        <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+          <div>
+            <dt className="text-muted-foreground">Estado</dt>
+            <dd className="font-medium text-foreground">
+              {SUBSCRIPTION_STATUS[subscription.status]}
+              {subscription.cancelAtPeriodEnd ? " · cancelada al fin del período" : ""}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Plan</dt>
+            <dd className="text-foreground">
+              {subscription.planName} · {subscription.cycle === "MONTHLY" ? "mensual" : "anual"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{subscription.nextChargeAt && !subscription.cancelAtPeriodEnd ? "Próximo cobro" : "Vigente hasta"}</dt>
+            <dd className="text-foreground">{formatDate(subscription.nextChargeAt && !subscription.cancelAtPeriodEnd ? subscription.nextChargeAt : subscription.currentPeriodEnd)}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Tarjeta</dt>
+            <dd className="text-foreground">
+              {subscription.cardLast4 ? `•••• ${subscription.cardLast4}` : "—"}
+              {subscription.failedAttempts > 0 ? ` · ${subscription.failedAttempts} cobro(s) fallido(s)` : ""}
+            </dd>
+          </div>
+        </dl>
+      ) : (
+        <p className="text-sm text-muted-foreground">Nunca contrató un plan de pago.</p>
+      )}
+      {billing.recentPayments.length > 0 ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Fecha</TableHead>
+              <TableHead className="text-right">Monto</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Boleta</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {billing.recentPayments.map((payment) => (
+              <TableRow key={payment.id}>
+                <TableCell>{formatDate(payment.createdAt)}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatClp(payment.amount)}</TableCell>
+                <TableCell>{SUBSCRIPTION_STATUS[payment.status]}</TableCell>
+                <TableCell>{payment.taxDocumentStatus === "ISSUED" ? "Emitida" : payment.taxDocumentStatus === "PENDING" ? "Pendiente" : "No requiere"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : null}
     </Section>
   );
 }

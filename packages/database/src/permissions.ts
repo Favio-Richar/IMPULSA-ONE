@@ -25,6 +25,7 @@ export const PERMISSIONS = {
   BILLING_MANAGE: "billing.manage",
   PAYMENTS_CONNECT: "payments.connect",
   PAYMENTS_REFUND: "payments.refund",
+  WEBHOOKS_MANAGE: "webhooks.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -122,6 +123,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.PAYMENTS_REFUND,
     description: "Devolver dinero cobrado con la cuenta de Mercado Pago del negocio: pedidos y señas (F5.11).",
   },
+  {
+    key: PERMISSIONS.WEBHOOKS_MANAGE,
+    description: "Ver y administrar los webhooks salientes (destinos, secretos, pruebas y entregas) de la organización (F7.2).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -159,6 +164,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.PAYMENTS_CONNECT,
     // Devolver dinero sale de la cuenta del negocio y no se deshace (F5.11, ADR-013): solo el dueño.
     PERMISSIONS.PAYMENTS_REFUND,
+    // Los webhooks sacan datos de clientes hacia otros sistemas (F7.2, ADR-017): OWNER y ADMIN.
+    PERMISSIONS.WEBHOOKS_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -181,6 +188,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.ORDER_MANAGE,
     // Un envío masivo sale a nombre del negocio y no se puede deshacer (F5.6): solo OWNER/ADMIN.
     PERMISSIONS.CAMPAIGN_MANAGE,
+    PERMISSIONS.WEBHOOKS_MANAGE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y

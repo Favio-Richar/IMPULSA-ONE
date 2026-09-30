@@ -8,6 +8,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AnalyticsService } from "../analytics/analytics.service.js";
 import { AutomationEventsService } from "../automations/automation-events.service.js";
+import { WebhookEventsService } from "../webhooks/webhook-events.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
 import { storedImage } from "./catalog-setup.service.js";
 import { OrderCheckoutService } from "./order-checkout.service.js";
@@ -33,6 +34,7 @@ export class PublicCatalogService {
     private readonly analyticsService: AnalyticsService,
     private readonly notifier: OrderNotifier,
     private readonly automationEvents: AutomationEventsService,
+    private readonly webhookEvents: WebhookEventsService,
     private readonly checkout: OrderCheckoutService,
   ) {}
 
@@ -194,6 +196,7 @@ export class PublicCatalogService {
     await this.notifier.notifyReceived(charge ? { ...linked, paymentUrl: null } : linked, site.name, charge?.statusUrl);
     await this.notifier.notifyOwners(linked, site.name);
     await this.automationEvents.emit({ organizationId: site.organizationId, trigger: "order_created", subjectId: order.id, contactId: contactResult.contact.id });
+    await this.webhookEvents.emit({ organizationId: site.organizationId, type: "order.created", subjectId: order.id });
     logger.info("pedido público creado", { organizationId: site.organizationId, siteId: site.id, orderId: order.id });
     return confirmation;
   }

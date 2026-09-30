@@ -9,7 +9,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | Historia | Estado |
 |---|---|
 | F7.1 — Integraciones de medición: Google Analytics 4 y píxel de Meta (con consentimiento) | Lista para tu revisión (ADR-016; capturas en `docs/design/capturas/f71/`) |
-| F7.2 — Webhooks salientes firmados (contacto, reserva, pedido) y conector para Zapier/Make | Pendiente |
+| F7.2 — Webhooks salientes firmados (contacto, reserva, pedido) y conector para Zapier/Make | Lista para tu revisión (ADR-017; capturas en `docs/design/capturas/f72/`) |
 | F7.3 — Bloques nuevos: cuenta regresiva, tabla de precios, mapa, video y música incrustados (lista cerrada, sin HTML libre), eventos | Pendiente |
 | F7.4 — Suscripción a newsletter con doble confirmación | Pendiente |
 | F7.5 — Secuencias de correo automáticas (bienvenida, seguimiento) sobre las automatizaciones | Pendiente |
@@ -76,6 +76,47 @@ Criterios de aceptación:
 >   (normalizado); la CSP habría bloqueado la redirección de la descarga pagada sin `form-action`.
 > - Decisión abierta para el propietario: si la medición de terceros se restringe por plan
 >   (decisión #4). Hoy está disponible en todos.
+
+### F7.2 — Webhooks salientes firmados y conexión con Zapier/Make (ADR-017)
+
+Criterios de aceptación:
+- El dueño o un ADMIN (`webhooks.manage`) registra destinos (URL `https`, descripción, eventos) —
+  hasta 10 —, los activa o pausa, los edita y los borra; el secreto de firma se muestra una sola
+  vez y se puede rotar. Todo queda auditado.
+- Eventos: contacto creado, reserva creada o cancelada, pedido creado o pagado, y un evento de
+  prueba desde el panel. Cada envío va firmado (HMAC con marca de tiempo), con id de evento
+  estable, y se entrega desde el worker con reintentos; nunca hace fallar la operación que lo
+  originó.
+- **Protección SSRF** probada: URLs a IPs privadas, loopback, metadata de la nube, IPv6 local o
+  dominios que resuelven a ellas se rechazan, también si el DNS cambia después de guardar; sin
+  redirecciones; tiempo máximo acotado.
+- Registro de entregas con estado, código, duración, error e intentos; reenvío manual; `410` o 15
+  fallas seguidas desactivan el destino y avisan al dueño; entregas borradas a los 30 días.
+- Panel "Integraciones": lista, formulario, secreto con copiar, prueba, registro, y guía de Zapier y
+  Make con ejemplos de cada evento y cómo verificar la firma. Estados de carga, vacío, error y éxito;
+  teléfono y escritorio.
+- Pruebas: unitarias (firma, SSRF, carga útil), e2e de API (permisos, validación, aislamiento,
+  auditoría, emisión desde cada evento), worker contra un servidor HTTP real (entrega, reintentos,
+  desactivación, retención) y Playwright del panel.
+
+Implementación (2026-09-30):
+- `packages/webhooks`: firma, `lookup` anti-SSRF (IPv4, IPv6 y mapeadas; IP literales revisadas antes
+  de conectar), envío sin redirecciones (10 s, 4 KB), calendario de 8 intentos, creación y
+  procesamiento de entregas (reclamo condicional: nunca dos envíos), mantenimiento y carga útil.
+- API `organizations/:id/webhooks` (`webhooks.manage`): alta con el secreto una vez, edición,
+  pausa/reanudación, rotación, prueba (`ping` o **ejemplo de cualquier evento** con `test: true`, para
+  que Zapier o Make aprendan los campos), registro con filtro y detalle, y reenvío. Tope de 10, URL
+  única por organización, todo auditado con el host (nunca la URL ni el secreto).
+- Emisión en contactos (API y formularios), reserva pública y anotada, cancelación por el negocio,
+  por el cliente y por seña vencida (worker), pedido público, y pago manual o por Mercado Pago.
+- Worker: cola `webhook-deliveries` (concurrencia 10), aviso al dueño al desactivar, mantenimiento
+  cada hora (reencola entregas colgadas y borra las de más de 30 días).
+- Panel "Integraciones": destinos, secreto con copiar, envío de ejemplos, registro con motivo en
+  palabras, y guía de Zapier/Make con la forma de cada evento y el código de verificación (probado
+  contra el firmador real).
+- Pruebas: 16 del paquete, 8 e2e de API + caso en `multi-tenant-isolation`, 9 del worker contra un
+  servidor HTTP real, 4 de textos del panel y Playwright en teléfono y escritorio.
+- Pendiente del propietario: app propia en el directorio de Zapier (requiere cuenta de desarrollador).
 
 ## Fases siguientes
 

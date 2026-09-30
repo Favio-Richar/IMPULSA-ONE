@@ -14,6 +14,7 @@ import { DISPUTE_STATUSES } from "../payment-accounts/checkout-refunds.service.j
 import { MERCADO_PAGO_CHECKOUT, type CheckoutConfig } from "../payment-accounts/checkout.tokens.js";
 import { downloadState, orderDownloadPageUrl } from "./download-access.js";
 import { OrderNotifier } from "./order-notifier.js";
+import { WebhookEventsService } from "../webhooks/webhook-events.service.js";
 
 export const ORDER_STATUS_NOT_FOUND = "El enlace no es válido o el pedido ya no existe.";
 
@@ -44,6 +45,7 @@ export class OrderCheckoutService {
     private readonly accounts: PaymentAccountsService,
     private readonly notifier: OrderNotifier,
     private readonly audit: AuditService,
+    private readonly webhookEvents: WebhookEventsService,
   ) {}
 
   private available(): boolean {
@@ -180,6 +182,7 @@ export class OrderCheckoutService {
     if (!paid) return "unchanged";
     await this.audit.record({ organizationId: order.organizationId, actorId: null, action: "order.paid_online", targetType: "Order", targetId: order.id, metadata: { provider: "MERCADO_PAGO", paymentId: payment.id } });
     await this.notifier.notifyPaidOnline(paid, site?.name ?? "", payment.id);
+    await this.webhookEvents.emit({ organizationId: order.organizationId, type: "order.paid", subjectId: order.id });
     logger.info("pedidos: pago confirmado por Mercado Pago", { organizationId: order.organizationId, orderId: order.id });
     return "paid";
   }

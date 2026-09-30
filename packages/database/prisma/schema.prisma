@@ -219,6 +219,8 @@ model Organization {
   billingCheckouts    BillingCheckout[]
   legalAcceptances    LegalAcceptance[]
   paymentAccounts     PaymentAccount[]
+  webhookEndpoints    WebhookEndpoint[]
+  webhookDeliveries   WebhookDelivery[]
 
   @@map("organizations")
 }
@@ -1731,4 +1733,72 @@ model PaymentAccount {
   @@unique([organizationId, provider])
   @@index([status, expiresAt])
   @@map("payment_accounts")
+}
+
+// --- Webhooks salientes (F7.2, ADR-017) ---
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  // El destino se pausó, desactivó o borró antes de entregar.
+  SKIPPED
+}
+
+// Destino de webhooks de un negocio. La URL (que puede llevar un token de Zapier o Make) y el
+// secreto solo los ven OWNER/ADMIN (`webhooks.manage`); el secreto se guarda cifrado y se muestra
+// una sola vez. `events` se valida con `WEBHOOK_EVENT_TYPES` al escribir.
+model WebhookEndpoint {
+  id                  String    @id @default(uuid()) @db.Uuid
+  organizationId      String    @map("organization_id") @db.Uuid
+  url                 String
+  description         String?
+  events              String[]
+  secretEncrypted     String    @map("secret_encrypted")
+  active              Boolean   @default(true)
+  // Motivo si lo desactivó el sistema: `gone` (410) o `too_many_failures`. `null` si lo pausó una persona.
+  disabledReason      String?   @map("disabled_reason")
+  disabledAt          DateTime? @map("disabled_at") @db.Timestamptz(6)
+  consecutiveFailures Int       @default(0) @map("consecutive_failures")
+  lastSuccessAt       DateTime? @map("last_success_at") @db.Timestamptz(6)
+  lastFailureAt       DateTime? @map("last_failure_at") @db.Timestamptz(6)
+  createdById         String?   @map("created_by_id") @db.Uuid
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deliveries   WebhookDelivery[]
+
+  @@index([organizationId])
+  @@map("webhook_endpoints")
+}
+
+// Una entrega de un evento a un destino. `eventId` es el mismo en cada reintento (el receptor
+// descarta duplicados) y único por destino. `payload` lleva datos personales de los clientes del
+// negocio: se borra a los 30 días (ADR-004, ADR-017 §4).
+model WebhookDelivery {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  endpointId     String                @map("endpoint_id") @db.Uuid
+  eventId        String                @map("event_id") @db.Uuid
+  eventType      String                @map("event_type")
+  payload        Json
+  status         WebhookDeliveryStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  nextAttemptAt  DateTime?             @map("next_attempt_at") @db.Timestamptz(6)
+  lastStatusCode Int?                  @map("last_status_code")
+  lastError      String?               @map("last_error")
+  lastDurationMs Int?                  @map("last_duration_ms")
+  deliveredAt    DateTime?             @map("delivered_at") @db.Timestamptz(6)
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  endpoint     WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@unique([endpointId, eventId])
+  @@index([endpointId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@map("webhook_deliveries")
 }

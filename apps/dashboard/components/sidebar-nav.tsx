@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { CalendarCheck, ChartColumn, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, Megaphone, Package, Settings, ShoppingBag, Users, Wallet, Workflow } from "lucide-react";
+import { CalendarCheck, ChartColumn, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, Megaphone, Package, Settings, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -18,6 +18,8 @@ const NAV_ITEMS = [
   { href: "/campanas", label: "Campañas", icon: Megaphone },
   // Automatizaciones básicas (F6.7).
   { href: "/automatizaciones", label: "Automatizaciones", icon: Workflow },
+  // Webhooks salientes hacia Zapier, Make u otros sistemas (F7.2, ADR-017).
+  { href: "/integraciones", label: "Integraciones", icon: Webhook },
   // Agenda de reservas (F5.3).
   { href: "/reservas", label: "Reservas", icon: CalendarCheck },
   { href: "/catalogo", label: "Catálogo", icon: Package },

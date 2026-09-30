@@ -15,6 +15,7 @@ import { startCampaignDispatchWorkers } from "./campaign-dispatch.js";
 import { env, mercadoPagoConfig, mercadoPagoOAuthConfig, webpayConfig } from "./env.js";
 import { createHealthServer } from "./health-server.js";
 import { startMediaWorkers } from "./media-workers.js";
+import { emitWebhookEvent, startWebhookWorkers } from "./webhooks.js";
 import { logger } from "./observability/logger.js";
 
 initSentry({
@@ -65,11 +66,29 @@ const bookingReminders = await startBookingReminderWorkers({
   bookingLinkSecret: env.BOOKING_LINK_SECRET,
 });
 
-// Señas de reservas (F5.10): libera cada minuto las horas cuya seña no se pagó a tiempo.
+// Webhooks salientes (F7.2, ADR-017): los secretos se guardan cifrados; sin la clave no se entregan.
+const webhooks = env.AUTH_ENCRYPTION_KEY
+  ? await startWebhookWorkers({
+      prisma,
+      email: new ConsoleEmailAdapter(),
+      connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+      encryptionKey: env.AUTH_ENCRYPTION_KEY,
+      dashboardBaseUrl: env.APP_BASE_URL,
+    })
+  : null;
+if (!webhooks) {
+  logger.warn("Sin AUTH_ENCRYPTION_KEY: la entrega de webhooks no se inicia");
+}
+
+// Señas de reservas (F5.10): libera cada minuto las horas cuya seña no se pagó a tiempo. La reserva
+// liberada también avisa por webhook (`booking.cancelled`).
 const bookingDeposits = await startBookingDepositWorkers({
   prisma,
   email: new ConsoleEmailAdapter(),
   connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+  onReleased: webhooks
+    ? (booking) => emitWebhookEvent(prisma, webhooks.queue, { organizationId: booking.organizationId, type: "booking.cancelled", subjectId: booking.id })
+    : undefined,
 });
 
 // Campañas de email (F5.6): el enlace de baja se firma con el mismo secreto de enlaces de correo.
@@ -158,6 +177,7 @@ async function shutdown(signal: string): Promise<void> {
   await automations.close();
   await billing?.close();
   await paymentAccounts?.close();
+  await webhooks?.close();
   healthRedis.disconnect();
   await prisma.$disconnect();
   process.exit(0);

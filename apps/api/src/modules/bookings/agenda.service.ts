@@ -6,6 +6,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { AutomationEventsService } from "../automations/automation-events.service.js";
+import { WebhookEventsService } from "../webhooks/webhook-events.service.js";
 import { CheckoutRefundsService } from "../payment-accounts/checkout-refunds.service.js";
 import { BookingNotifier } from "./booking-notifier.js";
 import { BookingSetupService } from "./booking-setup.service.js";
@@ -37,6 +38,7 @@ export class AgendaService {
     private readonly auditService: AuditService,
     private readonly setup: BookingSetupService,
     private readonly automationEvents: AutomationEventsService,
+    private readonly webhookEvents: WebhookEventsService,
     private readonly refunds: CheckoutRefundsService,
     private readonly notifier: BookingNotifier,
   ) {}
@@ -169,6 +171,7 @@ export class AgendaService {
     // También una reserva anotada a mano dispara las automatizaciones (sin contacto, las acciones
     // sobre el contacto se omiten y queda registrado).
     await this.automationEvents.emit({ organizationId, trigger: "booking_created", subjectId: booking.id, contactId: contact?.id ?? null });
+    await this.webhookEvents.emit({ organizationId, type: "booking.created", subjectId: booking.id });
     logger.info("reserva anotada por el negocio", { organizationId, siteId: input.siteId, bookingId: booking.id });
     return this.toResponse(booking);
   }
@@ -202,6 +205,9 @@ export class AgendaService {
       targetId: current.id,
       metadata: { from: current.status, to: input.status },
     });
+    if (input.status === "CANCELLED") {
+      await this.webhookEvents.emit({ organizationId, type: "booking.cancelled", subjectId: current.id });
+    }
     return this.toResponse(updated);
   }
 

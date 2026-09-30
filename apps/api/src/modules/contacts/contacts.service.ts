@@ -10,6 +10,7 @@ import { MARKETING_CONSENT_TEXT_VERSION } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
 import { AutomationEventsService } from "../automations/automation-events.service.js";
+import { WebhookEventsService } from "../webhooks/webhook-events.service.js";
 import { PlansService } from "../plans/plans.service.js";
 
 export interface ContactFromSubmissionInput {
@@ -32,6 +33,7 @@ export class ContactsService {
     private readonly auditService: AuditService,
     private readonly plansService: PlansService,
     private readonly automationEvents: AutomationEventsService,
+    private readonly webhookEvents: WebhookEventsService,
   ) {}
 
   /**
@@ -97,6 +99,7 @@ export class ContactsService {
       },
     });
     await this.automationEvents.emit({ organizationId: input.organizationId, trigger: "contact_created", subjectId: contact.id, contactId: contact.id });
+    await this.webhookEvents.emit({ organizationId: input.organizationId, type: "contact.created", subjectId: contact.id });
     return { contact, created: true };
   }
 
@@ -168,6 +171,7 @@ export class ContactsService {
       metadata: { source: contact.source },
     });
     await this.automationEvents.emit({ organizationId, trigger: "contact_created", subjectId: contact.id, contactId: contact.id });
+    await this.webhookEvents.emit({ organizationId, type: "contact.created", subjectId: contact.id });
 
     return contact;
   }

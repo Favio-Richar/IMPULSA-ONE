@@ -25,6 +25,8 @@ export async function releaseExpiredDeposits(
   now: Date = new Date(),
   /** Solo para pruebas: con el reloj adelantado, nunca tocar reservas de otras suites que corren a la vez. */
   scope: { organizationId?: string } = {},
+  /** Tras liberar cada una (F7.2: webhook `booking.cancelled`). Nunca debe lanzar. */
+  onReleased?: (booking: { id: string; organizationId: string }) => Promise<void>,
 ): Promise<number> {
   const due = await prisma.booking.findMany({
     where: {
@@ -62,6 +64,7 @@ export async function releaseExpiredDeposits(
       // La hora ya se liberó; el correo no se reintenta (no hay nada que el cliente deba hacer).
       logger.error("booking.deposit.expired_email_failed", { bookingId: booking.id, err: error });
     }
+    await onReleased?.(booking);
     logger.info("booking.deposit.expired", { organizationId: booking.organizationId, bookingId: booking.id });
   }
   return released;
@@ -72,13 +75,18 @@ export interface BookingDepositWorkers {
 }
 
 /** Revisa cada minuto: una hora tomada sin pagar no debe bloquear la agenda mucho más que el plazo. */
-export async function startBookingDepositWorkers(options: { prisma: PrismaClient; email: EmailAdapter; connection: ConnectionOptions }): Promise<BookingDepositWorkers> {
+export async function startBookingDepositWorkers(options: {
+  prisma: PrismaClient;
+  email: EmailAdapter;
+  connection: ConnectionOptions;
+  onReleased?: (booking: { id: string; organizationId: string }) => Promise<void>;
+}): Promise<BookingDepositWorkers> {
   const queue = new Queue(BOOKING_DEPOSITS_QUEUE, { connection: options.connection });
   await queue.upsertJobScheduler("booking-deposits-every-minute", { pattern: "0 * * * * *" }, { name: "release-expired-deposits" });
   const worker = new Worker(
     BOOKING_DEPOSITS_QUEUE,
     async () => {
-      const released = await releaseExpiredDeposits(options.prisma, options.email);
+      const released = await releaseExpiredDeposits(options.prisma, options.email, new Date(), {}, options.onReleased);
       if (released > 0) logger.info("booking.deposits.released", { released });
       return released;
     },

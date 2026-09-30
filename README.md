@@ -4,7 +4,8 @@ Plataforma SaaS multiusuario y multiempresa para construir un centro digital de 
 captación, reservas, ventas y analítica) desde una sola URL.
 
 **Estado actual (2026-09-30): Fase 7 en curso — F7.1 (GA4 y píxel de Meta con consentimiento, y CSP
-en la página pública, ADR-016) lista para revisión; sigue F7.2 (webhooks salientes). Los cobros de
+en la página pública, ADR-016) y F7.2 (webhooks salientes firmados hacia Zapier, Make u otros
+sistemas, ADR-017) listas para revisión; sigue F7.3. Los cobros de
 los negocios (F5.8–F5.11, ADR-013 y ADR-015) quedaron completos y en revisión. Lo pendiente de todo
 el plan está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
@@ -1289,6 +1290,18 @@ y Configurar, con el mismo peso) y **no carga nada de terceros sin consentimient
 vistas, clics en WhatsApp, formularios, reservas y pedidos, sin datos personales. `apps/web` ahora
 responde con CSP y cabeceras de seguridad (`lib/security-headers.ts`); todo origen nuevo que cargue
 la página pública se agrega ahí con su prueba.
+
+## Integraciones: webhooks salientes (F7.2, ADR-017)
+
+En el panel, "Integraciones" (solo dueño o administrador, permiso `webhooks.manage`) registra hasta
+10 destinos `https` públicos y elige qué eventos reciben: contacto nuevo, reserva nueva o cancelada,
+pedido nuevo o pagado. Cada aviso es un `POST` JSON firmado (`Impulza-Signature: t=…,v1=…`, HMAC
+con el secreto `whsec_…` que se muestra una sola vez) con un `id` estable para descartar repetidos.
+El worker entrega con 8 intentos en ~1 día; un `410` o 15 fallas seguidas desactivan el destino y
+avisan al dueño. Nunca se conecta a redes privadas ni sigue redirecciones (la IP se valida al
+conectar). Para Zapier o Make: crear un "Catch Hook"/"Custom webhook", pegar su URL como destino y
+usar "Enviar un ejemplo de…" para que aprendan los campos (esos envíos llevan `test: true`). El
+registro de entregas se guarda 30 días. Requiere `AUTH_ENCRYPTION_KEY` en la API y el worker.
 
 ## Cobros de los negocios (F5.8, ADR-013)
 

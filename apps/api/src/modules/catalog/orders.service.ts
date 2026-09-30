@@ -7,6 +7,7 @@ import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { CheckoutRefundsService } from "../payment-accounts/checkout-refunds.service.js";
 import { OrderNotifier } from "./order-notifier.js";
+import { WebhookEventsService } from "../webhooks/webhook-events.service.js";
 
 export const ORDER_NOT_FOUND = "Pedido no encontrado: no existe, o pertenece a otra organización (ADR-002).";
 export const ORDER_CHANGED = "El pedido cambió mientras lo editabas. Recarga e inténtalo de nuevo.";
@@ -31,6 +32,7 @@ export class OrdersService {
     private readonly auditService: AuditService,
     private readonly notifier: OrderNotifier,
     private readonly refunds: CheckoutRefundsService,
+    private readonly webhookEvents: WebhookEventsService,
   ) {}
 
   toResponse(order: Order): OrderResponse {
@@ -160,6 +162,9 @@ export class OrdersService {
     if (next === "PAID" || next === "DELIVERED" || next === "CANCELLED") {
       const site = await this.prisma.site.findUnique({ where: { id: updated.siteId }, select: { name: true } });
       await this.notifier.notifyStatus(next, updated, site?.name ?? "");
+    }
+    if (next === "PAID") {
+      await this.webhookEvents.emit({ organizationId, type: "order.paid", subjectId: current.id });
     }
     logger.info("pedido cambió de estado", { organizationId, orderId: current.id, from: current.status, to: next });
     return this.toResponse(updated);

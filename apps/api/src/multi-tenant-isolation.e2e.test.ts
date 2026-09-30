@@ -1749,6 +1749,43 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Webhooks salientes (F7.2, ADR-017): destinos, entregas y eventos nunca se cruzan", () => {
+    it("A no ve, edita, prueba, rota ni reenvía lo de B, y un evento de B nunca llega a un destino de A", async () => {
+      const ofB = `/api/v1/organizations/${orgB.id}/webhooks`;
+      const ofA = `/api/v1/organizations/${orgA.id}/webhooks`;
+      const endpointB = (await orgB.ownerAgent.post(ofB).set(CSRF_HEADERS).send({ url: "https://sink.impulza-isolation-nx.com/b", events: ["contact.created"] }).expect(201)).body.endpoint;
+      const endpointA = (await orgA.ownerAgent.post(ofA).set(CSRF_HEADERS).send({ url: "https://sink.impulza-isolation-nx.com/a", events: ["contact.created"] }).expect(201)).body.endpoint;
+      try {
+        const deliveryB = (await orgB.ownerAgent.post(`${ofB}/${endpointB.id}/test`).set(CSRF_HEADERS).expect(201)).body;
+        await prisma.webhookDelivery.update({ where: { id: deliveryB.id }, data: { status: "FAILED" } });
+
+        await orgA.ownerAgent.get(ofB).expect(403);
+        await orgA.ownerAgent.post(ofB).set(CSRF_HEADERS).send({ url: "https://sink.impulza-isolation-nx.com/x", events: ["contact.created"] }).expect(403);
+        for (const route of [`${ofA}/${endpointB.id}`, `${ofB}/${endpointB.id}`]) {
+          const expected = route.startsWith(ofA) ? 404 : 403;
+          await orgA.ownerAgent.patch(route).set(CSRF_HEADERS).send({ url: "https://evil.impulza-isolation-nx.com/" }).expect(expected);
+          await orgA.ownerAgent.post(`${route}/rotate-secret`).set(CSRF_HEADERS).expect(expected);
+          await orgA.ownerAgent.post(`${route}/test`).set(CSRF_HEADERS).expect(expected);
+          await orgA.ownerAgent.get(`${route}/deliveries`).expect(expected);
+          await orgA.ownerAgent.get(`${route}/deliveries/${deliveryB.id}`).expect(expected);
+          await orgA.ownerAgent.post(`${route}/deliveries/${deliveryB.id}/redeliver`).set(CSRF_HEADERS).expect(expected);
+          await orgA.ownerAgent.delete(route).set(CSRF_HEADERS).expect(expected);
+        }
+        // La entrega de B bajo un destino de A tampoco.
+        await orgA.ownerAgent.get(`${ofA}/${endpointA.id}/deliveries/${deliveryB.id}`).expect(404);
+        expect((await orgA.ownerAgent.get(ofA).expect(200)).body.map((row: { id: string }) => row.id)).toEqual([endpointA.id]);
+        expect(await prisma.webhookEndpoint.findUniqueOrThrow({ where: { id: endpointB.id } })).toMatchObject({ url: "https://sink.impulza-isolation-nx.com/b", active: true });
+
+        // Un contacto nuevo en B solo genera entregas para destinos de B.
+        await orgB.ownerAgent.post(`/api/v1/organizations/${orgB.id}/contacts`).set(CSRF_HEADERS).send({ name: "Cliente de B" }).expect(201);
+        expect(await prisma.webhookDelivery.count({ where: { endpointId: endpointA.id } })).toBe(0);
+        expect(await prisma.webhookDelivery.count({ where: { endpointId: endpointB.id, eventType: "contact.created" } })).toBe(1);
+      } finally {
+        await prisma.webhookEndpoint.deleteMany({ where: { id: { in: [endpointA.id, endpointB.id] } } });
+      }
+    });
+  });
+
   describe("Cuenta de cobro del negocio (F5.8, ADR-013): nunca se cruza", () => {
     it("A no ve, conecta ni desconecta la cuenta de Mercado Pago de B", async () => {
       const account = await prisma.paymentAccount.create({

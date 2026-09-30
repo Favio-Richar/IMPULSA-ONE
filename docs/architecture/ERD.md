@@ -392,6 +392,20 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   `^G-[A-Z0-9]{4,15}$` y `^[0-9]{10,20}$`). Solo identificadores: el script lo arma Impulza. La
   elección de consentimiento de cada visitante **no** se guarda en la base (vive en su navegador).
 
+## 9p. Webhooks salientes (F7.2, `BACKLOG_FASE_7.md`, ADR-017)
+
+- **WebhookEndpoint** (`webhook_endpoints`): destino de una organización. `url` (`CHECK` https),
+  `description`, `events text[]` (validados con `WEBHOOK_EVENT_TYPES` al escribir),
+  `secret_encrypted` (AES-GCM con `AUTH_ENCRYPTION_KEY`, nunca se devuelve), `active`,
+  `disabled_reason` (`CHECK` `gone` | `too_many_failures`, nulo si lo pausó una persona),
+  `consecutive_failures` (≥ 0), últimas entregas correctas y fallidas, `created_by_id`.
+- **WebhookDelivery** (`webhook_deliveries`): una entrega de un evento a un destino (cascada al borrar
+  el destino o la organización). `event_id` estable (único por destino), `event_type`, `payload`
+  (datos personales de clientes del negocio: se **borra a los 30 días**), `status`
+  (`PENDING`/`SUCCEEDED`/`FAILED`/`SKIPPED`), `attempts`, `next_attempt_at`, último código,
+  error y duración; `CHECK` `(status = 'SUCCEEDED') = (delivered_at IS NOT NULL)`.
+- Migración `20260930080000_f72_webhooks` con `down.sql`; permiso `webhooks.manage` (OWNER, ADMIN).
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 Variantes/cupones/carrito,

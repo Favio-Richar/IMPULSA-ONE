@@ -11,6 +11,7 @@ import { AuditService } from "../audit/audit.service.js";
 import { BookingDepositService } from "./booking-deposit.service.js";
 import { BookingNotifier } from "./booking-notifier.js";
 import { BookingSetupService } from "./booking-setup.service.js";
+import { WebhookEventsService } from "../webhooks/webhook-events.service.js";
 
 export const MANAGE_NOT_FOUND = "El enlace no es válido o la reserva ya no existe.";
 export const TOO_LATE = "Ya no se puede cambiar esta reserva desde el enlace. Contacta directamente al negocio.";
@@ -36,6 +37,7 @@ export class BookingManageService {
     private readonly notifier: BookingNotifier,
     private readonly auditService: AuditService,
     private readonly deposit: BookingDepositService,
+    private readonly webhookEvents: WebhookEventsService,
   ) {}
 
   private async resolve(token: string) {
@@ -126,6 +128,7 @@ export class BookingManageService {
     });
     await this.notifier.notifyCustomer("cancelled", updated, booking.site.name);
     await this.notifier.notifyOwners("cancelled", updated, booking.site.name);
+    await this.webhookEvents.emit({ organizationId: booking.organizationId, type: "booking.cancelled", subjectId: booking.id });
     logger.info("reserva cancelada por el cliente", { organizationId: booking.organizationId, bookingId: booking.id });
     return this.view(token, now);
   }

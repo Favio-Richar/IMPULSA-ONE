@@ -13,6 +13,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AnalyticsService } from "../analytics/analytics.service.js";
 import { AutomationEventsService } from "../automations/automation-events.service.js";
+import { WebhookEventsService } from "../webhooks/webhook-events.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
 import { BookingDepositService } from "./booking-deposit.service.js";
 import { BookingNotifier } from "./booking-notifier.js";
@@ -45,6 +46,7 @@ export class PublicBookingsService {
     private readonly analyticsService: AnalyticsService,
     private readonly notifier: BookingNotifier,
     private readonly automationEvents: AutomationEventsService,
+    private readonly webhookEvents: WebhookEventsService,
     private readonly deposit: BookingDepositService,
   ) {}
 
@@ -273,6 +275,7 @@ export class PublicBookingsService {
       await this.notifier.notifyOwners("created", booking, site.name);
     }
     await this.automationEvents.emit({ organizationId: site.organizationId, trigger: "booking_created", subjectId: bookingId, contactId: contactResult.contact.id });
+    await this.webhookEvents.emit({ organizationId: site.organizationId, type: "booking.created", subjectId: bookingId });
     logger.info("reserva pública creada", { organizationId: site.organizationId, siteId: site.id, bookingId });
     return confirmation;
   }

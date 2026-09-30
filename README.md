@@ -3,7 +3,9 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual: Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
+**Estado actual (2026-09-30): cobros de los negocios (F5.8–F5.11, ADR-013) en curso — F5.8 lista para
+revisión, sigue F5.9 (ver punto de corte en `docs/BACKLOG_FASE_5.md`). Lo pendiente de todo el plan
+está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
 superadministración) listas para revisión, igual que F4.6b (Mercado Pago, pendiente de probar con credenciales reales). Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
 (salud de página), F6.2 (motor de IA con modelos locales primero, ADR-010), F6.2b (conexiones de IA

@@ -78,6 +78,18 @@ directo a él; Impulza no custodia fondos, no ve tarjetas y no cobra comisión p
 > - Pendiente para producción: crear la aplicación de Impulza en Mercado Pago, registrar la URL de
 >   redirección y activar PKCE, y probar la conexión con una cuenta de prueba.
 
+> **PUNTO DE CORTE (2026-09-30, para retomar mañana).** Hecho y commiteado: F5.8 completa
+> (`782d940`), base de pruebas propia y CI en `master` (`361581f`), cobros de suscripciones F4.6a–d
+> y F4.6b. Siguiente paso literal, en orden:
+> 1. F5.9: cliente de Checkout Pro en `packages/payments` (`POST /checkout/preferences` y
+>    `GET /v1/payments/{id}` con el token del negocio), campos de pago en `Order` (migración).
+> 2. En el pedido público (`public-catalog.service.ts`): si el negocio tiene cuenta conectada
+>    (`PaymentAccountsService.accessTokenFor`), crear la preferencia con `external_reference` = id
+>    del pedido y devolver la URL de pago; si no, el enlace externo de siempre.
+> 3. Webhook por pedido: consultar el pago con el token del negocio y marcar pagado solo si
+>    cuenta, pedido, monto y moneda coinciden (idempotente); avisos al negocio y al comprador.
+> 4. Pruebas (unitarias, e2e, aislamiento, Playwright), capturas y documentación.
+
 **F5.9 — Cobro de pedidos con Checkout Pro**
 - Con cuenta conectada, el pedido público crea una preferencia a nombre del negocio
   (`external_reference` = pedido) y el comprador paga en Mercado Pago; al volver ve el estado.

@@ -3,6 +3,11 @@ import type { PublicBlockResponse, PublicFormResponse } from "@impulza/contracts
 import {
   bookingBlockSchema,
   catalogBlockSchema,
+  countdownSchema,
+  eventsSchema,
+  mapSchema,
+  musicSchema,
+  pricingSchema,
   contactActionsSchema,
   contactFormSchema,
   dividerSchema,
@@ -23,6 +28,11 @@ import type { ButtonVariant } from "./ui/link-button.js";
 import { ContactActionsBlock } from "./blocks/contact-actions.js";
 import { BookingBlock } from "./blocks/booking.js";
 import { CatalogBlock } from "./blocks/catalog.js";
+import { CountdownBlock } from "./blocks/countdown.js";
+import { EventsBlock } from "./blocks/events.js";
+import { MapBlock } from "./blocks/map.js";
+import { MusicBlock } from "./blocks/music.js";
+import { PricingBlock } from "./blocks/pricing.js";
 import { ContactFormBlock } from "./blocks/contact-form.js";
 import { DividerBlock } from "./blocks/divider.js";
 import { FaqBlock } from "./blocks/faq.js";
@@ -150,6 +160,26 @@ export function RenderBlock({
     case "catalog": {
       const parsed = catalogBlockSchema.safeParse(block.config);
       return parsed.success ? <CatalogBlock config={parsed.data} siteSlug={siteSlug} mode={mode} glass={buttonVariant === "glass"} /> : null;
+    }
+    case "countdown": {
+      const parsed = countdownSchema.safeParse(block.config);
+      return parsed.success ? <CountdownBlock config={parsed.data} buttonVariant={buttonVariant} /> : null;
+    }
+    case "pricing": {
+      const parsed = pricingSchema.safeParse(block.config);
+      return parsed.success ? <PricingBlock config={parsed.data} buttonVariant={buttonVariant} /> : null;
+    }
+    case "map": {
+      const parsed = mapSchema.safeParse(block.config);
+      return parsed.success ? <MapBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
+    }
+    case "music": {
+      const parsed = musicSchema.safeParse(block.config);
+      return parsed.success ? <MusicBlock config={parsed.data} /> : null;
+    }
+    case "events": {
+      const parsed = eventsSchema.safeParse(block.config);
+      return parsed.success ? <EventsBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
     }
     default:
       return null;

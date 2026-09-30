@@ -124,6 +124,63 @@ function FieldControlView({ field, namePrefix }: { field: FieldDescriptor; nameP
         </label>
       );
 
+    case "music":
+      return (
+        <label className="flex flex-col gap-1.5">
+          <span className={labelTextClass}>{field.label}</span>
+          <input type="url" placeholder="https://open.spotify.com/…" className={inputClass} {...register(name)} />
+          {error ? (
+            <FieldErrorText message={error} />
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              Pega el enlace de Spotify, SoundCloud o Apple Music (Compartir → Copiar enlace). No el código de inserción.
+            </span>
+          )}
+        </label>
+      );
+
+    case "datetime":
+      return (
+        <label className="flex flex-col gap-1.5">
+          <span className={labelTextClass}>
+            {field.label}
+            {field.optional ? " (opcional)" : ""}
+          </span>
+          <input type="datetime-local" className={inputClass} {...register(name)} />
+          {error ? (
+            <FieldErrorText message={error} />
+          ) : field.helperText ? (
+            <span className="text-sm text-muted-foreground">{field.helperText}</span>
+          ) : null}
+        </label>
+      );
+
+    case "lines": {
+      const linesControl = field.control;
+      // El esquema marca la línea exacta (`features.3`): se muestra con su número.
+      const lineError = error ?? nestedErrorAt(errors, name);
+      return (
+        <label className="flex flex-col gap-1.5">
+          <span className={labelTextClass}>
+            {field.label}
+            {field.optional ? " (opcional)" : ""}
+          </span>
+          <textarea
+            rows={4}
+            className="min-h-24 rounded-md border border-border-strong bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+            {...register(name)}
+          />
+          {lineError ? (
+            <FieldErrorText message={lineError} />
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              {field.helperText ?? `Una por línea (hasta ${linesControl.maxItems}, de ${linesControl.maxLength} caracteres).`}
+            </span>
+          )}
+        </label>
+      );
+    }
+
     case "multiselect":
       return <MultiSelectFieldView name={name} label={field.label} control={field.control} error={error} />;
 
@@ -289,6 +346,21 @@ function FieldErrorText({ message }: { message: string }) {
       {message}
     </p>
   );
+}
+
+/** Primer error debajo de `path` (una línea de una lista), con el número de línea. */
+function nestedErrorAt(errors: Record<string, unknown>, path: string): string | undefined {
+  let current: unknown = errors;
+  for (const segment of path.split(".")) {
+    if (current === null || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[segment];
+  }
+  if (current === null || typeof current !== "object") return undefined;
+  for (const [key, value] of Object.entries(current as Record<string, unknown>)) {
+    const message = (value as FieldError | undefined)?.message;
+    if (typeof message === "string") return /^\d+$/.test(key) ? `Línea ${Number(key) + 1}: ${message}` : message;
+  }
+  return undefined;
 }
 
 function errorAt(errors: Record<string, unknown>, path: string): string | undefined {

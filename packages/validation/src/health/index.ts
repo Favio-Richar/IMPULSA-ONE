@@ -1,5 +1,6 @@
 import { findImagesWithoutAlt } from "../blocks/primitives.js";
 import { parseStoredBlock } from "../blocks/stored-block.js";
+import { localDateTimeToInstant } from "../blocks/time.js";
 import { seoMetaSchema } from "../seo/index.js";
 import { themeTokensSchema } from "../themes/tokens.js";
 
@@ -29,6 +30,8 @@ export const HEALTH_FINDING_CODES = [
   "form_not_configured",
   "booking_without_services",
   "catalog_without_products",
+  "countdown_ended",
+  "events_all_past",
   "seo_title_generic",
   "seo_description_missing",
   "seo_home_noindex",
@@ -145,6 +148,19 @@ function collectLinkUrls(type: string, config: Record<string, unknown>): string[
     case "testimonials":
       push(config.reviewsUrl);
       break;
+    case "countdown":
+      push((config.cta as Record<string, unknown> | undefined)?.url);
+      break;
+    case "pricing":
+      for (const plan of (config.plans as Array<Record<string, unknown>> | undefined) ?? []) {
+        push((plan.cta as Record<string, unknown> | undefined)?.url);
+      }
+      break;
+    case "events":
+      for (const item of (config.items as Array<Record<string, unknown>> | undefined) ?? []) {
+        push(item.ticketUrl);
+      }
+      break;
     default:
       break;
   }
@@ -236,6 +252,26 @@ export function evaluatePageHealth(input: PageHealthInput): PageHealthReport {
       }
     }
 
+    // F7.3: un bloque con fecha que ya pasó sigue en la página. La cuenta regresiva que se oculta al
+    // terminar ya no se ve, pero igual conviene quitarla o poner la fecha siguiente.
+    if (block.type === "countdown") {
+      const target = localDateTimeToInstant(String(config.target), String(config.timeZone));
+      if (target && target <= now) {
+        add({ code: "countdown_ended", severity: "warning", category: "content", ...ref });
+      }
+    }
+    if (block.type === "events") {
+      const timeZone = String(config.timeZone);
+      const items = (config.items as Array<Record<string, unknown>> | undefined) ?? [];
+      const upcoming = items.filter((item) => {
+        const until = localDateTimeToInstant(String(item.end ?? item.start), timeZone);
+        return until !== null && until > now;
+      });
+      if (upcoming.length === 0) {
+        add({ code: "events_all_past", severity: "warning", category: "content", ...ref });
+      }
+    }
+
     const missingAlt = findImagesWithoutAlt(config).length;
     if (missingAlt > 0) {
       add({ code: "image_alt_missing", severity: "warning", category: "accessibility", ...ref, count: missingAlt });
@@ -259,7 +295,9 @@ export function evaluatePageHealth(input: PageHealthInput): PageHealthReport {
       add({ code: "insecure_link", severity: "warning", category: "links", ...ref, count: insecure });
     }
 
-    if (block.type === "video") {
+    // Un reproductor de música pesa como un video (iframe de terceros); el mapa no, porque se carga
+    // solo si el visitante lo pide (ADR-018).
+    if (block.type === "video" || block.type === "music") {
       videos += 1;
     }
     images += countImages(block.type, config);

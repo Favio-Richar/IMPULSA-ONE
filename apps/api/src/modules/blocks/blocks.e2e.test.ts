@@ -147,6 +147,56 @@ describe("Blocks (e2e) — F2.4", () => {
       expect(blocks.body).toHaveLength(samples.length);
     });
 
+    it("F7.3 (ADR-018): crea cuenta regresiva, precios, mapa, música y eventos; música y video se guardan como proveedor + id", async () => {
+      const { agent, basePath } = await createPageWithOwner();
+      const samples: Array<[string, unknown]> = [
+        ["countdown", { title: "Lanzamiento", target: "2031-10-12T20:00", timeZone: "America/Santiago", endedBehavior: "hide" }],
+        ["pricing", { plans: [{ name: "Básico", priceAmount: 19990, period: "month", features: ["Una sesión"] }, { name: "Pro", priceAmount: 39990, highlighted: true }] }],
+        ["map", { name: "Estudio", address: "Av. Providencia 1234, Santiago" }],
+        ["music", { music: "https://open.spotify.com/intl-es/album/1DFixLWuPkv3KT3TnV35m3?si=x" }],
+        ["events", { timeZone: "America/Santiago", items: [{ name: "Concierto", start: "2031-11-01T21:00", ticketUrl: "https://entradas.cl/x" }] }],
+        ["video", { video: "https://www.tiktok.com/@ana/video/7312345678901234567" }],
+      ];
+      const created: Record<string, { config: Record<string, unknown> }> = {};
+      for (const [type, config] of samples) {
+        const response = await agent.post(basePath).set(CSRF_HEADERS).send({ type, config });
+        expect(response.status, `${type}: ${JSON.stringify(response.body)}`).toBe(201);
+        expect(response.body.degraded).toBeNull();
+        created[type] = response.body;
+      }
+      expect(created.music!.config.music).toEqual({ provider: "spotify", kind: "album", id: "1DFixLWuPkv3KT3TnV35m3" });
+      expect(created.video!.config.video).toEqual({ provider: "tiktok", videoId: "7312345678901234567", vertical: true });
+      expect(created.pricing!.config.plans).toEqual([
+        expect.objectContaining({ priceCurrency: "CLP", period: "month", highlighted: false }),
+        expect.objectContaining({ period: "once", features: [], highlighted: true }),
+      ]);
+      expect(created.map!.config).toEqual({ name: "Estudio", address: "Av. Providencia 1234, Santiago", showMap: true });
+    });
+
+    it("F7.3: rechaza código de inserción, enlaces ajenos, horas imposibles y fechas cruzadas, con el campo exacto", async () => {
+      const { agent, basePath } = await createPageWithOwner();
+      const reject = async (type: string, config: unknown) => (await agent.post(basePath).set(CSRF_HEADERS).send({ type, config }).expect(422)).body.issues as Array<{ path: string; message: string }>;
+
+      const iframe = await reject("music", { music: '<iframe src="https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC"></iframe>' });
+      expect(iframe).toEqual([expect.objectContaining({ path: "music", message: expect.stringContaining("no el código de inserción") })]);
+      const foreign = await reject("music", { music: "https://evil.example.com/track/4uLU6hMCjMI75M1A2tKUQC" });
+      expect(foreign[0]!.message).toContain("Spotify, SoundCloud o Apple Music");
+      // Un id guardado a mano con caracteres de URL tampoco pasa: el `src` nunca se arma con él.
+      await reject("music", { music: { provider: "soundcloud", path: "a/../../evil" } });
+      const video = await reject("video", { video: "https://evil.example.com/x" });
+      expect(video[0]!.message).toContain("YouTube, Vimeo o TikTok");
+
+      const gap = await reject("countdown", { target: "2026-09-06T00:30", timeZone: "America/Santiago" });
+      expect(gap).toEqual([expect.objectContaining({ path: "target", message: expect.stringContaining("no existe") })]);
+      await reject("countdown", { target: "2026-10-12T20:00", timeZone: "Marte/Olympus" });
+      const crossed = await reject("events", { timeZone: "America/Santiago", items: [{ name: "A", start: "2031-01-01T20:00", end: "2031-01-01T18:00" }] });
+      expect(crossed.map((issue) => issue.path)).toEqual(["items.0.end"]);
+      await reject("events", { timeZone: "America/Santiago", items: [{ name: "A", start: "2031-01-01T20:00", ticketUrl: "javascript:alert(1)" }] });
+      await reject("pricing", { plans: [{ name: "A", priceAmount: 10.5 }] });
+      await reject("pricing", { plans: [{ name: "A", priceAmount: 1, highlighted: true }, { name: "B", priceAmount: 2, highlighted: true }] });
+      await reject("map", { address: "" });
+    });
+
     it("rechaza un tipo que no está en el catálogo", async () => {
       const { agent, basePath } = await createPageWithOwner();
 

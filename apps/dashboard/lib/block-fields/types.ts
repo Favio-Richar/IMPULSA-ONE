@@ -20,6 +20,12 @@ export type FieldControl =
    *  acepta indistintamente esa forma o una URL de YouTube/Vimeo — el campo siempre edita una URL
    *  de texto; `toFormConfig` reconstruye una URL de ida y vuelta al cargar un bloque guardado. */
   | { kind: "video" }
+  /** F7.3: igual que `video`, con `musicEmbedSchema` (Spotify, SoundCloud, Apple Music). */
+  | { kind: "music" }
+  /** F7.3: fecha y hora de pared `AAAA-MM-DDTHH:mm` (`<input type="datetime-local">`); la zona va aparte. */
+  | { kind: "datetime" }
+  /** F7.3: lista de textos cortos, uno por línea (p. ej. las características de un plan). */
+  | { kind: "lines"; maxItems: number; maxLength: number }
   /** Selección múltiple de un conjunto fijo de opciones, como arreglo de strings (p. ej.
    *  `contact_form.fields`) — no un arreglo de objetos, por eso no es un campo `array`. */
   | { kind: "multiselect"; options: ReadonlyArray<{ value: string; label: string }>; min: number; max: number }

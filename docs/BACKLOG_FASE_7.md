@@ -10,7 +10,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 |---|---|
 | F7.1 — Integraciones de medición: Google Analytics 4 y píxel de Meta (con consentimiento) | Lista para tu revisión (ADR-016; capturas en `docs/design/capturas/f71/`) |
 | F7.2 — Webhooks salientes firmados (contacto, reserva, pedido) y conector para Zapier/Make | Lista para tu revisión (ADR-017; capturas en `docs/design/capturas/f72/`) |
-| F7.3 — Bloques nuevos: cuenta regresiva, tabla de precios, mapa, video y música incrustados (lista cerrada, sin HTML libre), eventos | Pendiente |
+| F7.3 — Bloques nuevos: cuenta regresiva, tabla de precios, mapa, video y música incrustados (lista cerrada, sin HTML libre), eventos | Lista para tu revisión (ADR-018; capturas en `docs/design/capturas/f73/`) |
 | F7.4 — Suscripción a newsletter con doble confirmación | Pendiente |
 | F7.5 — Secuencias de correo automáticas (bienvenida, seguimiento) sobre las automatizaciones | Pendiente |
 | F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Pendiente |
@@ -117,6 +117,49 @@ Implementación (2026-09-30):
 - Pruebas: 16 del paquete, 8 e2e de API + caso en `multi-tenant-isolation`, 9 del worker contra un
   servidor HTTP real, 4 de textos del panel y Playwright en teléfono y escritorio.
 - Pendiente del propietario: app propia en el directorio de Zapier (requiere cuenta de desarrollador).
+
+### F7.3 — Bloques nuevos: cuenta regresiva, precios, mapa, música y eventos (ADR-018)
+
+Criterios de aceptación:
+- **Cuenta regresiva:** título, fecha y hora en la zona del negocio, texto al terminar y botón
+  opcional; al terminar se oculta o muestra su mensaje (a elección). Días, horas, minutos y segundos
+  en vivo; la fecha escrita se ve sin JavaScript y es lo que oyen los lectores de pantalla.
+- **Tabla de precios:** hasta 4 planes con nombre, precio entero en la unidad mínima y moneda,
+  periodo (único, mensual, anual), descripción, hasta 12 características, insignia y plan
+  destacado, y botón con enlace seguro.
+- **Mapa:** dirección y nombre del lugar; tarjeta propia con "Cómo llegar" (Google Maps y Waze) y
+  "Ver mapa", que carga el mapa de Google solo si el visitante lo pide.
+- **Música:** enlace de Spotify, SoundCloud o Apple Music, reconocido y guardado como proveedor +
+  id; cualquier otro enlace o código de inserción se rechaza con un mensaje claro.
+- **Video:** suma TikTok y videos verticales (Shorts), que se ven 9:16.
+- **Eventos:** hasta 20 fechas con nombre, inicio y fin opcional (zona del negocio), lugar,
+  descripción, imagen y enlace de entradas; se muestran ordenados, los pasados se ocultan solos, y
+  cada uno ofrece "Agregar a mi calendario" (.ics). Sin eventos futuros, el bloque no se muestra.
+- Todo con validación del servidor (esquemas del catálogo), sin HTML libre; CSP con solo los orígenes
+  nuevos; editor del constructor con los campos nuevos (fecha y hora, zona, enlaces) y vista previa
+  idéntica a la página publicada; salud de página avisa una cuenta regresiva terminada o eventos
+  vencidos. WCAG 2.2 AA, teléfono y escritorio, tema claro y oscuro de la página pública.
+- Pruebas: esquemas y analizadores de enlaces (unitarias), render de cada bloque, API (crear cada
+  bloque, rechazar enlaces y código ajeno), salud de página, CSP, y Playwright del constructor y de
+  la página publicada.
+
+Implementación (2026-09-30):
+- `@impulza/validation`: esquemas `countdown`, `pricing`, `map`, `music`, `events` (versión 1);
+  analizador de enlaces de música (`music.ts`) y TikTok/Shorts en el de video; fecha de pared + zona
+  (`time.ts`, reutiliza las funciones de zona de las reservas). Nuevo `embedFromUrlSchema`: el
+  mensaje de un enlace rechazado llega al campo (antes una unión de Zod lo tapaba con "Invalid
+  input", también en el video existente). Un `refine` de Zod 4 corre aunque la regex falle: la
+  fecha mal formada ya no puede lanzar una excepción en el servidor.
+- `@impulza/blocks-renderer`: los cinco bloques; reloj compartido sin desajuste de hidratación
+  (`lib/clock.ts`); eventos con .ics y JSON-LD `Event` de schema.org escapado contra `</script>`.
+- CSP de `apps/web`: `frame-src` con solo los orígenes nuevos, y una prueba que cruza cada plantilla
+  de iframe con la política.
+- Constructor: controles de fecha y hora, lista por líneas y música; zona horaria; semillas en la
+  zona del negocio. Corrige un defecto previo: un perfil sin `layout` fallaba al primer autoguardado.
+- Salud de página: `countdown_ended` y `events_all_past`; botones de precios/eventos revisados; la
+  música cuenta como medio pesado.
+- Pruebas: 12 de validación nuevas + catálogo, 2 de salud, 13 de render, 7 de CSP, 10 del motor de
+  campos, 2 e2e de API y Playwright (constructor y página publicada, teléfono y escritorio).
 
 ## Fases siguientes
 

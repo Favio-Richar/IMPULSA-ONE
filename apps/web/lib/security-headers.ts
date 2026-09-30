@@ -9,8 +9,19 @@ export const MEASUREMENT_ORIGINS = {
   images: ["https://www.facebook.com"],
 } as const;
 
-/** Iframes de video: plantillas fijas por proveedor (F2.4), nunca una URL libre. */
-export const FRAME_ORIGINS = ["https://www.youtube-nocookie.com", "https://player.vimeo.com"] as const;
+/**
+ * Iframes: plantillas fijas por proveedor, nunca una URL libre. Video (F2.4, TikTok en F7.3), música
+ * y el mapa de Google, que solo se carga si el visitante lo pide (F7.3, ADR-018).
+ */
+export const FRAME_ORIGINS = [
+  "https://www.youtube-nocookie.com",
+  "https://player.vimeo.com",
+  "https://www.tiktok.com",
+  "https://open.spotify.com",
+  "https://w.soundcloud.com",
+  "https://embed.music.apple.com",
+  "https://www.google.com",
+] as const;
 
 export interface SecurityHeaderOptions {
   /** `true` en `next dev`: Next necesita `eval` y su WebSocket de recarga. */

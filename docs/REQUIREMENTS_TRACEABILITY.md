@@ -40,7 +40,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Constructor: agregar/editar/duplicar/ocultar/eliminar, drag&drop, undo/redo, autosave, borrador vs. publicado, programar vigencia, visibilidad condicional, historial y restauración, validación previa, detección de enlaces rotos, revisión de contraste | PM §9.2, ST §9 | Fase 2 |
 | Bloques tipados (no HTML libre); esquema versionado por tipo | ST §9 | Fase 2 |
 | Bloques del MVP: perfil, hero, texto, enlace/botón, redes, imagen, galería, video embebido, WhatsApp, email/llamada, formulario contacto, servicio destacado, separador, FAQ, testimonios | ST §9 | Fase 2 |
-| Biblioteca completa de bloques (identidad, contenido, conversión, negocio, monetización, integraciones) | PM §9.3 | Fase 2 → versión posterior según prioridad |
+| Biblioteca completa de bloques (identidad, contenido, conversión, negocio, monetización, integraciones) | PM §9.3 | Fase 2 → versión posterior según prioridad. F7.3 (ADR-018, en revisión): cuenta regresiva, precios, mapa (carga a pedido), música (Spotify, SoundCloud, Apple Music), eventos con .ics y schema.org, TikTok y video vertical |
 | No permitir scripts personalizados en el MVP | ST §9, §22 | Restricción permanente hasta decisión posterior |
 | Páginas internas con slug, orden, visibilidad, SEO y estado de publicación | PM §9.5 | Fase 2 |
 | Página pública: identidad/verificación/compartir/menú, hero, CTA, enlaces, servicios, media, prueba social, formulario/reserva/compra, redes, footer legal | PM §10.1 | Fase 2 |

@@ -94,6 +94,43 @@ export function findImagesWithoutAlt(config: unknown, path: string[] = []): stri
   return Object.entries(obj).flatMap(([key, value]) => findImagesWithoutAlt(value, [...path, key]));
 }
 
+// --- Contenido incrustado por enlace -------------------------------------------------------
+
+/**
+ * Campo que acepta el **enlace** que pega el usuario (y lo normaliza con `parse`) o la forma ya
+ * guardada (`stored`). Con `preprocess` y no con una unión: una unión de Zod resume sus errores en
+ * "Invalid input" y el usuario no veía por qué se rechazaba su enlace (F7.3). El código de
+ * inserción (`<iframe>`, `<script>`) se rechaza con su propio mensaje.
+ */
+export function embedFromUrlSchema<T extends z.ZodType>(
+  stored: T,
+  parse: (value: string) => z.infer<T> | null,
+  messages: { empty: string; unknown: string },
+) {
+  return z.preprocess((value, ctx) => {
+    if (typeof value !== "string") return value;
+    const trimmed = value.trim();
+    if (trimmed === "") {
+      ctx.addIssue({ code: "custom", message: messages.empty });
+      return z.NEVER;
+    }
+    if (trimmed.length > 2048) {
+      ctx.addIssue({ code: "custom", message: "El enlace es demasiado largo." });
+      return z.NEVER;
+    }
+    if (/<\s*(?:iframe|script|embed|object)/i.test(trimmed)) {
+      ctx.addIssue({ code: "custom", message: "Pega el enlace normal (Compartir → Copiar enlace), no el código de inserción." });
+      return z.NEVER;
+    }
+    const parsed = parse(trimmed);
+    if (!parsed) {
+      ctx.addIssue({ code: "custom", message: messages.unknown });
+      return z.NEVER;
+    }
+    return parsed;
+  }, stored);
+}
+
 // --- Video embebido -------------------------------------------------------------------------
 
 /**
@@ -101,17 +138,22 @@ export function findImagesWithoutAlt(config: unknown, path: string[] = []): stri
  * `{provider, videoId}` y el render arma el `src` desde una plantilla fija. Así, aunque alguien
  * consiga escribir en la base de datos, no puede inyectar un iframe a un dominio arbitrario.
  */
-export const VIDEO_PROVIDERS = ["youtube", "vimeo"] as const;
+export const VIDEO_PROVIDERS = ["youtube", "vimeo", "tiktok"] as const;
 export type VideoProvider = (typeof VIDEO_PROVIDERS)[number];
 
 const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"]);
 const VIMEO_HOSTS = new Set(["vimeo.com", "www.vimeo.com", "player.vimeo.com"]);
+const TIKTOK_HOSTS = new Set(["tiktok.com", "www.tiktok.com", "m.tiktok.com"]);
 
 const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
 const VIMEO_ID = /^\d{6,12}$/;
+const TIKTOK_ID = /^\d{15,20}$/;
 
-/** Extrae `{provider, videoId}` de una URL de proveedor permitido, o `null` si no lo es. */
-export function parseVideoUrl(value: string): { provider: VideoProvider; videoId: string } | null {
+/**
+ * Extrae `{provider, videoId}` de una URL de proveedor permitido, o `null` si no lo es. Los Shorts de
+ * YouTube y los videos de TikTok llevan `vertical: true` (se ven 9:16, F7.3).
+ */
+export function parseVideoUrl(value: string): { provider: VideoProvider; videoId: string; vertical?: boolean } | null {
   const url = parseUrl(value);
   if (!url || !ALLOWED_LINK_PROTOCOLS.has(url.protocol)) {
     return null;
@@ -123,12 +165,23 @@ export function parseVideoUrl(value: string): { provider: VideoProvider; videoId
     // youtu.be/<id>, youtube.com/watch?v=<id>, youtube.com/embed/<id>, /shorts/<id>
     const fromPath = url.pathname.split("/").filter(Boolean).at(-1) ?? "";
     const candidate = host === "youtu.be" ? fromPath : (url.searchParams.get("v") ?? fromPath);
-    return YOUTUBE_ID.test(candidate) ? { provider: "youtube", videoId: candidate } : null;
+    if (!YOUTUBE_ID.test(candidate)) return null;
+    return url.pathname.startsWith("/shorts/") ? { provider: "youtube", videoId: candidate, vertical: true } : { provider: "youtube", videoId: candidate };
   }
 
   if (VIMEO_HOSTS.has(host)) {
     const candidate = url.pathname.split("/").filter(Boolean).at(-1) ?? "";
     return VIMEO_ID.test(candidate) ? { provider: "vimeo", videoId: candidate } : null;
+  }
+
+  if (TIKTOK_HOSTS.has(host)) {
+    // tiktok.com/@usuaria/video/<id>, tiktok.com/embed/v2/<id>, tiktok.com/player/v1/<id>. Los
+    // enlaces cortos (vm.tiktok.com) no traen el id: habría que seguir la redirección desde el
+    // servidor, así que se piden completos.
+    const segments = url.pathname.split("/").filter(Boolean);
+    const index = segments.findIndex((segment) => segment === "video" || segment === "v2" || segment === "v1");
+    const candidate = index >= 0 ? (segments[index + 1] ?? "") : "";
+    return TIKTOK_ID.test(candidate) ? { provider: "tiktok", videoId: candidate, vertical: true } : null;
   }
 
   return null;
@@ -138,6 +191,8 @@ export function parseVideoUrl(value: string): { provider: VideoProvider; videoId
 export const storedVideoSchema = z.object({
   provider: z.enum(VIDEO_PROVIDERS),
   videoId: z.string().regex(/^[A-Za-z0-9_-]{6,20}$/),
+  // F7.3: Shorts y TikTok. Opcional: un video guardado antes se lee igual (horizontal).
+  vertical: z.boolean().optional(),
 });
 
 /**
@@ -149,27 +204,10 @@ export const storedVideoSchema = z.object({
  * fallaría al releerse y el render público lo descartaría por "configuración inválida" — que es
  * exactamente el bug que encontró la prueba de ida y vuelta. La unión lo vuelve idempotente.
  */
-export const videoEmbedSchema = z.union([
-  storedVideoSchema,
-  z
-    .string()
-    .trim()
-    .min(1)
-    .max(2048)
-    .transform((value, ctx) => {
-      const parsed = parseVideoUrl(value);
-
-      if (!parsed) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Solo se permiten videos de YouTube o Vimeo. Pega el enlace del video.",
-        });
-        return z.NEVER;
-      }
-
-      return parsed;
-    }),
-]);
+export const videoEmbedSchema = embedFromUrlSchema(storedVideoSchema, parseVideoUrl, {
+  empty: "Pega el enlace del video.",
+  unknown: "Solo se permiten videos de YouTube, Vimeo o TikTok. Pega el enlace completo del video.",
+});
 
 // --- Redes sociales -------------------------------------------------------------------------
 

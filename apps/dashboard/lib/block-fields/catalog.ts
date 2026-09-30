@@ -1,4 +1,4 @@
-import { SOCIAL_NETWORK_LABELS, SOCIAL_NETWORKS, type BlockType } from "@impulza/validation";
+import { DEFAULT_BOOKING_TIME_ZONE, SITE_TIME_ZONES, SOCIAL_NETWORK_LABELS, SOCIAL_NETWORKS, type BlockType } from "@impulza/validation";
 import type { BlockFieldSet, FieldDescriptor } from "./types.js";
 
 const SOCIAL_NETWORK_OPTIONS = SOCIAL_NETWORKS.map((network) => ({ value: network, label: SOCIAL_NETWORK_LABELS[network] }));
@@ -28,6 +28,34 @@ const ctaField: FieldDescriptor = {
     ],
   },
 };
+
+const TIME_ZONE_FIELD: FieldDescriptor = {
+  name: "timeZone",
+  label: "Zona horaria",
+  helperText: "La hora que escribas es la de esta zona; cada visitante ve la cuenta desde donde esté.",
+  control: { kind: "select", options: SITE_TIME_ZONES },
+};
+
+/** Fecha y hora de pared dentro de `days` días, a las `hour`, en la zona dada (para sembrar un bloque). */
+export function localDateTimeInDays(days: number, hour: number, timeZone: string = DEFAULT_BOOKING_TIME_ZONE, from = new Date()): string {
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(
+    new Date(from.getTime() + days * 86_400_000),
+  );
+  return `${day}T${String(hour).padStart(2, "0")}:00`;
+}
+
+const ctaGroup = (label = "Botón"): FieldDescriptor => ({
+  name: "cta",
+  label,
+  optional: true,
+  control: {
+    kind: "group",
+    fields: [
+      { name: "label", label: "Texto del botón", control: { kind: "text", maxLength: 60 } },
+      { name: "url", label: "Enlace", control: { kind: "url" } },
+    ],
+  },
+});
 
 /**
  * Un descriptor por tipo del catálogo (`BLOCK_TYPES`, `@impulza/validation`) — la validación real
@@ -400,6 +428,159 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
     ],
     seedConfig: () => ({
       items: [{ quote: "Un testimonio real de un cliente.", author: "Nombre del cliente" }],
+    }),
+  },
+
+  // --- F7.3 (ADR-018) ---------------------------------------------------------------------------
+
+  countdown: {
+    fields: [
+      { name: "title", label: "Título", optional: true, control: { kind: "text", maxLength: 120 } },
+      { name: "target", label: "Termina el", control: { kind: "datetime" } },
+      TIME_ZONE_FIELD,
+      {
+        name: "endedBehavior",
+        label: "Al terminar",
+        control: {
+          kind: "select",
+          options: [
+            { value: "message", label: "Mostrar un mensaje" },
+            { value: "hide", label: "Ocultar el bloque" },
+          ],
+        },
+      },
+      {
+        name: "endedMessage",
+        label: "Mensaje al terminar",
+        optional: true,
+        helperText: "Si lo dejas vacío: «¡Ya comenzó!».",
+        control: { kind: "text", maxLength: 200 },
+      },
+      ctaGroup(),
+    ],
+    seedConfig: () => ({ title: "Lanzamiento", target: localDateTimeInDays(7, 20), timeZone: DEFAULT_BOOKING_TIME_ZONE, endedBehavior: "message" }),
+  },
+
+  pricing: {
+    fields: [
+      { name: "title", label: "Título", optional: true, control: { kind: "text", maxLength: 120 } },
+      {
+        name: "plans",
+        label: "Planes",
+        control: {
+          kind: "array",
+          min: 1,
+          max: 4,
+          itemLabel: "Plan",
+          fields: [
+            { name: "name", label: "Nombre", control: { kind: "text", maxLength: 80 } },
+            {
+              name: "priceAmount",
+              label: "Precio",
+              helperText: "Sin decimales, en la unidad mínima de la moneda: pesos en CLP (12990 = $12.990), centavos en USD (1999 = US$19,99).",
+              control: { kind: "number", min: 0 },
+            },
+            { name: "priceCurrency", label: "Moneda (código de 3 letras)", control: { kind: "text", maxLength: 3 } },
+            {
+              name: "period",
+              label: "Cobro",
+              control: {
+                kind: "select",
+                options: [
+                  { value: "once", label: "Pago único" },
+                  { value: "month", label: "Mensual" },
+                  { value: "year", label: "Anual" },
+                ],
+              },
+            },
+            { name: "description", label: "Descripción", optional: true, control: { kind: "text", maxLength: 200 } },
+            { name: "features", label: "Qué incluye", optional: true, control: { kind: "lines", maxItems: 12, maxLength: 120 } },
+            { name: "badge", label: "Insignia", optional: true, helperText: "Por ejemplo «Más elegido».", control: { kind: "text", maxLength: 30 } },
+            { name: "highlighted", label: "Destacar este plan", control: { kind: "boolean" } },
+            ctaGroup(),
+          ],
+        },
+      },
+    ],
+    seedConfig: () => ({
+      title: "Planes",
+      plans: [
+        { name: "Básico", priceAmount: 19990, priceCurrency: "CLP", period: "month", features: ["Una sesión al mes", "Soporte por correo"], highlighted: false },
+        {
+          name: "Completo",
+          priceAmount: 39990,
+          priceCurrency: "CLP",
+          period: "month",
+          features: ["Cuatro sesiones al mes", "Soporte por WhatsApp"],
+          badge: "Más elegido",
+          highlighted: true,
+        },
+      ],
+    }),
+  },
+
+  map: {
+    fields: [
+      { name: "name", label: "Nombre del lugar", optional: true, control: { kind: "text", maxLength: 120 } },
+      {
+        name: "address",
+        label: "Dirección",
+        helperText: "Como la buscarías en Google Maps: calle, número y ciudad.",
+        control: { kind: "text", maxLength: 300 },
+      },
+      {
+        name: "note",
+        label: "Indicación",
+        optional: true,
+        helperText: "Por ejemplo «Estacionamiento en el subterráneo».",
+        control: { kind: "text", maxLength: 200 },
+      },
+      { name: "showMap", label: "Ofrecer «Ver mapa» (Google Maps se carga solo si el visitante lo pide)", control: { kind: "boolean" } },
+    ],
+    seedConfig: () => ({ address: "Av. Providencia 1234, Providencia, Santiago", showMap: true }),
+  },
+
+  music: {
+    fields: [
+      { name: "music", label: "Canción, álbum o lista", control: { kind: "music" } },
+      { name: "title", label: "Título", optional: true, control: { kind: "text", maxLength: 160 } },
+    ],
+    // Id con formato válido pero sin música real detrás — igual que el video: sembrar una canción
+    // ajena sería publicar contenido de otra persona sin que el usuario la haya elegido.
+    seedConfig: () => ({ music: { provider: "spotify", kind: "track", id: "0000000000000000000000" } }),
+  },
+
+  events: {
+    fields: [
+      { name: "title", label: "Título", optional: true, control: { kind: "text", maxLength: 120 } },
+      { ...TIME_ZONE_FIELD, helperText: "Las fechas de abajo son en esta zona." },
+      {
+        name: "items",
+        label: "Fechas",
+        control: {
+          kind: "array",
+          min: 1,
+          max: 20,
+          itemLabel: "Evento",
+          fields: [
+            { name: "name", label: "Nombre", control: { kind: "text", maxLength: 120 } },
+            { name: "start", label: "Empieza", control: { kind: "datetime" } },
+            { name: "end", label: "Termina", optional: true, control: { kind: "datetime" } },
+            { name: "venue", label: "Lugar", optional: true, control: { kind: "text", maxLength: 160 } },
+            { name: "address", label: "Dirección", optional: true, control: { kind: "text", maxLength: 300 } },
+            { name: "description", label: "Descripción", optional: true, control: { kind: "text", maxLength: 500 } },
+            imageField("image", "Imagen", true, "wide"),
+            { name: "ticketUrl", label: "Enlace de entradas o inscripción", optional: true, control: { kind: "url" } },
+            { name: "ticketLabel", label: "Texto del botón", optional: true, helperText: "Si lo dejas vacío: «Entradas».", control: { kind: "text", maxLength: 40 } },
+            { name: "soldOut", label: "Agotado", control: { kind: "boolean" } },
+          ],
+        },
+      },
+    ],
+    seedConfig: () => ({
+      title: "Próximas fechas",
+      timeZone: DEFAULT_BOOKING_TIME_ZONE,
+      items: [{ name: "Nombre del evento", start: localDateTimeInDays(14, 19), soldOut: false }],
     }),
   },
 };

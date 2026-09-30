@@ -6,6 +6,8 @@ import type { VideoBlockConfig } from "@impulza/validation";
 const EMBED_SRC: Record<VideoBlockConfig["video"]["provider"], (id: string) => string> = {
   youtube: (id) => `https://www.youtube-nocookie.com/embed/${id}`,
   vimeo: (id) => `https://player.vimeo.com/video/${id}`,
+  // F7.3: reproductor oficial de TikTok, sin la descripción ni la música superpuestas.
+  tiktok: (id) => `https://www.tiktok.com/player/v1/${id}?description=0&music_info=0`,
 };
 
 export function VideoBlock({ config }: { config: VideoBlockConfig }) {
@@ -13,7 +15,8 @@ export function VideoBlock({ config }: { config: VideoBlockConfig }) {
 
   return (
     <figure className="m-0">
-      <div className="aspect-video overflow-hidden rounded-[var(--site-radius)] border border-[var(--site-color-border)] shadow-[var(--site-shadow)]">
+      {/* Shorts y TikTok (F7.3): 9:16, centrado y con un ancho que no ocupa toda la pantalla. */}
+      <div className={`${config.video.vertical ? "mx-auto aspect-[9/16] w-full max-w-[340px]" : "aspect-video"} overflow-hidden rounded-[var(--site-radius)] border border-[var(--site-color-border)] shadow-[var(--site-shadow)]`}>
         <iframe
           src={src}
           title={config.title ?? "Video"}

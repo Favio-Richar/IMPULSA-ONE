@@ -70,6 +70,16 @@ export const HEALTH_MESSAGES: Record<HealthFindingCode, HealthMessage> = {
     detail: "El botón de reservas no tiene ningún servicio activo que ofrecer.",
     fix: "block",
   },
+  countdown_ended: {
+    title: "La cuenta regresiva ya terminó",
+    detail: "La fecha del bloque ya pasó: tus visitas ven el mensaje de término (o nada, si elegiste ocultarlo).",
+    fix: "block",
+  },
+  events_all_past: {
+    title: "Todos los eventos ya pasaron",
+    detail: "El bloque de eventos no tiene fechas futuras, así que no se muestra en la página.",
+    fix: "block",
+  },
   catalog_without_products: {
     title: "Tienda sin productos disponibles",
     detail: "El bloque de catálogo no tiene ningún producto activo que mostrar.",

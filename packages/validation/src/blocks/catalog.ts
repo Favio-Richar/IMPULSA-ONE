@@ -9,6 +9,8 @@ import {
   socialNetworkSchema,
   videoEmbedSchema,
 } from "./primitives.js";
+import { musicEmbedSchema } from "./music.js";
+import { localDateTimeSchema, localDateTimeToInstant, NONEXISTENT_LOCAL_TIME_MESSAGE, timeZoneSchema } from "./time.js";
 
 // Catálogo cerrado de bloques del MVP (ST §9). Un bloque NO es HTML: es un `type` conocido con una
 // configuración validada por su propio esquema Zod. Agregar un tipo nuevo es agregar una entrada
@@ -32,6 +34,12 @@ export const BLOCK_TYPES = [
   "testimonials",
   "booking",
   "catalog",
+  // F7.3 (ADR-018)
+  "countdown",
+  "pricing",
+  "map",
+  "music",
+  "events",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -198,6 +206,105 @@ export const testimonialsSchema = z.object({
   reviewsUrl: safeUrlSchema.optional(),
 });
 
+// --- F7.3 (ADR-018): bloques con tiempo y con contenido externo --------------------------------
+
+const ctaSchema = z.object({ label: plainTextSchema(60), url: safeUrlSchema });
+
+/**
+ * Cuenta regresiva hasta una hora de pared en la zona del negocio. Al terminar, muestra su mensaje
+ * o se oculta. No se exige que la fecha sea futura al guardar: una que ya pasó la avisa la salud de
+ * página (el negocio puede estar editando otra cosa del bloque).
+ */
+export const countdownSchema = z
+  .object({
+    title: plainTextSchema(120).optional(),
+    target: localDateTimeSchema,
+    timeZone: timeZoneSchema,
+    endedBehavior: z.enum(["message", "hide"]).default("message"),
+    endedMessage: plainTextSchema(200).optional(),
+    cta: ctaSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (!localDateTimeToInstant(value.target, value.timeZone)) {
+      ctx.addIssue({ code: "custom", path: ["target"], message: NONEXISTENT_LOCAL_TIME_MESSAGE });
+    }
+  });
+
+export const PRICING_PERIODS = ["once", "month", "year"] as const;
+
+export const pricingPlanSchema = z.object({
+  name: plainTextSchema(80),
+  // Unidad mínima de la moneda, entero (ST §8): 12990 CLP = $12.990.
+  priceAmount: z.number().int().min(0).max(1_000_000_000_000),
+  priceCurrency: z.string().trim().length(3).toUpperCase().default("CLP"),
+  period: z.enum(PRICING_PERIODS).default("once"),
+  description: plainTextSchema(200).optional(),
+  features: z.array(plainTextSchema(120)).max(12).default([]),
+  badge: plainTextSchema(30).optional(),
+  highlighted: z.boolean().default(false),
+  cta: ctaSchema.optional(),
+});
+
+export const pricingSchema = z
+  .object({
+    title: plainTextSchema(120).optional(),
+    plans: z.array(pricingPlanSchema).min(1).max(4),
+  })
+  .refine((value) => value.plans.filter((plan) => plan.highlighted).length <= 1, {
+    message: "Destaca a lo sumo un plan.",
+    path: ["plans"],
+  });
+
+/** Mapa: la dirección escrita; el mapa de Google se carga solo si el visitante lo pide (ADR-018 §2). */
+export const mapSchema = z.object({
+  name: plainTextSchema(120).optional(),
+  address: plainTextSchema(300),
+  note: plainTextSchema(200).optional(),
+  showMap: z.boolean().default(true),
+});
+
+export const musicSchema = z.object({
+  music: musicEmbedSchema,
+  title: plainTextSchema(160).optional(),
+});
+
+export const eventItemSchema = z.object({
+  name: plainTextSchema(120),
+  start: localDateTimeSchema,
+  end: localDateTimeSchema.optional(),
+  venue: plainTextSchema(160).optional(),
+  address: plainTextSchema(300).optional(),
+  description: plainTextSchema(500).optional(),
+  image: imageSchema.optional(),
+  ticketUrl: safeUrlSchema.optional(),
+  ticketLabel: plainTextSchema(40).optional(),
+  soldOut: z.boolean().default(false),
+});
+
+export const eventsSchema = z
+  .object({
+    title: plainTextSchema(120).optional(),
+    timeZone: timeZoneSchema,
+    items: z.array(eventItemSchema).min(1).max(20),
+  })
+  .superRefine((value, ctx) => {
+    value.items.forEach((item, index) => {
+      const start = localDateTimeToInstant(item.start, value.timeZone);
+      if (!start) {
+        ctx.addIssue({ code: "custom", path: ["items", index, "start"], message: NONEXISTENT_LOCAL_TIME_MESSAGE });
+        return;
+      }
+      if (item.end) {
+        const end = localDateTimeToInstant(item.end, value.timeZone);
+        if (!end) {
+          ctx.addIssue({ code: "custom", path: ["items", index, "end"], message: NONEXISTENT_LOCAL_TIME_MESSAGE });
+        } else if (end <= start) {
+          ctx.addIssue({ code: "custom", path: ["items", index, "end"], message: "El término tiene que ser después del inicio." });
+        }
+      }
+    });
+  });
+
 /**
  * Entrada del catálogo.
  *
@@ -246,6 +353,11 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
   },
   booking: { type: "booking", version: 1, schema: bookingBlockSchema, richTextPaths: [] },
   catalog: { type: "catalog", version: 1, schema: catalogBlockSchema, richTextPaths: [] },
+  countdown: { type: "countdown", version: 1, schema: countdownSchema, richTextPaths: [] },
+  pricing: { type: "pricing", version: 1, schema: pricingSchema, richTextPaths: [] },
+  map: { type: "map", version: 1, schema: mapSchema, richTextPaths: [] },
+  music: { type: "music", version: 1, schema: musicSchema, richTextPaths: [] },
+  events: { type: "events", version: 1, schema: eventsSchema, richTextPaths: [] },
 };
 
 /**
@@ -291,3 +403,10 @@ export type FaqBlockConfig = z.infer<typeof faqSchema>;
 export type BookingBlockConfig = z.infer<typeof bookingBlockSchema>;
 export type CatalogBlockConfig = z.infer<typeof catalogBlockSchema>;
 export type TestimonialsBlockConfig = z.infer<typeof testimonialsSchema>;
+export type CountdownBlockConfig = z.infer<typeof countdownSchema>;
+export type PricingBlockConfig = z.infer<typeof pricingSchema>;
+export type PricingPlan = z.infer<typeof pricingPlanSchema>;
+export type MapBlockConfig = z.infer<typeof mapSchema>;
+export type MusicBlockConfig = z.infer<typeof musicSchema>;
+export type EventsBlockConfig = z.infer<typeof eventsSchema>;
+export type EventItem = z.infer<typeof eventItemSchema>;

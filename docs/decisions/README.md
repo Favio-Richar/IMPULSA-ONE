@@ -51,3 +51,4 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 | [ADR-015](./ADR-015-descargas-pagadas.md) | Descargas pagadas con almacenamiento privado y enlaces firmados de corta vida | Aceptado |
 | [ADR-016](./ADR-016-medicion-terceros-consentimiento.md) | Medición de terceros (GA4 y píxel de Meta) solo con consentimiento, y CSP en la página pública | Aceptado |
 | [ADR-017](./ADR-017-webhooks-salientes.md) | Webhooks salientes firmados, con protección SSRF al conectar | Aceptado |
+| [ADR-018](./ADR-018-bloques-contenido-externo-y-tiempo.md) | Bloques con contenido externo (música, mapa, video vertical) y con tiempo (cuenta regresiva, eventos) en el catálogo cerrado | Aceptado |

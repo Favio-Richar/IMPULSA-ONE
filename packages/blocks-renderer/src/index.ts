@@ -29,3 +29,9 @@ export { DividerBlock } from "./blocks/divider.js";
 export { FaqBlock } from "./blocks/faq.js";
 export { TestimonialsBlock } from "./blocks/testimonials.js";
 export { BookingBlock, BookingTimePicker } from "./blocks/booking.js";
+// F7.3 (ADR-018)
+export { CountdownBlock } from "./blocks/countdown.js";
+export { PricingBlock } from "./blocks/pricing.js";
+export { MapBlock, mapLinks } from "./blocks/map.js";
+export { MusicBlock } from "./blocks/music.js";
+export { EventsBlock } from "./blocks/events.js";

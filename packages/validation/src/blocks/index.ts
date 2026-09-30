@@ -28,6 +28,14 @@ export {
   dividerSchema,
   faqSchema,
   testimonialsSchema,
+  countdownSchema,
+  pricingSchema,
+  pricingPlanSchema,
+  PRICING_PERIODS,
+  mapSchema,
+  musicSchema,
+  eventsSchema,
+  eventItemSchema,
   type ProfileBlockConfig,
   type HeroBlockConfig,
   type TextBlockConfig,
@@ -45,6 +53,13 @@ export {
   type BookingBlockConfig,
   type CatalogBlockConfig,
   type TestimonialsBlockConfig,
+  type CountdownBlockConfig,
+  type PricingBlockConfig,
+  type PricingPlan,
+  type MapBlockConfig,
+  type MusicBlockConfig,
+  type EventsBlockConfig,
+  type EventItem,
 } from "./catalog.js";
 export { parseStoredBlock, type StoredBlockResult } from "./stored-block.js";
 export { collectRichTextPaths } from "./rich-text-paths.js";
@@ -67,3 +82,21 @@ export {
   phoneSchema,
   type VideoProvider,
 } from "./primitives.js";
+export {
+  MUSIC_PROVIDERS,
+  MUSIC_PROVIDER_LABELS,
+  musicEmbedHeight,
+  musicEmbedSrc,
+  musicPublicUrl,
+  parseMusicUrl,
+  storedMusicSchema,
+  type MusicProvider,
+  type StoredMusic,
+} from "./music.js";
+export {
+  SITE_TIME_ZONES,
+  formatLocalDateTime,
+  localDateTimeSchema,
+  localDateTimeToInstant,
+  timeZoneSchema,
+} from "./time.js";

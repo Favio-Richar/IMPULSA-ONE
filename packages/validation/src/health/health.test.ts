@@ -131,6 +131,27 @@ describe("salud de página (F6.1)", () => {
     expect(codes(none)).toContain("booking_without_services");
   });
 
+  it("F7.3: avisa una cuenta regresiva terminada y un bloque de eventos sin fechas futuras", () => {
+    // NOW = 2026-09-27 12:00 UTC (09:00 en Santiago).
+    const ended = block("countdown", { target: "2026-09-27T08:00", timeZone: "America/Santiago" });
+    const coming = block("countdown", { target: "2026-09-27T10:00", timeZone: "America/Santiago" });
+    const past = block("events", { timeZone: "America/Santiago", items: [{ name: "A", start: "2026-09-20T20:00" }] });
+    // Empezó antes pero todavía no termina: sigue vigente.
+    const ongoing = block("events", { timeZone: "America/Santiago", items: [{ name: "B", start: "2026-09-27T08:00", end: "2026-09-27T18:00" }] });
+    const report = evaluatePageHealth(input([profile(), whatsapp(), ended, coming, past, ongoing]));
+    expect(report.findings.filter((f) => f.code === "countdown_ended").map((f) => f.blockId)).toEqual([ended.id]);
+    expect(report.findings.filter((f) => f.code === "events_all_past").map((f) => f.blockId)).toEqual([past.id]);
+  });
+
+  it("F7.3: revisa los botones de precios, eventos y cuenta regresiva, y la música pesa como un video", () => {
+    const pricing = block("pricing", { plans: [{ name: "A", priceAmount: 1, cta: { label: "Ir", url: "http://inseguro.cl" } }] });
+    const events = block("events", { timeZone: "America/Santiago", items: [{ name: "A", start: "2031-01-01T20:00", ticketUrl: "http://entradas.cl" }] });
+    const report = evaluatePageHealth(input([profile(), whatsapp(), pricing, events]));
+    expect(report.findings.filter((f) => f.code === "insecure_link").map((f) => f.blockId)).toEqual([pricing.id, events.id]);
+    const music = () => block("music", { music: { provider: "spotify", kind: "track", id: "4uLU6hMCjMI75M1A2tKUQC" } });
+    expect(codes(evaluatePageHealth(input([profile(), whatsapp(), music(), music(), music(), music()])))).toContain("heavy_media");
+  });
+
   it("imágenes sin texto alternativo cuentan por bloque; las decorativas no", () => {
     const gallery = block("gallery", {
       images: [

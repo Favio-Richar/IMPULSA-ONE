@@ -21,7 +21,16 @@ describe("cabeceras de seguridad de apps/web (ADR-016)", () => {
     expect(csp.get("object-src")).toEqual(["'none'"]);
     expect(csp.get("base-uri")).toEqual(["'self'"]);
     expect(csp.get("frame-ancestors")).toEqual(["'self'"]);
-    expect(csp.get("frame-src")).toEqual(["https://www.youtube-nocookie.com", "https://player.vimeo.com"]);
+    // Solo los orígenes de las plantillas de video, música y mapa (ADR-018): nunca `https:` entero.
+    expect(csp.get("frame-src")).toEqual([
+      "https://www.youtube-nocookie.com",
+      "https://player.vimeo.com",
+      "https://www.tiktok.com",
+      "https://open.spotify.com",
+      "https://w.soundcloud.com",
+      "https://embed.music.apple.com",
+      "https://www.google.com",
+    ]);
     expect(csp.has("upgrade-insecure-requests")).toBe(true);
   });
 

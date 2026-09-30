@@ -15,9 +15,12 @@ import { collectRichTextPaths } from "./rich-text-paths.js";
 import { parseStoredBlock } from "./stored-block.js";
 
 describe("catálogo de bloques (F2.4)", () => {
-  it("cubre los 15 bloques del MVP de ST §9 más el de reservas (F5.2), sin repetir", () => {
-    expect(BLOCK_TYPES).toHaveLength(17);
-    expect(new Set(BLOCK_TYPES).size).toBe(17);
+  it("cubre los 15 bloques del MVP de ST §9, reservas y tienda (F5) y los cinco de F7.3, sin repetir", () => {
+    expect(BLOCK_TYPES).toHaveLength(22);
+    expect(new Set(BLOCK_TYPES).size).toBe(22);
+    for (const type of ["countdown", "pricing", "map", "music", "events"]) {
+      expect(BLOCK_TYPES).toContain(type);
+    }
     expect(BLOCK_TYPES).toContain("booking");
     expect(BLOCK_TYPES).toContain("catalog");
   });
@@ -84,6 +87,11 @@ describe("catálogo de bloques (F2.4)", () => {
       testimonials: { items: [{ quote: "Bien", author: "Ana" }] },
       booking: { label: "Reservar hora" },
       catalog: { label: "Tienda" },
+      countdown: { target: "2031-10-12T20:00", timeZone: "America/Santiago" },
+      pricing: { plans: [{ name: "Básico", priceAmount: 9990, features: ["Una sesión"] }] },
+      map: { address: "Av. Providencia 1234, Santiago" },
+      music: { music: "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC" },
+      events: { timeZone: "America/Santiago", items: [{ name: "Lanzamiento", start: "2031-11-01T19:00" }] },
     };
 
     for (const type of BLOCK_TYPES) {

@@ -5,7 +5,8 @@ captación, reservas, ventas y analítica) desde una sola URL.
 
 **Estado actual (2026-09-30): Fase 7 en curso — F7.1 (GA4 y píxel de Meta con consentimiento, y CSP
 en la página pública, ADR-016) y F7.2 (webhooks salientes firmados hacia Zapier, Make u otros
-sistemas, ADR-017) listas para revisión; sigue F7.3. Los cobros de
+sistemas, ADR-017) y F7.3 (bloques de cuenta regresiva, precios, mapa, música y eventos, ADR-018)
+listas para revisión; sigue F7.4. Los cobros de
 los negocios (F5.8–F5.11, ADR-013 y ADR-015) quedaron completos y en revisión. Lo pendiente de todo
 el plan está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
@@ -1290,6 +1291,15 @@ y Configurar, con el mismo peso) y **no carga nada de terceros sin consentimient
 vistas, clics en WhatsApp, formularios, reservas y pedidos, sin datos personales. `apps/web` ahora
 responde con CSP y cabeceras de seguridad (`lib/security-headers.ts`); todo origen nuevo que cargue
 la página pública se agrega ahí con su prueba.
+
+## Bloques de F7.3 (ADR-018)
+
+El constructor suma **Cuenta regresiva**, **Precios**, **Mapa**, **Música** y **Eventos**, y el video
+acepta TikTok y Shorts (vertical). Todo sigue en la lista cerrada del catálogo: se pega el enlace
+normal (nunca el código de inserción) y se guarda solo proveedor + id; el reproductor sale de una
+plantilla fija y su origen está en la CSP de `apps/web`. Fechas en hora de pared + zona del negocio;
+el conteo y el ocultar eventos pasados ocurren en el navegador. El mapa muestra una tarjeta propia y
+carga Google Maps solo si el visitante presiona "Ver mapa".
 
 ## Integraciones: webhooks salientes (F7.2, ADR-017)
 

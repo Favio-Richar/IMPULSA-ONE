@@ -37,7 +37,17 @@ function normalizeLeaf(raw: unknown, control: FieldControl): unknown {
     case "phone":
     case "richtext":
     case "video":
+    case "music":
+    case "datetime":
       return typeof raw === "string" ? raw.trim() : "";
+    case "lines":
+      // Una línea por ítem; las vacías no cuentan. El tope real lo aplica el esquema.
+      return typeof raw === "string"
+        ? raw
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0)
+        : [];
     case "number":
       return typeof raw === "number" && !Number.isNaN(raw) ? raw : undefined;
     case "boolean":

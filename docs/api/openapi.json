@@ -3418,7 +3418,12 @@
                       "faq",
                       "testimonials",
                       "booking",
-                      "catalog"
+                      "catalog",
+                      "countdown",
+                      "pricing",
+                      "map",
+                      "music",
+                      "events"
                     ]
                   },
                   "config": {},

@@ -1,5 +1,10 @@
 import type { BlockType } from "@impulza/validation";
 import {
+  BadgeDollarSign,
+  CalendarDays,
+  Hourglass,
+  MapPin,
+  Music,
   Briefcase,
   CalendarCheck,
   Contact,
@@ -38,6 +43,11 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   testimonials: "Testimonios",
   booking: "Reservas",
   catalog: "Tienda",
+  countdown: "Cuenta regresiva",
+  pricing: "Precios",
+  map: "Mapa",
+  music: "Música",
+  events: "Eventos",
 };
 
 /** Un ícono lineal por tipo (no-negociable de UI/UX del proyecto) — la misma biblioteca
@@ -60,4 +70,9 @@ export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   testimonials: Quote,
   booking: CalendarCheck,
   catalog: ShoppingBag,
+  countdown: Hourglass,
+  pricing: BadgeDollarSign,
+  map: MapPin,
+  music: Music,
+  events: CalendarDays,
 };

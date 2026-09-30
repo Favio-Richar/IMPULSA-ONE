@@ -8,6 +8,9 @@ function defaultLeafValue(control: FieldControl, optional: boolean | undefined):
     case "phone":
     case "richtext":
     case "video":
+    case "music":
+    case "datetime":
+    case "lines":
       return "";
     case "number":
       return undefined;

@@ -814,6 +814,9 @@ importers:
         specifier: 6.19.3
         version: 6.19.3(prisma@6.19.3(typescript@6.0.3))(typescript@6.0.3)
     devDependencies:
+      '@impulza/config':
+        specifier: workspace:*
+        version: link:../config
       '@impulza/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config

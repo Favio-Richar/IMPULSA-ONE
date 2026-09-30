@@ -17,7 +17,11 @@
       "dependsOn": ["^build"]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build", "@impulza/database#db:test:prepare"]
+    },
+    "db:test:prepare": {
+      "cache": false,
+      "outputs": []
     },
     "test:e2e": {
       "dependsOn": ["^build"],

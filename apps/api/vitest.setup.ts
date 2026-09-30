@@ -1,3 +1,4 @@
+import { useTestServices } from "@impulza/config";
 import http from "node:http";
 import path from "node:path";
 import supertest from "supertest";
@@ -9,6 +10,9 @@ try {
 } catch {
   // sin .env local — se asume que las variables ya están en el entorno (p. ej. CI).
 }
+
+// Base y Redis propios de las pruebas (`TEST_DATABASE_URL`/`TEST_REDIS_URL`): nunca los de desarrollo.
+useTestServices();
 
 // Conexiones reutilizables para supertest. superagent crea cada petición con `agent: false` (sin
 // pool): una conexión TCP nueva por petición. Con cientos de pruebas e2e, Windows acumulaba miles de

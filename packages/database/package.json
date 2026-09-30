@@ -14,12 +14,14 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:test:prepare": "tsx prisma/prepare-test-db.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3"
   },
   "devDependencies": {
+    "@impulza/config": "workspace:*",
     "@impulza/eslint-config": "workspace:*",
     "@impulza/tsconfig": "workspace:*",
     "@types/node": "26.5.1",

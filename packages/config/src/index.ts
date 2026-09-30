@@ -74,3 +74,14 @@ export function loadEnv<TShape extends z.ZodRawShape>(
 
   return result.data;
 }
+
+/**
+ * Pruebas automáticas: si hay `TEST_DATABASE_URL`/`TEST_REDIS_URL`, reemplazan a `DATABASE_URL`/
+ * `REDIS_URL` para todo el proceso de pruebas. Así ninguna prueba toca la base ni el Redis de
+ * desarrollo (ni el worker de desarrollo toca los datos de una prueba). Se llama en el archivo de
+ * configuración de vitest, **antes** de importar nada que se conecte.
+ */
+export function useTestServices(env: NodeJS.ProcessEnv = process.env): void {
+  if (env.TEST_DATABASE_URL) env.DATABASE_URL = env.TEST_DATABASE_URL;
+  if (env.TEST_REDIS_URL) env.REDIS_URL = env.TEST_REDIS_URL;
+}

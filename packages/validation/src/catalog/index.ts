@@ -116,3 +116,12 @@ export function parseStoredProductImage(value: unknown): ProductImage | null {
   const parsed = imageSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
 }
+
+/**
+ * Reembolso de un cobro en línea (F5.11a): de un pedido o de una seña. Sin `amount` se devuelve lo
+ * que queda; con él, esa parte (en la unidad mínima de la moneda). El servidor valida el tope.
+ */
+export const refundRequestSchema = z.object({
+  amount: z.number().int().min(1, "El monto a devolver tiene que ser mayor que cero.").optional(),
+});
+export type RefundRequest = z.infer<typeof refundRequestSchema>;

@@ -23,3 +23,8 @@ export function createManualBooking(organizationId: string, body: ManualBookingI
 export function updateBookingStatus(organizationId: string, bookingId: string, status: BookingStatusValue): Promise<BookingResponse> {
   return apiFetch<BookingResponse>(`/organizations/${organizationId}/bookings/${bookingId}`, { method: "PATCH", body: { status } });
 }
+
+/** Devolver la seña de una reserva (F5.11a). Sin `amount`: lo que queda. */
+export function refundBookingDeposit(organizationId: string, bookingId: string, amount?: number): Promise<BookingResponse> {
+  return apiFetch<BookingResponse>(`/organizations/${organizationId}/bookings/${bookingId}/refund-deposit`, { method: "POST", body: amount === undefined ? {} : { amount } });
+}

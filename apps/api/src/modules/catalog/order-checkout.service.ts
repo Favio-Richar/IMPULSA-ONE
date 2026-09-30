@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import type { PublicOrderStatusResponse } from "@impulza/contracts";
 import type { Order, PrismaClient } from "@impulza/database";
-import { checkoutPaymentMismatches, checkoutSupportsCurrency, PaymentGatewayError, verifyMercadoPagoSignature } from "@impulza/payments";
+import { type CheckoutPayment, checkoutPaymentMismatches, checkoutSupportsCurrency, PaymentGatewayError, verifyMercadoPagoSignature } from "@impulza/payments";
 import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
@@ -10,6 +10,7 @@ import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { PaymentAccountsService } from "../payment-accounts/payment-accounts.service.js";
+import { DISPUTE_STATUSES } from "../payment-accounts/checkout-refunds.service.js";
 import { MERCADO_PAGO_CHECKOUT, type CheckoutConfig } from "../payment-accounts/checkout.tokens.js";
 import { OrderNotifier } from "./order-notifier.js";
 
@@ -24,7 +25,7 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export type PaymentSyncResult = "paid" | "cancelled_paid" | "updated" | "unchanged" | "mismatch" | "unavailable";
+export type PaymentSyncResult = "paid" | "cancelled_paid" | "updated" | "dispute" | "unchanged" | "mismatch" | "unavailable";
 
 /**
  * Cobro de pedidos con Checkout Pro (F5.9, ADR-013). Con la cuenta conectada del negocio, cada
@@ -148,15 +149,16 @@ export class OrderCheckoutService {
       return "mismatch";
     }
 
-    // Ya aplicado, o el pedido ya lo pagó otro pago: solo se informa el estado del pago asignado.
+    // El pedido ya lo pagó otro pago: este no cambia nada.
     if (order.providerPaymentId !== null && order.providerPaymentId !== payment.id) return "unchanged";
+    // El pago del pedido cambió después (devolución, contracargo, reclamo): se registra lo que dice Mercado Pago.
+    if (order.providerPaymentId === payment.id) return this.applyPaymentChange(order, payment);
 
     if (payment.status !== "approved") {
-      if (order.providerPaymentId === payment.id || order.paymentStatus === payment.status) return "unchanged";
+      if (order.paymentStatus === payment.status) return "unchanged";
       await this.prisma.order.updateMany({ where: { id: order.id, providerPaymentId: null }, data: { paymentStatus: payment.status } });
       return "updated";
     }
-    if (order.providerPaymentId === payment.id) return "unchanged";
 
     const site = await this.prisma.site.findUnique({ where: { id: order.siteId }, select: { name: true } });
     if (order.status === "CANCELLED") {
@@ -179,6 +181,28 @@ export class OrderCheckoutService {
     await this.notifier.notifyPaidOnline(paid, site?.name ?? "", payment.id);
     logger.info("pedidos: pago confirmado por Mercado Pago", { organizationId: order.organizationId, orderId: order.id });
     return "paid";
+  }
+
+  /**
+   * Cambios de un pago ya asignado (F5.11a): lo devuelto y el estado vienen de Mercado Pago. Un
+   * contracargo o un reclamo se audita y se avisa al negocio una sola vez (la actualización es
+   * condicional al estado leído).
+   */
+  private async applyPaymentChange(order: Order, payment: CheckoutPayment): Promise<PaymentSyncResult> {
+    if (order.paymentStatus === payment.status && order.refundedAmount === payment.refundedAmount) return "unchanged";
+    const changed = await this.prisma.order.updateMany({
+      where: { id: order.id, providerPaymentId: payment.id, paymentStatus: order.paymentStatus, refundedAmount: order.refundedAmount },
+      data: { paymentStatus: payment.status, refundedAmount: Math.min(payment.refundedAmount, order.totalAmount) },
+    });
+    if (changed.count === 0) return "unchanged";
+    if (DISPUTE_STATUSES.has(payment.status) && order.paymentStatus !== payment.status) {
+      await this.audit.record({ organizationId: order.organizationId, actorId: null, action: "order.payment_disputed", targetType: "Order", targetId: order.id, metadata: { paymentId: payment.id, status: payment.status } });
+      const site = await this.prisma.site.findUnique({ where: { id: order.siteId }, select: { name: true } });
+      await this.notifier.notifyDispute(order, site?.name ?? "", payment.id, payment.status as "charged_back" | "in_mediation");
+      logger.warn("pedidos: contracargo o reclamo en Mercado Pago", { organizationId: order.organizationId, orderId: order.id, status: payment.status });
+      return "dispute";
+    }
+    return "updated";
   }
 
   /** Asigna el pago al pedido si todavía no tiene uno (y, si se pide, si sigue en `expectedStatus`). */

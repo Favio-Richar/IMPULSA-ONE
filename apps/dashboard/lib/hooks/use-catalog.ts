@@ -9,6 +9,7 @@ import {
   listProductCategories,
   listProducts,
   renameProductCategory,
+  refundOrder,
   updateOrderStatus,
   updateProduct,
   type OrdersQuery,
@@ -85,6 +86,16 @@ export function useUpdateOrderStatus(organizationId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ordersRoot(organizationId) });
       void queryClient.invalidateQueries({ queryKey: ["catalog", organizationId] });
+    },
+  });
+}
+
+export function useRefundOrder(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, amount }: { orderId: string; amount?: number }) => refundOrder(organizationId, orderId, amount),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ordersRoot(organizationId) });
     },
   });
 }

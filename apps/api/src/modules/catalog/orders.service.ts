@@ -1,15 +1,18 @@
 import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import type { OrderListResponse, OrderResponse } from "@impulza/contracts";
 import type { Order, OrderStatus, Prisma, PrismaClient } from "@impulza/database";
-import { ORDER_STATUS_LABELS, ORDER_TRANSITIONS, type ListOrdersQuery, type UpdateOrderStatusInput } from "@impulza/validation";
+import { ORDER_STATUS_LABELS, ORDER_TRANSITIONS, type ListOrdersQuery, type RefundRequest, type UpdateOrderStatusInput } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
+import { CheckoutRefundsService } from "../payment-accounts/checkout-refunds.service.js";
 import { OrderNotifier } from "./order-notifier.js";
 
 export const ORDER_NOT_FOUND = "Pedido no encontrado: no existe, o pertenece a otra organización (ADR-002).";
 export const ORDER_CHANGED = "El pedido cambió mientras lo editabas. Recarga e inténtalo de nuevo.";
 export const ORDER_NO_STOCK = "No quedan unidades suficientes para reabrir el pedido.";
+export const NOTHING_TO_REFUND = "Este pedido no tiene un pago en línea que se pueda devolver.";
+export const REFUND_TOO_HIGH = "No puedes devolver más de lo que queda del pago.";
 export const ONLINE_PAYMENT_UNDO = "Este pago lo confirmó Mercado Pago: no se puede deshacer desde aquí. Si debes devolver el dinero, hazlo desde tu cuenta de Mercado Pago.";
 
 export const ORDERS_PAGE_SIZE = 50;
@@ -27,6 +30,7 @@ export class OrdersService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
     private readonly notifier: OrderNotifier,
+    private readonly refunds: CheckoutRefundsService,
   ) {}
 
   toResponse(order: Order): OrderResponse {
@@ -47,7 +51,9 @@ export class OrdersService {
       deliveryAddress: order.deliveryAddress,
       note: order.note,
       status: order.status,
-      onlinePayment: order.checkoutPreferenceId ? { status: order.paymentStatus, paymentId: order.providerPaymentId } : null,
+      onlinePayment: order.checkoutPreferenceId
+        ? { status: order.paymentStatus, paymentId: order.providerPaymentId, refundedAmount: order.refundedAmount }
+        : null,
       paidAt: order.paidAt?.toISOString() ?? null,
       deliveredAt: order.deliveredAt?.toISOString() ?? null,
       cancelledAt: order.cancelledAt?.toISOString() ?? null,
@@ -155,6 +161,47 @@ export class OrdersService {
       await this.notifier.notifyStatus(next, updated, site?.name ?? "");
     }
     logger.info("pedido cambió de estado", { organizationId, orderId: current.id, from: current.status, to: next });
+    return this.toResponse(updated);
+  }
+
+  /**
+   * Devolver dinero de un pedido cobrado con Mercado Pago (F5.11a), total o parcial. El tope es lo
+   * que queda del pago; lo devuelto se guarda tal como lo informa Mercado Pago. El estado del pedido
+   * no cambia solo: el negocio decide si además lo cancela.
+   */
+  async refund(organizationId: string, actorId: string, orderId: string, input: RefundRequest): Promise<OrderResponse> {
+    const order = await this.getOrThrow(organizationId, orderId);
+    if (!order.providerPaymentId || (order.paymentStatus !== "approved" && order.paymentStatus !== "refunded")) {
+      throw new UnprocessableEntityException(NOTHING_TO_REFUND);
+    }
+    const remaining = order.totalAmount - order.refundedAmount;
+    const amount = input.amount ?? remaining;
+    if (remaining <= 0 || amount > remaining) {
+      throw new UnprocessableEntityException(remaining <= 0 ? NOTHING_TO_REFUND : REFUND_TOO_HIGH);
+    }
+    const payment = await this.refunds.refund({
+      organizationId,
+      paymentId: order.providerPaymentId,
+      amount,
+      // Lo ya devuelto entra en la clave: un reintento del mismo pedido de devolución es idempotente,
+      // y una segunda devolución parcial (después de la primera) es otra operación.
+      idempotencyKey: `refund-order-${order.id}-${order.refundedAmount}-${amount}`,
+    });
+    const updated = await this.prisma.order.update({
+      where: { id: order.id },
+      data: { paymentStatus: payment.status, refundedAmount: Math.min(payment.refundedAmount, order.totalAmount) },
+    });
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "order.refunded",
+      targetType: "Order",
+      targetId: order.id,
+      metadata: { provider: "MERCADO_PAGO", paymentId: order.providerPaymentId, amount, refundedTotal: updated.refundedAmount },
+    });
+    const site = await this.prisma.site.findUnique({ where: { id: order.siteId }, select: { name: true } });
+    await this.notifier.notifyRefunded(updated, site?.name ?? "", amount);
+    logger.info("pedido reembolsado", { organizationId, orderId: order.id, amount });
     return this.toResponse(updated);
   }
 }

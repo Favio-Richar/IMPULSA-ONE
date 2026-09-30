@@ -219,7 +219,7 @@ describe("Cobro de pedidos con Mercado Pago (e2e) — F5.9, ADR-013", () => {
 
     // El panel lo muestra pagado en línea y no deja "deshacer" el pago.
     const list = orderListResponse.parse((await owner.get(orders).expect(200)).body);
-    expect(list.items.find((item) => item.id === order.id)?.onlinePayment).toEqual({ status: "approved", paymentId });
+    expect(list.items.find((item) => item.id === order.id)?.onlinePayment).toEqual({ status: "approved", paymentId, refundedAmount: 0 });
     await owner.patch(`${orders}/${order.id}`).set(CSRF).send({ status: "NEW" }).expect(422);
     await owner.patch(`${orders}/${order.id}`).set(CSRF).send({ status: "DELIVERED" }).expect(200);
 

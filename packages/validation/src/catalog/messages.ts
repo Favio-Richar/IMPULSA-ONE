@@ -150,3 +150,39 @@ export function ownerCancelledOrderPaidEmail(data: OwnerOrderPaymentData): Order
     ].join("\n"),
   };
 }
+
+/** Reembolso hecho por el negocio (F5.11a): al comprador, con el monto devuelto. */
+export function orderRefundedEmail(data: OrderMessageData, refundedAmount: number, fullyRefunded: boolean): OrderEmailContent {
+  return {
+    subject: oneLine(`${fullyRefunded ? "Te devolvimos el pago" : "Te devolvimos parte del pago"} de tu pedido en ${data.siteName}`),
+    text: [
+      `${data.siteName} te devolvió ${formatMoneyAmount(refundedAmount, data.priceCurrency)} por este pedido:`,
+      "",
+      ...lines(data),
+      "",
+      "El dinero vuelve al mismo medio con que pagaste en Mercado Pago; según tu banco puede tardar algunos días en verse.",
+      "",
+      `${data.siteName}`,
+    ].join("\n"),
+  };
+}
+
+/** Contracargo o reclamo abierto en Mercado Pago sobre un pedido (F5.11a): aviso al negocio. */
+export function ownerOrderDisputeEmail(data: OwnerOrderPaymentData, status: "charged_back" | "in_mediation"): OrderEmailContent {
+  const title = status === "charged_back" ? "Contracargo" : "Reclamo abierto";
+  return {
+    subject: oneLine(`${title} en Mercado Pago: ${data.quantity} × ${data.productName} de ${data.customerName}`),
+    text: [
+      status === "charged_back"
+        ? `El comprador desconoció el pago ante su banco y Mercado Pago lo reversó (contracargo) en ${data.siteName}.`
+        : `El comprador abrió un reclamo en Mercado Pago por un pedido de ${data.siteName}.`,
+      "",
+      ...lines(data),
+      "",
+      `Cliente: ${data.customerName}`,
+      `Pago en Mercado Pago: ${data.paymentId}`,
+      "Responde desde tu cuenta de Mercado Pago, en la sección de reclamos y contracargos, con la prueba de entrega o del servicio.",
+      ...(data.ordersUrl ? ["", `Tus pedidos: ${data.ordersUrl}`] : []),
+    ].join("\n"),
+  };
+}

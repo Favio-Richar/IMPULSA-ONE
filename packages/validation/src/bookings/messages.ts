@@ -176,7 +176,7 @@ export function bookingDepositExpiredEmail(data: BookingMessageData): EmailConte
   };
 }
 
-export type OwnerNoticeKind = "created" | "cancelled" | "rescheduled" | "deposit_paid" | "paid_without_slot";
+export type OwnerNoticeKind = "created" | "cancelled" | "rescheduled" | "deposit_paid" | "paid_without_slot" | "charged_back" | "in_mediation";
 
 export interface OwnerNoticeData {
   kind: OwnerNoticeKind;
@@ -200,6 +200,8 @@ const OWNER_SUBJECTS: Record<OwnerNoticeKind, string> = {
   rescheduled: "Un cliente cambió la hora de su reserva",
   deposit_paid: "Nueva reserva con seña pagada",
   paid_without_slot: "Atención: pagaron la seña de una reserva que ya no estaba activa",
+  charged_back: "Contracargo de una seña en Mercado Pago",
+  in_mediation: "Reclamo abierto en Mercado Pago por una seña",
 };
 
 /** Seña formateada para el aviso al negocio (misma regla de decimales que el resto de los montos). */
@@ -226,7 +228,25 @@ export function ownerBookingNoticeEmail(data: OwnerNoticeData): EmailContent {
             "La reserva ya no estaba activa (se canceló, o venció el plazo y la hora la tomó otra persona). Reactívala desde tu agenda si la hora sigue libre, ofrécele otra hora al cliente o devuélvele la seña desde tu cuenta de Mercado Pago.",
           ]
         : []),
+      ...(data.kind === "charged_back" || data.kind === "in_mediation"
+        ? ["", "Responde desde tu cuenta de Mercado Pago, en la sección de reclamos y contracargos, con la prueba de la atención."]
+        : []),
       ...(data.agendaUrl ? ["", `Tu agenda: ${data.agendaUrl}`] : []),
+    ].join("\n"),
+  };
+}
+
+/** Devolución de la seña hecha por el negocio (F5.11a). */
+export function bookingDepositRefundedEmail(data: BookingMessageData, refundedAmount: number): EmailContent {
+  return {
+    subject: oneLine(`Te devolvimos la seña de tu reserva en ${data.siteName}`),
+    text: [
+      `${data.siteName} te devolvió ${data.priceCurrency ? money(refundedAmount, data.priceCurrency) : ""} de la seña de esta reserva:`,
+      "",
+      `${data.serviceName}`,
+      capitalize(formatBookingWhen(data.startsAt, data.timeZone)),
+      "",
+      "El dinero vuelve al mismo medio con que pagaste en Mercado Pago; según tu banco puede tardar algunos días en verse.",
     ].join("\n"),
   };
 }

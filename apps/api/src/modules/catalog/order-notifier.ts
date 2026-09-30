@@ -5,7 +5,9 @@ import {
   orderPaidOnlineEmail,
   orderReceivedEmail,
   orderStatusEmail,
+  orderRefundedEmail,
   ownerCancelledOrderPaidEmail,
+  ownerOrderDisputeEmail,
   ownerNewOrderEmail,
   ownerOrderPaidOnlineEmail,
   type OrderEmailContent,
@@ -69,6 +71,18 @@ export class OrderNotifier {
   async notifyCancelledOrderPaid(order: Order, siteName: string, paymentId: string): Promise<void> {
     const content = ownerCancelledOrderPaidEmail({ ...this.messageData(order, siteName), customerName: order.customerName, paymentId, ordersUrl: this.ordersUrl() });
     await this.sendToOwners(order, content, "cancelled_paid");
+  }
+
+  /** El negocio devolvió dinero (F5.11a): aviso al comprador. */
+  async notifyRefunded(order: Order, siteName: string, amount: number): Promise<void> {
+    const content = orderRefundedEmail(this.messageData(order, siteName), amount, order.refundedAmount >= order.totalAmount);
+    await this.send(order.customerEmail, content, { orderId: order.id, kind: "refunded", to: "customer" });
+  }
+
+  /** Contracargo o reclamo en Mercado Pago (F5.11a): aviso a los dueños. */
+  async notifyDispute(order: Order, siteName: string, paymentId: string, status: "charged_back" | "in_mediation"): Promise<void> {
+    const content = ownerOrderDisputeEmail({ ...this.messageData(order, siteName), customerName: order.customerName, paymentId, ordersUrl: this.ordersUrl() }, status);
+    await this.sendToOwners(order, content, status);
   }
 
   private async sendToOwners(order: Order, content: OrderEmailContent, kind: string): Promise<void> {

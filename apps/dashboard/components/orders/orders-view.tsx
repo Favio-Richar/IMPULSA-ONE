@@ -6,7 +6,8 @@ import { Button, cn, EmptyState, ErrorState, LoadingState, Select } from "@impul
 import { ChevronLeft, ChevronRight, CreditCard, Mail, MapPin, MessageCircle, Phone, ShoppingBag, StickyNote } from "lucide-react";
 import { useState } from "react";
 import { ApiError } from "../../lib/api-client";
-import { useOrders, useUpdateOrderStatus } from "../../lib/hooks/use-catalog";
+import { useOrders, useRefundOrder, useUpdateOrderStatus } from "../../lib/hooks/use-catalog";
+import { RefundControl } from "../payments/refund-control";
 import { formatMoney } from "../agenda/booking-card";
 
 const TABS: Array<{ value: "" | OrderStatusValue; label: string }> = [
@@ -24,11 +25,18 @@ const STATUS_STYLES: Record<OrderStatusValue, string> = {
   CANCELLED: "border-border bg-surface text-muted-foreground",
 };
 
-/** Cobro con la cuenta de Mercado Pago del negocio (F5.9), en palabras del negocio. */
-export function onlinePaymentText(payment: NonNullable<OrderResponse["onlinePayment"]>, status: OrderStatusValue): string {
+/** Cobro con la cuenta de Mercado Pago del negocio (F5.9, F5.11a), en palabras del negocio. */
+export function onlinePaymentText(payment: NonNullable<OrderResponse["onlinePayment"]>, status: OrderStatusValue, currency: string): string {
   if (payment.paymentId) {
+    if (payment.status === "charged_back") return `Contracargo en Mercado Pago (pago ${payment.paymentId}): el comprador desconoció el pago. Respóndelo desde tu cuenta de Mercado Pago.`;
+    if (payment.status === "in_mediation") return `Reclamo abierto en Mercado Pago (pago ${payment.paymentId}). Respóndelo desde tu cuenta de Mercado Pago.`;
+    if (payment.refundedAmount > 0) {
+      return payment.status === "refunded"
+        ? `Pago devuelto completo al comprador (pago ${payment.paymentId})`
+        : `Devolviste ${formatMoney(payment.refundedAmount, currency)} al comprador (pago ${payment.paymentId})`;
+    }
     return status === "CANCELLED"
-      ? `Pagado con Mercado Pago después de cancelarlo (pago ${payment.paymentId}): reactívalo o devuelve el dinero desde Mercado Pago.`
+      ? `Pagado con Mercado Pago después de cancelarlo (pago ${payment.paymentId}): reactívalo o devuelve el dinero.`
       : `Pagado con Mercado Pago · pago ${payment.paymentId}`;
   }
   if (payment.status === "pending" || payment.status === "in_process" || payment.status === "authorized") return "Pago en revisión en Mercado Pago";
@@ -165,6 +173,10 @@ function OrderCard({ organizationId, order, siteName }: { organizationId: string
           ? "No se pudo cambiar el estado. Intenta de nuevo."
           : null;
 
+  const refund = useRefundOrder(organizationId);
+  // Lo que queda por devolver de un pago en línea aprobado (F5.11a).
+  const refundable =
+    order.onlinePayment?.paymentId && order.onlinePayment.status === "approved" ? order.totalAmount - order.onlinePayment.refundedAmount : 0;
   // Un pago confirmado por Mercado Pago no se deshace a mano (el servidor también lo impide).
   const actions = ACTIONS[order.status].filter((action) => !(action.to === "NEW" && order.status === "PAID" && order.onlinePayment?.paymentId));
 
@@ -196,7 +208,7 @@ function OrderCard({ organizationId, order, siteName }: { organizationId: string
         {order.onlinePayment ? (
           <p className="mt-1 flex items-start gap-1.5 text-sm text-foreground">
             <CreditCard className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            {onlinePaymentText(order.onlinePayment, order.status)}
+            {onlinePaymentText(order.onlinePayment, order.status, order.priceCurrency)}
           </p>
         ) : null}
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
@@ -238,8 +250,9 @@ function OrderCard({ organizationId, order, siteName }: { organizationId: string
         ) : null}
       </div>
 
-      {actions.length > 0 ? (
-        <div className="flex flex-wrap content-start gap-2 sm:w-44 sm:flex-col sm:items-stretch">
+      {/* Ancho mínimo, no fijo: al abrir "Devolver dinero" la columna se ensancha en vez de desbordar. */}
+      {actions.length > 0 || refundable > 0 ? (
+        <div className="flex flex-wrap content-start gap-2 sm:min-w-44 sm:shrink-0 sm:flex-col sm:items-stretch">
           {actions.map((action) => (
             <Button
               key={action.to}
@@ -252,6 +265,17 @@ function OrderCard({ organizationId, order, siteName }: { organizationId: string
               {action.label}
             </Button>
           ))}
+          {refundable > 0 ? (
+            <RefundControl
+              label="Devolver dinero"
+              remaining={refundable}
+              currency={order.priceCurrency}
+              pending={refund.isPending}
+              error={refund.error}
+              subject={`pedido de ${order.customerName}`}
+              onRefund={(amount) => refund.mutateAsync({ orderId: order.id, amount })}
+            />
+          ) : null}
         </div>
       ) : null}
     </li>

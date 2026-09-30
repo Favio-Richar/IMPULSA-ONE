@@ -1,11 +1,12 @@
 import { Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import type { BookableService, Booking, PrismaClient } from "@impulza/database";
-import { checkoutPaymentMismatches, checkoutSupportsCurrency, PaymentGatewayError, verifyMercadoPagoSignature } from "@impulza/payments";
+import { type CheckoutPayment, checkoutPaymentMismatches, checkoutSupportsCurrency, PaymentGatewayError, verifyMercadoPagoSignature } from "@impulza/payments";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
+import { DISPUTE_STATUSES } from "../payment-accounts/checkout-refunds.service.js";
 import { MERCADO_PAGO_CHECKOUT, type CheckoutConfig } from "../payment-accounts/checkout.tokens.js";
 import { PaymentAccountsService } from "../payment-accounts/payment-accounts.service.js";
 import { BookingNotifier, bookingManageUrl } from "./booking-notifier.js";
@@ -20,7 +21,7 @@ function isOverlapViolation(error: unknown): boolean {
   return text.includes("bookings_no_overlap") || text.includes("23P01");
 }
 
-export type DepositSyncResult = "paid" | "paid_without_slot" | "updated" | "unchanged" | "mismatch" | "unavailable";
+export type DepositSyncResult = "paid" | "paid_without_slot" | "updated" | "dispute" | "unchanged" | "mismatch" | "unavailable";
 
 export interface DepositPlan {
   depositAmount: number;
@@ -155,13 +156,14 @@ export class BookingDepositService {
       return "mismatch";
     }
     if (booking.providerPaymentId !== null && booking.providerPaymentId !== payment.id) return "unchanged";
+    // La seña ya pagada cambió después (devolución, contracargo, reclamo): se registra lo que dice Mercado Pago.
+    if (booking.providerPaymentId === payment.id) return this.applyPaymentChange(booking, payment);
 
     if (payment.status !== "approved") {
-      if (booking.providerPaymentId === payment.id || booking.paymentStatus === payment.status) return "unchanged";
+      if (booking.paymentStatus === payment.status) return "unchanged";
       await this.prisma.booking.updateMany({ where: { id: booking.id, providerPaymentId: null }, data: { paymentStatus: payment.status } });
       return "updated";
     }
-    if (booking.providerPaymentId === payment.id) return "unchanged";
 
     const paidAt = payment.approvedAt ?? new Date();
     const paymentData = { providerPaymentId: payment.id, paymentStatus: "approved", depositPaidAt: paidAt };
@@ -214,6 +216,31 @@ export class BookingDepositService {
       return "paid_without_slot";
     }
     // El negocio ya la había confirmado o atendido a mano: se guarda el pago, sin avisos.
+    return "updated";
+  }
+
+  /** Cambios de una seña ya pagada (F5.11a), con el mismo criterio que los pedidos. */
+  private async applyPaymentChange(booking: Booking, payment: CheckoutPayment): Promise<DepositSyncResult> {
+    if (booking.paymentStatus === payment.status && booking.depositRefundedAmount === payment.refundedAmount) return "unchanged";
+    const changed = await this.prisma.booking.updateMany({
+      where: { id: booking.id, providerPaymentId: payment.id, paymentStatus: booking.paymentStatus, depositRefundedAmount: booking.depositRefundedAmount },
+      data: { paymentStatus: payment.status, depositRefundedAmount: Math.min(payment.refundedAmount, booking.depositAmount ?? 0) },
+    });
+    if (changed.count === 0) return "unchanged";
+    if (DISPUTE_STATUSES.has(payment.status) && booking.paymentStatus !== payment.status) {
+      await this.audit.record({
+        organizationId: booking.organizationId,
+        actorId: null,
+        action: "booking.deposit_disputed",
+        targetType: "Booking",
+        targetId: booking.id,
+        metadata: { paymentId: payment.id, status: payment.status },
+      });
+      const site = await this.prisma.site.findUnique({ where: { id: booking.siteId }, select: { name: true } });
+      await this.notifier.notifyOwners(payment.status as "charged_back" | "in_mediation", booking, site?.name ?? "", payment.id);
+      logger.warn("reservas: contracargo o reclamo de una seña en Mercado Pago", { organizationId: booking.organizationId, bookingId: booking.id, status: payment.status });
+      return "dispute";
+    }
     return "updated";
   }
 

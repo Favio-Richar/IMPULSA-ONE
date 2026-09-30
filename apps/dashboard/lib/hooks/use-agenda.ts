@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { BookingStatusValue, ManualBookingInput } from "@impulza/validation";
-import { createManualBooking, listBookings, updateBookingStatus, type AgendaQuery } from "../api/agenda";
+import { createManualBooking, listBookings, refundBookingDeposit, updateBookingStatus, type AgendaQuery } from "../api/agenda";
 
 const root = (organizationId: string) => ["agenda", organizationId] as const;
 
@@ -26,6 +26,14 @@ export function useUpdateBookingStatus(organizationId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ bookingId, status }: { bookingId: string; status: BookingStatusValue }) => updateBookingStatus(organizationId, bookingId, status),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: root(organizationId) }),
+  });
+}
+
+export function useRefundBookingDeposit(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, amount }: { bookingId: string; amount?: number }) => refundBookingDeposit(organizationId, bookingId, amount),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: root(organizationId) }),
   });
 }

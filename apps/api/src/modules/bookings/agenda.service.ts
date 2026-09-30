@@ -1,14 +1,18 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import type { BookingResponse } from "@impulza/contracts";
 import type { Booking, PrismaClient } from "@impulza/database";
-import type { ListBookingsQuery, ManualBookingInput, UpdateBookingStatusInput } from "@impulza/validation";
+import type { ListBookingsQuery, ManualBookingInput, RefundRequest, UpdateBookingStatusInput } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { AutomationEventsService } from "../automations/automation-events.service.js";
+import { CheckoutRefundsService } from "../payment-accounts/checkout-refunds.service.js";
+import { BookingNotifier } from "./booking-notifier.js";
 import { BookingSetupService } from "./booking-setup.service.js";
 
 export const BOOKING_NOT_FOUND = "Reserva no encontrada: no existe, o pertenece a otra organización (ADR-002).";
+export const NO_DEPOSIT_TO_REFUND = "Esta reserva no tiene una seña pagada en línea que se pueda devolver.";
+export const DEPOSIT_REFUND_TOO_HIGH = "No puedes devolver más de lo que queda de la seña.";
 export const BOOKING_OVERLAP = "Ese horario se pisa con otra reserva confirmada.";
 
 /** Máximo de reservas por consulta: una agenda de dos meses de un negocio real cabe de sobra. */
@@ -33,6 +37,8 @@ export class AgendaService {
     private readonly auditService: AuditService,
     private readonly setup: BookingSetupService,
     private readonly automationEvents: AutomationEventsService,
+    private readonly refunds: CheckoutRefundsService,
+    private readonly notifier: BookingNotifier,
   ) {}
 
   toResponse(booking: Booking): BookingResponse {
@@ -63,6 +69,7 @@ export class AgendaService {
               paymentId: booking.providerPaymentId,
               deadline: booking.paymentDeadline?.toISOString() ?? null,
               paidAt: booking.depositPaidAt?.toISOString() ?? null,
+              refundedAmount: booking.depositRefundedAmount,
             },
       cancelledAt: booking.cancelledAt?.toISOString() ?? null,
       createdAt: booking.createdAt.toISOString(),
@@ -195,6 +202,44 @@ export class AgendaService {
       targetId: current.id,
       metadata: { from: current.status, to: input.status },
     });
+    return this.toResponse(updated);
+  }
+
+  /**
+   * Devolver la seña de una reserva (F5.11a), total o parcial, con el token del negocio. El estado
+   * de la reserva no cambia solo: el negocio decide si además la cancela.
+   */
+  async refundDeposit(organizationId: string, actorId: string, bookingId: string, input: RefundRequest): Promise<BookingResponse> {
+    const booking = await this.getOrThrow(organizationId, bookingId);
+    if (!booking.providerPaymentId || booking.depositAmount === null || (booking.paymentStatus !== "approved" && booking.paymentStatus !== "refunded")) {
+      throw new UnprocessableEntityException(NO_DEPOSIT_TO_REFUND);
+    }
+    const remaining = booking.depositAmount - booking.depositRefundedAmount;
+    const amount = input.amount ?? remaining;
+    if (remaining <= 0 || amount > remaining) {
+      throw new UnprocessableEntityException(remaining <= 0 ? NO_DEPOSIT_TO_REFUND : DEPOSIT_REFUND_TOO_HIGH);
+    }
+    const payment = await this.refunds.refund({
+      organizationId,
+      paymentId: booking.providerPaymentId,
+      amount,
+      idempotencyKey: `refund-booking-${booking.id}-${booking.depositRefundedAmount}-${amount}`,
+    });
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: { paymentStatus: payment.status, depositRefundedAmount: Math.min(payment.refundedAmount, booking.depositAmount) },
+    });
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "booking.deposit_refunded",
+      targetType: "Booking",
+      targetId: booking.id,
+      metadata: { provider: "MERCADO_PAGO", paymentId: booking.providerPaymentId, amount, refundedTotal: updated.depositRefundedAmount },
+    });
+    const site = await this.prisma.site.findUnique({ where: { id: booking.siteId }, select: { name: true } });
+    await this.notifier.notifyDepositRefunded(updated, site?.name ?? "", amount);
+    logger.info("seña devuelta", { organizationId, bookingId: booking.id, amount });
     return this.toResponse(updated);
   }
 }

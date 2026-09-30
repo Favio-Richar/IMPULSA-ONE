@@ -1773,6 +1773,9 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/orders`).expect(403);
         await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/orders/${order.id}`).expect(404);
         await orgA.ownerAgent.patch(`/api/v1/organizations/${orgA.id}/orders/${order.id}`).set(CSRF_HEADERS).send({ status: "NEW" }).expect(404);
+        // Tampoco devuelve su pago (F5.11a): ni bajo su organización ni bajo la de B.
+        await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/orders/${order.id}/refund`).set(CSRF_HEADERS).send({}).expect(404);
+        await orgA.ownerAgent.post(`/api/v1/organizations/${orgB.id}/orders/${order.id}/refund`).set(CSRF_HEADERS).send({}).expect(403);
         const listA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/orders`).expect(200);
         expect(JSON.stringify(listA.body)).not.toContain(order.providerPaymentId!);
         expect((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).status).toBe("PAID");
@@ -1806,6 +1809,7 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/bookings/${booking.id}`).expect(404);
         await orgA.ownerAgent.patch(`/api/v1/organizations/${orgA.id}/bookings/${booking.id}`).set(CSRF_HEADERS).send({ status: "CONFIRMED" }).expect(404);
         await orgA.ownerAgent.patch(`/api/v1/organizations/${orgB.id}/bookings/${booking.id}`).set(CSRF_HEADERS).send({ status: "CANCELLED" }).expect(403);
+        await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/bookings/${booking.id}/refund-deposit`).set(CSRF_HEADERS).send({}).expect(404);
         const agendaA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/bookings?from=2032-03-01T00:00:00Z&to=2032-03-02T00:00:00Z`).expect(200);
         expect(JSON.stringify(agendaA.body)).not.toContain(booking.id);
         expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe("PENDING_PAYMENT");

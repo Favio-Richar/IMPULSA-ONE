@@ -367,8 +367,16 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   worker liberó la hora; un pago tardío la reconfirma si sigue libre). Índice parcial por
   `payment_deadline` de las pendientes.
 
+## 9m. Reembolsos y contracargos (F5.11a, `BACKLOG_FASE_5.md`, ADR-013)
+
+- **Order.refunded_amount** y **Booking.deposit_refunded_amount** (enteros, 0 por omisión; `CHECK`:
+  nunca más que lo cobrado). Se escriben con lo que informa Mercado Pago (`transaction_amount_refunded`);
+  `payment_status` refleja `refunded`, `charged_back` o `in_mediation`. Sin tabla propia de
+  reembolsos: la fuente de verdad es Mercado Pago y cada devolución queda en la auditoría.
+- Permiso nuevo `payments.refund` (solo OWNER).
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
-Reembolsos y contracargos de los cobros de los negocios (F5.11), variantes/cupones/carrito,
+Descargas pagadas con almacenamiento privado (F5.11b), variantes/cupones/carrito,
 `Campaign`/email marketing, `Course`/`Membership` (contenido). Se diseñan cuando se inicie la Fase 5
 para evitar tablas vacías o esquemas prematuros (restricción explícita de ST §6.2).

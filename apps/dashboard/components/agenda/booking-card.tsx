@@ -5,7 +5,8 @@ import { BOOKING_STATUS_LABELS, currencyFractionDigits, type BOOKING_SETTABLE_ST
 import { Button, cn } from "@impulza/ui";
 import { CreditCard, Mail, MessageCircle, Phone, StickyNote } from "lucide-react";
 import { ApiError } from "../../lib/api-client";
-import { useUpdateBookingStatus } from "../../lib/hooks/use-agenda";
+import { useRefundBookingDeposit, useUpdateBookingStatus } from "../../lib/hooks/use-agenda";
+import { RefundControl } from "../payments/refund-control";
 
 const STATUS_STYLES: Record<BookingStatusValue, string> = {
   CONFIRMED: "border-primary/30 bg-primary/10 text-foreground",
@@ -44,6 +45,13 @@ export function depositText(booking: Pick<BookingResponse, "deposit" | "status" 
   if (!deposit || !booking.priceCurrency) return null;
   const amount = formatMoney(deposit.amount, booking.priceCurrency);
   if (deposit.paymentId) {
+    if (deposit.status === "charged_back") return `Contracargo de la seña de ${amount} (pago ${deposit.paymentId}). Respóndelo desde tu cuenta de Mercado Pago.`;
+    if (deposit.status === "in_mediation") return `Reclamo abierto por la seña de ${amount} (pago ${deposit.paymentId}). Respóndelo desde tu cuenta de Mercado Pago.`;
+    if (deposit.refundedAmount > 0) {
+      return deposit.status === "refunded"
+        ? `Seña de ${amount} devuelta completa al cliente (pago ${deposit.paymentId})`
+        : `Devolviste ${formatMoney(deposit.refundedAmount, booking.priceCurrency)} de la seña de ${amount} (pago ${deposit.paymentId})`;
+    }
     return booking.status === "CANCELLED"
       ? `Seña de ${amount} pagada con la reserva ya cancelada (pago ${deposit.paymentId}): reactívala o devuelve la seña desde Mercado Pago.`
       : `Seña de ${amount} pagada con Mercado Pago · pago ${deposit.paymentId}`;
@@ -65,6 +73,9 @@ export function BookingCard({ organizationId, booking }: { organizationId: strin
   const time = new Intl.DateTimeFormat("es-CL", { timeZone: booking.timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const cancelled = booking.status === "CANCELLED";
   const deposit = depositText(booking);
+  const refund = useRefundBookingDeposit(organizationId);
+  // Lo que queda por devolver de una seña pagada en línea (F5.11a).
+  const refundable = booking.deposit?.paymentId && booking.deposit.status === "approved" ? booking.deposit.amount - booking.deposit.refundedAmount : 0;
   const whatsapp = booking.customerPhone ? `https://wa.me/${booking.customerPhone.replace(/\D/g, "")}` : null;
   const error =
     update.error instanceof ApiError && update.error.status === 409
@@ -144,6 +155,17 @@ export function BookingCard({ organizationId, booking }: { organizationId: strin
               {action.label}
             </Button>
           ))}
+          {refundable > 0 && booking.priceCurrency ? (
+            <RefundControl
+              label="Devolver seña"
+              remaining={refundable}
+              currency={booking.priceCurrency}
+              pending={refund.isPending}
+              error={refund.error}
+              subject={`${booking.customerName}, ${time.format(new Date(booking.startsAt))}`}
+              onRefund={(amount) => refund.mutateAsync({ bookingId: booking.id, amount })}
+            />
+          ) : null}
       </div>
     </li>
   );

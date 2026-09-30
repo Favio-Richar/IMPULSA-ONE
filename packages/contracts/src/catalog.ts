@@ -110,7 +110,14 @@ export const orderResponse = z.object({
   note: z.string().nullable(),
   status: orderStatus,
   /** Cobro con Mercado Pago (F5.9): estado y id del pago en la cuenta del negocio, o `null` si el pedido no se cobra en línea. */
-  onlinePayment: z.object({ status: z.string().nullable(), paymentId: z.string().nullable() }).nullable(),
+  onlinePayment: z
+    .object({
+      status: z.string().nullable(),
+      paymentId: z.string().nullable(),
+      /** Cuánto se devolvió ya (F5.11a), según Mercado Pago. */
+      refundedAmount: z.number().int(),
+    })
+    .nullable(),
   paidAt: isoDateTime.nullable(),
   deliveredAt: isoDateTime.nullable(),
   cancelledAt: isoDateTime.nullable(),

@@ -56,3 +56,8 @@ export function listOrders(organizationId: string, query: OrdersQuery): Promise<
 export function updateOrderStatus(organizationId: string, orderId: string, status: OrderStatusValue): Promise<OrderResponse> {
   return apiFetch<OrderResponse>(`/organizations/${organizationId}/orders/${orderId}`, { method: "PATCH", body: { status } });
 }
+
+/** Devolver el pago de un pedido cobrado con Mercado Pago (F5.11a). Sin `amount`: lo que queda. */
+export function refundOrder(organizationId: string, orderId: string, amount?: number): Promise<OrderResponse> {
+  return apiFetch<OrderResponse>(`/organizations/${organizationId}/orders/${orderId}/refund`, { method: "POST", body: amount === undefined ? {} : { amount } });
+}

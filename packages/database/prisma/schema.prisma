@@ -1163,6 +1163,8 @@ model Booking {
   paymentStatus        String?   @map("payment_status")
   depositPaidAt        DateTime? @map("deposit_paid_at") @db.Timestamptz(6)
   paymentExpiredAt     DateTime? @map("payment_expired_at") @db.Timestamptz(6)
+  // F5.11a: cuánto se devolvió de la seña (leído de Mercado Pago; `CHECK` ≤ seña).
+  depositRefundedAmount Int      @default(0) @map("deposit_refunded_amount")
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1278,6 +1280,8 @@ model Order {
   checkoutExpiresAt    DateTime? @map("checkout_expires_at") @db.Timestamptz(6)
   providerPaymentId    String?  @unique @map("provider_payment_id")
   paymentStatus        String?  @map("payment_status")
+  // F5.11a: cuánto se devolvió del pago (leído de Mercado Pago; `CHECK` ≤ total).
+  refundedAmount       Int      @default(0) @map("refunded_amount")
   // SHA-256 del enlace "Tu pedido" que recibe el comprador (el enlace en sí nunca se guarda).
   statusTokenHash      String?  @unique @map("status_token_hash")
   createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)

@@ -71,6 +71,19 @@ describe("MercadoPagoCheckout", () => {
     expect(calls[0]!.url).toBe("https://api.mercadopago.com/v1/payments/998877");
   });
 
+  it("reembolsa con el token del negocio y la clave de idempotencia; lee lo ya devuelto del pago", async () => {
+    const { impl, calls } = fakeFetch([
+      { status: 201, body: { id: 555, amount: 2_000 } },
+      { status: 200, body: { id: 1, status: "approved", transaction_amount: 5_000, transaction_amount_refunded: 2_000, currency_id: "CLP" } },
+    ]);
+    const client = new MercadoPagoCheckout({}, impl);
+    expect(await client.refundPayment(TOKEN, "998877", 2_000, "refund-ped-0-2000")).toEqual({ id: "555", amount: 2_000 });
+    expect(calls[0]!.url).toBe("https://api.mercadopago.com/v1/payments/998877/refunds");
+    expect((calls[0]!.init.headers as Record<string, string>)["x-idempotency-key"]).toBe("refund-ped-0-2000");
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({ amount: 2_000 });
+    expect((await client.getPayment(TOKEN, "1")).refundedAmount).toBe(2_000);
+  });
+
   it("traduce los errores de Mercado Pago a códigos estables", async () => {
     const checkout = (status: number) => new MercadoPagoCheckout({}, fakeFetch([{ status, body: { message: "x" } }]).impl);
     await expect(checkout(401).getPayment(TOKEN, "1")).rejects.toMatchObject({ code: "auth_error", retryable: false });
@@ -82,7 +95,7 @@ describe("MercadoPagoCheckout", () => {
 });
 
 describe("checkoutPaymentMismatches", () => {
-  const payment = { id: "1", status: "approved", statusDetail: null, externalReference: "ref-1", amount: 5_000, currency: "CLP", collectorId: "77", approvedAt: null, liveMode: false };
+  const payment = { id: "1", status: "approved", statusDetail: null, externalReference: "ref-1", amount: 5_000, refundedAmount: 0, currency: "CLP", collectorId: "77", approvedAt: null, liveMode: false };
   const expected = { externalReference: "ref-1", collectorId: "77", amount: 5_000, currency: "CLP" };
 
   it("coincide solo si referencia, cuenta receptora, monto y moneda son los esperados", () => {

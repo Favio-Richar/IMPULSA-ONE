@@ -33,7 +33,8 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
 | F5.8 — Conectar la cuenta de Mercado Pago del negocio (OAuth + PKCE) | Lista para tu revisión (capturas en `docs/design/capturas/f58/`; falta probar con tu aplicación real de Mercado Pago) |
 | F5.9 — Cobro de pedidos de la tienda con Checkout Pro y confirmación automática | Lista para tu revisión (capturas en `docs/design/capturas/f59/`; falta probar con tu aplicación real de Mercado Pago) |
 | F5.10 — Seña de reservas cobrada al reservar | Lista para tu revisión (capturas en `docs/design/capturas/f510/`; falta probar con tu aplicación real de Mercado Pago) |
-| F5.11 — Reembolsos, contracargos y descargas pagadas | Pendiente |
+| F5.11a — Reembolsos y contracargos de pedidos y señas | Lista para tu revisión (capturas en `docs/design/capturas/f511a/`; falta probar con tu aplicación real de Mercado Pago) |
+| F5.11b — Descargas pagadas (productos digitales con enlace firmado tras el pago) | Pendiente (necesita almacenamiento privado: ADR nuevo) |
 | — Afiliados | Sin fase (se diseña con uso real) |
 | — Profesionales y sucursales múltiples, integración de calendario externo/videollamada | Después de F5.4 (se diseña con uso real) |
 
@@ -160,7 +161,37 @@ directo a él; Impulza no custodia fondos, no ve tarjetas y no cobra comisión p
 > - Decisión de producto a revisar: el contador "Por atender" de la agenda no suma las reservas que
 >   esperan seña (todavía no son seguras).
 
-**F5.11 — Reembolsos, contracargos y descargas pagadas**
+**F5.11 — Reembolsos, contracargos y descargas pagadas** (dividida el 2026-09-30 en F5.11a y F5.11b:
+las descargas necesitan un almacenamiento privado que hoy no existe — la biblioteca de medios es un
+bucket público —, y esa es una decisión de arquitectura aparte).
+
+> **Estado (2026-09-30): F5.11a lista para revisión.**
+> - Permiso nuevo `payments.refund` (solo OWNER: el dinero sale de la cuenta del negocio y no se
+>   deshace). Base: migración aditiva `20260930050000_f511a_refunds` (`orders.refunded_amount`,
+>   `bookings.deposit_refunded_amount`, `CHECK` ≤ lo cobrado) con `down.sql` probado.
+> - `packages/payments`: `refundPayment` con `X-Idempotency-Key` y `refundedAmount` leído del pago.
+> - API: `POST /orders/:id/refund` y `POST /bookings/:id/refund-deposit`, total o parcial, tope en lo
+>   que queda. `CheckoutRefundsService` (compartido): candado en Redis por pago (dos clics o dos
+>   personas) + clave de idempotencia (respuesta perdida y reintento); lo devuelto y el estado se
+>   leen de Mercado Pago después de devolver. Mercado Pago caído → 503 y reintentar no devuelve dos
+>   veces. El aviso de un pago ya asignado registra devoluciones hechas desde Mercado Pago y
+>   contracargos/reclamos (`charged_back`, `in_mediation`): auditoría y aviso al negocio una sola vez.
+>   El estado del pedido o la reserva no cambia solo: el negocio decide si además lo cancela.
+> - Panel: "Devolver dinero" en el pedido y "Devolver seña" en la agenda (monto con lo que queda ya
+>   escrito, validado antes de enviar, confirmación con el monto exacto); textos de devolución,
+>   contracargo y reclamo.
+> - Correos: devolución al comprador (total o parcial); contracargo o reclamo al negocio.
+> - Pruebas: API e2e 6 nuevas + casos en la suite central; validación +4; pagos +1; Playwright
+>   `devoluciones.spec.ts` 4/4 (encontró un desborde real en escritorio: la columna de acciones del
+>   pedido tenía ancho fijo; corregido). Suite completa de la API: 533/540 en la corrida completa,
+>   las 7 fallas por timeout de carga (patrón conocido); los 5 archivos afectados pasan 119/119 solos.
+>
+> **F5.11b — Descargas pagadas (pendiente).** Propuesta: un bucket **privado** aparte
+> (`STORAGE_PRIVATE_BUCKET`, sin dominio público) para los archivos de productos digitales, subidos
+> desde el catálogo; tras el pago confirmado (F5.9), el correo y "Tu pedido" entregan un enlace de
+> descarga de la API que valida el pedido pagado y redirige a una URL firmada de pocos minutos; un
+> reembolso total o un contracargo lo revoca. Requiere ADR (almacenamiento privado, límites de
+> tamaño por plan) antes de implementar.
 - Reembolso desde el panel del negocio (con su token), contracargos informados, y productos
   digitales con enlace de descarga firmado que solo se entrega tras el pago.
 

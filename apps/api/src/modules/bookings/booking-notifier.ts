@@ -5,6 +5,7 @@ import {
   bookingCancelledEmail,
   bookingConfirmationEmail,
   bookingDepositPaidEmail,
+  bookingDepositRefundedEmail,
   bookingDepositPendingEmail,
   formatDepositAmount,
   bookingRescheduledEmail,
@@ -70,6 +71,11 @@ export class BookingNotifier {
       kind: "deposit_pending",
       to: "customer",
     });
+  }
+
+  /** El negocio devolvió la seña (F5.11a): aviso al cliente. */
+  async notifyDepositRefunded(booking: Booking, siteName: string, amount: number): Promise<void> {
+    await this.send(booking.customerEmail, bookingDepositRefundedEmail(this.messageData(booking, siteName), amount), { bookingId: booking.id, kind: "deposit_refunded", to: "customer" });
   }
 
   /** Mercado Pago confirmó la seña: al cliente (reserva confirmada) y a los dueños (nueva reserva con seña). */

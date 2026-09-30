@@ -12,6 +12,8 @@ const depositResponse = z.object({
   /** Hasta cuándo se puede pagar; después la hora se libera. */
   deadline: isoDateTime.nullable(),
   paidAt: isoDateTime.nullable(),
+  /** Cuánto se devolvió ya (F5.11a), según Mercado Pago. */
+  refundedAmount: z.number().int(),
 });
 
 // Reservas (F5.1). La forma de `weeklyHours` la define `weeklyHoursSchema` en `@impulza/validation`.

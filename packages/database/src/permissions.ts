@@ -24,6 +24,7 @@ export const PERMISSIONS = {
   CAMPAIGN_MANAGE: "campaign.manage",
   BILLING_MANAGE: "billing.manage",
   PAYMENTS_CONNECT: "payments.connect",
+  PAYMENTS_REFUND: "payments.refund",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -117,6 +118,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.PAYMENTS_CONNECT,
     description: "Conectar o desconectar la cuenta de Mercado Pago con que el negocio cobra a sus clientes (F5.8).",
   },
+  {
+    key: PERMISSIONS.PAYMENTS_REFUND,
+    description: "Devolver dinero cobrado con la cuenta de Mercado Pago del negocio: pedidos y señas (F5.11).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -152,6 +157,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.BILLING_MANAGE,
     // A qué cuenta llega el dinero de las ventas es decisión del dueño (F5.8, ADR-013).
     PERMISSIONS.PAYMENTS_CONNECT,
+    // Devolver dinero sale de la cuenta del negocio y no se deshace (F5.11, ADR-013): solo el dueño.
+    PERMISSIONS.PAYMENTS_REFUND,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,

@@ -50,6 +50,8 @@ export interface CheckoutPayment {
   externalReference: string | null;
   /** Monto en la unidad mínima de la moneda (CLP: pesos enteros). */
   amount: number;
+  /** Cuánto se devolvió ya (reembolsos desde Impulza o desde la cuenta del negocio). */
+  refundedAmount: number;
   currency: string;
   /** Cuenta de Mercado Pago que recibe el dinero: debe ser la conectada por el negocio. */
   collectorId: string | null;
@@ -63,12 +65,15 @@ const preferenceResponse = z.object({
   sandbox_init_point: z.string().url().nullish(),
 });
 
+const refundResponse = z.object({ id: z.union([z.string(), z.number()]).transform(String), amount: z.number().nullish() });
+
 const paymentResponse = z.object({
   id: z.union([z.string(), z.number()]).transform(String),
   status: z.string(),
   status_detail: z.string().nullish(),
   external_reference: z.string().nullish(),
   transaction_amount: z.number().nonnegative(),
+  transaction_amount_refunded: z.number().nonnegative().nullish(),
   currency_id: z.string(),
   collector_id: z.union([z.string(), z.number()]).transform(String).nullish(),
   date_approved: z.string().nullish(),
@@ -121,11 +126,28 @@ export class MercadoPagoCheckout {
       externalReference: parsed.external_reference ?? null,
       // CLP no tiene decimales; Mercado Pago lo manda como número.
       amount: Math.round(parsed.transaction_amount),
+      refundedAmount: Math.round(parsed.transaction_amount_refunded ?? 0),
       currency: parsed.currency_id,
       collectorId: parsed.collector_id ?? null,
       approvedAt: approvedAt && !Number.isNaN(approvedAt.getTime()) ? approvedAt : null,
       liveMode: parsed.live_mode ?? true,
     };
+  }
+
+  /**
+   * Reembolso total (sin `amount`) o parcial de un pago, con el token del negocio dueño del cobro.
+   * `idempotencyKey` evita devolver dos veces si la respuesta se pierde y se reintenta.
+   */
+  async refundPayment(accessToken: string, paymentId: string, amount: number | undefined, idempotencyKey: string): Promise<{ id: string; amount: number }> {
+    const body = await this.request(
+      accessToken,
+      "POST",
+      `/v1/payments/${encodeURIComponent(paymentId)}/refunds`,
+      amount === undefined ? {} : { amount },
+      { "x-idempotency-key": idempotencyKey },
+    );
+    const parsed = parse(refundResponse, body);
+    return { id: parsed.id, amount: Math.round(parsed.amount ?? amount ?? 0) };
   }
 
   private async request(accessToken: string, method: string, path: string, payload: unknown, extraHeaders: Record<string, string> = {}): Promise<unknown> {
@@ -186,7 +208,7 @@ function parse<T>(schema: z.ZodType<T>, body: unknown): T {
   return result.data;
 }
 
-export type MercadoPagoCheckoutLike = Pick<MercadoPagoCheckout, "createPreference" | "getPayment">;
+export type MercadoPagoCheckoutLike = Pick<MercadoPagoCheckout, "createPreference" | "getPayment" | "refundPayment">;
 
 /**
  * Checkout simulado para pruebas: guarda preferencias y pagos en memoria, **por token** — un token
@@ -196,6 +218,8 @@ export class FakeMercadoPagoCheckout implements MercadoPagoCheckoutLike {
   readonly preferences: Array<CheckoutPreferenceInput & { id: string; accessToken: string }> = [];
   private readonly payments = new Map<string, { accessToken: string; payment: CheckoutPayment }>();
   failNextPreference = false;
+  failNextRefund = false;
+  readonly refunds: Array<{ accessToken: string; paymentId: string; amount: number; idempotencyKey: string }> = [];
 
   async createPreference(accessToken: string, input: CheckoutPreferenceInput): Promise<CheckoutPreference> {
     if (this.failNextPreference) {
@@ -213,6 +237,26 @@ export class FakeMercadoPagoCheckout implements MercadoPagoCheckoutLike {
     // Mercado Pago responde 404 a un pago de otra cuenta.
     if (!found || found.accessToken !== accessToken) throw new PaymentGatewayError("not_found", false, "Pago desconocido.");
     return { ...found.payment };
+  }
+
+  async refundPayment(accessToken: string, paymentId: string, amount: number | undefined, idempotencyKey: string): Promise<{ id: string; amount: number }> {
+    const found = this.payments.get(paymentId);
+    if (!found || found.accessToken !== accessToken) throw new PaymentGatewayError("not_found", false, "Pago desconocido.");
+    if (this.failNextRefund) {
+      this.failNextRefund = false;
+      throw new PaymentGatewayError("unavailable", true, "Simulación: Mercado Pago caído.");
+    }
+    // Misma clave = mismo reembolso (lo que hace Mercado Pago con X-Idempotency-Key).
+    const repeated = this.refunds.find((item) => item.idempotencyKey === idempotencyKey);
+    if (repeated) return { id: `ref-${repeated.idempotencyKey}`, amount: repeated.amount };
+    const payment = found.payment;
+    const remaining = payment.amount - payment.refundedAmount;
+    const value = amount ?? remaining;
+    if (payment.status !== "approved" || value <= 0 || value > remaining) throw new PaymentGatewayError("rejected", false, "Reembolso inválido.");
+    payment.refundedAmount += value;
+    if (payment.refundedAmount === payment.amount) payment.status = "refunded";
+    this.refunds.push({ accessToken, paymentId, amount: value, idempotencyKey });
+    return { id: `ref-${idempotencyKey}`, amount: value };
   }
 
   /** Simula que el comprador paga (o lo intenta) la preferencia de un pedido. Devuelve el id del pago. */
@@ -233,6 +277,7 @@ export class FakeMercadoPagoCheckout implements MercadoPagoCheckoutLike {
         statusDetail: status === "approved" ? "accredited" : null,
         externalReference,
         amount: input.amount ?? preference.unitPrice * preference.quantity,
+        refundedAmount: 0,
         currency: input.currency ?? preference.currency,
         collectorId: input.collectorId,
         approvedAt: status === "approved" ? new Date() : null,

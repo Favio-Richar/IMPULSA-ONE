@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { bookingResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
@@ -6,21 +6,26 @@ import {
   BOOKING_STATUSES,
   listBookingsQuerySchema,
   manualBookingSchema,
+  refundRequestSchema,
   updateBookingStatusSchema,
   type ListBookingsQuery,
   type ManualBookingInput,
+  type RefundRequest,
   type UpdateBookingStatusInput,
 } from "@impulza/validation";
 import { CsrfGuard } from "../../common/csrf.guard.js";
+import { RateLimit } from "../../common/rate-limit.decorator.js";
+import { RateLimitGuard } from "../../common/rate-limit.guard.js";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
 import { SESSION_AUTH } from "../../openapi/document.js";
-import { ApiOrganizationIdParam, ApiOrganizationScopedErrors, ApiUuidParam, ApiZodArrayResponse, ApiZodBody, ApiZodResponse } from "../../openapi/zod-openapi.js";
+import { ApiOrganizationIdParam, ApiOrganizationScopedErrors, ApiRateLimited, ApiUuidParam, ApiZodArrayResponse, ApiZodBody, ApiZodResponse } from "../../openapi/zod-openapi.js";
+import { REFUND_IN_PROGRESS, REFUND_UNAVAILABLE } from "../payment-accounts/checkout-refunds.service.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
 import { OrganizationMembershipGuard } from "../organizations/guards/organization-membership.guard.js";
 import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
-import { AgendaService, BOOKING_NOT_FOUND, BOOKING_OVERLAP } from "./agenda.service.js";
+import { AgendaService, BOOKING_NOT_FOUND, BOOKING_OVERLAP, DEPOSIT_REFUND_TOO_HIGH, NO_DEPOSIT_TO_REFUND } from "./agenda.service.js";
 
 @ApiTags("bookings")
 @ApiCookieAuth(SESSION_AUTH)
@@ -83,5 +88,32 @@ export class AgendaController {
     @Body(new ZodValidationPipe(updateBookingStatusSchema)) body: UpdateBookingStatusInput,
   ) {
     return this.agendaService.updateStatus(organizationId, user.id, bookingId, body);
+  }
+
+  @Post(":bookingId/refund-deposit")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.PAYMENTS_REFUND)
+  @RateLimit({ limit: 10, windowSeconds: 600, keyPrefix: "booking-refund" })
+  @ApiOperation({
+    summary: "Devolver la seña de una reserva",
+    description:
+      "Requiere `payments.refund` (solo el dueño). Total (sin `amount`) o parcial, con el token de la cuenta de Mercado Pago del negocio y clave de idempotencia; lo devuelto se lee de Mercado Pago. Avisa al cliente y queda auditado (F5.11a).",
+  })
+  @ApiUuidParam("bookingId", "Reserva cuya seña se devuelve.")
+  @ApiZodBody(refundRequestSchema)
+  @ApiZodResponse(200, bookingResponse, "Reserva con lo devuelto.")
+  @ApiResponse({ status: 404, description: BOOKING_NOT_FOUND })
+  @ApiResponse({ status: 409, description: REFUND_IN_PROGRESS })
+  @ApiResponse({ status: 422, description: `${NO_DEPOSIT_TO_REFUND} O: ${DEPOSIT_REFUND_TOO_HIGH} O: \`PAYMENTS_UNAVAILABLE\` (${REFUND_UNAVAILABLE}) O: \`REFUND_REJECTED\`.` })
+  @ApiResponse({ status: 503, description: "Mercado Pago no respondió; reintentar no devuelve dos veces." })
+  @ApiRateLimited(10, 600)
+  refundDeposit(
+    @Param("organizationId") organizationId: string,
+    @Param("bookingId") bookingId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(refundRequestSchema)) body: RefundRequest,
+  ) {
+    return this.agendaService.refundDeposit(organizationId, user.id, bookingId, body);
   }
 }

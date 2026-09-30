@@ -23,6 +23,7 @@ export const PERMISSIONS = {
   ORDER_MANAGE: "order.manage",
   CAMPAIGN_MANAGE: "campaign.manage",
   BILLING_MANAGE: "billing.manage",
+  PAYMENTS_CONNECT: "payments.connect",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -112,6 +113,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.BILLING_MANAGE,
     description: "Contratar, cambiar o cancelar el plan de pago y pedir reembolso por retracto (F4.6).",
   },
+  {
+    key: PERMISSIONS.PAYMENTS_CONNECT,
+    description: "Conectar o desconectar la cuenta de Mercado Pago con que el negocio cobra a sus clientes (F5.8).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -145,6 +150,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     // Contratar o cancelar un plan compromete dinero del negocio (F4.6, ADR-012): solo el dueño,
     // igual que dar de baja o transferir la organización.
     PERMISSIONS.BILLING_MANAGE,
+    // A qué cuenta llega el dinero de las ventas es decisión del dueño (F5.8, ADR-013).
+    PERMISSIONS.PAYMENTS_CONNECT,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,

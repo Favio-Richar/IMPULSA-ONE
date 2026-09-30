@@ -86,6 +86,13 @@ enum BillingCheckoutStatus {
 
 // Documento tributario (boleta/factura electrónica) de un pago aprobado. Emisor `MANUAL` en
 // ADR-012 §4: queda PENDING hasta que alguien lo emita y lo marque.
+// Cuenta de cobro conectada de un negocio (F5.8, ADR-013).
+enum PaymentAccountStatus {
+  CONNECTED
+  // La renovación del token falló o Mercado Pago revocó el acceso: no se cobra hasta reconectar.
+  ERROR
+}
+
 enum TaxDocumentStatus {
   PENDING
   ISSUED
@@ -210,6 +217,7 @@ model Organization {
   payments            Payment[]
   billingCheckouts    BillingCheckout[]
   legalAcceptances    LegalAcceptance[]
+  paymentAccounts     PaymentAccount[]
 
   @@map("organizations")
 }
@@ -1618,4 +1626,36 @@ model LegalAcceptance {
   @@index([userId, document])
   @@index([organizationId])
   @@map("legal_acceptances")
+}
+
+// La cuenta de Mercado Pago **del negocio**, conectada por OAuth (F5.8, ADR-013). El dinero de sus
+// ventas va directo a esa cuenta: Impulza solo crea los cobros a su nombre. Excepción acotada a "no
+// custodiar credenciales de terceros": los tokens se guardan cifrados (AES-256-GCM,
+// AUTH_ENCRYPTION_KEY), nunca salen en respuestas, logs ni auditoría, y desconectar los borra.
+model PaymentAccount {
+  id                    String               @id @default(uuid()) @db.Uuid
+  organizationId        String               @map("organization_id") @db.Uuid
+  provider              PaymentGateway
+  // Id de la cuenta en Mercado Pago (no es secreto): evita conectar la misma cuenta a dos negocios
+  // sin que se note y permite verificar a quién pertenece un pago.
+  providerUserId        String               @map("provider_user_id")
+  accessTokenEncrypted  String               @map("access_token_encrypted")
+  refreshTokenEncrypted String               @map("refresh_token_encrypted")
+  expiresAt             DateTime             @map("expires_at") @db.Timestamptz(6)
+  // false = credenciales de prueba de Mercado Pago (no mueven dinero real).
+  liveMode              Boolean              @map("live_mode")
+  status                PaymentAccountStatus @default(CONNECTED)
+  // Motivo técnico del último error (sin tokens ni datos personales).
+  lastError             String?              @map("last_error")
+  connectedById         String?              @map("connected_by_id") @db.Uuid
+  connectedAt           DateTime             @default(now()) @map("connected_at") @db.Timestamptz(6)
+  lastRefreshedAt       DateTime?            @map("last_refreshed_at") @db.Timestamptz(6)
+  updatedAt             DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Una cuenta por pasarela por organización.
+  @@unique([organizationId, provider])
+  @@index([status, expiresAt])
+  @@map("payment_accounts")
 }

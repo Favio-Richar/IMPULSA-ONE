@@ -97,7 +97,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 
 | Requisito | Fuente | Fase |
 |---|---|---|
-| Reservas: calendario, servicios/duración/precio, profesionales, sucursales, disponibilidad, seña, cancelación/reprogramación, recordatorios, integración calendario/videollamada | PM §9.9 | Fase 5 — `BACKLOG_FASE_5.md`: servicios, horario, bloqueos y disponibilidad en F5.1, reserva pública en F5.2, agenda en F5.3 y avisos/cancelar/reprogramar/recordatorios en F5.4 (en revisión); avisos F5.4. Seña cobrada bloqueada por decisión #6 (se usa enlace de pago externo) |
+| Reservas: calendario, servicios/duración/precio, profesionales, sucursales, disponibilidad, seña, cancelación/reprogramación, recordatorios, integración calendario/videollamada | PM §9.9 | Fase 5 — `BACKLOG_FASE_5.md`: servicios, horario, bloqueos y disponibilidad en F5.1, reserva pública en F5.2, agenda en F5.3 y avisos/cancelar/reprogramar/recordatorios en F5.4 (en revisión); avisos F5.4. Seña cobrada: F5.10 (decisión #6 resuelta, ADR-013); cuenta del negocio conectada: F5.8 (en revisión) |
 | Tienda: productos físicos/digitales, servicios, variantes, stock, cupones, carrito, checkout, pedidos, pagos, reembolsos, descargas, upsell/order bump, afiliados | PM §9.10 | Fase 5 — `BACKLOG_FASE_5.md` F5.5 (en revisión): productos físicos/digitales/servicios con categorías, imagen, stock y enlace de pago externo; bloque "Tienda" (un botón por producto); pedidos como solicitud gestionada en el panel (nuevo → pagado → entregado/cancelado). Cobro propio, reembolsos y descargas bloqueados por decisión #6; variantes, cupones, carrito, upsell y afiliados sin fase asignada |
 | Campañas de email: segmentos, listas, plantillas, secuencias, automatizaciones básicas, métricas, bajas | PM §9.11 | Fase 5 — `BACKLOG_FASE_5.md` F5.6 (en revisión): consentimiento de marketing aparte, segmentos por etiqueta/estado/origen, prueba, envío por cola con límite por hora del plan, baja firmada inmediata y métricas (enviados, fallidos, bajas). Secuencias y automatizaciones sin fase asignada; rebotes reales esperan al proveedor de correo |
 
@@ -150,7 +150,7 @@ Del PM §21 — deben resolverse **antes de fases que dependan de ellas** (marca
 3. Segmento principal del MVP — recomendable antes de Fase 2 (afecta plantillas/bloques prioritarios).
 4. Límites exactos de cada plan — antes de Fase 4 (planes y límites).
 5. ~~Pasarela de suscripción — antes de Fase 4.~~ **Resuelta 2026-09-29 (ADR-012):** Webpay Oneclick y Mercado Pago, freemium.
-6. Responsabilidad de pagos de terceros — antes de Fase 5 (pagos de negocios).
+6. ~~Responsabilidad de pagos de terceros — antes de Fase 5.~~ **Resuelta 2026-09-30 (ADR-013):** cada negocio conecta su propia cuenta de Mercado Pago; el dinero va directo a él, Impulza no custodia fondos ni cobra comisión.
 7. Cuotas de almacenamiento/tráfico — antes de Fase 4 (límites de plan) y Fase 2 (media).
 8. Alcance inicial de agencia — antes de Fase 6.
 9. Política de moderación — antes de Fase 4 (superadministración/moderación).

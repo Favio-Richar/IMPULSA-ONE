@@ -1732,6 +1732,23 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Cuenta de cobro del negocio (F5.8, ADR-013): nunca se cruza", () => {
+    it("A no ve, conecta ni desconecta la cuenta de Mercado Pago de B", async () => {
+      const account = await prisma.paymentAccount.create({
+        data: { organizationId: orgB.id, provider: "MERCADO_PAGO", providerUserId: "999", accessTokenEncrypted: "x.y.z", refreshTokenEncrypted: "x.y.z", expiresAt: new Date(Date.now() + 86_400_000), liveMode: false },
+      });
+      try {
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/payment-accounts`).expect(403);
+        await orgA.ownerAgent.post(`/api/v1/organizations/${orgB.id}/payment-accounts/mercadopago/connect`).set(CSRF_HEADERS).expect(403);
+        await orgA.ownerAgent.delete(`/api/v1/organizations/${orgB.id}/payment-accounts/mercadopago`).set(CSRF_HEADERS).expect(403);
+        expect((await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/payment-accounts`).expect(200)).body.mercadoPago).toBeNull();
+        expect(await prisma.paymentAccount.count({ where: { id: account.id } })).toBe(1);
+      } finally {
+        await prisma.paymentAccount.deleteMany({ where: { id: account.id } });
+      }
+    });
+  });
+
   describe("Cobro de suscripciones (F4.6a/F4.9): la facturación de una organización no se cruza", () => {
     it("A no lee la suscripción ni los pagos de B, no contrata a nombre de B, y los pagos de B nunca aparecen en A", async () => {
       const plan = await prisma.plan.findUniqueOrThrow({ where: { code: "profesional" } });

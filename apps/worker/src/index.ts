@@ -4,13 +4,14 @@ import { initSentry } from "@impulza/observability";
 import { Redis } from "ioredis";
 import { parseStorageConfig, parseVideoToolsConfig, S3StorageAdapter } from "@impulza/storage";
 import { ConsoleEmailAdapter } from "@impulza/auth";
-import { MercadoPagoGateway, WebpayOneclickGateway } from "@impulza/payments";
+import { MercadoPagoGateway, MercadoPagoOAuth, WebpayOneclickGateway } from "@impulza/payments";
 import { startAnalyticsWorkers } from "./analytics-workers.js";
 import { startAutomationWorkers } from "./automations.js";
 import { startBillingWorkers } from "./billing.js";
+import { startPaymentAccountWorkers } from "./payment-accounts.js";
 import { startBookingReminderWorkers } from "./booking-reminders.js";
 import { startCampaignDispatchWorkers } from "./campaign-dispatch.js";
-import { env, mercadoPagoConfig, webpayConfig } from "./env.js";
+import { env, mercadoPagoConfig, mercadoPagoOAuthConfig, webpayConfig } from "./env.js";
 import { createHealthServer } from "./health-server.js";
 import { startMediaWorkers } from "./media-workers.js";
 import { logger } from "./observability/logger.js";
@@ -100,6 +101,19 @@ if (!billing) {
   logger.warn("Sin pasarela de pago configurada (o sin AUTH_ENCRYPTION_KEY): el ciclo de facturación no se inicia");
 }
 
+// Cuentas de Mercado Pago de los negocios (F5.8, ADR-013): renovación diaria de sus tokens.
+const paymentAccounts =
+  mercadoPagoOAuthConfig && env.AUTH_ENCRYPTION_KEY
+    ? await startPaymentAccountWorkers({
+        prisma,
+        connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+        oauth: new MercadoPagoOAuth(mercadoPagoOAuthConfig),
+        email: new ConsoleEmailAdapter(),
+        encryptionKey: env.AUTH_ENCRYPTION_KEY,
+        dashboardBaseUrl: env.APP_BASE_URL,
+      })
+    : null;
+
 const healthServer = createHealthServer([
   {
     name: "database",
@@ -133,6 +147,7 @@ async function shutdown(signal: string): Promise<void> {
   await campaignDispatch.close();
   await automations.close();
   await billing?.close();
+  await paymentAccounts?.close();
   healthRedis.disconnect();
   await prisma.$disconnect();
   process.exit(0);

@@ -30,8 +30,67 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
 | F5.5 — Catálogo y pedidos (productos físicos, digitales y servicios) con pago externo | Lista para tu revisión (capturas en `docs/design/capturas/f55/`) |
 | F5.6 — Campañas de email con consentimiento y bajas | Lista para tu revisión (capturas en `docs/design/capturas/f56/`) |
 | F5.7 — Aislamiento y seguridad de Fase 5 | Lista para tu revisión (sin UI: pruebas en la suite central) |
-| — Seña cobrada, checkout, reembolsos, descargas pagadas, afiliados | Bloqueado (decisión #6) |
+| F5.8 — Conectar la cuenta de Mercado Pago del negocio (OAuth + PKCE) | Lista para tu revisión (capturas en `docs/design/capturas/f58/`; falta probar con tu aplicación real de Mercado Pago) |
+| F5.9 — Cobro de pedidos de la tienda con Checkout Pro y confirmación automática | Pendiente |
+| F5.10 — Seña de reservas cobrada al reservar | Pendiente |
+| F5.11 — Reembolsos, contracargos y descargas pagadas | Pendiente |
+| — Afiliados | Sin fase (se diseña con uso real) |
 | — Profesionales y sucursales múltiples, integración de calendario externo/videollamada | Después de F5.4 (se diseña con uso real) |
+
+### Cobros de los negocios (F5.8–F5.11, ADR-013) — desbloqueados el 2026-09-30
+
+Decisión #6 resuelta: cada negocio conecta **su propia** cuenta de Mercado Pago; el dinero va
+directo a él; Impulza no custodia fondos, no ve tarjetas y no cobra comisión por venta.
+
+**F5.8 — Conectar la cuenta de Mercado Pago del negocio**
+- Botón "Conectar Mercado Pago" (permiso nuevo `payments.connect`, solo OWNER): OAuth con `state`
+  firmado de un solo uso y PKCE `S256`; tokens cifrados; nunca en respuestas, logs ni auditoría.
+- Estado de la conexión en el panel (cuenta conectada, desde cuándo, modo prueba/producción),
+  desconectar (borra los tokens), renovación automática en el worker antes de vencer (180 días);
+  si la renovación falla, queda desconectada y se avisa al dueño.
+- Auditoría de conectar/desconectar; aislamiento: una organización nunca usa la cuenta de otra.
+
+> **Estado (2026-09-30): F5.8 lista para revisión.**
+> - `packages/payments`: `MercadoPagoOAuth` (URL de autorización con PKCE `S256`, cambio de código y
+>   renovación por `/oauth/token`, Zod en la respuesta) y utilidades PKCE, probadas contra el vector
+>   de la RFC 7636. Configuración `MERCADOPAGO_CLIENT_ID`/`MERCADOPAGO_CLIENT_SECRET`, las dos o ninguna.
+> - Base: migración aditiva `20260930020000_f58_payment_accounts` (`PaymentAccount`, única por
+>   organización y pasarela, tokens cifrados, `CHECK` de motivo en error) con `down.sql`. Permiso
+>   nuevo `payments.connect` (solo OWNER).
+> - API: estado (miembro, con `canManage` del servidor), empezar a conectar (`state` aleatorio en
+>   Redis 10 min + verificador PKCE), callback sin sesión que **consume** el `state` (GETDEL),
+>   **revalida el permiso** al volver, cambia el código y guarda los tokens cifrados; desconectar
+>   borra los tokens. Auditoría sin tokens. `accessTokenFor(organización)` solo entrega un token de
+>   una cuenta sana y vigente de esa organización. OpenAPI (156 rutas).
+> - Worker: renovación diaria con 30 días de margen, condicional sobre el token leído; si Mercado
+>   Pago rechaza o venció, la cuenta queda en error y se avisa al dueño una sola vez.
+> - Panel: "Cobros" en el menú, estado de la cuenta, conectar/reconectar, desconectar con
+>   confirmación, avisos al volver de Mercado Pago y "Cómo funciona" (dinero directo al negocio, sin
+>   comisión, boleta del negocio).
+> - Pruebas: pagos 50 (PKCE con el vector de la RFC), API e2e 8 + caso en la suite central (67),
+>   worker 3, Playwright `cobros.spec.ts` 6/6. **Verificadas contra el código roto:** con el `state`
+>   reutilizable y sin revalidar el permiso, las pruebas fallan.
+> - Errores encontrados: (1) el vector PKCE que escribí de memoria estaba mal (el código estaba
+>   bien); se verificó y se usa el de la RFC. (2) Con la cuenta conectada pero la conexión no
+>   habilitada en el ambiente, el panel ocultaba "Desconectar" y mostraba mensajes contradictorios:
+>   desconectar queda siempre al alcance del dueño (ADR-013). (3) La primera corrida de las pruebas
+>   del worker tuvo dos fallos sin aserción (arranque en frío); cinco corridas seguidas pasaron.
+> - Pendiente para producción: crear la aplicación de Impulza en Mercado Pago, registrar la URL de
+>   redirección y activar PKCE, y probar la conexión con una cuenta de prueba.
+
+**F5.9 — Cobro de pedidos con Checkout Pro**
+- Con cuenta conectada, el pedido público crea una preferencia a nombre del negocio
+  (`external_reference` = pedido) y el comprador paga en Mercado Pago; al volver ve el estado.
+- Webhook por pedido: se consulta el pago con el token del negocio; solo se marca pagado si la
+  cuenta, el pedido, el monto y la moneda coinciden. Idempotente. Aviso al negocio y al comprador.
+
+**F5.10 — Seña de reservas**
+- El servicio define una seña (monto fijo); la reserva queda "pendiente de pago" y se confirma al
+  pagarse; si no se paga en el plazo, se libera el horario.
+
+**F5.11 — Reembolsos, contracargos y descargas pagadas**
+- Reembolso desde el panel del negocio (con su token), contracargos informados, y productos
+  digitales con enlace de descarga firmado que solo se entrega tras el pago.
 
 ### Bitácora de avance (para retomar)
 

@@ -86,7 +86,9 @@ completo.
 
 **No hacer** (sin decisión explícita nueva del propietario): microservicios, Kubernetes, Kafka,
 MongoDB como base principal, GraphQL, HTML/JS arbitrario en páginas públicas, confiar en permisos
-del frontend, mezclar datos entre organizaciones, custodiar tarjetas/credenciales de terceros,
+del frontend, mezclar datos entre organizaciones, custodiar tarjetas/credenciales de terceros
+(única excepción acotada: el token OAuth con que un negocio conecta su propia cuenta de Mercado
+Pago, con las salvaguardas de ADR-013 — nunca tarjetas, nunca dinero de terceros),
 publicar cambios de IA sin confirmación del usuario, borrar documentación o trabajo existente,
 ejecutar migraciones destructivas sin respaldo y aprobación.
 

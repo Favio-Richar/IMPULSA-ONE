@@ -9,7 +9,14 @@ import {
   redisUrlSchema,
   urlSchema,
 } from "@impulza/config";
-import { mercadoPagoConfigFromEnv, mercadoPagoEnvShape, webpayConfigFromEnv, webpayEnvShape } from "@impulza/payments";
+import {
+  mercadoPagoConfigFromEnv,
+  mercadoPagoEnvShape,
+  mercadoPagoOAuthConfigFromEnv,
+  mercadoPagoOAuthEnvShape,
+  webpayConfigFromEnv,
+  webpayEnvShape,
+} from "@impulza/payments";
 
 // Se valida una sola vez, al importar este módulo (primer import en main.ts) — si falta o es
 // inválida una variable requerida, el proceso no debe arrancar (ST §15, F1.2).
@@ -65,9 +72,12 @@ export const env = loadEnv({
   ...webpayEnvShape,
   // Mercado Pago (F4.6b): token de acceso y clave de firma de webhooks, los dos o ninguno.
   ...mercadoPagoEnvShape,
+  // Aplicación de Impulza en Mercado Pago para que cada negocio conecte SU cuenta (F5.8, ADR-013).
+  ...mercadoPagoOAuthEnvShape,
   API_PUBLIC_URL: urlSchema.optional(),
 });
 
 // Todas o ninguna: una configuración de Webpay a medias detiene el arranque aquí (ST §15).
 export const webpayConfig = webpayConfigFromEnv(env);
 export const mercadoPagoConfig = mercadoPagoConfigFromEnv(env);
+export const mercadoPagoOAuthConfig = mercadoPagoOAuthConfigFromEnv(env);

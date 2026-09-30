@@ -58,6 +58,10 @@ describe("Templates (e2e) — PL1", () => {
     prisma = app.get(PRISMA);
     redis = app.get(REDIS);
 
+    // La base de pruebas persiste entre corridas: si una anterior se cortó antes de su `afterAll`,
+    // sus plantillas siguen ahí y ensucian el catálogo. Se limpian todas las de pruebas al empezar.
+    await prisma.template.deleteMany({ where: { code: { startsWith: "e2e-tpl-" } } });
+
     await prisma.template.createMany({
       data: [
         row(`${PREFIX}-servicios`),

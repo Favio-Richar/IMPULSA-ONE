@@ -34,6 +34,7 @@ import { AbTestsModule } from "./modules/ab-tests/ab-tests.module.js";
 import { SmartCtaModule } from "./modules/smart-cta/smart-cta.module.js";
 import { AutomationsModule } from "./modules/automations/automations.module.js";
 import { BillingModule } from "./modules/billing/billing.module.js";
+import { PaymentAccountsModule } from "./modules/payment-accounts/payment-accounts.module.js";
 
 // Módulo raíz — los módulos de dominio (sites, forms, ...) se agregan a partir de Fase 2, uno
 // por historia del backlog. Ver docs/BACKLOG_FASE_0_1.md.
@@ -71,6 +72,7 @@ import { BillingModule } from "./modules/billing/billing.module.js";
     SmartCtaModule,
     AutomationsModule,
     BillingModule,
+    PaymentAccountsModule,
     AdminModule,
     HealthModule,
   ],

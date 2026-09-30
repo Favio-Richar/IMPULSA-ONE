@@ -340,6 +340,13 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   `withdrawal_notice`, `privacy`), version, context, accepted_at. Prueba de la aceptación de
   Términos y aviso de retracto antes de pagar (Ley 19.496).
 
+## 9j. Cuenta de cobro de los negocios (F5.8, `BACKLOG_FASE_5.md`, ADR-013)
+
+- **PaymentAccount** (Organization 1:N con `CASCADE`, única por `(organization_id, provider)`):
+  provider_user_id (id de la cuenta en Mercado Pago, no secreto), access/refresh token **cifrados**
+  (AES-256-GCM), expires_at, live_mode, status (`CONNECTED`/`ERROR`; `CHECK`: `ERROR` exige
+  `last_error`), connected_by_id, connected_at, last_refreshed_at. Desconectar borra la fila.
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 Cobro de los negocios a sus clientes (checkout propio; bloqueado por la decisión #6), variantes/cupones/carrito,

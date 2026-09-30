@@ -1,5 +1,12 @@
 import { databaseUrlSchema, encryptionKeySchema, loadEnv, nodeEnvSchema, portSchema, redisUrlSchema, urlSchema } from "@impulza/config";
-import { mercadoPagoConfigFromEnv, mercadoPagoEnvShape, webpayConfigFromEnv, webpayEnvShape } from "@impulza/payments";
+import {
+  mercadoPagoConfigFromEnv,
+  mercadoPagoEnvShape,
+  mercadoPagoOAuthConfigFromEnv,
+  mercadoPagoOAuthEnvShape,
+  webpayConfigFromEnv,
+  webpayEnvShape,
+} from "@impulza/payments";
 import { z } from "zod";
 
 export const env = loadEnv({
@@ -36,9 +43,12 @@ export const env = loadEnv({
   ...webpayEnvShape,
   // Mercado Pago (F4.6b): el worker concilia sus suscripciones y cuotas por si se pierde un aviso.
   ...mercadoPagoEnvShape,
+  // Renovación de las cuentas de Mercado Pago de los negocios (F5.8).
+  ...mercadoPagoOAuthEnvShape,
   AUTH_ENCRYPTION_KEY: encryptionKeySchema.optional(),
 });
 
 // Todas o ninguna (ST §15), igual que en la API.
 export const webpayConfig = webpayConfigFromEnv(env);
 export const mercadoPagoConfig = mercadoPagoConfigFromEnv(env);
+export const mercadoPagoOAuthConfig = mercadoPagoOAuthConfigFromEnv(env);

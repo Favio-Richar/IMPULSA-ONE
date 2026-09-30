@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { CalendarCheck, ChartColumn, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, Megaphone, Package, Settings, ShoppingBag, Users, Workflow } from "lucide-react";
+import { CalendarCheck, ChartColumn, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, Megaphone, Package, Settings, ShoppingBag, Users, Wallet, Workflow } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -22,6 +22,8 @@ const NAV_ITEMS = [
   { href: "/reservas", label: "Reservas", icon: CalendarCheck },
   { href: "/catalogo", label: "Catálogo", icon: Package },
   { href: "/pedidos", label: "Pedidos", icon: ShoppingBag },
+  // Cuenta de Mercado Pago del negocio para cobrar a sus clientes (F5.8, ADR-013).
+  { href: "/cobros", label: "Cobros", icon: Wallet },
   { href: "/enlaces", label: "Enlaces y QR", icon: Link2 },
   { href: "/medios", label: "Medios", icon: ImageIcon },
   { href: "/plan", label: "Plan y pagos", icon: Gauge },

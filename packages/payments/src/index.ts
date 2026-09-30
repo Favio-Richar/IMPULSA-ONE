@@ -9,7 +9,14 @@ export {
   type WebpayOneclickConfig,
 } from "./webpay-oneclick.js";
 export { FakeRecurringGateway } from "./fake.js";
-export { webpayEnvShape, webpayConfigFromEnv, mercadoPagoEnvShape, mercadoPagoConfigFromEnv } from "./config.js";
+export {
+  webpayEnvShape,
+  webpayConfigFromEnv,
+  mercadoPagoEnvShape,
+  mercadoPagoConfigFromEnv,
+  mercadoPagoOAuthEnvShape,
+  mercadoPagoOAuthConfigFromEnv,
+} from "./config.js";
 export {
   formatClp,
   formatDate,
@@ -44,3 +51,13 @@ export {
   type PreapprovalSyncResult,
   type AuthorizedPaymentSyncResult,
 } from "./mercado-pago-sync.js";
+export {
+  MercadoPagoOAuth,
+  FakeMercadoPagoOAuth,
+  createCodeVerifier,
+  codeChallengeFor,
+  MERCADO_PAGO_AUTH_URL,
+  type MercadoPagoOAuthConfig,
+  type MercadoPagoOAuthLike,
+  type OAuthTokens,
+} from "./mercado-pago-oauth.js";

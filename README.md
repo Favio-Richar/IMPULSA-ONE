@@ -1271,6 +1271,13 @@ marca y últimos 4 dígitos.
 Pendiente para cobrar en producción: contrato Oneclick Mall, proveedor de boletas electrónicas y
 texto legal revisado (ver ADR-012, "Seguimiento"). Detalle en `docs/BACKLOG_FASE_4.md`.
 
+## Cobros de los negocios (F5.8, ADR-013)
+
+Cada negocio conecta **su propia** cuenta de Mercado Pago desde "Cobros" (OAuth con PKCE): el
+dinero de sus ventas va directo a su cuenta, Impulza no lo recibe ni cobra comisión, y guarda solo el
+permiso otorgado, cifrado y revocable. El worker renueva el acceso antes de que venza. Los cobros de
+pedidos y señas con esa cuenta llegan en F5.9–F5.10.
+
 ## Superadministración (F4.4, `apps/admin`)
 
 Panel de la plataforma en `http://localhost:3200` (`pnpm --filter @impulza/admin dev`, con

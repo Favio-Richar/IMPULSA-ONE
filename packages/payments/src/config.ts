@@ -50,3 +50,19 @@ export function mercadoPagoConfigFromEnv(env: MercadoPagoEnv): MercadoPagoConfig
   }
   return { accessToken: env.MERCADOPAGO_ACCESS_TOKEN!, webhookSecret: env.MERCADOPAGO_WEBHOOK_SECRET! };
 }
+
+export const mercadoPagoOAuthEnvShape = {
+  MERCADOPAGO_CLIENT_ID: z.string().regex(/^\d{6,20}$/, "Solo dígitos").optional(),
+  MERCADOPAGO_CLIENT_SECRET: z.string().min(16).optional(),
+};
+
+type MercadoPagoOAuthEnv = { [K in keyof typeof mercadoPagoOAuthEnvShape]?: z.infer<(typeof mercadoPagoOAuthEnvShape)[K]> };
+
+/** Aplicación de Impulza en Mercado Pago para conectar las cuentas de los negocios (F5.8, ADR-013):
+ *  id y secreto, los dos o ninguno. Sin ellos, los negocios siguen con enlaces de pago externos. */
+export function mercadoPagoOAuthConfigFromEnv(env: MercadoPagoOAuthEnv): { clientId: string; clientSecret: string } | null {
+  const present = [env.MERCADOPAGO_CLIENT_ID, env.MERCADOPAGO_CLIENT_SECRET].filter((value) => value !== undefined).length;
+  if (present === 0) return null;
+  if (present !== 2) throw new Error("Configuración de Mercado Pago (OAuth) incompleta: define MERCADOPAGO_CLIENT_ID y MERCADOPAGO_CLIENT_SECRET, o ninguna.");
+  return { clientId: env.MERCADOPAGO_CLIENT_ID!, clientSecret: env.MERCADOPAGO_CLIENT_SECRET! };
+}

@@ -122,6 +122,8 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/bookings/{token}",
       "POST /api/v1/public/bookings/{token}/cancel",
       "POST /api/v1/public/bookings/{token}/reschedule",
+      // "Tu pedido" (F5.9): la credencial es el enlace del correo (o el regreso de Mercado Pago).
+      "GET /api/v1/public/orders/{token}",
     ]);
 
     const sinSeguridad: string[] = [];

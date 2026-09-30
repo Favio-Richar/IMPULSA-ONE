@@ -10,6 +10,7 @@ import { AnalyticsService } from "../analytics/analytics.service.js";
 import { AutomationEventsService } from "../automations/automation-events.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
 import { storedImage } from "./catalog-setup.service.js";
+import { OrderCheckoutService } from "./order-checkout.service.js";
 import { OrderNotifier } from "./order-notifier.js";
 
 const NOT_AVAILABLE = "Este sitio no está recibiendo pedidos.";
@@ -32,6 +33,7 @@ export class PublicCatalogService {
     private readonly analyticsService: AnalyticsService,
     private readonly notifier: OrderNotifier,
     private readonly automationEvents: AutomationEventsService,
+    private readonly checkout: OrderCheckoutService,
   ) {}
 
   private async siteOrThrow(siteSlug: string) {
@@ -93,6 +95,7 @@ export class PublicCatalogService {
       totalAmount: product.priceAmount * input.quantity,
       priceCurrency: product.priceCurrency,
       paymentUrl: product.paymentUrl,
+      checkoutUrl: null,
     };
 
     // Antispam (mismo criterio que formularios y reservas): a un bot se le responde como si hubiera
@@ -181,7 +184,14 @@ export class PublicCatalogService {
         idempotencyKey: `lead_created:${contactResult.contact.id}`,
       });
     }
-    await this.notifier.notifyReceived(linked, site.name);
+    // Con la cuenta de Mercado Pago del negocio conectada, el pedido se cobra en línea (F5.9) y el
+    // enlace externo deja de ofrecerse; si no, o si Mercado Pago falla, sigue como siempre.
+    const charge = await this.checkout.startFor(linked);
+    if (charge) {
+      confirmation.checkoutUrl = charge.checkoutUrl;
+      confirmation.paymentUrl = null;
+    }
+    await this.notifier.notifyReceived(charge ? { ...linked, paymentUrl: null } : linked, site.name, charge?.statusUrl);
     await this.notifier.notifyOwners(linked, site.name);
     await this.automationEvents.emit({ organizationId: site.organizationId, trigger: "order_created", subjectId: order.id, contactId: contactResult.contact.id });
     logger.info("pedido público creado", { organizationId: site.organizationId, siteId: site.id, orderId: order.id });

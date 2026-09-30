@@ -289,7 +289,18 @@ function OrderConfirmation({ confirmation, heading }: { confirmation: PublicOrde
         </span>
         . Total: <span className="font-semibold">{formatPrice(confirmation.totalAmount, confirmation.priceCurrency)}</span>. Te enviamos el detalle por correo.
       </p>
-      {confirmation.paymentUrl ? (
+      {confirmation.checkoutUrl ? (
+        <>
+          {/* Misma pestaña: Mercado Pago devuelve al comprador a "Tu pedido" con el estado del pago. */}
+          <a href={confirmation.checkoutUrl} rel="noopener noreferrer" className={PRIMARY_BUTTON}>
+            <CreditCard className="h-4 w-4" aria-hidden="true" />
+            Pagar con Mercado Pago
+          </a>
+          <p className="text-xs text-[var(--site-color-muted-foreground)]">
+            Pagas en el sitio de Mercado Pago y el dinero lo recibe directamente el negocio. También te enviamos el enlace por correo.
+          </p>
+        </>
+      ) : confirmation.paymentUrl ? (
         <>
           <a href={confirmation.paymentUrl} {...OUTBOUND_LINK} className={PRIMARY_BUTTON}>
             <CreditCard className="h-4 w-4" aria-hidden="true" />

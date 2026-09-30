@@ -163,7 +163,7 @@ describe("Catálogo y pedidos (e2e) — F5.5", () => {
       .send(orderBody(vela.id, { quantity: 2, email, priceAmount: 1, totalAmount: 2 }))
       .expect(201);
     const confirmation = publicOrderConfirmationResponse.strict().parse(res.body);
-    expect(confirmation).toEqual({ productName: "Vela de soya", quantity: 2, unitPriceAmount: 7990, totalAmount: 15980, priceCurrency: "CLP", paymentUrl: "https://pago.ejemplo.cl/vela" });
+    expect(confirmation).toEqual({ productName: "Vela de soya", quantity: 2, unitPriceAmount: 7990, totalAmount: 15980, priceCurrency: "CLP", paymentUrl: "https://pago.ejemplo.cl/vela", checkoutUrl: null });
 
     expect((await prisma.product.findUniqueOrThrow({ where: { id: vela.id } })).stock).toBe(1);
     const order = await prisma.order.findFirstOrThrow({ where: { productId: vela.id } });

@@ -10,12 +10,14 @@ import { OrderNotifier } from "./order-notifier.js";
 export const ORDER_NOT_FOUND = "Pedido no encontrado: no existe, o pertenece a otra organización (ADR-002).";
 export const ORDER_CHANGED = "El pedido cambió mientras lo editabas. Recarga e inténtalo de nuevo.";
 export const ORDER_NO_STOCK = "No quedan unidades suficientes para reabrir el pedido.";
+export const ONLINE_PAYMENT_UNDO = "Este pago lo confirmó Mercado Pago: no se puede deshacer desde aquí. Si debes devolver el dinero, hazlo desde tu cuenta de Mercado Pago.";
 
 export const ORDERS_PAGE_SIZE = 50;
 
 /**
  * Pedidos del negocio (F5.5): ver y avanzar su estado (nuevo → pagado → entregado, o cancelado).
- * El pago se marca a mano: Impulza no cobra (decisión #6). Al cancelar se devuelve el stock
+ * El pago se marca a mano, salvo si se cobró con la cuenta de Mercado Pago del negocio (F5.9, se
+ * marca solo al confirmarse). Al cancelar se devuelve el stock
  * reservado; al reabrir uno cancelado se vuelve a reservar (o 409 si ya no queda). Cada cambio es
  * condicional al estado leído, así dos personas del equipo no pisan el cambio de la otra.
  */
@@ -45,6 +47,7 @@ export class OrdersService {
       deliveryAddress: order.deliveryAddress,
       note: order.note,
       status: order.status,
+      onlinePayment: order.checkoutPreferenceId ? { status: order.paymentStatus, paymentId: order.providerPaymentId } : null,
       paidAt: order.paidAt?.toISOString() ?? null,
       deliveredAt: order.deliveredAt?.toISOString() ?? null,
       cancelledAt: order.cancelledAt?.toISOString() ?? null,
@@ -89,6 +92,9 @@ export class OrdersService {
     const current = await this.getOrThrow(organizationId, orderId);
     if (current.status === input.status) {
       return this.toResponse(current);
+    }
+    if (current.status === "PAID" && input.status === "NEW" && current.providerPaymentId !== null) {
+      throw new UnprocessableEntityException(ONLINE_PAYMENT_UNDO);
     }
     if (!ORDER_TRANSITIONS[current.status].includes(input.status)) {
       throw new UnprocessableEntityException(

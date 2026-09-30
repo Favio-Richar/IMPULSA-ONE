@@ -67,8 +67,12 @@ describe("MercadoPagoOAuth", () => {
     expect(JSON.parse(calls[0]!.init.body as string)).toMatchObject({ grant_type: "refresh_token", refresh_token: "TG-viejo" });
   });
 
-  it("configuración: las dos variables o ninguna", () => {
+  it("configuración: las tres variables o ninguna", () => {
     expect(mercadoPagoOAuthConfigFromEnv({})).toBeNull();
     expect(() => mercadoPagoOAuthConfigFromEnv({ MERCADOPAGO_CLIENT_ID: "1234567890" })).toThrow(/incompleta/);
+    expect(() => mercadoPagoOAuthConfigFromEnv({ MERCADOPAGO_CLIENT_ID: "1234567890", MERCADOPAGO_CLIENT_SECRET: "secreto-de-la-aplicacion-0000" })).toThrow(/incompleta/);
+    expect(
+      mercadoPagoOAuthConfigFromEnv({ MERCADOPAGO_CLIENT_ID: "1234567890", MERCADOPAGO_CLIENT_SECRET: "secreto-de-la-aplicacion-0000", MERCADOPAGO_APP_WEBHOOK_SECRET: "clave-de-firma-de-avisos-0000" }),
+    ).toMatchObject({ webhookSecret: "clave-de-firma-de-avisos-0000" });
   });
 });

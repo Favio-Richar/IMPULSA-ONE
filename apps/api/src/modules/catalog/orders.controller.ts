@@ -18,7 +18,7 @@ import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
 import { OrganizationMembershipGuard } from "../organizations/guards/organization-membership.guard.js";
 import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
-import { ORDER_CHANGED, ORDER_NO_STOCK, ORDER_NOT_FOUND, OrdersService } from "./orders.service.js";
+import { ONLINE_PAYMENT_UNDO, ORDER_CHANGED, ORDER_NO_STOCK, ORDER_NOT_FOUND, OrdersService } from "./orders.service.js";
 
 @ApiTags("orders")
 @ApiCookieAuth(SESSION_AUTH)
@@ -61,7 +61,7 @@ export class OrdersController {
   @ApiZodResponse(200, orderResponse, "Pedido actualizado.")
   @ApiResponse({ status: 404, description: ORDER_NOT_FOUND })
   @ApiResponse({ status: 409, description: `${ORDER_CHANGED} O: ${ORDER_NO_STOCK}` })
-  @ApiResponse({ status: 422, description: "Transición de estado no permitida." })
+  @ApiResponse({ status: 422, description: `Transición de estado no permitida. O: ${ONLINE_PAYMENT_UNDO}` })
   updateStatus(
     @Param("organizationId") organizationId: string,
     @Param("orderId") orderId: string,

@@ -347,8 +347,17 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   (AES-256-GCM), expires_at, live_mode, status (`CONNECTED`/`ERROR`; `CHECK`: `ERROR` exige
   `last_error`), connected_by_id, connected_at, last_refreshed_at. Desconectar borra la fila.
 
+## 9k. Cobro de pedidos con Checkout Pro (F5.9, `BACKLOG_FASE_5.md`, ADR-013)
+
+- **Order** (ampliada, migración aditiva `20260930030000_f59_order_checkout`, todo opcional):
+  `checkout_preference_id`, `checkout_url` y `checkout_expires_at` (48 h) de la preferencia creada
+  con el token del negocio; `provider_payment_id` **único** (un pago de Mercado Pago nunca paga dos
+  pedidos; se asigna con una actualización condicional `provider_payment_id IS NULL`, así un aviso
+  repetido no tiene efecto); `payment_status` (último estado consultado en Mercado Pago);
+  `status_token_hash` **único** (SHA-256 del enlace "Tu pedido"; el enlace no se guarda).
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
-Cobro de los negocios a sus clientes (checkout propio; bloqueado por la decisión #6), variantes/cupones/carrito,
+Reembolsos y contracargos de los cobros de los negocios (F5.11), variantes/cupones/carrito,
 `Campaign`/email marketing, `Course`/`Membership` (contenido). Se diseñan cuando se inicie la Fase 5
 para evitar tablas vacías o esquemas prematuros (restricción explícita de ST §6.2).

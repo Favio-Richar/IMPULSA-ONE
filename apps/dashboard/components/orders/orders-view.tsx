@@ -3,7 +3,7 @@
 import type { OrderResponse, SiteResponse } from "@impulza/contracts";
 import { ORDER_STATUS_LABELS, PRODUCT_KIND_LABELS, type OrderStatusValue } from "@impulza/validation";
 import { Button, cn, EmptyState, ErrorState, LoadingState, Select } from "@impulza/ui";
-import { ChevronLeft, ChevronRight, Mail, MapPin, MessageCircle, Phone, ShoppingBag, StickyNote } from "lucide-react";
+import { ChevronLeft, ChevronRight, CreditCard, Mail, MapPin, MessageCircle, Phone, ShoppingBag, StickyNote } from "lucide-react";
 import { useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import { useOrders, useUpdateOrderStatus } from "../../lib/hooks/use-catalog";
@@ -23,6 +23,18 @@ const STATUS_STYLES: Record<OrderStatusValue, string> = {
   DELIVERED: "border-border bg-surface text-foreground",
   CANCELLED: "border-border bg-surface text-muted-foreground",
 };
+
+/** Cobro con la cuenta de Mercado Pago del negocio (F5.9), en palabras del negocio. */
+export function onlinePaymentText(payment: NonNullable<OrderResponse["onlinePayment"]>, status: OrderStatusValue): string {
+  if (payment.paymentId) {
+    return status === "CANCELLED"
+      ? `Pagado con Mercado Pago después de cancelarlo (pago ${payment.paymentId}): reactívalo o devuelve el dinero desde Mercado Pago.`
+      : `Pagado con Mercado Pago · pago ${payment.paymentId}`;
+  }
+  if (payment.status === "pending" || payment.status === "in_process" || payment.status === "authorized") return "Pago en revisión en Mercado Pago";
+  if (payment.status === "rejected" || payment.status === "cancelled") return "Mercado Pago rechazó un intento de pago";
+  return status === "NEW" ? "Esperando el pago en Mercado Pago" : "Cobro en Mercado Pago sin pagar";
+}
 
 /** Qué se puede hacer con un pedido según su estado (mismas reglas que `ORDER_TRANSITIONS`). */
 const ACTIONS: Record<OrderStatusValue, Array<{ to: OrderStatusValue; label: string }>> = {
@@ -153,6 +165,9 @@ function OrderCard({ organizationId, order, siteName }: { organizationId: string
           ? "No se pudo cambiar el estado. Intenta de nuevo."
           : null;
 
+  // Un pago confirmado por Mercado Pago no se deshace a mano (el servidor también lo impide).
+  const actions = ACTIONS[order.status].filter((action) => !(action.to === "NEW" && order.status === "PAID" && order.onlinePayment?.paymentId));
+
   return (
     <li className={cn("flex flex-col gap-4 rounded-lg border border-border bg-background p-4 sm:flex-row", cancelled && "opacity-70")} data-order={order.id}>
       <div className="flex shrink-0 items-center gap-3 sm:w-44 sm:flex-col sm:items-start sm:gap-1">
@@ -178,6 +193,12 @@ function OrderCard({ organizationId, order, siteName }: { organizationId: string
             · {formatMoney(order.unitPriceAmount, order.priceCurrency)} c/u · {PRODUCT_KIND_LABELS[order.productKind]}
           </span>
         </p>
+        {order.onlinePayment ? (
+          <p className="mt-1 flex items-start gap-1.5 text-sm text-foreground">
+            <CreditCard className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            {onlinePaymentText(order.onlinePayment, order.status)}
+          </p>
+        ) : null}
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <a href={`mailto:${order.customerEmail}`} className="inline-flex min-w-0 items-center gap-1 text-foreground hover:underline">
             <Mail className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -217,9 +238,9 @@ function OrderCard({ organizationId, order, siteName }: { organizationId: string
         ) : null}
       </div>
 
-      {ACTIONS[order.status].length > 0 ? (
+      {actions.length > 0 ? (
         <div className="flex flex-wrap content-start gap-2 sm:w-44 sm:flex-col sm:items-stretch">
-          {ACTIONS[order.status].map((action) => (
+          {actions.map((action) => (
             <Button
               key={action.to}
               size="sm"

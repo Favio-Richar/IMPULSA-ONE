@@ -61,3 +61,14 @@ export {
   type MercadoPagoOAuthLike,
   type OAuthTokens,
 } from "./mercado-pago-oauth.js";
+export {
+  MercadoPagoCheckout,
+  FakeMercadoPagoCheckout,
+  checkoutSupportsCurrency,
+  CHECKOUT_CURRENCIES,
+  type MercadoPagoCheckoutLike,
+  type CheckoutPreferenceInput,
+  type CheckoutPreference,
+  type CheckoutPayment,
+  type CheckoutPaymentStatus,
+} from "./mercado-pago-checkout.js";

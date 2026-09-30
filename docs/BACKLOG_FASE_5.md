@@ -31,7 +31,7 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
 | F5.6 — Campañas de email con consentimiento y bajas | Lista para tu revisión (capturas en `docs/design/capturas/f56/`) |
 | F5.7 — Aislamiento y seguridad de Fase 5 | Lista para tu revisión (sin UI: pruebas en la suite central) |
 | F5.8 — Conectar la cuenta de Mercado Pago del negocio (OAuth + PKCE) | Lista para tu revisión (capturas en `docs/design/capturas/f58/`; falta probar con tu aplicación real de Mercado Pago) |
-| F5.9 — Cobro de pedidos de la tienda con Checkout Pro y confirmación automática | Pendiente |
+| F5.9 — Cobro de pedidos de la tienda con Checkout Pro y confirmación automática | Lista para tu revisión (capturas en `docs/design/capturas/f59/`; falta probar con tu aplicación real de Mercado Pago) |
 | F5.10 — Seña de reservas cobrada al reservar | Pendiente |
 | F5.11 — Reembolsos, contracargos y descargas pagadas | Pendiente |
 | — Afiliados | Sin fase (se diseña con uso real) |
@@ -78,7 +78,8 @@ directo a él; Impulza no custodia fondos, no ve tarjetas y no cobra comisión p
 > - Pendiente para producción: crear la aplicación de Impulza en Mercado Pago, registrar la URL de
 >   redirección y activar PKCE, y probar la conexión con una cuenta de prueba.
 
-> **PUNTO DE CORTE (2026-09-30, para retomar mañana).** Hecho y commiteado: F5.8 completa
+> **PUNTO DE CORTE (2026-09-30) — ya retomado y cumplido: F5.9 quedó lista para revisión (abajo).**
+> Hecho y commiteado: F5.8 completa
 > (`782d940`), base de pruebas propia y CI en `master` (`361581f`), cobros de suscripciones F4.6a–d
 > y F4.6b. Siguiente paso literal, en orden:
 > 1. F5.9: cliente de Checkout Pro en `packages/payments` (`POST /checkout/preferences` y
@@ -95,6 +96,38 @@ directo a él; Impulza no custodia fondos, no ve tarjetas y no cobra comisión p
   (`external_reference` = pedido) y el comprador paga en Mercado Pago; al volver ve el estado.
 - Webhook por pedido: se consulta el pago con el token del negocio; solo se marca pagado si la
   cuenta, el pedido, el monto y la moneda coinciden. Idempotente. Aviso al negocio y al comprador.
+
+> **Estado (2026-09-30): F5.9 lista para revisión.**
+> - `packages/payments`: `MercadoPagoCheckout` (preferencia con `X-Idempotency-Key` = pedido, URL de
+>   pruebas con credenciales de prueba, consulta de pago con Zod) y su simulación por token (un token
+>   no ve pagos de otra cuenta). Solo CLP (cuenta de Mercado Pago Chile); otra moneda sigue con el
+>   enlace externo. Configuración: `MERCADOPAGO_APP_WEBHOOK_SECRET` se suma a id y secreto de la
+>   aplicación (las tres o ninguna): los avisos de los pedidos llegan firmados con esa clave.
+> - Base: migración aditiva `20260930030000_f59_order_checkout` (campos opcionales de cobro en
+>   `orders`, `provider_payment_id` y `status_token_hash` únicos) con `down.sql` probado (revertir → 0
+>   columnas, reaplicar → 6).
+> - API: el pedido público crea el cobro con el token del negocio si tiene cuenta conectada (si
+>   Mercado Pago falla, el pedido sigue con su enlace externo); aviso por pedido con firma
+>   `x-signature` verificada antes de leer nada; el pago se consulta con el token del negocio y solo
+>   se aplica si pedido, cuenta receptora, monto y moneda coinciden; asignación condicional
+>   (idempotente, sin avisos repetidos). "Tu pedido" (`GET /public/orders/:token`, sin datos
+>   personales) consulta el pago al volver de Mercado Pago. Pagar un pedido cancelado lo deja
+>   cancelado y avisa al negocio. Un pago confirmado por Mercado Pago no se "deshace" a mano (422).
+>   Auditoría `order.paid_online`/`order.cancelled_order_paid`. OpenAPI (157 rutas).
+> - Web: botón "Pagar con Mercado Pago" en la confirmación de la tienda y página `/pedido/:token`
+>   (pendiente, en revisión, rechazado, pagado, entregado, cancelado; sin indexar, sin referer).
+>   Panel: el pedido muestra el estado del cobro en línea.
+> - Correos: al comprador (enlace "Tu pedido"; pago recibido) y al negocio (pago recibido con id del
+>   pago y recordatorio de boleta; pedido cancelado pagado).
+> - Pruebas: pagos 56, API e2e 8 nuevas + caso nuevo en la suite central (68), Playwright
+>   `pedido-pago.spec.ts` 8/8 (y `tienda`, `cobros`, `reserva-gestion` sin regresiones). CI: se agregó
+>   `API_PUBLIC_URL`, que faltaba también para F5.8.
+> - **No verificado contra el código roto:** al intentar correr las e2e con las comprobaciones de
+>   monto y cuenta quitadas, el verificador de permisos de la sesión lo bloqueó; el código se
+>   restauró sin correr. Queda para hacerlo a mano si se quiere.
+> - Pendiente para producción: en la aplicación de Impulza en Mercado Pago, copiar la clave de
+>   firma de webhooks a `MERCADOPAGO_APP_WEBHOOK_SECRET` y probar un pedido con usuarios de prueba
+>   (confirmar que los avisos de las preferencias de cuentas conectadas llegan firmados con esa clave).
 
 **F5.10 — Seña de reservas**
 - El servicio define una seña (monto fijo); la reserva queda "pendiente de pago" y se confirma al

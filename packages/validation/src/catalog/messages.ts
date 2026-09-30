@@ -8,6 +8,8 @@ export interface OrderMessageData {
   totalAmount: number;
   priceCurrency: string;
   paymentUrl: string | null;
+  /** Enlace "Tu pedido" (F5.9): solo si el pedido se cobra con la cuenta conectada del negocio. */
+  statusUrl?: string | null;
 }
 
 export interface OrderEmailContent {
@@ -40,9 +42,11 @@ export function orderReceivedEmail(data: OrderMessageData): OrderEmailContent {
       "",
       ...lines(data),
       "",
-      ...(data.paymentUrl
-        ? ["Puedes pagarlo aquí (el pago lo recibe directamente el negocio):", data.paymentUrl, ""]
-        : ["El negocio te contactará para coordinar el pago y la entrega.", ""]),
+      ...(data.statusUrl
+        ? ["Puedes pagarlo con Mercado Pago y ver su estado aquí (el pago lo recibe directamente el negocio):", data.statusUrl, ""]
+        : data.paymentUrl
+          ? ["Puedes pagarlo aquí (el pago lo recibe directamente el negocio):", data.paymentUrl, ""]
+          : ["El negocio te contactará para coordinar el pago y la entrega.", ""]),
       `${data.siteName}`,
     ].join("\n"),
   };
@@ -61,6 +65,21 @@ export function orderStatusEmail(status: OrderStatusNotice, data: OrderMessageDa
   return {
     subject: oneLine(`${text.subject} en ${data.siteName}`),
     text: [text.body, "", ...lines(data), "", `${data.siteName}`].join("\n"),
+  };
+}
+
+/** Pago confirmado por Mercado Pago (F5.9): no lo marcó el negocio a mano. */
+export function orderPaidOnlineEmail(data: OrderMessageData): OrderEmailContent {
+  return {
+    subject: oneLine(`Recibimos el pago de tu pedido en ${data.siteName}`),
+    text: [
+      "Mercado Pago confirmó el pago de tu pedido. El negocio ya fue avisado:",
+      "",
+      ...lines(data),
+      "",
+      ...(data.statusUrl ? ["Estado de tu pedido:", data.statusUrl, ""] : []),
+      `${data.siteName}`,
+    ].join("\n"),
   };
 }
 
@@ -86,6 +105,47 @@ export function ownerNewOrderEmail(data: OwnerOrderNoticeData): OrderEmailConten
       ...(data.customerPhone ? [`Teléfono: ${data.customerPhone}`] : []),
       ...(data.deliveryAddress ? [`Dirección de entrega: ${data.deliveryAddress}`] : []),
       ...(data.note ? [`Comentario: ${data.note}`] : []),
+      ...(data.ordersUrl ? ["", `Tus pedidos: ${data.ordersUrl}`] : []),
+    ].join("\n"),
+  };
+}
+
+export interface OwnerOrderPaymentData extends OrderMessageData {
+  customerName: string;
+  /** Id del pago en Mercado Pago (para buscarlo en la cuenta del negocio). */
+  paymentId: string;
+  ordersUrl: string | null;
+}
+
+/** Aviso al negocio: Mercado Pago confirmó el pago de un pedido (F5.9). */
+export function ownerOrderPaidOnlineEmail(data: OwnerOrderPaymentData): OrderEmailContent {
+  return {
+    subject: oneLine(`Pago recibido: ${data.quantity} × ${data.productName} de ${data.customerName}`),
+    text: [
+      `Mercado Pago confirmó el pago de un pedido en ${data.siteName}. El dinero está en tu cuenta de Mercado Pago.`,
+      "",
+      ...lines(data),
+      "",
+      `Cliente: ${data.customerName}`,
+      `Pago en Mercado Pago: ${data.paymentId}`,
+      "Recuerda emitir la boleta de esta venta: la relación con el comprador es de tu negocio.",
+      ...(data.ordersUrl ? ["", `Tus pedidos: ${data.ordersUrl}`] : []),
+    ].join("\n"),
+  };
+}
+
+/** Aviso al negocio: el comprador pagó un pedido que ya estaba cancelado (F5.9). Hay que devolverle el dinero. */
+export function ownerCancelledOrderPaidEmail(data: OwnerOrderPaymentData): OrderEmailContent {
+  return {
+    subject: oneLine(`Atención: pagaron un pedido cancelado (${data.productName}, ${data.customerName})`),
+    text: [
+      `Mercado Pago confirmó el pago de un pedido que estaba cancelado en ${data.siteName}.`,
+      "",
+      ...lines(data),
+      "",
+      `Cliente: ${data.customerName}`,
+      `Pago en Mercado Pago: ${data.paymentId}`,
+      "Reactiva el pedido si puedes entregarlo, o devuelve el dinero desde tu cuenta de Mercado Pago.",
       ...(data.ordersUrl ? ["", `Tus pedidos: ${data.ordersUrl}`] : []),
     ].join("\n"),
   };

@@ -139,8 +139,20 @@ export class PaymentAccountsService {
    * lo usan los cobros de **esa** organización (ADR-013, restricciones).
    */
   async accessTokenFor(organizationId: string): Promise<string | null> {
+    return (await this.chargingAccountFor(organizationId))?.accessToken ?? null;
+  }
+
+  /**
+   * Lo que necesita un cobro (F5.9): el token, la cuenta de Mercado Pago que debe recibir el dinero
+   * (para verificar cada pago) y si son credenciales de prueba. `null` igual que `accessTokenFor`.
+   */
+  async chargingAccountFor(organizationId: string): Promise<{ accessToken: string; providerUserId: string; liveMode: boolean } | null> {
     const account = await this.prisma.paymentAccount.findUnique({ where: { organizationId_provider: { organizationId, provider: "MERCADO_PAGO" } } });
     if (!account || account.status !== PaymentAccountStatus.CONNECTED || account.expiresAt <= new Date()) return null;
-    return decryptSecret(account.accessTokenEncrypted, env.AUTH_ENCRYPTION_KEY);
+    return {
+      accessToken: decryptSecret(account.accessTokenEncrypted, env.AUTH_ENCRYPTION_KEY),
+      providerUserId: account.providerUserId,
+      liveMode: account.liveMode,
+    };
   }
 }

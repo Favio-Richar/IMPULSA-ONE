@@ -2,9 +2,12 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { EmailAdapter } from "@impulza/auth";
 import type { Order, PrismaClient } from "@impulza/database";
 import {
+  orderPaidOnlineEmail,
   orderReceivedEmail,
   orderStatusEmail,
+  ownerCancelledOrderPaidEmail,
   ownerNewOrderEmail,
+  ownerOrderPaidOnlineEmail,
   type OrderEmailContent,
   type OrderMessageData,
   type OrderStatusNotice,
@@ -33,7 +36,7 @@ export class OrderNotifier {
     }
   }
 
-  private messageData(order: Order, siteName: string): OrderMessageData {
+  private messageData(order: Order, siteName: string, statusUrl?: string | null): OrderMessageData {
     return {
       siteName,
       productName: order.productName,
@@ -42,11 +45,40 @@ export class OrderNotifier {
       totalAmount: order.totalAmount,
       priceCurrency: order.priceCurrency,
       paymentUrl: order.paymentUrl,
+      statusUrl: statusUrl ?? null,
     };
   }
 
-  async notifyReceived(order: Order, siteName: string): Promise<void> {
-    await this.send(order.customerEmail, orderReceivedEmail(this.messageData(order, siteName)), { orderId: order.id, kind: "received", to: "customer" });
+  private ordersUrl(): string {
+    return `${env.APP_BASE_URL.replace(/\/$/, "")}/pedidos`;
+  }
+
+  /** `statusUrl`: enlace "Tu pedido" cuando se cobra con Mercado Pago (F5.9); solo existe al crearlo. */
+  async notifyReceived(order: Order, siteName: string, statusUrl?: string | null): Promise<void> {
+    await this.send(order.customerEmail, orderReceivedEmail(this.messageData(order, siteName, statusUrl)), { orderId: order.id, kind: "received", to: "customer" });
+  }
+
+  /** Mercado Pago confirmó el pago (F5.9): al comprador y a los dueños. */
+  async notifyPaidOnline(order: Order, siteName: string, paymentId: string): Promise<void> {
+    await this.send(order.customerEmail, orderPaidOnlineEmail(this.messageData(order, siteName)), { orderId: order.id, kind: "paid_online", to: "customer" });
+    const content = ownerOrderPaidOnlineEmail({ ...this.messageData(order, siteName), customerName: order.customerName, paymentId, ordersUrl: this.ordersUrl() });
+    await this.sendToOwners(order, content, "paid_online");
+  }
+
+  /** Pagaron un pedido que estaba cancelado (F5.9): el negocio decide si lo reactiva o devuelve el dinero. */
+  async notifyCancelledOrderPaid(order: Order, siteName: string, paymentId: string): Promise<void> {
+    const content = ownerCancelledOrderPaidEmail({ ...this.messageData(order, siteName), customerName: order.customerName, paymentId, ordersUrl: this.ordersUrl() });
+    await this.sendToOwners(order, content, "cancelled_paid");
+  }
+
+  private async sendToOwners(order: Order, content: OrderEmailContent, kind: string): Promise<void> {
+    const owners = await this.prisma.membership.findMany({
+      where: { organizationId: order.organizationId, status: "ACTIVE", role: { name: "OWNER" } },
+      select: { user: { select: { email: true } } },
+    });
+    for (const owner of owners) {
+      await this.send(owner.user.email, content, { orderId: order.id, kind, to: "owner" });
+    }
   }
 
   async notifyStatus(status: OrderStatusNotice, order: Order, siteName: string): Promise<void> {
@@ -55,10 +87,6 @@ export class OrderNotifier {
 
   /** Aviso de pedido nuevo a los dueños activos de la organización. */
   async notifyOwners(order: Order, siteName: string): Promise<void> {
-    const owners = await this.prisma.membership.findMany({
-      where: { organizationId: order.organizationId, status: "ACTIVE", role: { name: "OWNER" } },
-      select: { user: { select: { email: true } } },
-    });
     const content = ownerNewOrderEmail({
       ...this.messageData(order, siteName),
       customerName: order.customerName,
@@ -66,10 +94,8 @@ export class OrderNotifier {
       customerPhone: order.customerPhone,
       deliveryAddress: order.deliveryAddress,
       note: order.note,
-      ordersUrl: `${env.APP_BASE_URL.replace(/\/$/, "")}/pedidos`,
+      ordersUrl: this.ordersUrl(),
     });
-    for (const owner of owners) {
-      await this.send(owner.user.email, content, { orderId: order.id, to: "owner" });
-    }
+    await this.sendToOwners(order, content, "new");
   }
 }

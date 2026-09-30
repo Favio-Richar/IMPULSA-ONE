@@ -1252,6 +1252,17 @@ model Order {
   paidAt          DateTime?   @map("paid_at") @db.Timestamptz(6)
   deliveredAt     DateTime?   @map("delivered_at") @db.Timestamptz(6)
   cancelledAt     DateTime?   @map("cancelled_at") @db.Timestamptz(6)
+  // Cobro con Checkout Pro (F5.9, ADR-013), solo si el negocio tenía su cuenta de Mercado Pago
+  // conectada al pedir. `checkoutUrl`: dónde paga el comprador; `providerPaymentId`: el pago que lo
+  // marcó pagado (único: un pago nunca paga dos pedidos); `paymentStatus`: último estado informado
+  // por Mercado Pago (`approved`, `pending`, `rejected`…), consultado siempre con el token del negocio.
+  checkoutPreferenceId String?  @map("checkout_preference_id")
+  checkoutUrl          String?  @map("checkout_url")
+  checkoutExpiresAt    DateTime? @map("checkout_expires_at") @db.Timestamptz(6)
+  providerPaymentId    String?  @unique @map("provider_payment_id")
+  paymentStatus        String?  @map("payment_status")
+  // SHA-256 del enlace "Tu pedido" que recibe el comprador (el enlace en sí nunca se guarda).
+  statusTokenHash      String?  @unique @map("status_token_hash")
   createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

@@ -65,10 +65,31 @@ export const publicOrderConfirmationResponse = z.object({
   unitPriceAmount: z.number().int(),
   totalAmount: z.number().int(),
   priceCurrency: z.string(),
-  /** Enlace de pago del propio negocio, si lo configuró (Impulza no cobra: decisión #6). */
+  /** Enlace de pago del propio negocio, si lo configuró y no cobra con Mercado Pago conectado. */
   paymentUrl: z.string().nullable(),
+  /** Pago con Checkout Pro en la cuenta de Mercado Pago del negocio (F5.9, ADR-013). */
+  checkoutUrl: z.string().nullable(),
 });
 export type PublicOrderConfirmationResponse = z.infer<typeof publicOrderConfirmationResponse>;
+
+/**
+ * "Tu pedido" (F5.9): lo que ve el comprador con el enlace de su correo o al volver de Mercado Pago.
+ * Sin datos personales: el enlace puede quedar en el historial de un computador compartido.
+ */
+export const publicOrderStatusResponse = z.object({
+  siteSlug: z.string(),
+  siteName: z.string(),
+  productName: z.string(),
+  quantity: z.number().int(),
+  totalAmount: z.number().int(),
+  priceCurrency: z.string(),
+  status: orderStatus,
+  /** Último estado del pago informado por Mercado Pago (`approved`, `pending`, `rejected`…), o `null` si aún no hay intento. */
+  paymentStatus: z.string().nullable(),
+  /** Dónde pagar, solo mientras el pedido espera pago y el cobro no venció. */
+  checkoutUrl: z.string().nullable(),
+});
+export type PublicOrderStatusResponse = z.infer<typeof publicOrderStatusResponse>;
 
 /** Un pedido en el panel del negocio. Datos del cliente: solo para miembros de la organización. */
 export const orderResponse = z.object({
@@ -88,6 +109,8 @@ export const orderResponse = z.object({
   deliveryAddress: z.string().nullable(),
   note: z.string().nullable(),
   status: orderStatus,
+  /** Cobro con Mercado Pago (F5.9): estado y id del pago en la cuenta del negocio, o `null` si el pedido no se cobra en línea. */
+  onlinePayment: z.object({ status: z.string().nullable(), paymentId: z.string().nullable() }).nullable(),
   paidAt: isoDateTime.nullable(),
   deliveredAt: isoDateTime.nullable(),
   cancelledAt: isoDateTime.nullable(),

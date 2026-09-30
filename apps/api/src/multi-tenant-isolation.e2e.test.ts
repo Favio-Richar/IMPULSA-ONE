@@ -1747,6 +1747,39 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         await prisma.paymentAccount.deleteMany({ where: { id: account.id } });
       }
     });
+
+    it("A no ve ni cambia el cobro en línea de un pedido de B (F5.9)", async () => {
+      const order = await prisma.order.create({
+        data: {
+          organizationId: orgB.id,
+          siteId: orgB.siteId,
+          productName: "Torta",
+          productKind: "SERVICE",
+          unitPriceAmount: 12_990,
+          priceCurrency: "CLP",
+          quantity: 1,
+          totalAmount: 12_990,
+          customerName: "Cliente de B",
+          customerEmail: "cliente-b@isolation.test",
+          checkoutPreferenceId: "pref-de-b",
+          checkoutUrl: "https://www.mercadopago.cl/checkout/v1/redirect?pref_id=pref-de-b",
+          providerPaymentId: `iso-${Date.now()}`,
+          paymentStatus: "approved",
+          status: "PAID",
+          paidAt: new Date(),
+        },
+      });
+      try {
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/orders`).expect(403);
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/orders/${order.id}`).expect(404);
+        await orgA.ownerAgent.patch(`/api/v1/organizations/${orgA.id}/orders/${order.id}`).set(CSRF_HEADERS).send({ status: "NEW" }).expect(404);
+        const listA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/orders`).expect(200);
+        expect(JSON.stringify(listA.body)).not.toContain(order.providerPaymentId!);
+        expect((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).status).toBe("PAID");
+      } finally {
+        await prisma.order.deleteMany({ where: { id: order.id } });
+      }
+    });
   });
 
   describe("Cobro de suscripciones (F4.6a/F4.9): la facturación de una organización no se cruza", () => {

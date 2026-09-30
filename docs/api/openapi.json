@@ -22125,6 +22125,10 @@
                     "paymentUrl": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "checkoutUrl": {
+                      "nullable": true,
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -22133,7 +22137,8 @@
                     "unitPriceAmount",
                     "totalAmount",
                     "priceCurrency",
-                    "paymentUrl"
+                    "paymentUrl",
+                    "checkoutUrl"
                   ],
                   "additionalProperties": false
                 }
@@ -22308,6 +22313,25 @@
                               "CANCELLED"
                             ]
                           },
+                          "onlinePayment": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "status": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "paymentId": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "status",
+                              "paymentId"
+                            ],
+                            "additionalProperties": false
+                          },
                           "paidAt": {
                             "nullable": true,
                             "type": "string",
@@ -22349,6 +22373,7 @@
                           "deliveryAddress",
                           "note",
                           "status",
+                          "onlinePayment",
                           "paidAt",
                           "deliveredAt",
                           "cancelledAt",
@@ -22561,6 +22586,25 @@
                         "CANCELLED"
                       ]
                     },
+                    "onlinePayment": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "paymentId": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "paymentId"
+                      ],
+                      "additionalProperties": false
+                    },
                     "paidAt": {
                       "nullable": true,
                       "type": "string",
@@ -22602,6 +22646,7 @@
                     "deliveryAddress",
                     "note",
                     "status",
+                    "onlinePayment",
                     "paidAt",
                     "deliveredAt",
                     "cancelledAt",
@@ -22782,6 +22827,25 @@
                         "CANCELLED"
                       ]
                     },
+                    "onlinePayment": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "paymentId": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "paymentId"
+                      ],
+                      "additionalProperties": false
+                    },
                     "paidAt": {
                       "nullable": true,
                       "type": "string",
@@ -22823,6 +22887,7 @@
                     "deliveryAddress",
                     "note",
                     "status",
+                    "onlinePayment",
                     "paidAt",
                     "deliveredAt",
                     "cancelledAt",
@@ -22849,7 +22914,7 @@
             "description": "El pedido cambió mientras lo editabas. Recarga e inténtalo de nuevo. O: No quedan unidades suficientes para reabrir el pedido."
           },
           "422": {
-            "description": "Transición de estado no permitida."
+            "description": "Transición de estado no permitida. O: Este pago lo confirmó Mercado Pago: no se puede deshacer desde aquí. Si debes devolver el dinero, hazlo desde tu cuenta de Mercado Pago."
           }
         },
         "security": [
@@ -22860,6 +22925,352 @@
         "summary": "Cambiar el estado de un pedido",
         "tags": [
           "orders"
+        ]
+      }
+    },
+    "/api/v1/public/orders/{token}": {
+      "get": {
+        "description": "Producto, total y estado del pedido, y dónde pagarlo mientras espera pago. Con `paymentId` (el `payment_id` con que vuelve Mercado Pago) consulta ese pago con el token del negocio antes de responder. Sin datos personales.",
+        "operationId": "PublicOrderStatusController_status",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "paymentId",
+            "required": false,
+            "in": "query",
+            "description": "Id del pago en Mercado Pago, tal como vuelve el comprador.",
+            "schema": {}
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El pedido y su estado de pago.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "siteSlug": {
+                      "type": "string"
+                    },
+                    "siteName": {
+                      "type": "string"
+                    },
+                    "productName": {
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "totalAmount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "priceCurrency": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "NEW",
+                        "PAID",
+                        "DELIVERED",
+                        "CANCELLED"
+                      ]
+                    },
+                    "paymentStatus": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "checkoutUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "siteSlug",
+                    "siteName",
+                    "productName",
+                    "quantity",
+                    "totalAmount",
+                    "priceCurrency",
+                    "status",
+                    "paymentStatus",
+                    "checkoutUrl"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El enlace no es válido o el pedido ya no existe."
+          }
+        },
+        "summary": "Estado de un pedido con su enlace",
+        "tags": [
+          "public-catalog"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/payment-accounts": {
+      "get": {
+        "description": "Si hay una cuenta de Mercado Pago conectada y en qué estado. Nunca tokens (F5.8, ADR-013).",
+        "operationId": "PaymentAccountsController_status",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado de la cuenta de cobro.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "available": {
+                      "type": "boolean"
+                    },
+                    "canManage": {
+                      "type": "boolean"
+                    },
+                    "mercadoPago": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "CONNECTED",
+                            "ERROR"
+                          ]
+                        },
+                        "liveMode": {
+                          "type": "boolean"
+                        },
+                        "connectedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "liveMode",
+                        "connectedAt",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "available",
+                    "canManage",
+                    "mercadoPago"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Cuenta de cobro del negocio",
+        "tags": [
+          "payment-accounts"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago/connect": {
+      "post": {
+        "description": "Devuelve la URL de autorización de Mercado Pago (OAuth con PKCE y `state` de un solo uso, 10 minutos).",
+        "operationId": "PaymentAccountsController_connect",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "URL a la que llevar al dueño.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "422": {
+            "description": "`PAYMENTS_UNAVAILABLE`: la aplicación de Mercado Pago no está configurada."
+          },
+          "429": {
+            "description": "Más de 10 peticiones en 600 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Empezar a conectar Mercado Pago",
+        "tags": [
+          "payment-accounts"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago": {
+      "delete": {
+        "description": "Borra los tokens guardados. Los cobros vuelven a enlaces de pago externos. Queda auditado.",
+        "operationId": "PaymentAccountsController_disconnect",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Desconectada."
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "`NOT_CONNECTED`."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Desconectar Mercado Pago",
+        "tags": [
+          "payment-accounts"
         ]
       }
     },
@@ -30551,245 +30962,6 @@
         "summary": "Reembolsar un cobro",
         "tags": [
           "admin"
-        ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/payment-accounts": {
-      "get": {
-        "description": "Si hay una cuenta de Mercado Pago conectada y en qué estado. Nunca tokens (F5.8, ADR-013).",
-        "operationId": "PaymentAccountsController_status",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Estado de la cuenta de cobro.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "available": {
-                      "type": "boolean"
-                    },
-                    "canManage": {
-                      "type": "boolean"
-                    },
-                    "mercadoPago": {
-                      "nullable": true,
-                      "type": "object",
-                      "properties": {
-                        "status": {
-                          "type": "string",
-                          "enum": [
-                            "CONNECTED",
-                            "ERROR"
-                          ]
-                        },
-                        "liveMode": {
-                          "type": "boolean"
-                        },
-                        "connectedAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                        },
-                        "expiresAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                        }
-                      },
-                      "required": [
-                        "status",
-                        "liveMode",
-                        "connectedAt",
-                        "expiresAt"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": [
-                    "available",
-                    "canManage",
-                    "mercadoPago"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Cuenta de cobro del negocio",
-        "tags": [
-          "payment-accounts"
-        ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago/connect": {
-      "post": {
-        "description": "Devuelve la URL de autorización de Mercado Pago (OAuth con PKCE y `state` de un solo uso, 10 minutos).",
-        "operationId": "PaymentAccountsController_connect",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "URL a la que llevar al dueño.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "url": {
-                      "type": "string",
-                      "format": "uri"
-                    }
-                  },
-                  "required": [
-                    "url"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          },
-          "422": {
-            "description": "`PAYMENTS_UNAVAILABLE`: la aplicación de Mercado Pago no está configurada."
-          },
-          "429": {
-            "description": "Más de 10 peticiones en 600 s desde la misma IP. Reintentar después de la ventana."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Empezar a conectar Mercado Pago",
-        "tags": [
-          "payment-accounts"
-        ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago": {
-      "delete": {
-        "description": "Borra los tokens guardados. Los cobros vuelven a enlaces de pago externos. Queda auditado.",
-        "operationId": "PaymentAccountsController_disconnect",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Desconectada."
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          },
-          "404": {
-            "description": "`NOT_CONNECTED`."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Desconectar Mercado Pago",
-        "tags": [
-          "payment-accounts"
         ]
       }
     },

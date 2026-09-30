@@ -5,6 +5,7 @@ import { Reveal } from "../../components/marketing/reveal";
 import { TemplateCardLink } from "../../components/marketing/shared";
 import { getDashboardLinks } from "../../lib/dashboard-links";
 import { getTemplateCatalog } from "../../lib/api";
+import { RubrosCarousel } from "../../components/marketing/rubros-carousel";
 
 export const metadata = {
   title: "Plantillas — Impulza One",
@@ -19,7 +20,10 @@ export default async function PlantillasPage() {
     <div className="min-h-screen bg-white text-[#0f172a]">
       <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
 
-      <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-20">
+      {/* Portada: un rubro por diapositiva, cada uno con su plantilla real. */}
+      <RubrosCarousel bienvenidaHref={bienvenidaHref} />
+
+      <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-16">
         <MarketingHeroBackground />
         <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6">
           <Reveal>
@@ -30,8 +34,8 @@ export default async function PlantillasPage() {
               Plantillas reales para tu rubro
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-base text-[#475569] sm:text-lg">
-              Contenido de ejemplo, editable de inmediato. Elegí la que más se acerque a tu negocio y hacela tuya en el
-              asistente de bienvenida — colores, textos y botones se personalizan después.
+              Contenido de ejemplo, editable de inmediato. Elige la que más se acerque a tu negocio y hazla tuya en el
+              asistente de bienvenida: colores, textos y botones se personalizan después.
             </p>
           </Reveal>
         </div>

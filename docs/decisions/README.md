@@ -47,3 +47,4 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 | [ADR-011](./ADR-011-pruebas-ab.md) | Pruebas A/B con reparto en el servidor y variante calculada por la API | Aceptado |
 | [ADR-012](./ADR-012-cobro-suscripciones-chile.md) | Cobro de suscripciones con Webpay Oneclick y Mercado Pago, con cumplimiento de consumo chileno | Aceptado |
 | [ADR-013](./ADR-013-cobros-de-los-negocios.md) | Los negocios cobran a sus clientes con su propia cuenta de Mercado Pago conectada | Aceptado |
+| [ADR-014](./ADR-014-portadas-sitio-comercial.md) | Portadas del sitio comercial con corredor de fotos y carrusel editorial (framer-motion) | Aceptado |

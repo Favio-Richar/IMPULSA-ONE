@@ -10,6 +10,7 @@ import { MarketingHeroBackground, MarketingCtaBackground } from "../components/m
 import { HeroScene } from "../components/marketing/hero-scene";
 import { TemplateMosaic } from "../components/marketing/template-mosaic";
 import { TemplateCarousel } from "../components/marketing/template-carousel";
+import { CorridorHero } from "../components/marketing/corridor-hero";
 import { FEATURES, FeatureIcon, STEPS, PlanCard } from "../components/marketing/shared";
 
 export default async function MarketingHomePage() {
@@ -22,36 +23,54 @@ export default async function MarketingHomePage() {
     <div className="min-h-screen bg-white text-[#0f172a]">
       <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)]">
+      {/* Portada: corredor de fotos de negocios detrás del mensaje principal. */}
+      <CorridorHero>
+        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e2e8f0] bg-white px-3 py-1 text-xs font-medium text-[#0f6f6b]">
+          Identidad digital todo en uno
+        </span>
+        <h1 className="mt-5 text-balance text-4xl font-semibold tracking-tight text-[#0f172a] sm:text-6xl">
+          Tu negocio, al frente.
+          <br />
+          En un solo enlace.
+        </h1>
+        <p className="mt-5 max-w-xl text-balance text-base text-[#334155] sm:text-lg">
+          Página, reservas, tienda, contactos y analítica para barberías, cafés, tiendas y creadores. Empieza gratis y publica en minutos.
+        </p>
+        <div className="mt-7 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <a
+            href={bienvenidaHref}
+            className="rounded-[10px] bg-[#0f6f6b] px-6 py-3.5 text-center text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            Crear mi portal gratis
+          </a>
+          <Link
+            href="/plantillas"
+            className="rounded-[10px] border border-[#e2e8f0] bg-white px-6 py-3.5 text-center text-base font-semibold text-[#0f172a] transition-colors hover:bg-[#f8fafc]"
+          >
+            Ver plantillas
+          </Link>
+        </div>
+        <p className="mt-3 text-sm text-[#475569]">Sin tarjeta de crédito.</p>
+      </CorridorHero>
+
+      {/* Así se ve tu portal: mosaico de plantillas reales, la constelación 3D (ADR-009) y el teléfono. */}
+      <section className="relative overflow-hidden border-y border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)]">
         <MarketingHeroBackground />
         <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:px-6 md:grid-cols-2 md:py-28">
           <Reveal className="flex flex-col justify-center gap-6">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e2e8f0] bg-white px-3 py-1 text-xs font-medium text-[#0f6f6b]">
-              Identidad digital todo en uno
-            </span>
-            <h1 className="text-4xl font-semibold tracking-tight text-[#0f172a] sm:text-5xl">
+            <h2 className="text-3xl font-semibold tracking-tight text-[#0f172a] sm:text-4xl">
               Tu portal biográfico, tu mini-CRM y tu analítica — en un solo enlace.
-            </h1>
+            </h2>
             <p className="max-w-lg text-base text-[#475569] sm:text-lg">
-              Impulza One arma tu página de enlace en bio con el estilo que tus visitantes ya conocen, y suma lo que
-              Linktree, Beacons y Stan no traen juntos: formularios propios, mini-CRM, QR nativo y analítica real.
+              Una página de enlace en bio con el estilo que tus visitantes ya conocen, más lo que otras herramientas no traen
+              juntas: formularios propios, mini-CRM, reservas, QR nativo y analítica real.
             </p>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <a
-                href={bienvenidaHref}
-                className="rounded-[10px] bg-[#0f6f6b] px-6 py-3.5 text-center text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
-              >
-                Crear mi portal gratis
-              </a>
-              <Link
-                href="/plantillas"
-                className="rounded-[10px] border border-[#e2e8f0] px-6 py-3.5 text-center text-base font-semibold text-[#0f172a] transition-colors hover:bg-[#f8fafc]"
-              >
-                Ver plantillas
-              </Link>
-            </div>
-            <p className="text-sm text-[#64748b]">Sin tarjeta de crédito. Publicás en minutos.</p>
+            <Link
+              href="/producto"
+              className="w-fit rounded-[10px] border border-[#e2e8f0] bg-white px-6 py-3.5 text-center text-base font-semibold text-[#0f172a] transition-colors hover:bg-[#f8fafc]"
+            >
+              Ver todo lo que incluye
+            </Link>
           </Reveal>
 
           <Reveal delayMs={150} className="relative flex items-center justify-center">

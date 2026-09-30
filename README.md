@@ -1198,6 +1198,13 @@ Detalle, criterios y bitácora en `docs/BACKLOG_FASE_6.md`.
   ejecución en un registro visible (hecha, omitida con motivo, falló con motivo). Hasta 20 por
   organización; cada cambio auditado.
 
+## Sitio comercial: portadas (ADR-014)
+
+La home abre con un **corredor de fotos** de negocios reales (CSS 3D, pausable, quieto con
+movimiento reducido) detrás del mensaje principal, y /plantillas con un **carrusel editorial** de un
+rubro por plantilla real (arrastre, teclado y botones; sin atrapar el scroll). Componentes en
+`apps/web/components/ui/`; fotos de Unsplash revisadas. Capturas en `docs/design/capturas/sitio-portadas/`.
+
 ## Sitio comercial: escena 3D del hero (ADR-009)
 
 La portada de Impulza (`apps/web/app/page.tsx`) tiene una "constelación de enlaces" en 3D con

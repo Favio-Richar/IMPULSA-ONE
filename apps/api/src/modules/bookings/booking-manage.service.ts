@@ -8,6 +8,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
+import { BookingDepositService } from "./booking-deposit.service.js";
 import { BookingNotifier } from "./booking-notifier.js";
 import { BookingSetupService } from "./booking-setup.service.js";
 
@@ -34,6 +35,7 @@ export class BookingManageService {
     private readonly setup: BookingSetupService,
     private readonly notifier: BookingNotifier,
     private readonly auditService: AuditService,
+    private readonly deposit: BookingDepositService,
   ) {}
 
   private async resolve(token: string) {
@@ -57,8 +59,27 @@ export class BookingManageService {
     return booking.status === "CONFIRMED" && now.getTime() <= deadline.getTime();
   }
 
-  async view(token: string, now = new Date()): Promise<PublicManagedBookingResponse> {
-    const { booking, deadline } = await this.resolve(token);
+  /**
+   * `paymentId`: el `payment_id` con que vuelve el cliente desde Mercado Pago tras pagar la seña
+   * (F5.10). Si la reserva la espera, ese pago se consulta en el momento con el token del negocio;
+   * lo que diga la URL nunca se toma como verdad.
+   */
+  async view(token: string, now = new Date(), paymentId?: string): Promise<PublicManagedBookingResponse> {
+    const resolved = await this.resolve(token);
+    let { booking } = resolved;
+    const { deadline } = resolved;
+    if (paymentId && /^\d{1,30}$/.test(paymentId) && booking.providerPaymentId === null && booking.checkoutPreferenceId !== null) {
+      try {
+        const result = await this.deposit.syncPayment(booking, paymentId);
+        if (result === "paid" || result === "paid_without_slot" || result === "updated") {
+          booking = { ...booking, ...(await this.prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })) };
+        }
+      } catch {
+        // Mercado Pago no respondió: se muestra el último estado conocido; el aviso llegará igual.
+      }
+    }
+    const canPay =
+      booking.status === "PENDING_PAYMENT" && booking.checkoutUrl !== null && booking.paymentDeadline !== null && booking.paymentDeadline.getTime() > now.getTime();
     return {
       siteSlug: booking.site.slug,
       siteName: booking.site.name,
@@ -70,7 +91,17 @@ export class BookingManageService {
       status: booking.status,
       priceAmount: booking.priceAmount,
       priceCurrency: booking.priceCurrency,
-      paymentUrl: booking.status === "CONFIRMED" ? booking.paymentUrl : null,
+      paymentUrl: booking.status === "CONFIRMED" && booking.depositAmount === null ? booking.paymentUrl : null,
+      deposit:
+        booking.depositAmount === null
+          ? null
+          : {
+              amount: booking.depositAmount,
+              status: booking.paymentStatus,
+              deadline: booking.paymentDeadline?.toISOString() ?? null,
+              paidAt: booking.depositPaidAt?.toISOString() ?? null,
+            },
+      checkoutUrl: canPay ? booking.checkoutUrl : null,
       canChange: this.canChange(booking, deadline, now),
       changeDeadline: deadline.toISOString(),
     };

@@ -158,6 +158,28 @@ export class MercadoPagoCheckout {
   }
 }
 
+/** Lo que un pago tiene que cumplir para aplicarse a un cobro (pedido o seña). */
+export interface ExpectedCheckoutPayment {
+  externalReference: string;
+  /** Cuenta de Mercado Pago conectada por el negocio: la única que puede recibir el dinero. */
+  collectorId: string;
+  amount: number;
+  currency: string;
+}
+
+/**
+ * Regla única de F5.9/F5.10 (ADR-013): un pago se aplica solo si es de **ese** cobro, llegó a la
+ * cuenta del negocio y por el monto y moneda exactos. Devuelve qué no coincide (vacío = coincide),
+ * para registrarlo sin datos personales.
+ */
+export function checkoutPaymentMismatches(payment: CheckoutPayment, expected: ExpectedCheckoutPayment): Array<"reference" | "collector" | "amount"> {
+  const mismatches: Array<"reference" | "collector" | "amount"> = [];
+  if (payment.externalReference !== expected.externalReference) mismatches.push("reference");
+  if (payment.collectorId !== expected.collectorId) mismatches.push("collector");
+  if (payment.amount !== expected.amount || payment.currency !== expected.currency) mismatches.push("amount");
+  return mismatches;
+}
+
 function parse<T>(schema: z.ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body);
   if (!result.success) throw new PaymentGatewayError("invalid_response", false, "La respuesta de Mercado Pago no tiene la forma esperada.");

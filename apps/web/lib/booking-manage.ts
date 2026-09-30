@@ -7,8 +7,11 @@ import { fetchUpstream } from "./upstream";
  * caché: el estado cambia (cancelar, reprogramar) y el enlace es una credencial, no contenido
  * público. `null` = enlace inválido o reserva inexistente (mismo 404 para todo, sin pistas).
  */
-export async function getManagedBooking(token: string): Promise<PublicManagedBookingResponse | null | "unavailable"> {
-  const response = await fetchUpstream("booking-manage", `${env.API_BASE_URL}/public/bookings/${encodeURIComponent(token)}`, {
+export async function getManagedBooking(token: string, paymentId?: string): Promise<PublicManagedBookingResponse | null | "unavailable"> {
+  // `paymentId`: el `payment_id` con que vuelve Mercado Pago tras pagar la seña (F5.10); la API lo
+  // consulta con el token del negocio.
+  const query = paymentId && /^\d{1,30}$/.test(paymentId) ? `?paymentId=${paymentId}` : "";
+  const response = await fetchUpstream("booking-manage", `${env.API_BASE_URL}/public/bookings/${encodeURIComponent(token)}${query}`, {
     headers: { "X-Requested-With": "impulza-one" },
     cache: "no-store",
   });

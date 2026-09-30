@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import type { PublicOrderStatusResponse } from "@impulza/contracts";
 import type { Order, PrismaClient } from "@impulza/database";
-import { checkoutSupportsCurrency, PaymentGatewayError, verifyMercadoPagoSignature } from "@impulza/payments";
+import { checkoutPaymentMismatches, checkoutSupportsCurrency, PaymentGatewayError, verifyMercadoPagoSignature } from "@impulza/payments";
 import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
@@ -10,8 +10,8 @@ import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { PaymentAccountsService } from "../payment-accounts/payment-accounts.service.js";
+import { MERCADO_PAGO_CHECKOUT, type CheckoutConfig } from "../payment-accounts/checkout.tokens.js";
 import { OrderNotifier } from "./order-notifier.js";
-import { ORDER_CHECKOUT, type OrderCheckoutConfig } from "./order-checkout.tokens.js";
 
 export const ORDER_STATUS_NOT_FOUND = "El enlace no es válido o el pedido ya no existe.";
 
@@ -38,7 +38,7 @@ export type PaymentSyncResult = "paid" | "cancelled_paid" | "updated" | "unchang
 export class OrderCheckoutService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
-    @Inject(ORDER_CHECKOUT) private readonly config: OrderCheckoutConfig | null,
+    @Inject(MERCADO_PAGO_CHECKOUT) private readonly config: CheckoutConfig | null,
     private readonly accounts: PaymentAccountsService,
     private readonly notifier: OrderNotifier,
     private readonly audit: AuditService,
@@ -137,19 +137,14 @@ export class OrderCheckoutService {
       throw error;
     }
 
-    const matches =
-      payment.externalReference === order.id &&
-      payment.collectorId === account.providerUserId &&
-      payment.currency === order.priceCurrency &&
-      payment.amount === order.totalAmount;
-    if (!matches) {
-      logger.warn("pedidos: el pago de Mercado Pago no corresponde al pedido; no se aplica", {
-        organizationId: order.organizationId,
-        orderId: order.id,
-        sameOrder: payment.externalReference === order.id,
-        sameAccount: payment.collectorId === account.providerUserId,
-        sameAmount: payment.amount === order.totalAmount && payment.currency === order.priceCurrency,
-      });
+    const mismatches = checkoutPaymentMismatches(payment, {
+      externalReference: order.id,
+      collectorId: account.providerUserId,
+      amount: order.totalAmount,
+      currency: order.priceCurrency,
+    });
+    if (mismatches.length > 0) {
+      logger.warn("pedidos: el pago de Mercado Pago no corresponde al pedido; no se aplica", { organizationId: order.organizationId, orderId: order.id, mismatches });
       return "mismatch";
     }
 

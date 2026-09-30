@@ -17920,6 +17920,12 @@
                         "nullable": true,
                         "type": "string"
                       },
+                      "depositAmount": {
+                        "nullable": true,
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
                       "active": {
                         "type": "boolean"
                       },
@@ -17948,6 +17954,7 @@
                       "priceAmount",
                       "priceCurrency",
                       "paymentUrl",
+                      "depositAmount",
                       "active",
                       "position",
                       "createdAt",
@@ -18053,6 +18060,11 @@
                     "minLength": 1,
                     "maxLength": 2048
                   },
+                  "depositAmount": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
                   "active": {
                     "default": true,
                     "type": "boolean"
@@ -18110,6 +18122,12 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "depositAmount": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
                     "active": {
                       "type": "boolean"
                     },
@@ -18138,6 +18156,7 @@
                     "priceAmount",
                     "priceCurrency",
                     "paymentUrl",
+                    "depositAmount",
                     "active",
                     "position",
                     "createdAt",
@@ -18261,6 +18280,12 @@
                     "minLength": 1,
                     "maxLength": 2048
                   },
+                  "depositAmount": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
                   "active": {
                     "type": "boolean"
                   },
@@ -18318,6 +18343,12 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "depositAmount": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
                     "active": {
                       "type": "boolean"
                     },
@@ -18346,6 +18377,7 @@
                     "priceAmount",
                     "priceCurrency",
                     "paymentUrl",
+                    "depositAmount",
                     "active",
                     "position",
                     "createdAt",
@@ -18990,6 +19022,12 @@
                           },
                           "hasPaymentLink": {
                             "type": "boolean"
+                          },
+                          "depositAmount": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
                           }
                         },
                         "required": [
@@ -18999,7 +19037,8 @@
                           "durationMinutes",
                           "priceAmount",
                           "priceCurrency",
-                          "hasPaymentLink"
+                          "hasPaymentLink",
+                          "depositAmount"
                         ],
                         "additionalProperties": false
                       }
@@ -19148,6 +19187,29 @@
                     "paymentUrl": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "CONFIRMED",
+                        "PENDING_PAYMENT"
+                      ]
+                    },
+                    "depositAmount": {
+                      "nullable": true,
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "paymentDeadline": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "checkoutUrl": {
+                      "nullable": true,
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -19157,7 +19219,11 @@
                     "timeZone",
                     "priceAmount",
                     "priceCurrency",
-                    "paymentUrl"
+                    "paymentUrl",
+                    "status",
+                    "depositAmount",
+                    "paymentDeadline",
+                    "checkoutUrl"
                   ],
                   "additionalProperties": false
                 }
@@ -19367,6 +19433,7 @@
             "schema": {
               "enum": [
                 "CONFIRMED",
+                "PENDING_PAYMENT",
                 "CANCELLED",
                 "COMPLETED",
                 "NO_SHOW"
@@ -19490,6 +19557,7 @@
                         "type": "string",
                         "enum": [
                           "CONFIRMED",
+                          "PENDING_PAYMENT",
                           "CANCELLED",
                           "COMPLETED",
                           "NO_SHOW"
@@ -19501,6 +19569,45 @@
                           "PUBLIC",
                           "MANUAL"
                         ]
+                      },
+                      "deposit": {
+                        "nullable": true,
+                        "type": "object",
+                        "properties": {
+                          "amount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "status": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "paymentId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "deadline": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "paidAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "amount",
+                          "status",
+                          "paymentId",
+                          "deadline",
+                          "paidAt"
+                        ],
+                        "additionalProperties": false
                       },
                       "cancelledAt": {
                         "nullable": true,
@@ -19532,6 +19639,7 @@
                       "note",
                       "status",
                       "source",
+                      "deposit",
                       "cancelledAt",
                       "createdAt"
                     ],
@@ -19721,6 +19829,7 @@
                       "type": "string",
                       "enum": [
                         "CONFIRMED",
+                        "PENDING_PAYMENT",
                         "CANCELLED",
                         "COMPLETED",
                         "NO_SHOW"
@@ -19732,6 +19841,45 @@
                         "PUBLIC",
                         "MANUAL"
                       ]
+                    },
+                    "deposit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "paymentId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "deadline": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "paidAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "amount",
+                        "status",
+                        "paymentId",
+                        "deadline",
+                        "paidAt"
+                      ],
+                      "additionalProperties": false
                     },
                     "cancelledAt": {
                       "nullable": true,
@@ -19763,6 +19911,7 @@
                     "note",
                     "status",
                     "source",
+                    "deposit",
                     "cancelledAt",
                     "createdAt"
                   ],
@@ -19914,6 +20063,7 @@
                       "type": "string",
                       "enum": [
                         "CONFIRMED",
+                        "PENDING_PAYMENT",
                         "CANCELLED",
                         "COMPLETED",
                         "NO_SHOW"
@@ -19925,6 +20075,45 @@
                         "PUBLIC",
                         "MANUAL"
                       ]
+                    },
+                    "deposit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "paymentId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "deadline": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "paidAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "amount",
+                        "status",
+                        "paymentId",
+                        "deadline",
+                        "paidAt"
+                      ],
+                      "additionalProperties": false
                     },
                     "cancelledAt": {
                       "nullable": true,
@@ -19956,6 +20145,7 @@
                     "note",
                     "status",
                     "source",
+                    "deposit",
                     "cancelledAt",
                     "createdAt"
                   ],
@@ -20127,6 +20317,7 @@
                       "type": "string",
                       "enum": [
                         "CONFIRMED",
+                        "PENDING_PAYMENT",
                         "CANCELLED",
                         "COMPLETED",
                         "NO_SHOW"
@@ -20138,6 +20329,45 @@
                         "PUBLIC",
                         "MANUAL"
                       ]
+                    },
+                    "deposit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "paymentId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "deadline": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "paidAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "amount",
+                        "status",
+                        "paymentId",
+                        "deadline",
+                        "paidAt"
+                      ],
+                      "additionalProperties": false
                     },
                     "cancelledAt": {
                       "nullable": true,
@@ -20169,6 +20399,7 @@
                     "note",
                     "status",
                     "source",
+                    "deposit",
                     "cancelledAt",
                     "createdAt"
                   ],
@@ -20215,6 +20446,13 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "paymentId",
+            "required": false,
+            "in": "query",
+            "description": "Id del pago de la seña en Mercado Pago, tal como vuelve el cliente (F5.10): se consulta con el token del negocio.",
+            "schema": {}
           },
           {
             "name": "X-Requested-With",
@@ -20269,6 +20507,7 @@
                       "type": "string",
                       "enum": [
                         "CONFIRMED",
+                        "PENDING_PAYMENT",
                         "CANCELLED",
                         "COMPLETED",
                         "NO_SHOW"
@@ -20285,6 +20524,44 @@
                       "type": "string"
                     },
                     "paymentUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "deposit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "deadline": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "paidAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "amount",
+                        "status",
+                        "deadline",
+                        "paidAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "checkoutUrl": {
                       "nullable": true,
                       "type": "string"
                     },
@@ -20309,6 +20586,8 @@
                     "priceAmount",
                     "priceCurrency",
                     "paymentUrl",
+                    "deposit",
+                    "checkoutUrl",
                     "canChange",
                     "changeDeadline"
                   ],
@@ -20393,6 +20672,7 @@
                       "type": "string",
                       "enum": [
                         "CONFIRMED",
+                        "PENDING_PAYMENT",
                         "CANCELLED",
                         "COMPLETED",
                         "NO_SHOW"
@@ -20409,6 +20689,44 @@
                       "type": "string"
                     },
                     "paymentUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "deposit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "deadline": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "paidAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "amount",
+                        "status",
+                        "deadline",
+                        "paidAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "checkoutUrl": {
                       "nullable": true,
                       "type": "string"
                     },
@@ -20433,6 +20751,8 @@
                     "priceAmount",
                     "priceCurrency",
                     "paymentUrl",
+                    "deposit",
+                    "checkoutUrl",
                     "canChange",
                     "changeDeadline"
                   ],
@@ -20540,6 +20860,7 @@
                       "type": "string",
                       "enum": [
                         "CONFIRMED",
+                        "PENDING_PAYMENT",
                         "CANCELLED",
                         "COMPLETED",
                         "NO_SHOW"
@@ -20556,6 +20877,44 @@
                       "type": "string"
                     },
                     "paymentUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "deposit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "deadline": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "paidAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "amount",
+                        "status",
+                        "deadline",
+                        "paidAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "checkoutUrl": {
                       "nullable": true,
                       "type": "string"
                     },
@@ -20580,6 +20939,8 @@
                     "priceAmount",
                     "priceCurrency",
                     "paymentUrl",
+                    "deposit",
+                    "checkoutUrl",
                     "canChange",
                     "changeDeadline"
                   ],
@@ -20598,6 +20959,245 @@
         "summary": "Cambiar la hora",
         "tags": [
           "public-bookings"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/payment-accounts": {
+      "get": {
+        "description": "Si hay una cuenta de Mercado Pago conectada y en qué estado. Nunca tokens (F5.8, ADR-013).",
+        "operationId": "PaymentAccountsController_status",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado de la cuenta de cobro.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "available": {
+                      "type": "boolean"
+                    },
+                    "canManage": {
+                      "type": "boolean"
+                    },
+                    "mercadoPago": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "CONNECTED",
+                            "ERROR"
+                          ]
+                        },
+                        "liveMode": {
+                          "type": "boolean"
+                        },
+                        "connectedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "liveMode",
+                        "connectedAt",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "available",
+                    "canManage",
+                    "mercadoPago"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Cuenta de cobro del negocio",
+        "tags": [
+          "payment-accounts"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago/connect": {
+      "post": {
+        "description": "Devuelve la URL de autorización de Mercado Pago (OAuth con PKCE y `state` de un solo uso, 10 minutos).",
+        "operationId": "PaymentAccountsController_connect",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "URL a la que llevar al dueño.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "422": {
+            "description": "`PAYMENTS_UNAVAILABLE`: la aplicación de Mercado Pago no está configurada."
+          },
+          "429": {
+            "description": "Más de 10 peticiones en 600 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Empezar a conectar Mercado Pago",
+        "tags": [
+          "payment-accounts"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago": {
+      "delete": {
+        "description": "Borra los tokens guardados. Los cobros vuelven a enlaces de pago externos. Queda auditado.",
+        "operationId": "PaymentAccountsController_disconnect",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Desconectada."
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "`NOT_CONNECTED`."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Desconectar Mercado Pago",
+        "tags": [
+          "payment-accounts"
         ]
       }
     },
@@ -23032,245 +23632,6 @@
         "summary": "Estado de un pedido con su enlace",
         "tags": [
           "public-catalog"
-        ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/payment-accounts": {
-      "get": {
-        "description": "Si hay una cuenta de Mercado Pago conectada y en qué estado. Nunca tokens (F5.8, ADR-013).",
-        "operationId": "PaymentAccountsController_status",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Estado de la cuenta de cobro.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "available": {
-                      "type": "boolean"
-                    },
-                    "canManage": {
-                      "type": "boolean"
-                    },
-                    "mercadoPago": {
-                      "nullable": true,
-                      "type": "object",
-                      "properties": {
-                        "status": {
-                          "type": "string",
-                          "enum": [
-                            "CONNECTED",
-                            "ERROR"
-                          ]
-                        },
-                        "liveMode": {
-                          "type": "boolean"
-                        },
-                        "connectedAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                        },
-                        "expiresAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                        }
-                      },
-                      "required": [
-                        "status",
-                        "liveMode",
-                        "connectedAt",
-                        "expiresAt"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": [
-                    "available",
-                    "canManage",
-                    "mercadoPago"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Cuenta de cobro del negocio",
-        "tags": [
-          "payment-accounts"
-        ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago/connect": {
-      "post": {
-        "description": "Devuelve la URL de autorización de Mercado Pago (OAuth con PKCE y `state` de un solo uso, 10 minutos).",
-        "operationId": "PaymentAccountsController_connect",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "URL a la que llevar al dueño.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "url": {
-                      "type": "string",
-                      "format": "uri"
-                    }
-                  },
-                  "required": [
-                    "url"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          },
-          "422": {
-            "description": "`PAYMENTS_UNAVAILABLE`: la aplicación de Mercado Pago no está configurada."
-          },
-          "429": {
-            "description": "Más de 10 peticiones en 600 s desde la misma IP. Reintentar después de la ventana."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Empezar a conectar Mercado Pago",
-        "tags": [
-          "payment-accounts"
-        ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago": {
-      "delete": {
-        "description": "Borra los tokens guardados. Los cobros vuelven a enlaces de pago externos. Queda auditado.",
-        "operationId": "PaymentAccountsController_disconnect",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Desconectada."
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          },
-          "404": {
-            "description": "`NOT_CONNECTED`."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Desconectar Mercado Pago",
-        "tags": [
-          "payment-accounts"
         ]
       }
     },

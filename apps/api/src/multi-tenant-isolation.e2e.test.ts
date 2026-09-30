@@ -1780,6 +1780,39 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         await prisma.order.deleteMany({ where: { id: order.id } });
       }
     });
+
+    it("A no ve, confirma ni cancela una reserva de B que espera su seña (F5.10)", async () => {
+      const startsAt = new Date("2032-03-01T13:00:00Z");
+      const booking = await prisma.booking.create({
+        data: {
+          organizationId: orgB.id,
+          siteId: orgB.siteId,
+          serviceName: "Sesión de B",
+          durationMinutes: 30,
+          priceAmount: 20_000,
+          priceCurrency: "CLP",
+          startsAt,
+          endsAt: new Date(startsAt.getTime() + 30 * 60_000),
+          timeZone: "America/Santiago",
+          customerName: "Cliente de B",
+          customerEmail: "cliente-b@isolation.test",
+          status: "PENDING_PAYMENT",
+          depositAmount: 5_000,
+          paymentDeadline: new Date(Date.now() + 30 * 60_000),
+          checkoutPreferenceId: "pref-de-b",
+        },
+      });
+      try {
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/bookings/${booking.id}`).expect(404);
+        await orgA.ownerAgent.patch(`/api/v1/organizations/${orgA.id}/bookings/${booking.id}`).set(CSRF_HEADERS).send({ status: "CONFIRMED" }).expect(404);
+        await orgA.ownerAgent.patch(`/api/v1/organizations/${orgB.id}/bookings/${booking.id}`).set(CSRF_HEADERS).send({ status: "CANCELLED" }).expect(403);
+        const agendaA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/bookings?from=2032-03-01T00:00:00Z&to=2032-03-02T00:00:00Z`).expect(200);
+        expect(JSON.stringify(agendaA.body)).not.toContain(booking.id);
+        expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe("PENDING_PAYMENT");
+      } finally {
+        await prisma.booking.deleteMany({ where: { id: booking.id } });
+      }
+    });
   });
 
   describe("Cobro de suscripciones (F4.6a/F4.9): la facturación de una organización no se cruza", () => {

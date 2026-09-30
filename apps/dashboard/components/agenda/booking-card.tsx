@@ -1,21 +1,29 @@
 "use client";
 
 import type { BookingResponse } from "@impulza/contracts";
-import { BOOKING_STATUS_LABELS, currencyFractionDigits, type BookingStatusValue } from "@impulza/validation";
+import { BOOKING_STATUS_LABELS, currencyFractionDigits, type BOOKING_SETTABLE_STATUSES, type BookingStatusValue } from "@impulza/validation";
 import { Button, cn } from "@impulza/ui";
-import { Mail, MessageCircle, Phone, StickyNote } from "lucide-react";
+import { CreditCard, Mail, MessageCircle, Phone, StickyNote } from "lucide-react";
 import { ApiError } from "../../lib/api-client";
 import { useUpdateBookingStatus } from "../../lib/hooks/use-agenda";
 
 const STATUS_STYLES: Record<BookingStatusValue, string> = {
   CONFIRMED: "border-primary/30 bg-primary/10 text-foreground",
+  PENDING_PAYMENT: "border-warning/40 bg-warning/10 text-foreground",
   COMPLETED: "border-success/30 bg-success/10 text-foreground",
   NO_SHOW: "border-warning/40 bg-warning/10 text-foreground",
   CANCELLED: "border-border bg-surface text-muted-foreground",
 };
 
+type SettableStatus = (typeof BOOKING_SETTABLE_STATUSES)[number];
+
 /** Qué se puede hacer con una reserva según su estado. */
-const ACTIONS: Record<BookingStatusValue, Array<{ to: BookingStatusValue; label: string }>> = {
+const ACTIONS: Record<BookingStatusValue, Array<{ to: SettableStatus; label: string }>> = {
+  // Esperando seña (F5.10): el negocio puede confirmarla sin seña (le pagaron por otra vía) o cancelarla.
+  PENDING_PAYMENT: [
+    { to: "CONFIRMED", label: "Confirmar sin seña" },
+    { to: "CANCELLED", label: "Cancelar" },
+  ],
   CONFIRMED: [
     { to: "COMPLETED", label: "Atendida" },
     { to: "NO_SHOW", label: "No llegó" },
@@ -30,6 +38,24 @@ export function formatMoney(amount: number, currency: string): string {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency }).format(amount / 10 ** currencyFractionDigits(currency));
 }
 
+/** La seña de una reserva (F5.10), en palabras del negocio. */
+export function depositText(booking: Pick<BookingResponse, "deposit" | "status" | "priceCurrency" | "timeZone">): string | null {
+  const deposit = booking.deposit;
+  if (!deposit || !booking.priceCurrency) return null;
+  const amount = formatMoney(deposit.amount, booking.priceCurrency);
+  if (deposit.paymentId) {
+    return booking.status === "CANCELLED"
+      ? `Seña de ${amount} pagada con la reserva ya cancelada (pago ${deposit.paymentId}): reactívala o devuelve la seña desde Mercado Pago.`
+      : `Seña de ${amount} pagada con Mercado Pago · pago ${deposit.paymentId}`;
+  }
+  if (booking.status !== "PENDING_PAYMENT") return booking.status === "CANCELLED" ? `Seña de ${amount} sin pagar: la hora se liberó.` : null;
+  if (deposit.status === "in_process" || deposit.status === "pending" || deposit.status === "authorized") return `Seña de ${amount} en revisión en Mercado Pago`;
+  const until = deposit.deadline
+    ? new Intl.DateTimeFormat("es-CL", { timeZone: booking.timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(deposit.deadline))
+    : null;
+  return `Esperando seña de ${amount}${until ? ` hasta las ${until}` : ""}; si no se paga, la hora se libera sola.`;
+}
+
 /**
  * Una reserva en la agenda (F5.3). Las acciones se muestran a todos los miembros, como en el resto
  * del panel: el servidor decide (`booking.manage`) y un rol sin permiso ve un aviso claro.
@@ -38,6 +64,7 @@ export function BookingCard({ organizationId, booking }: { organizationId: strin
   const update = useUpdateBookingStatus(organizationId);
   const time = new Intl.DateTimeFormat("es-CL", { timeZone: booking.timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const cancelled = booking.status === "CANCELLED";
+  const deposit = depositText(booking);
   const whatsapp = booking.customerPhone ? `https://wa.me/${booking.customerPhone.replace(/\D/g, "")}` : null;
   const error =
     update.error instanceof ApiError && update.error.status === 409
@@ -65,6 +92,12 @@ export function BookingCard({ organizationId, booking }: { organizationId: strin
           {booking.serviceName}
           {booking.priceAmount !== null && booking.priceCurrency ? ` · ${formatMoney(booking.priceAmount, booking.priceCurrency)}` : ""}
         </p>
+        {deposit ? (
+          <p className="mt-1 flex items-start gap-1.5 text-sm text-foreground">
+            <CreditCard className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            {deposit}
+          </p>
+        ) : null}
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <a href={`mailto:${booking.customerEmail}`} className="inline-flex min-w-0 items-center gap-1 text-foreground hover:underline">
             <Mail className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />

@@ -3,8 +3,9 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual (2026-09-30): cobros de los negocios (F5.8–F5.11, ADR-013) en curso — F5.8 y F5.9 (cobro
-de pedidos con Checkout Pro) listas para revisión; sigue F5.10 (seña de reservas). Lo pendiente de todo el plan
+**Estado actual (2026-09-30): cobros de los negocios (F5.8–F5.11, ADR-013) en curso — F5.8, F5.9 (cobro
+de pedidos con Checkout Pro) y F5.10 (seña de reservas) listas para revisión; sigue F5.11
+(reembolsos, contracargos y descargas pagadas). Lo pendiente de todo el plan
 está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
 superadministración) listas para revisión, igual que F4.6b (Mercado Pago, pendiente de probar con credenciales reales). Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
@@ -1290,8 +1291,12 @@ permiso otorgado, cifrado y revocable. El worker renueva el acceso antes de que 
 paga en Mercado Pago (Checkout Pro) y se marca pagado solo: el aviso llega firmado y el pago se
 consulta con el token del negocio antes de aplicarlo (pedido, cuenta, monto y moneda deben
 coincidir). El comprador sigue su pedido en `/pedido/:token`. Requiere
-`MERCADOPAGO_APP_WEBHOOK_SECRET` junto a id y secreto de la aplicación. La seña de reservas llega en
-F5.10.
+`MERCADOPAGO_APP_WEBHOOK_SECRET` junto a id y secreto de la aplicación.
+
+**F5.10 — seña de reservas.** Un servicio puede pedir una seña fija. Con la cuenta conectada, la
+reserva queda "esperando seña" (la hora queda tomada 30 minutos), el cliente la paga en Mercado Pago
+desde la confirmación o "Tu reserva" y se confirma sola; si no paga, el worker libera la hora. Un
+pago tardío reconfirma la reserva si la hora sigue libre, o avisa al negocio para devolverlo.
 
 ## Superadministración (F4.4, `apps/admin`)
 

@@ -38,10 +38,21 @@ interface ServiceDraft {
   price: string;
   priceCurrency: string;
   paymentUrl: string;
+  deposit: string;
   active: boolean;
 }
 
-const EMPTY_DRAFT: ServiceDraft = { name: "", description: "", durationMinutes: "30", price: "", priceCurrency: "CLP", paymentUrl: "", active: true };
+const EMPTY_DRAFT: ServiceDraft = { name: "", description: "", durationMinutes: "30", price: "", priceCurrency: "CLP", paymentUrl: "", deposit: "", active: true };
+
+/** Texto → unidad mínima de la moneda: "12.000" o "12000" para CLP, "19,90" o "19.90" con decimales. */
+function parseAmount(text: string, currency: string): number | undefined | null {
+  const digits = currencyFractionDigits(currency);
+  const raw = text.trim();
+  const normalized = digits === 0 ? raw.replace(/[.,\s]/g, "") : raw.replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
+  if (normalized === "") return undefined;
+  const amount = Math.round(Number(normalized) * 10 ** digits);
+  return Number.isFinite(amount) && amount >= 0 ? amount : null;
+}
 
 function draftOf(service: BookableServiceResponse): ServiceDraft {
   return {
@@ -51,6 +62,7 @@ function draftOf(service: BookableServiceResponse): ServiceDraft {
     price: service.priceAmount === null || !service.priceCurrency ? "" : String(service.priceAmount / 10 ** currencyFractionDigits(service.priceCurrency)),
     priceCurrency: service.priceCurrency ?? "CLP",
     paymentUrl: service.paymentUrl ?? "",
+    deposit: service.depositAmount === null || !service.priceCurrency ? "" : String(service.depositAmount / 10 ** currencyFractionDigits(service.priceCurrency)),
     active: service.active,
   };
 }
@@ -60,12 +72,13 @@ function draftOf(service: BookableServiceResponse): ServiceDraft {
  * centavos. Acepta "12.000" o "12000" para CLP y "19,90" o "19.90" para monedas con decimales.
  */
 function toInput(draft: ServiceDraft): { input?: BookableServiceInput; error?: string } {
-  const digits = currencyFractionDigits(draft.priceCurrency);
-  const raw = draft.price.trim();
-  const normalized = digits === 0 ? raw.replace(/[.,\s]/g, "") : raw.replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
-  const amount = normalized === "" ? undefined : Math.round(Number(normalized) * 10 ** digits);
-  if (amount !== undefined && (!Number.isFinite(amount) || amount < 0)) {
+  const amount = parseAmount(draft.price, draft.priceCurrency);
+  if (amount === null) {
     return { error: "El precio tiene que ser un número." };
+  }
+  const deposit = parseAmount(draft.deposit, draft.priceCurrency);
+  if (deposit === null) {
+    return { error: "La seña tiene que ser un número." };
   }
   const result = bookableServiceSchema.safeParse({
     name: draft.name,
@@ -74,6 +87,7 @@ function toInput(draft: ServiceDraft): { input?: BookableServiceInput; error?: s
     priceAmount: amount,
     priceCurrency: amount === undefined ? undefined : draft.priceCurrency,
     paymentUrl: draft.paymentUrl.trim() === "" ? undefined : draft.paymentUrl.trim(),
+    depositAmount: deposit === 0 ? undefined : deposit,
     active: draft.active,
   });
   return result.success ? { input: result.data } : { error: result.error.issues[0]?.message ?? "Revisa los datos." };
@@ -88,8 +102,9 @@ export function BookableServices({ organizationId, siteId }: { organizationId: s
       <CardHeader>
         <CardTitle>Servicios que se pueden reservar</CardTitle>
         <CardDescription>
-          Cada servicio tiene su duración. Si cobras por adelantado, pega tu enlace de pago (Mercado Pago, Flow u otro): Impulza no
-          cobra, solo lo muestra al confirmar la reserva.
+          Cada servicio tiene su duración. Si conectaste tu cuenta de Mercado Pago en Cobros, puedes pedir una seña: la hora queda
+          guardada 30 minutos mientras el cliente la paga y el dinero llega directo a tu cuenta. Si no, puedes pegar tu propio enlace
+          de pago y se muestra al confirmar la reserva.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -142,6 +157,7 @@ function ServiceRow({ organizationId, siteId, service }: { organizationId: strin
             {durationLabel(service.durationMinutes)}
           </span>
           {price ? <span>{price}</span> : null}
+          {service.depositAmount !== null ? <span>Seña {priceLabel(service.depositAmount, service.priceCurrency)}</span> : null}
           {service.paymentUrl ? <span>Con enlace de pago</span> : null}
         </p>
       </div>
@@ -204,6 +220,7 @@ function EditServiceForm({
             priceAmount: input.priceAmount ?? null,
             priceCurrency: input.priceCurrency ?? null,
             paymentUrl: input.paymentUrl ?? null,
+            depositAmount: input.depositAmount ?? null,
             active: input.active,
           },
         });
@@ -264,6 +281,14 @@ function ServiceForm({
           placeholder="https://link.mercadopago.cl/…"
           value={draft.paymentUrl}
           onChange={(e) => set({ paymentUrl: e.target.value })}
+        />
+        <Input
+          label="Seña al reservar (opcional)"
+          inputMode="decimal"
+          placeholder="5.000"
+          helperText="Se cobra con tu cuenta de Mercado Pago conectada (solo en CLP). Sin cuenta conectada, la reserva se confirma sin seña."
+          value={draft.deposit}
+          onChange={(e) => set({ deposit: e.target.value })}
         />
         <div className="sm:col-span-2">
           <Input

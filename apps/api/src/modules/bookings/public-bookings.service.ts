@@ -14,6 +14,7 @@ import { logger } from "../../observability/logger.js";
 import { AnalyticsService } from "../analytics/analytics.service.js";
 import { AutomationEventsService } from "../automations/automation-events.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
+import { BookingDepositService } from "./booking-deposit.service.js";
 import { BookingNotifier } from "./booking-notifier.js";
 import { BookingSetupService } from "./booking-setup.service.js";
 
@@ -44,6 +45,7 @@ export class PublicBookingsService {
     private readonly analyticsService: AnalyticsService,
     private readonly notifier: BookingNotifier,
     private readonly automationEvents: AutomationEventsService,
+    private readonly deposit: BookingDepositService,
   ) {}
 
   private async enabledSiteOrThrow(siteSlug: string) {
@@ -75,6 +77,7 @@ export class PublicBookingsService {
       where: { siteId: site.id, active: true },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     });
+    const depositsEnabled = services.some((service) => service.depositAmount !== null) && (await this.deposit.depositsEnabled(site.organizationId));
     return {
       timeZone: settings.timeZone,
       maxAdvanceDays: settings.maxAdvanceDays,
@@ -86,6 +89,7 @@ export class PublicBookingsService {
         priceAmount: service.priceAmount,
         priceCurrency: service.priceCurrency,
         hasPaymentLink: service.paymentUrl !== null,
+        depositAmount: this.deposit.depositOf(service, depositsEnabled),
       })),
     };
   }
@@ -150,6 +154,10 @@ export class PublicBookingsService {
       priceAmount: service.priceAmount,
       priceCurrency: service.priceCurrency,
       paymentUrl: service.paymentUrl,
+      status: "CONFIRMED",
+      depositAmount: null,
+      paymentDeadline: null,
+      checkoutUrl: null,
     };
 
     // Antispam (mismo criterio que los formularios, F3.2): a un bot se le responde como si hubiera
@@ -158,6 +166,10 @@ export class PublicBookingsService {
     if (typeof honeypot === "string" && honeypot.length > 0) {
       return confirmation;
     }
+
+    // Seña (F5.10): con la cuenta de Mercado Pago del negocio conectada, la hora queda tomada
+    // "esperando seña" y se confirma al pagarla; si no, se confirma como siempre.
+    const plan = await this.deposit.planFor(site.organizationId, service, startsAt, now);
 
     let bookingId: string;
     try {
@@ -187,6 +199,7 @@ export class PublicBookingsService {
             customerPhone: input.phone ?? null,
             note: input.note ?? null,
             source: "PUBLIC",
+            ...(plan ? { status: "PENDING_PAYMENT" as const, depositAmount: plan.depositAmount, paymentDeadline: plan.paymentDeadline } : {}),
           },
         });
         return booking.id;
@@ -241,10 +254,24 @@ export class PublicBookingsService {
         idempotencyKey: `lead_created:${contactResult.contact.id}`,
       });
     }
-    // Correos (F5.4): confirmación con el enlace "gestiona tu reserva" y aviso a los dueños.
-    const booking = await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
-    await this.notifier.notifyCustomer("confirmed", booking, site.name);
-    await this.notifier.notifyOwners("created", booking, site.name);
+    let booking = await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
+    if (booking.status === "PENDING_PAYMENT") {
+      const started = await this.deposit.startFor(booking);
+      booking = started.booking;
+      confirmation.checkoutUrl = started.checkoutUrl;
+    }
+    if (booking.status === "PENDING_PAYMENT") {
+      // Al cliente se le pide la seña; el negocio recibe el aviso cuando se pague (o la ve en su agenda).
+      confirmation.status = "PENDING_PAYMENT";
+      confirmation.depositAmount = booking.depositAmount;
+      confirmation.paymentDeadline = booking.paymentDeadline?.toISOString() ?? null;
+      confirmation.paymentUrl = null;
+      await this.notifier.notifyDepositPending(booking, site.name);
+    } else {
+      // Correos (F5.4): confirmación con el enlace "gestiona tu reserva" y aviso a los dueños.
+      await this.notifier.notifyCustomer("confirmed", booking, site.name);
+      await this.notifier.notifyOwners("created", booking, site.name);
+    }
     await this.automationEvents.emit({ organizationId: site.organizationId, trigger: "booking_created", subjectId: bookingId, contactId: contactResult.contact.id });
     logger.info("reserva pública creada", { organizationId: site.organizationId, siteId: site.id, bookingId });
     return confirmation;

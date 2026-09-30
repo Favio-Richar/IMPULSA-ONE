@@ -1072,6 +1072,9 @@ model BookableService {
   priceAmount     Int?     @map("price_amount")
   priceCurrency   String?  @map("price_currency")
   paymentUrl      String?  @map("payment_url")
+  // Seña (F5.10, ADR-013): monto fijo en la moneda del precio, cobrado al reservar si el negocio
+  // tiene su cuenta de Mercado Pago conectada. `CHECK`: > 0 y ≤ precio.
+  depositAmount   Int?     @map("deposit_amount")
   active          Boolean  @default(true)
   position        Int      @default(0)
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1107,6 +1110,8 @@ model BookingBlackout {
 
 enum BookingStatus {
   CONFIRMED
+  // Esperando la seña (F5.10): ocupa la hora hasta `paymentDeadline`; al pagarse pasa a CONFIRMED.
+  PENDING_PAYMENT
   CANCELLED
   COMPLETED
   NO_SHOW
@@ -1146,6 +1151,18 @@ model Booking {
   // F5.4: cuándo se envió el recordatorio (reprogramar lo vuelve a `null`). El worker lo reclama
   // con un `updateMany` condicional antes de enviar: nunca dos recordatorios.
   reminderSentAt  DateTime?     @map("reminder_sent_at") @db.Timestamptz(6)
+  // Seña con Checkout Pro (F5.10, ADR-013), solo si se cobró al reservar. Mismo criterio que los
+  // pedidos (F5.9): `providerPaymentId` único y asignado de forma condicional; `paymentStatus` es el
+  // último estado consultado en Mercado Pago con el token del negocio. `paymentExpiredAt`: el worker
+  // liberó la hora porque venció el plazo (un pago tardío la reconfirma si sigue libre).
+  depositAmount        Int?      @map("deposit_amount")
+  paymentDeadline      DateTime? @map("payment_deadline") @db.Timestamptz(6)
+  checkoutPreferenceId String?   @map("checkout_preference_id")
+  checkoutUrl          String?   @map("checkout_url")
+  providerPaymentId    String?   @unique @map("provider_payment_id")
+  paymentStatus        String?   @map("payment_status")
+  depositPaidAt        DateTime? @map("deposit_paid_at") @db.Timestamptz(6)
+  paymentExpiredAt     DateTime? @map("payment_expired_at") @db.Timestamptz(6)
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

@@ -16,9 +16,13 @@ export const metadata: Metadata = {
   referrer: "no-referrer",
 };
 
-export default async function ReservaPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function ReservaPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { token } = await params;
-  const booking = await getManagedBooking(token);
+  // Al volver de pagar la seña, Mercado Pago agrega `payment_id` (o `collection_id`).
+  const query = await searchParams;
+  const raw = query.payment_id ?? query.collection_id;
+  const paymentId = typeof raw === "string" && /^\d{1,30}$/.test(raw) ? raw : undefined;
+  const booking = await getManagedBooking(token, paymentId);
   if (booking === null) {
     notFound();
   }
@@ -33,7 +37,7 @@ export default async function ReservaPage({ params }: { params: Promise<{ token:
   const site = await getPublicSite(booking.siteSlug);
   const content = (
     <Container className="py-10">
-      <BookingManage token={token} initial={booking} />
+      <BookingManage token={token} initial={booking} refreshHref={`/reserva/${encodeURIComponent(token)}${paymentId ? `?payment_id=${paymentId}` : ""}`} />
     </Container>
   );
   // Con el tema del negocio si su página está publicada; si no, igual se puede gestionar.

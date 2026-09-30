@@ -356,6 +356,17 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   repetido no tiene efecto); `payment_status` (último estado consultado en Mercado Pago);
   `status_token_hash` **único** (SHA-256 del enlace "Tu pedido"; el enlace no se guarda).
 
+## 9l. Seña de reservas (F5.10, `BACKLOG_FASE_5.md`, ADR-013)
+
+- **BookableService.deposit_amount** (opcional; `CHECK`: > 0, con precio y ≤ precio).
+- **BookingStatus** suma `PENDING_PAYMENT` (esperando seña). **`bookings_no_overlap`** ahora excluye
+  encimadas entre `CONFIRMED` y `PENDING_PAYMENT`: la hora queda tomada mientras se paga.
+- **Booking** (ampliada, todo opcional): `deposit_amount`, `payment_deadline` (`CHECK`: una reserva
+  `PENDING_PAYMENT` siempre tiene monto y plazo), `checkout_preference_id`, `checkout_url`,
+  `provider_payment_id` **único**, `payment_status`, `deposit_paid_at`, `payment_expired_at` (el
+  worker liberó la hora; un pago tardío la reconfirma si sigue libre). Índice parcial por
+  `payment_deadline` de las pendientes.
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 Reembolsos y contracargos de los cobros de los negocios (F5.11), variantes/cupones/carrito,

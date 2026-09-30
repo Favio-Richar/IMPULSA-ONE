@@ -119,6 +119,7 @@ export class BookingSetupService {
       priceAmount: service.priceAmount,
       priceCurrency: service.priceCurrency,
       paymentUrl: service.paymentUrl,
+      depositAmount: service.depositAmount,
       active: service.active,
       position: service.position,
       createdAt: service.createdAt.toISOString(),
@@ -159,6 +160,7 @@ export class BookingSetupService {
         priceAmount: input.priceAmount ?? null,
         priceCurrency: input.priceCurrency ?? null,
         paymentUrl: input.paymentUrl ?? null,
+        depositAmount: input.depositAmount ?? null,
         active: input.active,
         position: count,
       },
@@ -189,6 +191,7 @@ export class BookingSetupService {
       priceAmount: changes.priceAmount === undefined ? current.priceAmount : changes.priceAmount,
       priceCurrency: changes.priceCurrency === undefined ? current.priceCurrency : changes.priceCurrency,
       paymentUrl: changes.paymentUrl === undefined ? current.paymentUrl : changes.paymentUrl,
+      depositAmount: changes.depositAmount === undefined ? current.depositAmount : changes.depositAmount,
       active: changes.active ?? current.active,
     };
     // El resultado completo pasa las mismas reglas que un alta (p. ej. precio con monto y moneda).
@@ -282,9 +285,10 @@ export class BookingSetupService {
   // --- Horarios libres ---
 
   /**
-   * Lo que ocupa la agenda entre `from` y `to`: bloqueos y reservas confirmadas. Única regla, usada
-   * por la vista previa del panel, la página pública y la creación de una reserva (esta última con
-   * el cliente de su transacción, `db`).
+   * Lo que ocupa la agenda entre `from` y `to`: bloqueos, reservas confirmadas y las que esperan su
+   * seña (F5.10: la hora queda tomada mientras se paga; misma regla que la restricción de la base).
+   * Única regla, usada por la vista previa del panel, la página pública y la creación de una reserva
+   * (esta última con el cliente de su transacción, `db`).
    */
   async busyIntervals(siteId: string, from: Date, to: Date, db: Db = this.prisma, excludeBookingId?: string): Promise<BusyInterval[]> {
     const [blackouts, bookings] = await Promise.all([
@@ -292,7 +296,7 @@ export class BookingSetupService {
       db.booking.findMany({
         where: {
           siteId,
-          status: "CONFIRMED",
+          status: { in: ["CONFIRMED", "PENDING_PAYMENT"] },
           startsAt: { lt: to },
           endsAt: { gt: from },
           // Al cambiar la hora de una reserva (F5.4), la propia no ocupa su agenda.

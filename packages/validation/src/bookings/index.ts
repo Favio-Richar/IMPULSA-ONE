@@ -111,13 +111,27 @@ export const bookableServiceFieldsSchema = z.object({
   priceCurrency: z.string().length(3).toUpperCase().optional(),
   /** Enlace de pago del propio negocio (Impulza no cobra: decisión #6). */
   paymentUrl: safeUrlSchema.optional(),
+  /**
+   * Seña (F5.10): monto fijo en la moneda del precio que se cobra al reservar con la cuenta de
+   * Mercado Pago del negocio. Sin cuenta conectada, la reserva se confirma igual, sin cobrarla.
+   */
+  depositAmount: z.number().int().min(1, "La seña tiene que ser mayor que cero.").optional(),
   active: z.boolean().default(true),
 });
 
-export const bookableServiceSchema = bookableServiceFieldsSchema.refine(
-  (service) => (service.priceAmount === undefined) === (service.priceCurrency === undefined),
-  { message: "El precio necesita monto y moneda.", path: ["priceCurrency"] },
-);
+export const bookableServiceSchema = bookableServiceFieldsSchema
+  .refine((service) => (service.priceAmount === undefined) === (service.priceCurrency === undefined), {
+    message: "El precio necesita monto y moneda.",
+    path: ["priceCurrency"],
+  })
+  .refine((service) => service.depositAmount === undefined || service.priceAmount !== undefined, {
+    message: "Para pedir seña, el servicio necesita precio.",
+    path: ["depositAmount"],
+  })
+  .refine((service) => service.depositAmount === undefined || service.priceAmount === undefined || service.depositAmount <= service.priceAmount, {
+    message: "La seña no puede ser mayor que el precio.",
+    path: ["depositAmount"],
+  });
 export type BookableServiceInput = z.infer<typeof bookableServiceSchema>;
 
 /**
@@ -132,6 +146,7 @@ export const updateBookableServiceSchema = z
     priceAmount: z.number().int().min(0).nullable(),
     priceCurrency: z.string().length(3).toUpperCase().nullable(),
     paymentUrl: safeUrlSchema.nullable(),
+    depositAmount: z.number().int().min(1, "La seña tiene que ser mayor que cero.").nullable(),
     active: z.boolean(),
     position: z.number().int().min(0).max(10_000),
   })
@@ -201,10 +216,16 @@ export type PublicBookingRequest = z.infer<typeof publicBookingRequestSchema>;
 
 // --- Agenda del negocio (F5.3) ---
 
-export const BOOKING_STATUSES = ["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"] as const;
+export const BOOKING_STATUSES = ["CONFIRMED", "PENDING_PAYMENT", "CANCELLED", "COMPLETED", "NO_SHOW"] as const;
 export type BookingStatusValue = (typeof BOOKING_STATUSES)[number];
+/**
+ * Estados que el negocio puede poner a mano. "Esperando seña" (F5.10) solo lo pone una reserva
+ * pública con seña, y solo lo quita el pago, el plazo vencido o el negocio (confirmar o cancelar).
+ */
+export const BOOKING_SETTABLE_STATUSES = ["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"] as const;
 export const BOOKING_STATUS_LABELS: Record<BookingStatusValue, string> = {
   CONFIRMED: "Confirmada",
+  PENDING_PAYMENT: "Esperando seña",
   COMPLETED: "Atendida",
   NO_SHOW: "No llegó",
   CANCELLED: "Cancelada",
@@ -241,7 +262,7 @@ export const manualBookingSchema = z.object({
 });
 export type ManualBookingInput = z.infer<typeof manualBookingSchema>;
 
-export const updateBookingStatusSchema = z.object({ status: z.enum(BOOKING_STATUSES) });
+export const updateBookingStatusSchema = z.object({ status: z.enum(BOOKING_SETTABLE_STATUSES) });
 export type UpdateBookingStatusInput = z.infer<typeof updateBookingStatusSchema>;
 export * from "./messages.js";
 

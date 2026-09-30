@@ -1,6 +1,19 @@
 import { z } from "zod";
 import { isoDateTime, uuid } from "./primitives.js";
 
+const bookingStatus = z.enum(["CONFIRMED", "PENDING_PAYMENT", "CANCELLED", "COMPLETED", "NO_SHOW"]);
+
+/** Seña cobrada con la cuenta de Mercado Pago del negocio (F5.10, ADR-013). */
+const depositResponse = z.object({
+  amount: z.number().int(),
+  /** Último estado del pago en Mercado Pago (`approved`, `in_process`, `rejected`…), o `null` si aún no hay intento. */
+  status: z.string().nullable(),
+  paymentId: z.string().nullable(),
+  /** Hasta cuándo se puede pagar; después la hora se libera. */
+  deadline: isoDateTime.nullable(),
+  paidAt: isoDateTime.nullable(),
+});
+
 // Reservas (F5.1). La forma de `weeklyHours` la define `weeklyHoursSchema` en `@impulza/validation`.
 
 const windowResponse = z.object({ start: z.string(), end: z.string() });
@@ -36,6 +49,8 @@ export const bookableServiceResponse = z.object({
   priceAmount: z.number().int().nullable(),
   priceCurrency: z.string().nullable(),
   paymentUrl: z.string().nullable(),
+  /** Seña que se cobra al reservar (F5.10), si el negocio tiene Mercado Pago conectado. */
+  depositAmount: z.number().int().nullable(),
   active: z.boolean(),
   position: z.number().int(),
   createdAt: isoDateTime,
@@ -73,6 +88,8 @@ export const publicBookingInfoResponse = z.object({
       priceAmount: z.number().int().nullable(),
       priceCurrency: z.string().nullable(),
       hasPaymentLink: z.boolean(),
+      /** Seña que se pagará al reservar (F5.10); `null` si este servicio no la cobra en línea. */
+      depositAmount: z.number().int().nullable(),
     }),
   ),
 });
@@ -86,8 +103,14 @@ export const publicBookingConfirmationResponse = z.object({
   timeZone: z.string(),
   priceAmount: z.number().int().nullable(),
   priceCurrency: z.string().nullable(),
-  /** Enlace de pago del propio negocio, si lo configuró (Impulza no cobra: decisión #6). */
+  /** Enlace de pago del propio negocio, si lo configuró y la reserva no cobra seña en línea. */
   paymentUrl: z.string().nullable(),
+  /** `PENDING_PAYMENT`: la hora queda guardada hasta `paymentDeadline` y se confirma al pagar la seña (F5.10). */
+  status: z.enum(["CONFIRMED", "PENDING_PAYMENT"]),
+  depositAmount: z.number().int().nullable(),
+  paymentDeadline: isoDateTime.nullable(),
+  /** Dónde pagar la seña con Mercado Pago. */
+  checkoutUrl: z.string().nullable(),
 });
 export type PublicBookingConfirmationResponse = z.infer<typeof publicBookingConfirmationResponse>;
 
@@ -108,8 +131,9 @@ export const bookingResponse = z.object({
   customerEmail: z.string(),
   customerPhone: z.string().nullable(),
   note: z.string().nullable(),
-  status: z.enum(["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"]),
+  status: bookingStatus,
   source: z.enum(["PUBLIC", "MANUAL"]),
+  deposit: depositResponse.nullable(),
   cancelledAt: isoDateTime.nullable(),
   createdAt: isoDateTime,
 });
@@ -125,10 +149,14 @@ export const publicManagedBookingResponse = z.object({
   startsAt: isoDateTime,
   endsAt: isoDateTime,
   timeZone: z.string(),
-  status: z.enum(["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"]),
+  status: bookingStatus,
   priceAmount: z.number().int().nullable(),
   priceCurrency: z.string().nullable(),
   paymentUrl: z.string().nullable(),
+  /** Seña (F5.10), sin id del pago: el cliente no lo necesita. */
+  deposit: z.object({ amount: z.number().int(), status: z.string().nullable(), deadline: isoDateTime.nullable(), paidAt: isoDateTime.nullable() }).nullable(),
+  /** Dónde pagar la seña, solo mientras la reserva la espera y el plazo no venció. */
+  checkoutUrl: z.string().nullable(),
   /** `false` si ya no está confirmada o falta menos que la anticipación mínima del negocio. */
   canChange: z.boolean(),
   /** Hasta cuándo se puede cancelar o cambiar. */

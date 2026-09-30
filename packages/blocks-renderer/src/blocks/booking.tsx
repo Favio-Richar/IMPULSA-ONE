@@ -164,6 +164,7 @@ function BookingFlow({ siteSlug, serviceIds }: { siteSlug: string; serviceIds?: 
                   {durationLabel(candidate.durationMinutes)}
                 </span>
                 {candidate.priceAmount !== null && candidate.priceCurrency ? <span>{formatPrice(candidate.priceAmount, candidate.priceCurrency)}</span> : null}
+                {candidate.depositAmount !== null && candidate.priceCurrency ? <span>Seña {formatPrice(candidate.depositAmount, candidate.priceCurrency)}</span> : null}
               </span>
               {candidate.description ? <span className="text-xs">{candidate.description}</span> : null}
             </button>
@@ -501,6 +502,39 @@ function Confirmation({ confirmation, heading }: { confirmation: PublicBookingCo
     });
     return `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
   }, [confirmation]);
+
+  // Seña (F5.10): la hora queda guardada hasta el plazo y se confirma al pagarla en Mercado Pago.
+  if (confirmation.status === "PENDING_PAYMENT") {
+    const deposit = confirmation.depositAmount !== null && confirmation.priceCurrency ? formatPrice(confirmation.depositAmount, confirmation.priceCurrency) : "";
+    const until = confirmation.paymentDeadline
+      ? new Intl.DateTimeFormat("es-CL", { timeZone: confirmation.timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(confirmation.paymentDeadline))
+      : null;
+    return (
+      <div className="flex flex-col gap-4" role="status">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--site-color-primary)] text-[var(--site-color-primary-foreground)]">
+            <CreditCard className="h-5 w-5" aria-hidden="true" />
+          </span>
+          {heading("Paga la seña para confirmar")}
+        </div>
+        <p className="text-sm text-[var(--site-color-foreground)]">
+          Guardamos tu hora: <span className="font-medium">{confirmation.serviceName}</span>, <span>{when}</span>. Paga la seña de{" "}
+          <span className="font-semibold">{deposit}</span>
+          {until ? ` antes de las ${until}` : ""} para confirmarla; si no, la hora se libera.
+        </p>
+        {confirmation.checkoutUrl ? (
+          // Misma pestaña: Mercado Pago devuelve al cliente a "Tu reserva", con el estado del pago.
+          <a href={confirmation.checkoutUrl} rel="noopener noreferrer" className={PRIMARY_BUTTON}>
+            <CreditCard className="h-4 w-4" aria-hidden="true" />
+            Pagar la seña con Mercado Pago
+          </a>
+        ) : null}
+        <p className="text-xs text-[var(--site-color-muted-foreground)]">
+          Pagas en el sitio de Mercado Pago y el dinero lo recibe directamente el negocio. También te enviamos el enlace por correo.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4" role="status">

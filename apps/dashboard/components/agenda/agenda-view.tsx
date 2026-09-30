@@ -16,6 +16,7 @@ type View = "day" | "week";
 const STATUS_FILTERS: Array<{ value: "" | BookingStatusValue; label: string }> = [
   { value: "", label: "Todas" },
   { value: "CONFIRMED", label: BOOKING_STATUS_LABELS.CONFIRMED },
+  { value: "PENDING_PAYMENT", label: BOOKING_STATUS_LABELS.PENDING_PAYMENT },
   { value: "COMPLETED", label: BOOKING_STATUS_LABELS.COMPLETED },
   { value: "NO_SHOW", label: BOOKING_STATUS_LABELS.NO_SHOW },
   { value: "CANCELLED", label: BOOKING_STATUS_LABELS.CANCELLED },

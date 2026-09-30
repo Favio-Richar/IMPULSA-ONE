@@ -32,7 +32,7 @@ F4.8 hosting, SSL de F4.7). Favio pidió el 2026-09-26 seguir con la fase siguie
 | F5.7 — Aislamiento y seguridad de Fase 5 | Lista para tu revisión (sin UI: pruebas en la suite central) |
 | F5.8 — Conectar la cuenta de Mercado Pago del negocio (OAuth + PKCE) | Lista para tu revisión (capturas en `docs/design/capturas/f58/`; falta probar con tu aplicación real de Mercado Pago) |
 | F5.9 — Cobro de pedidos de la tienda con Checkout Pro y confirmación automática | Lista para tu revisión (capturas en `docs/design/capturas/f59/`; falta probar con tu aplicación real de Mercado Pago) |
-| F5.10 — Seña de reservas cobrada al reservar | Pendiente |
+| F5.10 — Seña de reservas cobrada al reservar | Lista para tu revisión (capturas en `docs/design/capturas/f510/`; falta probar con tu aplicación real de Mercado Pago) |
 | F5.11 — Reembolsos, contracargos y descargas pagadas | Pendiente |
 | — Afiliados | Sin fase (se diseña con uso real) |
 | — Profesionales y sucursales múltiples, integración de calendario externo/videollamada | Después de F5.4 (se diseña con uso real) |
@@ -132,6 +132,33 @@ directo a él; Impulza no custodia fondos, no ve tarjetas y no cobra comisión p
 **F5.10 — Seña de reservas**
 - El servicio define una seña (monto fijo); la reserva queda "pendiente de pago" y se confirma al
   pagarse; si no se paga en el plazo, se libera el horario.
+
+> **Estado (2026-09-30): F5.10 lista para revisión.**
+> - Servicio: `depositAmount` (seña fija, > 0 y ≤ precio; `CHECK` en la base y regla en Zod). Panel:
+>   campo "Seña al reservar" en el formulario del servicio.
+> - Base: dos migraciones aditivas (el valor de enum nuevo va solo, Postgres no lo deja usar en la
+>   misma transacción): `20260930040000_f510_booking_pending_status` (`PENDING_PAYMENT`) y
+>   `20260930040100_f510_booking_deposits` (seña y campos de cobro en `bookings`, `CHECK` de reserva
+>   pendiente con monto y plazo, `provider_payment_id` único). **La restricción `bookings_no_overlap`
+>   ahora cuenta también las reservas esperando seña.** Ambos `down.sql` probados en orden (revertir
+>   → 4 valores, 0 columnas y la restricción original; reaplicar → todo de vuelta).
+> - API: con cuenta conectada, servicio con seña y CLP, la reserva pública queda "esperando seña"
+>   (ocupa la hora) con plazo de 30 min (nunca más allá del inicio) y se crea la preferencia a nombre
+>   del negocio; si Mercado Pago falla, se confirma sin seña. Aviso por reserva con firma verificada;
+>   pago consultado con el token del negocio y la misma regla que los pedidos
+>   (`checkoutPaymentMismatches`, compartida con F5.9). "Tu reserva" consulta el pago al volver. Pago
+>   tardío: si el worker liberó la hora y sigue libre, se reconfirma; si no, queda cancelada y se
+>   avisa al negocio. Agenda: la seña en cada reserva, "Confirmar sin seña"; "esperando seña" no se
+>   pone a mano (400). Auditoría `booking.deposit_paid`/`booking.deposit_paid_without_slot`.
+> - Worker: cada minuto libera las horas con la seña vencida (5 min de margen), condicional y con
+>   un solo aviso al cliente.
+> - Correos: pedir la seña (monto, plazo, enlace), seña recibida, hora liberada; al negocio, reserva
+>   con seña pagada (id del pago) y pago de una reserva que ya no estaba activa.
+> - Pruebas: API e2e 10 nuevas + caso nuevo en la suite central; **suite completa de la API 534/534**;
+>   worker 2; validación +5; pagos +1; Playwright `reserva-sena.spec.ts` 6/6 y 26/26 en las pruebas
+>   de reservas, tienda y pedidos sin regresiones.
+> - Decisión de producto a revisar: el contador "Por atender" de la agenda no suma las reservas que
+>   esperan seña (todavía no son seguras).
 
 **F5.11 — Reembolsos, contracargos y descargas pagadas**
 - Reembolso desde el panel del negocio (con su token), contracargos informados, y productos

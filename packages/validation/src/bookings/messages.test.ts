@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { bookingCancelledEmail, bookingConfirmationEmail, bookingReminderEmail, formatBookingWhen, ownerBookingNoticeEmail } from "./messages.js";
+import {
+  bookingCancelledEmail,
+  bookingConfirmationEmail,
+  bookingDepositExpiredEmail,
+  bookingDepositPaidEmail,
+  bookingDepositPendingEmail,
+  bookingReminderEmail,
+  formatBookingWhen,
+  formatDepositAmount,
+  ownerBookingNoticeEmail,
+} from "./messages.js";
 
 const data = {
   siteName: "Barbería El Filo",
@@ -56,5 +66,34 @@ describe("correos de reservas (F5.4)", () => {
     const email = bookingCancelledEmail(data);
     expect(email.text).not.toContain("pago.ejemplo.cl");
     expect(email.text).not.toContain("/reserva/");
+  });
+});
+
+describe("correos de seña (F5.10)", () => {
+  const deposit = { ...data, paymentUrl: null, depositAmount: 5000 };
+
+  it("pide la seña con el monto, el plazo en la hora del negocio y el enlace para pagarla", () => {
+    // 13:30Z son las 10:30 en Santiago.
+    const email = bookingDepositPendingEmail(deposit, "2026-09-29T13:30:00Z");
+    expect(email.subject).toBe("Paga la seña para confirmar tu reserva en Barbería El Filo");
+    expect(email.text).toContain("Seña: $5.000");
+    expect(email.text).toContain("Tienes hasta las 10:30");
+    expect(email.text).toContain("https://impulza.one/reserva/abc");
+  });
+
+  it("confirma la reserva al pagarla y avisa cuando la hora se libera", () => {
+    expect(bookingDepositPaidEmail(deposit).text).toContain("Seña pagada: $5.000");
+    const expired = bookingDepositExpiredEmail(deposit);
+    expect(expired.subject).toBe("Se liberó tu hora en Barbería El Filo");
+    expect(expired.text).not.toContain("https://");
+  });
+
+  it("al negocio: la seña pagada con el id del pago, y qué hacer si la reserva ya no estaba activa", () => {
+    const base = { siteName: "Barbería El Filo", serviceName: "Corte", startsAt: data.startsAt, timeZone: data.timeZone, customerName: "Ana", customerEmail: "ana@example.com", customerPhone: null, note: null, agendaUrl: null };
+    const paid = ownerBookingNoticeEmail({ ...base, kind: "deposit_paid", deposit: { amount: formatDepositAmount(5000, "CLP"), paymentId: "123" } });
+    expect(paid.subject).toContain("Nueva reserva con seña pagada");
+    expect(paid.text).toContain("$5.000 (pago 123)");
+    const orphan = ownerBookingNoticeEmail({ ...base, kind: "paid_without_slot", deposit: { amount: "$5.000", paymentId: "124" } });
+    expect(orphan.text).toContain("devuélvele la seña");
   });
 });

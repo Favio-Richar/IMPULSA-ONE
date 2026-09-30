@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from "@nestjs/common";
-import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { publicManagedBookingResponse } from "@impulza/contracts";
 import { rescheduleBookingSchema, type RescheduleBookingInput } from "@impulza/validation";
 import { CsrfGuard } from "../../common/csrf.guard.js";
@@ -25,8 +25,9 @@ export class BookingManageController {
   @ApiOperation({ summary: "Ver una reserva con su enlace de gestión" })
   @ApiZodResponse(200, publicManagedBookingResponse, "La reserva, y si todavía se puede cambiar.")
   @ApiResponse({ status: 404, description: MANAGE_NOT_FOUND })
-  view(@Param("token") token: string) {
-    return this.manageService.view(token);
+  @ApiQuery({ name: "paymentId", required: false, description: "Id del pago de la seña en Mercado Pago, tal como vuelve el cliente (F5.10): se consulta con el token del negocio." })
+  view(@Param("token") token: string, @Query("paymentId") paymentId: unknown) {
+    return this.manageService.view(token, new Date(), typeof paymentId === "string" ? paymentId : undefined);
   }
 
   @Post("cancel")

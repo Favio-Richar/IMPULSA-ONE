@@ -16,7 +16,7 @@ import { REDIS } from "../../redis/redis.module.js";
 import { listenForTests } from "../../test-support/http.js";
 import { assignRoomyPlan } from "../../test-support/plans.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
-import { ORDER_CHECKOUT } from "./order-checkout.tokens.js";
+import { MERCADO_PAGO_CHECKOUT } from "../payment-accounts/checkout.tokens.js";
 
 // F5.9 (ADR-013) — cobro de pedidos con Checkout Pro en la cuenta de Mercado Pago del negocio.
 
@@ -56,7 +56,7 @@ describe("Cobro de pedidos con Mercado Pago (e2e) — F5.9, ADR-013", () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(EMAIL_ADAPTER)
       .useValue(emailAdapter)
-      .overrideProvider(ORDER_CHECKOUT)
+      .overrideProvider(MERCADO_PAGO_CHECKOUT)
       .useValue({ checkout, webhookSecret: WEBHOOK_SECRET })
       .compile();
     app = moduleRef.createNestApplication();

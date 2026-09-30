@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkoutSupportsCurrency, FakeMercadoPagoCheckout, MercadoPagoCheckout } from "./index.js";
+import { checkoutPaymentMismatches, checkoutSupportsCurrency, FakeMercadoPagoCheckout, MercadoPagoCheckout } from "./index.js";
 
 type Call = { url: string; init: RequestInit };
 function fakeFetch(responses: Array<{ status: number; body?: unknown }>) {
@@ -78,6 +78,19 @@ describe("MercadoPagoCheckout", () => {
     await expect(checkout(400).createPreference(TOKEN, input, true)).rejects.toMatchObject({ code: "rejected" });
     await expect(checkout(503).getPayment(TOKEN, "1")).rejects.toMatchObject({ code: "unavailable", retryable: true });
     await expect(checkout(200).getPayment(TOKEN, "1")).rejects.toMatchObject({ code: "invalid_response" });
+  });
+});
+
+describe("checkoutPaymentMismatches", () => {
+  const payment = { id: "1", status: "approved", statusDetail: null, externalReference: "ref-1", amount: 5_000, currency: "CLP", collectorId: "77", approvedAt: null, liveMode: false };
+  const expected = { externalReference: "ref-1", collectorId: "77", amount: 5_000, currency: "CLP" };
+
+  it("coincide solo si referencia, cuenta receptora, monto y moneda son los esperados", () => {
+    expect(checkoutPaymentMismatches(payment, expected)).toEqual([]);
+    expect(checkoutPaymentMismatches({ ...payment, externalReference: "ref-2" }, expected)).toEqual(["reference"]);
+    expect(checkoutPaymentMismatches({ ...payment, collectorId: null }, expected)).toEqual(["collector"]);
+    expect(checkoutPaymentMismatches({ ...payment, amount: 4_999 }, expected)).toEqual(["amount"]);
+    expect(checkoutPaymentMismatches({ ...payment, currency: "USD" }, expected)).toEqual(["amount"]);
   });
 });
 

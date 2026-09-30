@@ -6,6 +6,7 @@ import {
   bookingSettingsSchema,
   DEFAULT_BOOKING_SETTINGS,
   isValidTimeZone,
+  updateBookingStatusSchema,
   weeklyHoursSchema,
   zonedWallTimeToUtc,
   type AvailabilityInput,
@@ -143,6 +144,20 @@ describe("esquemas de reservas (F5.1)", () => {
     expect(bookableServiceSchema.safeParse({ name: "Corte", durationMinutes: 3 }).success).toBe(false);
     expect(bookableServiceSchema.safeParse({ name: "Corte", durationMinutes: 30, paymentUrl: "javascript:alert(1)" }).success).toBe(false);
     expect(bookableServiceSchema.safeParse({ name: "Corte", durationMinutes: 30, paymentUrl: "https://link.mercadopago.cl/corte" }).success).toBe(true);
+  });
+
+  it("la seña (F5.10) necesita precio, es mayor que cero y no supera el precio", () => {
+    const priced = { name: "Corte", durationMinutes: 30, priceAmount: 12000, priceCurrency: "CLP" };
+    expect(bookableServiceSchema.safeParse({ ...priced, depositAmount: 5000 }).success).toBe(true);
+    expect(bookableServiceSchema.safeParse({ ...priced, depositAmount: 12000 }).success).toBe(true);
+    expect(bookableServiceSchema.safeParse({ ...priced, depositAmount: 12001 }).success).toBe(false);
+    expect(bookableServiceSchema.safeParse({ ...priced, depositAmount: 0 }).success).toBe(false);
+    expect(bookableServiceSchema.safeParse({ name: "Corte", durationMinutes: 30, depositAmount: 5000 }).success).toBe(false);
+  });
+
+  it("'esperando seña' no se puede poner a mano en la agenda", () => {
+    expect(updateBookingStatusSchema.safeParse({ status: "PENDING_PAYMENT" }).success).toBe(false);
+    expect(updateBookingStatusSchema.safeParse({ status: "CONFIRMED" }).success).toBe(true);
   });
 
   it("un bloqueo termina después de empezar y dura hasta un año", () => {

@@ -4,6 +4,9 @@ import type { Booking, PrismaClient } from "@impulza/database";
 import {
   bookingCancelledEmail,
   bookingConfirmationEmail,
+  bookingDepositPaidEmail,
+  bookingDepositPendingEmail,
+  formatDepositAmount,
   bookingRescheduledEmail,
   ownerBookingNoticeEmail,
   type BookingMessageData,
@@ -55,7 +58,24 @@ export class BookingNotifier {
       priceCurrency: booking.priceCurrency,
       paymentUrl: booking.paymentUrl,
       manageUrl: bookingManageUrl(booking.id),
+      depositAmount: booking.depositAmount,
     };
+  }
+
+  /** La reserva espera la seña (F5.10): se le pide pagarla antes del plazo. */
+  async notifyDepositPending(booking: Booking, siteName: string): Promise<void> {
+    if (!booking.paymentDeadline) return;
+    await this.send(booking.customerEmail, bookingDepositPendingEmail(this.messageData(booking, siteName), booking.paymentDeadline.toISOString()), {
+      bookingId: booking.id,
+      kind: "deposit_pending",
+      to: "customer",
+    });
+  }
+
+  /** Mercado Pago confirmó la seña: al cliente (reserva confirmada) y a los dueños (nueva reserva con seña). */
+  async notifyDepositPaid(booking: Booking, siteName: string, paymentId: string): Promise<void> {
+    await this.send(booking.customerEmail, bookingDepositPaidEmail(this.messageData(booking, siteName)), { bookingId: booking.id, kind: "deposit_paid", to: "customer" });
+    await this.notifyOwners("deposit_paid", booking, siteName, paymentId);
   }
 
   async notifyCustomer(kind: CustomerNoticeKind, booking: Booking, siteName: string): Promise<void> {
@@ -65,7 +85,7 @@ export class BookingNotifier {
   }
 
   /** Aviso a los dueños activos de la organización. */
-  async notifyOwners(kind: OwnerNoticeKind, booking: Booking, siteName: string): Promise<void> {
+  async notifyOwners(kind: OwnerNoticeKind, booking: Booking, siteName: string, paymentId?: string): Promise<void> {
     const owners = await this.prisma.membership.findMany({
       where: { organizationId: booking.organizationId, status: "ACTIVE", role: { name: "OWNER" } },
       select: { user: { select: { email: true } } },
@@ -81,6 +101,10 @@ export class BookingNotifier {
       customerPhone: booking.customerPhone,
       note: booking.note,
       agendaUrl: `${env.APP_BASE_URL.replace(/\/$/, "")}/reservas`,
+      deposit:
+        paymentId && booking.depositAmount !== null && booking.priceCurrency
+          ? { amount: formatDepositAmount(booking.depositAmount, booking.priceCurrency), paymentId }
+          : null,
     });
     for (const owner of owners) {
       await this.send(owner.user.email, content, { bookingId: booking.id, kind, to: "owner" });

@@ -22,7 +22,9 @@ function isOverlapViolation(error: unknown): boolean {
 /**
  * Agenda del negocio (F5.3): ver, anotar y cambiar el estado de las reservas. Alcance
  * `organizationId` siempre (404 ante un id cruzado, ADR-002). La base impide dos reservas
- * confirmadas que se pisen, también al reactivar una cancelada.
+ * confirmadas (o esperando seña) que se pisen, también al reactivar una cancelada. Una reserva que
+ * espera seña (F5.10) el negocio la puede confirmar sin seña o cancelar; ponerla "esperando seña" a
+ * mano no se puede (`updateBookingStatusSchema`).
  */
 @Injectable()
 export class AgendaService {
@@ -52,6 +54,16 @@ export class AgendaService {
       note: booking.note,
       status: booking.status,
       source: booking.source,
+      deposit:
+        booking.depositAmount === null
+          ? null
+          : {
+              amount: booking.depositAmount,
+              status: booking.paymentStatus,
+              paymentId: booking.providerPaymentId,
+              deadline: booking.paymentDeadline?.toISOString() ?? null,
+              paidAt: booking.depositPaidAt?.toISOString() ?? null,
+            },
       cancelledAt: booking.cancelledAt?.toISOString() ?? null,
       createdAt: booking.createdAt.toISOString(),
     };

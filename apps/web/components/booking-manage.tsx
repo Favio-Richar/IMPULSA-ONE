@@ -13,6 +13,7 @@ const SECONDARY =
 
 const STATUS_TEXT: Record<PublicManagedBookingResponse["status"], string> = {
   CONFIRMED: "Confirmada",
+  PENDING_PAYMENT: "Esperando la seña",
   CANCELLED: "Cancelada",
   COMPLETED: "Atendida",
   NO_SHOW: "No asististe",
@@ -26,6 +27,30 @@ function formatWhen(iso: string, timeZone: string): string {
   return sentenceCase(
     new Intl.DateTimeFormat("es-CL", { timeZone, weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso)),
   );
+}
+
+function formatTime(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("es-CL", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
+}
+
+/** Qué decirle al cliente sobre su seña (F5.10), o `null` si la reserva no la cobra. */
+export function depositNotice(booking: PublicManagedBookingResponse): string | null {
+  const deposit = booking.deposit;
+  if (!deposit || !booking.priceCurrency) return null;
+  const amount = formatPrice(deposit.amount, booking.priceCurrency);
+  if (deposit.paidAt) return `Seña de ${amount} pagada. ¡Gracias!`;
+  if (booking.status === "PENDING_PAYMENT") {
+    if (deposit.status === "in_process" || deposit.status === "pending" || deposit.status === "authorized") {
+      return `Mercado Pago está revisando el pago de tu seña de ${amount}. Te avisaremos por correo apenas se confirme.`;
+    }
+    const until = deposit.deadline ? ` antes de las ${formatTime(deposit.deadline, booking.timeZone)}` : "";
+    const retry = deposit.status === "rejected" || deposit.status === "cancelled" ? "El pago no se completó. " : "";
+    return booking.checkoutUrl
+      ? `${retry}Tu hora está guardada. Paga la seña de ${amount}${until} para confirmarla; si no, la hora se libera.`
+      : `El plazo para pagar la seña de ${amount} venció. Si no se registró el pago, la hora se liberará.`;
+  }
+  if (booking.status === "CANCELLED") return `No recibimos la seña de ${amount} a tiempo y la hora se liberó.`;
+  return null;
 }
 
 function formatPrice(amount: number, currency: string): string {
@@ -52,7 +77,7 @@ async function post(token: string, action: "cancel" | "reschedule", body: object
  * Cancelar pide confirmación en la misma pantalla; cambiar la hora usa el mismo selector de día y
  * hora que la reserva (horas libres calculadas por el servidor, sin contar la propia reserva).
  */
-export function BookingManage({ token, initial }: { token: string; initial: PublicManagedBookingResponse }) {
+export function BookingManage({ token, initial, refreshHref }: { token: string; initial: PublicManagedBookingResponse; refreshHref: string }) {
   const [booking, setBooking] = useState(initial);
   const [mode, setMode] = useState<"view" | "confirm-cancel" | "reschedule">("view");
   const [info, setInfo] = useState<PublicBookingInfoResponse | null>(null);
@@ -106,6 +131,8 @@ export function BookingManage({ token, initial }: { token: string; initial: Publ
   }
 
   const service = info?.services.find((candidate) => candidate.id === booking.serviceId);
+  const notice = depositNotice(booking);
+  const pendingReview = booking.deposit?.status === "in_process" || booking.deposit?.status === "pending" || booking.deposit?.status === "authorized";
 
   return (
     <div className="flex flex-col gap-4">
@@ -129,6 +156,12 @@ export function BookingManage({ token, initial }: { token: string; initial: Publ
           <dd className="font-medium">{STATUS_TEXT[booking.status]}</dd>
         </dl>
 
+        {notice ? (
+          <p role="status" className="mt-4 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-background)] px-3 py-2 text-sm">
+            {notice}
+          </p>
+        ) : null}
+
         {message ? (
           <p role={message.kind === "error" ? "alert" : "status"} className="mt-4 flex items-start gap-2 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-background)] px-3 py-2 text-sm">
             {message.text}
@@ -137,6 +170,17 @@ export function BookingManage({ token, initial }: { token: string; initial: Publ
 
         {mode === "view" ? (
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {booking.checkoutUrl ? (
+              // Misma pestaña: Mercado Pago devuelve al cliente aquí, con el estado de la seña.
+              <a href={booking.checkoutUrl} rel="noopener noreferrer" className={PRIMARY}>
+                Pagar la seña con Mercado Pago
+              </a>
+            ) : null}
+            {booking.status === "PENDING_PAYMENT" && pendingReview ? (
+              <a href={refreshHref} className={SECONDARY}>
+                Actualizar estado
+              </a>
+            ) : null}
             {booking.paymentUrl ? (
               <a href={booking.paymentUrl} rel="nofollow noopener noreferrer" className={PRIMARY}>
                 Pagar ahora

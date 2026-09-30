@@ -9,6 +9,7 @@ import { startAnalyticsWorkers } from "./analytics-workers.js";
 import { startAutomationWorkers } from "./automations.js";
 import { startBillingWorkers } from "./billing.js";
 import { startPaymentAccountWorkers } from "./payment-accounts.js";
+import { startBookingDepositWorkers } from "./booking-deposits.js";
 import { startBookingReminderWorkers } from "./booking-reminders.js";
 import { startCampaignDispatchWorkers } from "./campaign-dispatch.js";
 import { env, mercadoPagoConfig, mercadoPagoOAuthConfig, webpayConfig } from "./env.js";
@@ -61,6 +62,13 @@ const bookingReminders = await startBookingReminderWorkers({
   connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
   publicSiteBaseUrl: env.PUBLIC_SITE_BASE_URL,
   bookingLinkSecret: env.BOOKING_LINK_SECRET,
+});
+
+// Señas de reservas (F5.10): libera cada minuto las horas cuya seña no se pagó a tiempo.
+const bookingDeposits = await startBookingDepositWorkers({
+  prisma,
+  email: new ConsoleEmailAdapter(),
+  connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
 });
 
 // Campañas de email (F5.6): el enlace de baja se firma con el mismo secreto de enlaces de correo.
@@ -144,6 +152,7 @@ async function shutdown(signal: string): Promise<void> {
   await workers.close();
   await mediaWorkers?.close();
   await bookingReminders.close();
+  await bookingDeposits.close();
   await campaignDispatch.close();
   await automations.close();
   await billing?.close();

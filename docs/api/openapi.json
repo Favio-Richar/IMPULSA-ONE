@@ -6336,6 +6336,24 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "measurement": {
+                      "type": "object",
+                      "properties": {
+                        "ga4MeasurementId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "metaPixelId": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ga4MeasurementId",
+                        "metaPixelId"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -7642,6 +7660,206 @@
           }
         ],
         "summary": "Cambiar el fondo de la página del sitio (PP3)",
+        "tags": [
+          "sites"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/measurement": {
+      "get": {
+        "description": "ID de medición de GA4 y del píxel de Meta, o `null` si están apagados.",
+        "operationId": "SitesController_getMeasurement",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio de la organización.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Identificadores de medición.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ga4MeasurementId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "metaPixelId": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ga4MeasurementId",
+                    "metaPixelId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Leer la medición de terceros del sitio (F7.1)",
+        "tags": [
+          "sites"
+        ]
+      },
+      "put": {
+        "description": "Solo identificadores con su formato exacto (`G-…` y dígitos), nunca código ni URLs: el script lo arma Impulza. La página pública los carga **solo con el consentimiento del visitante**. Queda auditado y la página se actualiza de inmediato.",
+        "operationId": "SitesController_setMeasurement",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio de la organización.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ga4MeasurementId": {
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^G-[A-Z0-9]{4,15}$"
+                  },
+                  "metaPixelId": {
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^\\d{10,20}$"
+                  }
+                },
+                "required": [
+                  "ga4MeasurementId",
+                  "metaPixelId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Medición guardada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ga4MeasurementId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "metaPixelId": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ga4MeasurementId",
+                    "metaPixelId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio no encontrado, o pertenece a otra organización (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Configurar GA4 y el píxel de Meta del sitio (F7.1, ADR-016)",
         "tags": [
           "sites"
         ]

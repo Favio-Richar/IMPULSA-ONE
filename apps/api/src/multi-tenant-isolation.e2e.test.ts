@@ -656,8 +656,10 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
 
       // El contrato público es deliberadamente mínimo: nada de id, organizationId ni themeId —
       // un visitante anónimo no necesita ni debe recibir identificadores internos (F2.7). `background`
-      // (PP3) es el fondo ya resuelto para pintar, sin ids.
-      expect(Object.keys(publicSite.body).sort()).toEqual(["background", "name", "pages", "slug", "theme"]);
+      // (PP3) es el fondo ya resuelto para pintar, sin ids. `measurement` (F7.1, ADR-016) son los
+      // identificadores de GA4 y del píxel de Meta, públicos por naturaleza (van en el HTML de
+      // cualquier sitio que los usa) y no son ids de Impulza.
+      expect(Object.keys(publicSite.body).sort()).toEqual(["background", "measurement", "name", "pages", "slug", "theme"]);
       expect(publicSite.body).not.toHaveProperty("id");
       expect(publicSite.body).not.toHaveProperty("organizationId");
       expect(JSON.stringify(publicSite.body)).not.toContain(orgB.id);
@@ -1729,6 +1731,21 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       // Ambas se resuelven antes de leer métricas o llamar al modelo: las cifras de B nunca viajan.
       await orgA.ownerAgent.post(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/ai/insights`).set(CSRF_HEADERS).send({ days: 7 }).expect(403);
       await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/ai/insights`).set(CSRF_HEADERS).send({ days: 7 }).expect(404);
+    });
+  });
+
+  describe("Medición de terceros del sitio (F7.1, ADR-016): nunca se cruza", () => {
+    it("A no lee ni cambia los identificadores de GA4 y Meta de un sitio de B", async () => {
+      await prisma.site.update({ where: { id: orgB.siteId }, data: { ga4MeasurementId: "G-ISOLATEB1", metaPixelId: null } });
+      try {
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/measurement`).expect(403);
+        await orgA.ownerAgent.put(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/measurement`).set(CSRF_HEADERS).send({ ga4MeasurementId: "G-ATTACKA1", metaPixelId: null }).expect(403);
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/measurement`).expect(404);
+        await orgA.ownerAgent.put(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/measurement`).set(CSRF_HEADERS).send({ ga4MeasurementId: "G-ATTACKA1", metaPixelId: null }).expect(404);
+        expect((await prisma.site.findUniqueOrThrow({ where: { id: orgB.siteId } })).ga4MeasurementId).toBe("G-ISOLATEB1");
+      } finally {
+        await prisma.site.update({ where: { id: orgB.siteId }, data: { ga4MeasurementId: null } });
+      }
     });
   });
 

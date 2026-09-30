@@ -9,6 +9,7 @@ import { getBookingAvailable, getPublicForm, getPublicPage, getPublicSite } from
 import { applySmartCta, smartCtaNeedsBookings } from "../lib/smart-cta";
 import { AbBucketCookie } from "./ab-bucket-cookie";
 import { AnalyticsTracker } from "./analytics-tracker";
+import { Measurement } from "./measurement";
 
 /** Todo bloque `contact_form` con un `formId` real, sin duplicados: varios bloques pueden apuntar
  *  al mismo formulario en la misma página. */
@@ -96,6 +97,15 @@ export async function SitePage({
         forms={forms}
         mode="public"
       />
+      {/* F7.1 (ADR-016): solo si el sitio tiene medición de terceros; nada se carga sin consentimiento. */}
+      {site.measurement && (site.measurement.ga4MeasurementId || site.measurement.metaPixelId) ? (
+        <Measurement
+          siteSlug={siteSlug}
+          siteName={site.name}
+          ga4MeasurementId={site.measurement.ga4MeasurementId}
+          metaPixelId={site.measurement.metaPixelId}
+        />
+      ) : null}
     </>
   );
 }

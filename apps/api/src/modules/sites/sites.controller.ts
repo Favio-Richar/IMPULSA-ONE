@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { siteBackgroundResponse, siteResponse, siteThemeResponse } from "@impulza/contracts";
+import { siteBackgroundResponse, siteMeasurementResponse, siteResponse, siteThemeResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
+import { measurementSettingsSchema, type MeasurementSettingsInput } from "@impulza/validation";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
 import { SESSION_AUTH } from "../../openapi/document.js";
@@ -179,6 +180,37 @@ export class SitesController {
     @Body(new ZodValidationPipe(setSiteBackgroundSchema)) body: SetSiteBackgroundDto,
   ) {
     return this.sitesService.setSiteBackground(organizationId, user.id, siteId, body.background);
+  }
+
+  @Get(":siteId/measurement")
+  @ApiOperation({ summary: "Leer la medición de terceros del sitio (F7.1)", description: "ID de medición de GA4 y del píxel de Meta, o `null` si están apagados." })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiZodResponse(200, siteMeasurementResponse, "Identificadores de medición.")
+  @ApiResponse({ status: 404, description: SITE_NOT_FOUND })
+  async getMeasurement(@Param("organizationId") organizationId: string, @Param("siteId") siteId: string) {
+    return this.sitesService.getSiteMeasurement(organizationId, siteId);
+  }
+
+  // PUT: reemplaza la configuración completa; `null` apaga el proveedor.
+  @Put(":siteId/measurement")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_UPDATE)
+  @ApiOperation({
+    summary: "Configurar GA4 y el píxel de Meta del sitio (F7.1, ADR-016)",
+    description:
+      "Solo identificadores con su formato exacto (`G-…` y dígitos), nunca código ni URLs: el script lo arma Impulza. La página pública los carga **solo con el consentimiento del visitante**. Queda auditado y la página se actualiza de inmediato.",
+  })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiZodBody(measurementSettingsSchema)
+  @ApiZodResponse(200, siteMeasurementResponse, "Medición guardada.")
+  @ApiResponse({ status: 404, description: SITE_NOT_FOUND })
+  async setMeasurement(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(measurementSettingsSchema)) body: MeasurementSettingsInput,
+  ) {
+    return this.sitesService.setSiteMeasurement(organizationId, user.id, siteId, body);
   }
 
   // Archivar y no borrar: el contenido del usuario no se destruye desde un endpoint de CRUD

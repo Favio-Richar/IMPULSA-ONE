@@ -28,6 +28,8 @@ export interface PublicSiteView {
   theme: { tokens: unknown };
   background: ResolvedSiteBackground | null;
   pages: Array<{ slug: string; isHome: boolean; publishedAt: Date }>;
+  /** Medición de terceros (F7.1, ADR-016): la página la usa solo con consentimiento del visitante. */
+  measurement: { ga4MeasurementId: string | null; metaPixelId: string | null };
 }
 
 export interface PublicBlockView {
@@ -128,6 +130,7 @@ export class PublicSitesService {
         isHome: page.isHome,
         publishedAt: page.versions[0]?.publishedAt ?? new Date(0),
       })),
+      measurement: { ga4MeasurementId: site.ga4MeasurementId, metaPixelId: site.metaPixelId },
     };
   }
 

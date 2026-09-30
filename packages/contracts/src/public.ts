@@ -36,6 +36,12 @@ export const publicSiteResponse = z.object({
   /** Ordenadas por `position`. Una página `HIDDEN` no aparece acá, pero sigue siendo alcanzable
    *  por enlace directo — mismo criterio que la API autenticada (F2.3). */
   pages: z.array(publicNavPageResponse),
+  /**
+   * Medición de terceros (F7.1, ADR-016): identificadores, o `null`. La página los usa **solo** con
+   * el consentimiento del visitante. Opcional en el contrato: una respuesta en caché de antes de
+   * F7.1 sigue siendo válida (sin medición).
+   */
+  measurement: z.object({ ga4MeasurementId: z.string().nullable(), metaPixelId: z.string().nullable() }).optional(),
 });
 
 export const publicBlockResponse = z.object({

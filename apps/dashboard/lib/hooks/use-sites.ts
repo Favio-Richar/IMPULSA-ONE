@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { MeasurementSettingsInput } from "@impulza/validation";
 import {
   archiveSite,
   assignSiteTheme,
   createSite,
   getSite,
   getSiteBackground,
+  getSiteMeasurement,
   getSiteTheme,
   listSites,
   setSiteBackground,
+  setSiteMeasurement,
   updateSite,
 } from "../api/sites";
 
@@ -94,6 +97,23 @@ export function useSetSiteBackground(organizationId: string, siteId: string) {
     mutationFn: (background: unknown) => setSiteBackground(organizationId, siteId, background),
     onSuccess: (data) => {
       queryClient.setQueryData(["sites", organizationId, siteId, "background"], data);
+    },
+  });
+}
+
+export function useSiteMeasurement(organizationId: string, siteId: string) {
+  return useQuery({
+    queryKey: ["sites", organizationId, siteId, "measurement"],
+    queryFn: () => getSiteMeasurement(organizationId, siteId),
+  });
+}
+
+export function useSetSiteMeasurement(organizationId: string, siteId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: MeasurementSettingsInput) => setSiteMeasurement(organizationId, siteId, body),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["sites", organizationId, siteId, "measurement"], data);
     },
   });
 }

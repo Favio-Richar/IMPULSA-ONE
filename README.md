@@ -3,11 +3,10 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual (2026-09-30): cobros de los negocios (F5.8–F5.11, ADR-013) en curso — F5.8, F5.9 (cobro
-de pedidos con Checkout Pro) y F5.10 (seña de reservas), F5.11a (reembolsos y
-contracargos) y F5.11b (descargas pagadas, ADR-015) listas para revisión: los cobros de los
-negocios quedan completos. Lo pendiente de todo el plan
-está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
+**Estado actual (2026-09-30): Fase 7 en curso — F7.1 (GA4 y píxel de Meta con consentimiento, y CSP
+en la página pública, ADR-016) lista para revisión; sigue F7.2 (webhooks salientes). Los cobros de
+los negocios (F5.8–F5.11, ADR-013 y ADR-015) quedaron completos y en revisión. Lo pendiente de todo
+el plan está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
 superadministración) listas para revisión, igual que F4.6b (Mercado Pago, pendiente de probar con credenciales reales). Fase 6 — Diferenciación — en curso (backlog en `docs/BACKLOG_FASE_6.md`). F6.1
 (salud de página), F6.2 (motor de IA con modelos locales primero, ADR-010), F6.2b (conexiones de IA
@@ -1281,6 +1280,15 @@ marca y últimos 4 dígitos.
 
 Pendiente para cobrar en producción: contrato Oneclick Mall, proveedor de boletas electrónicas y
 texto legal revisado (ver ADR-012, "Seguimiento"). Detalle en `docs/BACKLOG_FASE_4.md`.
+
+## Medición con GA4 y píxel de Meta (F7.1, ADR-016)
+
+Cada sitio guarda en el panel (Sitios → su sitio → "Medición") el ID de GA4 y el del píxel de Meta:
+solo identificadores, nunca código. La página pública muestra un aviso de cookies (Aceptar, Rechazar
+y Configurar, con el mismo peso) y **no carga nada de terceros sin consentimiento**; con él mide
+vistas, clics en WhatsApp, formularios, reservas y pedidos, sin datos personales. `apps/web` ahora
+responde con CSP y cabeceras de seguridad (`lib/security-headers.ts`); todo origen nuevo que cargue
+la página pública se agrega ahí con su prueba.
 
 ## Cobros de los negocios (F5.8, ADR-013)
 

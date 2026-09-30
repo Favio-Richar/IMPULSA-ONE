@@ -11,6 +11,7 @@ import { OUTBOUND_LINK } from "../ui/outbound.js";
 import { SiteImage } from "../ui/site-image.js";
 import { StackButtonContent, stackButtonClass, stackSurfaceClass } from "../ui/stack-button.js";
 import { SURFACE_SCOPE } from "../ui/surface.js";
+import { emitConversion } from "../lib/conversions.js";
 
 type Product = PublicCatalogResponse["products"][number];
 
@@ -196,6 +197,7 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
     setSubmitting(false);
     if (result.ok) {
       setConfirmation(result.data);
+      emitConversion({ kind: "order_created", value: result.data.totalAmount, currency: result.data.priceCurrency });
     } else if (result.status === 429) {
       setError("Hiciste muchos intentos seguidos. Espera unos minutos y vuelve a intentarlo.");
     } else {

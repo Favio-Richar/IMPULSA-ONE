@@ -7,6 +7,7 @@ import type { PublicFormResponse } from "@impulza/contracts";
 import type { ContactFormBlockConfig } from "@impulza/validation";
 import { StackButtonContent, stackButtonClass } from "../ui/stack-button.js";
 import { SURFACE_SCOPE } from "../ui/surface.js";
+import { emitConversion } from "../lib/conversions.js";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
@@ -102,6 +103,7 @@ export function ContactFormBlock({
       const data = (await response.json()) as { message: string; redirectUrl?: string };
       setAck(data);
       setStatus("success");
+      emitConversion({ kind: "form_submitted" });
       if (data.redirectUrl) {
         window.location.href = data.redirectUrl;
       }

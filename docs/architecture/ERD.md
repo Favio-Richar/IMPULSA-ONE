@@ -386,6 +386,12 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - **Order.download_count** (`CHECK` ≥ 0; tope por pedido en la API, incremento condicional) y
   **last_downloaded_at**.
 
+## 9o. Medición de terceros (F7.1, `BACKLOG_FASE_7.md`, ADR-016)
+
+- **Site.ga4_measurement_id** y **Site.meta_pixel_id** (opcionales; `CHECK` de formato:
+  `^G-[A-Z0-9]{4,15}$` y `^[0-9]{10,20}$`). Solo identificadores: el script lo arma Impulza. La
+  elección de consentimiento de cada visitante **no** se guarda en la base (vive en su navegador).
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 Variantes/cupones/carrito,

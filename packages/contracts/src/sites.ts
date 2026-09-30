@@ -125,3 +125,10 @@ export type PageResponse = z.infer<typeof pageResponse>;
 export type BlockResponse = z.infer<typeof blockResponse>;
 export type PageVersionSummaryResponse = z.infer<typeof pageVersionSummaryResponse>;
 export type PageVersionResponse = z.infer<typeof pageVersionResponse>;
+
+/** Medición de terceros de un sitio (F7.1, ADR-016): solo identificadores; `null` = apagado. */
+export const siteMeasurementResponse = z.object({
+  ga4MeasurementId: z.string().nullable(),
+  metaPixelId: z.string().nullable(),
+});
+export type SiteMeasurementResponse = z.infer<typeof siteMeasurementResponse>;

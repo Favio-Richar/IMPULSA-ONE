@@ -11,6 +11,7 @@ import { OUTBOUND_LINK } from "../ui/outbound.js";
 import { StackButtonContent, stackButtonClass, stackSurfaceClass } from "../ui/stack-button.js";
 import { fetchJson, INPUT_CLASS, Notice, PRIMARY_BUTTON, SECONDARY_BUTTON } from "../ui/flow.js";
 import { SURFACE_SCOPE } from "../ui/surface.js";
+import { emitConversion } from "../lib/conversions.js";
 
 type Service = PublicBookingInfoResponse["services"][number];
 type Step = "service" | "time" | "details" | "done";
@@ -204,6 +205,7 @@ function BookingFlow({ siteSlug, serviceIds }: { siteSlug: string; serviceIds?: 
           onDone={(result) => {
             setConfirmation(result);
             setStep("done");
+            emitConversion({ kind: "booking_created" });
           }}
         />
       ) : null}

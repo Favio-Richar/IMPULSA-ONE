@@ -82,6 +82,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Taxonomía de eventos y pipeline (endpoint → validación/rate limit → cola Redis/BullMQ → worker → agregados Postgres → dashboard) | ST §10 | Fase 3 |
 | No guardar datos personales innecesarios; anonimizar/truncar; idempotencia; diferenciar bots | ST §10, §15 | Fase 3, transversal en seguridad |
 | ClickHouse solo si Postgres deja de cumplir objetivos medidos | ST §10 | Diferido — decisión futura basada en datos |
+| Analítica y píxeles de terceros (GA4, píxel de Meta) con consentimiento del visitante; footer de cookies | PM §9.15, §9 (10) | Fase 7 — F7.1 (ADR-016, en revisión); incluye la CSP de `apps/web` que faltaba (ST §15) |
 
 ## 9. Planes, suscripciones y pagos
 

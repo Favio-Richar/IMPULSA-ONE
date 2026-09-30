@@ -441,6 +441,10 @@ model Site {
   // Fondo de la página (PP3): `siteBackgroundSchema` de `@impulza/validation`, validado al guardar
   // y otra vez al leer. `null` = el fondo del tema. En vivo, como el tema: no va en la publicación.
   background     Json?
+  // Medición de terceros (F7.1, ADR-016): solo identificadores (`CHECK` de formato en la base). Se
+  // cargan en la página pública únicamente con el consentimiento del visitante.
+  ga4MeasurementId String?  @map("ga4_measurement_id")
+  metaPixelId      String?  @map("meta_pixel_id")
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 

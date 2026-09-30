@@ -29,6 +29,11 @@ const envSchema = z.object({
   // otra app: nunca un href relativo como "/bienvenida", porque esa ruta no existe en este proceso
   // y sería un enlace roto en producción (F2.8: dos apps, dos orígenes).
   DASHBOARD_BASE_URL: z.url(),
+  // Solo para la CSP (ADR-016): el origen público de los medios (en local, MinIO por http) y el del
+  // almacenamiento, al que redirige la descarga pagada (F5.11b). Opcionales: sin ellos, la política
+  // no los agrega (en producción los medios ya entran por `https:`).
+  STORAGE_PUBLIC_BASE_URL: z.url().optional(),
+  STORAGE_ENDPOINT: z.url().optional(),
 });
 
 export const env = envSchema.parse({
@@ -37,4 +42,6 @@ export const env = envSchema.parse({
   PUBLIC_WEB_BASE_URL: process.env.PUBLIC_WEB_BASE_URL,
   INTERNAL_PROXY_SECRET: process.env.INTERNAL_PROXY_SECRET,
   DASHBOARD_BASE_URL: process.env.DASHBOARD_BASE_URL,
+  STORAGE_PUBLIC_BASE_URL: process.env.STORAGE_PUBLIC_BASE_URL || undefined,
+  STORAGE_ENDPOINT: process.env.STORAGE_ENDPOINT || undefined,
 });

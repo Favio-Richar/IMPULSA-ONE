@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
-import type { SiteBackgroundResponse } from "@impulza/contracts";
+import type { SiteBackgroundResponse, SiteMeasurementResponse } from "@impulza/contracts";
 import { MediaKind, MediaStatus, Prisma, type PrismaClient, type Site, SiteStatus } from "@impulza/database";
 import { parseMediaUrl, type StorageAdapter } from "@impulza/storage";
 import {
@@ -12,11 +12,13 @@ import {
   backgroundForDisplay,
   resolveSiteBackground,
   siteBackgroundSchema,
+  type MeasurementSettingsInput,
   type SiteBackground,
   themeTokensSchema,
 } from "@impulza/validation";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
+import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { ThemesService, type ThemeView } from "../themes/themes.service.js";
 import { PlansService } from "../plans/plans.service.js";
@@ -401,5 +403,39 @@ export class SitesService {
     await this.revalidateWeb.revalidateSite(site.id);
 
     return this.getSiteBackground(organizationId, siteId);
+  }
+
+  // --- Medición de terceros (F7.1, ADR-016) ---
+
+  async getSiteMeasurement(organizationId: string, siteId: string): Promise<SiteMeasurementResponse> {
+    const site = await this.getSiteOrThrow(organizationId, siteId);
+    return { ga4MeasurementId: site.ga4MeasurementId, metaPixelId: site.metaPixelId };
+  }
+
+  /**
+   * Guarda los identificadores (o los quita con `null`). Solo identificadores con su formato exacto
+   * (el script lo arma Impulza, nunca el negocio); la base repite la regla con un `CHECK`. Queda
+   * auditado sin los valores, y la página pública se actualiza de inmediato.
+   */
+  async setSiteMeasurement(organizationId: string, actorId: string, siteId: string, input: MeasurementSettingsInput): Promise<SiteMeasurementResponse> {
+    const site = await this.getSiteOrThrow(organizationId, siteId);
+    const updated = await this.prisma.site.update({
+      where: { id: site.id },
+      data: { ga4MeasurementId: input.ga4MeasurementId, metaPixelId: input.metaPixelId },
+    });
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "site.measurement_changed",
+      targetType: "Site",
+      targetId: site.id,
+      metadata: {
+        ga4: { before: site.ga4MeasurementId !== null, after: updated.ga4MeasurementId !== null },
+        metaPixel: { before: site.metaPixelId !== null, after: updated.metaPixelId !== null },
+      },
+    });
+    await this.revalidateWeb.revalidateSite(site.id);
+    logger.info("medición de terceros actualizada", { organizationId, siteId: site.id, ga4: updated.ga4MeasurementId !== null, metaPixel: updated.metaPixelId !== null });
+    return { ga4MeasurementId: updated.ga4MeasurementId, metaPixelId: updated.metaPixelId };
   }
 }

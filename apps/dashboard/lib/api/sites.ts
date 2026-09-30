@@ -1,4 +1,5 @@
-import type { SiteBackgroundResponse, SiteResponse, SiteThemeResponse } from "@impulza/contracts";
+import type { SiteBackgroundResponse, SiteMeasurementResponse, SiteResponse, SiteThemeResponse } from "@impulza/contracts";
+import type { MeasurementSettingsInput } from "@impulza/validation";
 import { apiFetch } from "../api-client";
 
 export function listSites(organizationId: string): Promise<SiteResponse[]> {
@@ -60,4 +61,13 @@ export function setSiteBackground(organizationId: string, siteId: string, backgr
     method: "PUT",
     body: { background },
   });
+}
+
+/** Medición de terceros del sitio (F7.1, ADR-016): solo identificadores; `null` apaga. */
+export function getSiteMeasurement(organizationId: string, siteId: string): Promise<SiteMeasurementResponse> {
+  return apiFetch<SiteMeasurementResponse>(`/organizations/${organizationId}/sites/${siteId}/measurement`);
+}
+
+export function setSiteMeasurement(organizationId: string, siteId: string, body: MeasurementSettingsInput): Promise<SiteMeasurementResponse> {
+  return apiFetch<SiteMeasurementResponse>(`/organizations/${organizationId}/sites/${siteId}/measurement`, { method: "PUT", body });
 }

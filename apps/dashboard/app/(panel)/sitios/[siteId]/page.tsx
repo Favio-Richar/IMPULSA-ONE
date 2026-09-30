@@ -30,6 +30,7 @@ import { z } from "zod";
 import { ConfirmButton } from "../../../../components/confirm-button";
 import { BackgroundPicker } from "../../../../components/site/background-picker";
 import { CustomDomains } from "../../../../components/site/custom-domains";
+import { MeasurementSettings } from "../../../../components/site/measurement-settings";
 import { useActiveOrgStore } from "../../../../lib/active-org-store";
 import { ApiError } from "../../../../lib/api-client";
 import {
@@ -101,6 +102,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
       <CatalogShortcut siteId={siteId} />
       <AbTestsShortcut siteId={siteId} />
       <CustomDomains organizationId={organizationId} siteId={siteId} />
+      <MeasurementSettings organizationId={organizationId} siteId={siteId} />
     </div>
   );
 }

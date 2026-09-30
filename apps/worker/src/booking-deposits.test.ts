@@ -72,7 +72,7 @@ describe("señas vencidas (F5.10)", () => {
     const onTime = await pending("a-tiempo", -20);
     const paid = await pending("pagada", 10, { providerPaymentId: `pago-${suffix}` });
 
-    await releaseExpiredDeposits(prisma, email, now);
+    await releaseExpiredDeposits(prisma, email, now, { organizationId });
 
     const after = await prisma.booking.findUniqueOrThrow({ where: { id: expired.id } });
     expect(after).toMatchObject({ status: "CANCELLED" });
@@ -104,7 +104,7 @@ describe("señas vencidas (F5.10)", () => {
 
   it("dos ejecuciones cruzadas liberan y avisan una sola vez", async () => {
     const expired = await pending("cruzada", 30);
-    await Promise.all([releaseExpiredDeposits(prisma, email, now), releaseExpiredDeposits(prisma, email, now)]);
+    await Promise.all([releaseExpiredDeposits(prisma, email, now, { organizationId }), releaseExpiredDeposits(prisma, email, now, { organizationId })]);
     expect(email.messages.filter((m) => m.to === expired.customerEmail)).toHaveLength(1);
   });
 });

@@ -19,9 +19,20 @@ const BATCH = 200;
  * condicional (sigue esperando seña y sin pago asignado): si el pago llegó justo antes, no se toca,
  * y dos ejecuciones cruzadas nunca avisan dos veces.
  */
-export async function releaseExpiredDeposits(prisma: PrismaClient, email: EmailAdapter, now: Date = new Date()): Promise<number> {
+export async function releaseExpiredDeposits(
+  prisma: PrismaClient,
+  email: EmailAdapter,
+  now: Date = new Date(),
+  /** Solo para pruebas: con el reloj adelantado, nunca tocar reservas de otras suites que corren a la vez. */
+  scope: { organizationId?: string } = {},
+): Promise<number> {
   const due = await prisma.booking.findMany({
-    where: { status: "PENDING_PAYMENT", providerPaymentId: null, paymentDeadline: { lt: new Date(now.getTime() - DEPOSIT_RELEASE_GRACE_MS) } },
+    where: {
+      status: "PENDING_PAYMENT",
+      providerPaymentId: null,
+      paymentDeadline: { lt: new Date(now.getTime() - DEPOSIT_RELEASE_GRACE_MS) },
+      ...(scope.organizationId ? { organizationId: scope.organizationId } : {}),
+    },
     include: { site: { select: { name: true } } },
     orderBy: { paymentDeadline: "asc" },
     take: BATCH,

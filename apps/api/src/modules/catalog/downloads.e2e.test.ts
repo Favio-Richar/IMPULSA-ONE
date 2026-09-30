@@ -286,8 +286,9 @@ describe("Descargas pagadas (e2e) — F5.11b, ADR-015", () => {
     await failed.confirm().expect(422);
     // Pasado el plazo: la subida pendiente ya no puede confirmarse y la rechazada dejó de mostrarse.
     const later = new Date(Date.now() + 8 * 24 * 3_600_000);
-    const removed = await cleanupAbandonedProductFiles(prisma, storage, later);
-    expect(removed).toBeGreaterThanOrEqual(2);
+    // Con alcance: el reloj adelantado no debe tocar archivos de otras suites que corren a la vez.
+    const removed = await cleanupAbandonedProductFiles(prisma, storage, later, { organizationId: s.organizationId });
+    expect(removed).toBe(2);
     expect(await prisma.productFile.findUnique({ where: { id: abandoned.fileId } })).toBeNull();
     expect(await prisma.productFile.findUnique({ where: { id: failed.fileId } })).toBeNull();
     expect(storage.objects.has(productFileKey(s.organizationId, s.productId, abandoned.fileId))).toBe(false);

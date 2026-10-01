@@ -96,10 +96,14 @@ if redis_ready || (command -v docker >/dev/null 2>&1 && docker compose ps redis 
 
 if db_ready && command -v pnpm >/dev/null 2>&1; then
   step "Base de datos: migraciones, seed y base de pruebas"
-  pnpm --filter @impulza/database run db:generate >>"$LOG" 2>&1 || log "AVISO: prisma generate falló"
-  pnpm --filter @impulza/database run db:migrate:deploy >>"$LOG" 2>&1 && log "migraciones OK" || log "AVISO: migrate deploy falló"
-  pnpm --filter @impulza/database run db:seed >>"$LOG" 2>&1 && log "seed OK" || log "AVISO: seed falló"
-  pnpm --filter @impulza/database run db:test:prepare >>"$LOG" 2>&1 && log "base de pruebas OK" || log "AVISO: db:test:prepare falló"
+  # La CLI de Prisma busca su .env en packages/database, que en la nube no existe: se exporta el de
+  # la raíz solo para estos comandos (en una subshell, para no contaminar el `next build` posterior
+  # con NODE_ENV=development).
+  db_run() { (set -a; . ./.env; set +a; pnpm --filter @impulza/database run "$1") >>"$LOG" 2>&1; }
+  db_run db:generate || log "AVISO: prisma generate falló"
+  db_run db:migrate:deploy && log "migraciones OK" || log "AVISO: migrate deploy falló"
+  db_run db:seed && log "seed OK" || log "AVISO: seed falló"
+  db_run db:test:prepare && log "base de pruebas OK" || log "AVISO: db:test:prepare falló"
 fi
 
 step "Listo"

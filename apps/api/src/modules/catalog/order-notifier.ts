@@ -49,6 +49,8 @@ export class OrderNotifier {
       priceCurrency: order.priceCurrency,
       paymentUrl: order.paymentUrl,
       statusUrl: statusUrl ?? null,
+      discountAmount: order.discountAmount,
+      couponCode: order.couponCode,
     };
   }
 

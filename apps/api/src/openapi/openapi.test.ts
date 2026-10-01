@@ -129,6 +129,9 @@ describe("Documento OpenAPI", () => {
       "POST /api/v1/public/bookings/{token}/reschedule",
       // "Tu pedido" (F5.9): la credencial es el enlace del correo (o el regreso de Mercado Pago).
       "GET /api/v1/public/orders/{token}",
+      // Cupones (F7.8b, ADR-023): probar un código antes de pedir. No revela qué códigos existen
+      // (respuesta uniforme), no cuenta un uso y tiene un tope estricto por visitante.
+      "POST /api/v1/public/sites/{siteSlug}/catalog/coupons/check",
       // Descargas pagadas (F5.11b): la credencial es el enlace firmado del correo; el pago se verifica en cada uso.
       "GET /api/v1/public/downloads/{token}",
       "POST /api/v1/public/downloads/{token}/url",

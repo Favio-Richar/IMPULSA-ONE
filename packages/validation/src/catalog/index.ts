@@ -120,6 +120,8 @@ export const publicOrderRequestSchema = z.object({
   /** Obligatoria si el producto tiene variantes activas (lo exige la API según el producto). */
   variantId: z.uuid().optional(),
   quantity: z.number().int().min(1).max(MAX_ORDER_QUANTITY),
+  /** Código de cupón (F7.8b). La API lo valida y calcula el descuento; si no aplica, responde 422. */
+  couponCode: z.string().trim().min(1).max(60).optional(),
   name: plainTextSchema(120),
   email: z.email("Escribe un correo válido.").max(254),
   phone: phoneSchema.optional(),

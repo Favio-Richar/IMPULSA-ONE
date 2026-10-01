@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import type { PublicCatalogResponse, PublicOrderConfirmationResponse } from "@impulza/contracts";
+import type { PublicCatalogResponse, PublicCouponCheckResponse, PublicOrderConfirmationResponse } from "@impulza/contracts";
 import type { Prisma, PrismaClient } from "@impulza/database";
-import { MAX_ORDER_QUANTITY, ORDER_HONEYPOT_FIELD, productWithVariantName, publicOrderRequestSchema } from "@impulza/validation";
+import { MAX_ORDER_QUANTITY, ORDER_HONEYPOT_FIELD, productWithVariantName, publicCouponCheckSchema, publicOrderRequestSchema } from "@impulza/validation";
 import type { Request } from "express";
 import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
 import { PRISMA } from "../../database/prisma.module.js";
@@ -11,6 +11,7 @@ import { AutomationEventsService } from "../automations/automation-events.servic
 import { WebhookEventsService } from "../webhooks/webhook-events.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
 import { storedImage } from "./catalog-setup.service.js";
+import { CouponsService } from "./coupons.service.js";
 import { OrderCheckoutService } from "./order-checkout.service.js";
 import { OrderNotifier } from "./order-notifier.js";
 
@@ -45,7 +46,52 @@ export class PublicCatalogService {
     private readonly automationEvents: AutomationEventsService,
     private readonly webhookEvents: WebhookEventsService,
     private readonly checkout: OrderCheckoutService,
+    private readonly coupons: CouponsService,
   ) {}
+
+  /**
+   * Producto y variante que se piden, con su precio. La variante (F7.8a, ADR-023) la exige el
+   * producto (si tiene activas), nunca lo que diga el visitante; y tiene que ser de **este** producto.
+   */
+  private async resolveLine(siteId: string, productId: string, variantId: string | undefined) {
+    const product = await this.prisma.product.findFirst({ where: { id: productId, siteId, active: true }, include: { variants: ACTIVE_VARIANTS } });
+    if (!product) {
+      throw new NotFoundException(PRODUCT_UNAVAILABLE);
+    }
+    let variant: (typeof product.variants)[number] | null = null;
+    if (product.variants.length > 0) {
+      if (!variantId) {
+        throw new BadRequestException({ message: "Revisa los datos del pedido.", issues: [{ path: "variantId", message: VARIANT_REQUIRED }] });
+      }
+      variant = product.variants.find((candidate) => candidate.id === variantId) ?? null;
+      if (!variant) {
+        throw new NotFoundException(VARIANT_UNAVAILABLE);
+      }
+    } else if (variantId) {
+      throw new NotFoundException(VARIANT_UNAVAILABLE);
+    }
+    return { product, variant, unitPrice: variant?.priceAmount ?? product.priceAmount, lineName: productWithVariantName(product.name, variant?.name) };
+  }
+
+  /**
+   * Probar un código antes de pedir (F7.8b): el descuento lo calcula el servidor con lo que se
+   * pediría. Cualquier código que no aplica recibe el mismo 422, sin decir por qué.
+   */
+  async checkCoupon(siteSlug: string, rawBody: unknown): Promise<PublicCouponCheckResponse> {
+    const parsed = publicCouponCheckSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        message: "Revisa los datos.",
+        issues: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+      });
+    }
+    const input = parsed.data;
+    const site = await this.siteOrThrow(siteSlug);
+    const { product, unitPrice } = await this.resolveLine(site.id, input.productId, input.variantId);
+    const subtotal = unitPrice * input.quantity;
+    const { coupon, discount } = await this.coupons.resolve(site.id, input.code, subtotal, product.priceCurrency);
+    return { code: coupon.code, subtotalAmount: subtotal, discountAmount: discount, totalAmount: subtotal - discount, priceCurrency: product.priceCurrency };
+  }
 
   private async siteOrThrow(siteSlug: string) {
     const site = await this.prisma.site.findFirst({
@@ -106,37 +152,27 @@ export class PublicCatalogService {
     }
     const input = parsed.data;
     const site = await this.siteOrThrow(siteSlug);
-    const product = await this.prisma.product.findFirst({ where: { id: input.productId, siteId: site.id, active: true }, include: { variants: ACTIVE_VARIANTS } });
-    if (!product) {
-      throw new NotFoundException(PRODUCT_UNAVAILABLE);
-    }
-    // Variante (F7.8a, ADR-023): la exige el producto (si tiene activas), nunca lo que diga el
-    // visitante; y tiene que ser una variante activa de **este** producto.
-    let variant: (typeof product.variants)[number] | null = null;
-    if (product.variants.length > 0) {
-      if (!input.variantId) {
-        throw new BadRequestException({ message: "Revisa los datos del pedido.", issues: [{ path: "variantId", message: VARIANT_REQUIRED }] });
-      }
-      variant = product.variants.find((candidate) => candidate.id === input.variantId) ?? null;
-      if (!variant) {
-        throw new NotFoundException(VARIANT_UNAVAILABLE);
-      }
-    } else if (input.variantId) {
-      throw new NotFoundException(VARIANT_UNAVAILABLE);
-    }
-    const unitPrice = variant?.priceAmount ?? product.priceAmount;
-    const lineName = productWithVariantName(product.name, variant?.name);
+    const { product, variant, unitPrice, lineName } = await this.resolveLine(site.id, input.productId, input.variantId);
     // Un producto físico se entrega: la dirección la exige el producto, no lo que diga el visitante.
     if (product.kind === "PHYSICAL" && !input.address) {
       throw new BadRequestException({ message: "Revisa los datos del pedido.", issues: [{ path: "address", message: ADDRESS_REQUIRED }] });
     }
+    // Cupón (F7.8b): se valida y calcula aquí; el uso se cuenta dentro de la transacción. Si no
+    // aplica, el pedido no se hace (422): el visitante decide si sigue sin el descuento.
+    const subtotal = unitPrice * input.quantity;
+    const applied = input.couponCode ? await this.coupons.resolve(site.id, input.couponCode, subtotal, product.priceCurrency) : null;
+    const discount = applied?.discount ?? 0;
+    const total = subtotal - discount;
     const confirmation: PublicOrderConfirmationResponse = {
       productName: lineName,
       quantity: input.quantity,
       unitPriceAmount: unitPrice,
-      totalAmount: unitPrice * input.quantity,
+      totalAmount: total,
       priceCurrency: product.priceCurrency,
-      paymentUrl: product.paymentUrl,
+      discountAmount: discount,
+      couponCode: applied?.coupon.code ?? null,
+      // Un pedido gratis (cupón del 100 %) no tiene nada que pagar.
+      paymentUrl: total > 0 ? product.paymentUrl : null,
       checkoutUrl: null,
     };
 
@@ -173,6 +209,9 @@ export class PublicCatalogService {
         stockSource = "product";
       }
       const tracksStock = stockSource !== null;
+      if (applied) {
+        await this.coupons.redeem(tx, applied.coupon.id);
+      }
       return tx.order.create({
         data: {
           organizationId: site.organizationId,
@@ -183,8 +222,11 @@ export class PublicCatalogService {
           unitPriceAmount: unitPrice,
           priceCurrency: product.priceCurrency,
           quantity: input.quantity,
-          totalAmount: unitPrice * input.quantity,
-          paymentUrl: product.paymentUrl,
+          totalAmount: total,
+          discountAmount: discount,
+          couponId: applied?.coupon.id ?? null,
+          couponCode: applied?.coupon.code ?? null,
+          paymentUrl: total > 0 ? product.paymentUrl : null,
           customerName: input.name,
           customerEmail: input.email.toLowerCase(),
           customerPhone: input.phone ?? null,

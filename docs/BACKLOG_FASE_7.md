@@ -15,7 +15,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.5 — Secuencias de correo automáticas (bienvenida, seguimiento) sobre las automatizaciones | Lista para tu revisión (ADR-020; capturas en `docs/design/capturas/f75/`) |
 | F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Lista para tu revisión (ADR-021; capturas en `docs/design/capturas/f76/`) |
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Lista para tu revisión (ADR-022; capturas en `docs/design/capturas/f77/`) |
-| F7.8 — Tienda: variantes, cupones y carrito | En curso (ADR-023): F7.8a variantes y líneas de pedido lista para tu revisión (capturas en `docs/design/capturas/f78a/`); siguen F7.8b cupones y F7.8c carrito |
+| F7.8 — Tienda: variantes, cupones y carrito | En curso (ADR-023): F7.8a variantes y F7.8b cupones listas para tu revisión (capturas en `docs/design/capturas/f78a/` y `f78b/`); sigue F7.8c carrito |
 | F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Pendiente |
 | F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Pendiente |
 | F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Pendiente |
@@ -382,6 +382,38 @@ Implementación de F7.8a (2026-10-01) — lista para tu revisión:
   con descuento. Mensaje único "no es válido" para cualquier código que no aplica, con tope por IP.
 - Pruebas: unitarias (cálculo y redondeo), API e2e (tope concurrente, ventana, mínimo, moneda, cobro
   por el total con descuento, aislamiento), Playwright.
+
+Implementación de F7.8b (2026-10-01) — lista para tu revisión:
+- Migración `20261001200000_f78b_coupons` (reversa verificada: aplicar, `down.sql`, reaplicar):
+  tabla `coupons` (código único por sitio, CHECK de tipo, monto, moneda, mínimo, ventana y usos ≤
+  tope) y en `orders` las columnas `discount_amount` (0 por defecto), `coupon_id` (SET NULL) y
+  `coupon_code`. La regla del total pasa a `total = precio × cantidad − descuento` (con el descuento
+  nunca mayor que el subtotal); la reversa restaura la regla anterior como `NOT VALID`, sin tocar
+  ningún pedido ya cobrado.
+- `@impulza/validation/coupons`: esquemas, `couponRulesProblem` (las mismas reglas que la base),
+  `computeCouponDiscount` (porcentaje hacia abajo, monto fijo sin pasar el subtotal, moneda y mínimo)
+  y `couponStatus`. Contratos: `couponResponse` (estado, usos, descuento entregado por moneda),
+  `publicCouponCheckResponse`, y `discountAmount`/`couponCode` en el pedido y su confirmación.
+- API: `organizations/:id/sites/:siteId/coupons` (leer, cualquier miembro; escribir,
+  `catalog.manage`; auditoría; 409 por código repetido; 422 con el campo si las reglas combinadas no
+  cuadran o el tope queda bajo los usos). Público: `POST .../catalog/coupons/check` (10 cada 10 min por
+  visitante, respuesta uniforme "Ese código no es válido.", no cuenta uso) y `couponCode` en el
+  pedido: se revalida, el uso se cuenta con un UPDATE condicional en la misma transacción que el
+  stock (todo o nada), y Mercado Pago cobra un solo ítem por el total con descuento (un pedido gratis
+  no se cobra en línea ni muestra enlace de pago). Correos con la línea de descuento; webhooks con
+  `discountAmount` y `couponCode`; ruta de reenvío en `apps/web`.
+- Panel: "Catálogo → Cupones" (lista con estado con ícono y texto, beneficio, condiciones, usos y
+  descuento entregado; crear, editar, pausar y borrar) y el cupón en cada pedido. Página pública:
+  "¿Tienes un código de descuento?", total recalculado por el servidor; si la persona cambia cantidad u
+  opción, el descuento se quita y se pide aplicarlo de nuevo (nunca un total inventado).
+- Pruebas: 6 de validación (incluye el correo), 5 e2e de API (verificadas contra el código roto:
+  contar el uso sin mirar el tope, o cobrar en Mercado Pago el precio sin descuento, fallan), caso en
+  el aislamiento central, ruta de reenvío y Playwright (3 casos × teléfono y escritorio). Las pruebas
+  de tienda, cobro y variantes siguen pasando.
+- Hallazgo y corrección fuera de la tienda (PP5, acción principal de la página): dos cambios
+  simultáneos de la acción principal podían terminar en un deadlock de Postgres y responder 500. El
+  cambio ahora toma un candado de transacción por página (`pg_advisory_xact_lock`). La prueba existente
+  sube de 4 a 12 cambios a la vez: sin el candado falla siempre, con él pasa siempre.
 
 **F7.8c — Carrito.** Criterios de aceptación:
 - En la página pública, "Agregar al carrito" desde cada producto, un carrito por sitio guardado en el

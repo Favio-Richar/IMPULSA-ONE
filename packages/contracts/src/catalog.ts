@@ -122,6 +122,9 @@ export const publicOrderConfirmationResponse = z.object({
   unitPriceAmount: z.number().int(),
   totalAmount: z.number().int(),
   priceCurrency: z.string(),
+  /** Descuento del cupón aplicado (F7.8b), ya restado de `totalAmount`; 0 sin cupón. */
+  discountAmount: z.number().int(),
+  couponCode: z.string().nullable(),
   /** Enlace de pago del propio negocio, si lo configuró y no cobra con Mercado Pago conectado. */
   paymentUrl: z.string().nullable(),
   /** Pago con Checkout Pro en la cuenta de Mercado Pago del negocio (F5.9, ADR-013). */
@@ -181,6 +184,9 @@ export const orderResponse = z.object({
   deliveryAddress: z.string().nullable(),
   note: z.string().nullable(),
   status: orderStatus,
+  /** Descuento de un cupón (F7.8b), ya restado de `totalAmount`; 0 sin cupón. */
+  discountAmount: z.number().int(),
+  couponCode: z.string().nullable(),
   /** Líneas del pedido (F7.8a); los pedidos anteriores tienen la suya, copiada en la migración. */
   items: z.array(orderItemResponse),
   /** Cobro con Mercado Pago (F5.9): estado y id del pago en la cuenta del negocio, o `null` si el pedido no se cobra en línea. */

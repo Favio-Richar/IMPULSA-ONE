@@ -59,21 +59,26 @@ export class OrderCheckoutService {
    */
   async startFor(order: Order): Promise<{ checkoutUrl: string; statusUrl: string } | null> {
     if (!this.available() || !checkoutSupportsCurrency(order.priceCurrency)) return null;
+    // Un pedido gratis (cupón del 100 %, F7.8b) no tiene nada que cobrar.
+    if (order.totalAmount <= 0) return null;
     const account = await this.accounts.chargingAccountFor(order.organizationId);
     if (!account) return null;
 
     const statusToken = randomBytes(32).toString("base64url");
     const statusUrl = `${env.PUBLIC_SITE_BASE_URL!.replace(/\/+$/, "")}/pedido/${statusToken}`;
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MS);
+    // Con descuento (o varias líneas, F7.8c), Mercado Pago cobra un solo ítem por el total: la suma
+    // de los ítems tiene que ser exactamente `total_amount`, que es lo que se verifica al confirmar.
+    const itemized = order.unitPriceAmount * order.quantity === order.totalAmount;
     let preference;
     try {
       preference = await this.config!.checkout.createPreference(
         account.accessToken,
         {
           externalReference: order.id,
-          title: order.productName,
-          quantity: order.quantity,
-          unitPrice: order.unitPriceAmount,
+          title: itemized || !order.couponCode ? order.productName : `${order.productName} (cupón ${order.couponCode})`,
+          quantity: itemized ? order.quantity : 1,
+          unitPrice: itemized ? order.unitPriceAmount : order.totalAmount,
           currency: order.priceCurrency,
           payerEmail: order.customerEmail,
           payerName: order.customerName,

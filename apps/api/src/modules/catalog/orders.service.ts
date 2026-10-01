@@ -89,6 +89,8 @@ export class OrdersService {
       deliveryAddress: order.deliveryAddress,
       note: order.note,
       status: order.status,
+      discountAmount: order.discountAmount,
+      couponCode: order.couponCode,
       items: order.items.map((item) => ({
         productId: item.productId,
         variantId: item.variantId,

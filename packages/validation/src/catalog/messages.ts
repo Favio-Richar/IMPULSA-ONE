@@ -12,6 +12,9 @@ export interface OrderMessageData {
   statusUrl?: string | null;
   /** Página de descarga del archivo comprado (F5.11b): solo cuando el pedido ya lo entrega. */
   downloadUrl?: string | null;
+  /** Descuento de un cupón (F7.8b), ya restado de `totalAmount`. */
+  discountAmount?: number;
+  couponCode?: string | null;
 }
 
 function downloadLines(data: OrderMessageData): string[] {
@@ -34,8 +37,12 @@ export function formatMoneyAmount(amount: number, currency: string): string {
 }
 
 function lines(data: OrderMessageData): string[] {
+  const discount = data.discountAmount ?? 0;
   return [
     `${data.quantity} × ${data.productName} (${formatMoneyAmount(data.unitPriceAmount, data.priceCurrency)} c/u)`,
+    ...(discount > 0
+      ? [`Descuento${data.couponCode ? ` (${data.couponCode})` : ""}: −${formatMoneyAmount(discount, data.priceCurrency)}`]
+      : []),
     `Total: ${formatMoneyAmount(data.totalAmount, data.priceCurrency)}`,
   ];
 }

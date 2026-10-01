@@ -6,6 +6,8 @@ import { ContactsModule } from "../contacts/contacts.module.js";
 import { PaymentAccountsModule } from "../payment-accounts/payment-accounts.module.js";
 import { CatalogSetupController } from "./catalog-setup.controller.js";
 import { CatalogSetupService } from "./catalog-setup.service.js";
+import { CouponsController } from "./coupons.controller.js";
+import { CouponsService } from "./coupons.service.js";
 import { ProductFilesController, PublicDownloadsController } from "./downloads.controller.js";
 import { DownloadsService } from "./downloads.service.js";
 import { OrderPaymentWebhookController, PublicOrderStatusController } from "./order-checkout.controller.js";
@@ -25,6 +27,7 @@ import { PublicCatalogService } from "./public-catalog.service.js";
   imports: [ContactsModule, AnalyticsModule, AuthModule, AutomationsModule, PaymentAccountsModule],
   controllers: [
     CatalogSetupController,
+    CouponsController,
     PublicCatalogController,
     OrdersController,
     OrderPaymentWebhookController,
@@ -32,6 +35,6 @@ import { PublicCatalogService } from "./public-catalog.service.js";
     ProductFilesController,
     PublicDownloadsController,
   ],
-  providers: [CatalogSetupService, PublicCatalogService, OrdersService, OrderNotifier, OrderCheckoutService, ProductFilesService, DownloadsService],
+  providers: [CatalogSetupService, CouponsService, PublicCatalogService, OrdersService, OrderNotifier, OrderCheckoutService, ProductFilesService, DownloadsService],
 })
 export class CatalogModule {}

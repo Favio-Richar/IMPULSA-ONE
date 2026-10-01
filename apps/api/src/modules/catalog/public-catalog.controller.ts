@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { publicCatalogResponse, publicOrderConfirmationResponse } from "@impulza/contracts";
-import { publicOrderRequestSchema } from "@impulza/validation";
+import { publicCatalogResponse, publicCouponCheckResponse, publicOrderConfirmationResponse } from "@impulza/contracts";
+import { COUPON_INVALID_MESSAGE, publicCouponCheckSchema, publicOrderRequestSchema } from "@impulza/validation";
 import type { Request } from "express";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { RateLimit } from "../../common/rate-limit.decorator.js";
@@ -30,6 +30,24 @@ export class PublicCatalogController {
     return this.publicCatalogService.catalog(siteSlug);
   }
 
+  @Post("coupons/check")
+  @HttpCode(HttpStatus.OK)
+  // Tope estricto por visitante: probar códigos a ciegas no debe ser barato (F7.8b).
+  @RateLimit({ limit: 10, windowSeconds: 600, keyPrefix: "public-coupon-check" })
+  @ApiOperation({
+    summary: "Probar un código de descuento",
+    description:
+      "Calcula el descuento con lo que se pediría (producto, variante y cantidad). Cualquier código que no aplica — inexistente, vencido, agotado, pausado, de otra moneda o bajo el mínimo — recibe el mismo 422. No cuenta un uso: eso ocurre al hacer el pedido.",
+  })
+  @ApiZodBody(publicCouponCheckSchema)
+  @ApiZodResponse(200, publicCouponCheckResponse, "Descuento calculado por el servidor.")
+  @ApiResponse({ status: 404, description: `${NOT_AVAILABLE} O: ${PRODUCT_UNAVAILABLE}` })
+  @ApiResponse({ status: 422, description: COUPON_INVALID_MESSAGE })
+  @ApiResponse({ status: 429, description: "Límite de peticiones superado (10 cada 10 minutos por visitante)." })
+  checkCoupon(@Param("siteSlug") siteSlug: string, @Body() body: unknown) {
+    return this.publicCatalogService.checkCoupon(siteSlug, body);
+  }
+
   @Post("orders")
   @HttpCode(HttpStatus.CREATED)
   @RateLimit({ limit: 10, windowSeconds: 600, keyPrefix: "public-order-create" })
@@ -43,6 +61,7 @@ export class PublicCatalogController {
   @ApiResponse({ status: 400, description: "Datos inválidos (detalle en `issues`); un producto físico exige dirección." })
   @ApiResponse({ status: 404, description: `${NOT_AVAILABLE} O: ${PRODUCT_UNAVAILABLE}` })
   @ApiResponse({ status: 409, description: OUT_OF_STOCK })
+  @ApiResponse({ status: 422, description: `Cupón que no aplica: ${COUPON_INVALID_MESSAGE}` })
   @ApiResponse({ status: 429, description: "Límite de peticiones superado (10 cada 10 minutos por visitante)." })
   createOrder(@Param("siteSlug") siteSlug: string, @Body() body: unknown, @Req() request: Request) {
     return this.publicCatalogService.createOrder(siteSlug, body, request);

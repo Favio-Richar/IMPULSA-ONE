@@ -476,6 +476,9 @@ export class BlocksService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        // Un cambio a la vez por página: dos cambios simultáneos se ordenan en vez de bloquearse
+        // mutuamente (sin esto, Postgres detecta un deadlock y la petición terminaba en 500).
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`primary-block:${pageId}`}, 0))`;
         await tx.block.updateMany({ where: { pageId, isPrimary: true }, data: { isPrimary: false } });
         if (blockId !== null) {
           await tx.block.update({ where: { id: blockId }, data: { isPrimary: true } });

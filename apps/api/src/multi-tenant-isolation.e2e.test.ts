@@ -1398,6 +1398,45 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Cupones (F7.8b, ADR-023): nunca se cruzan", () => {
+    it("A no lee, crea, edita ni borra cupones de B, y el código de B no vale en el sitio de A", async () => {
+      const couponsB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/coupons`;
+      const couponOfB = await orgB.ownerAgent.post(couponsB).set(CSRF_HEADERS).send({ code: "SOLOB", kind: "percent", percentOff: 30 }).expect(201);
+      const couponId = couponOfB.body.id as string;
+
+      // Con la organización de B en la URL: 403.
+      await orgA.ownerAgent.get(couponsB).expect(403);
+      await orgA.ownerAgent.post(couponsB).set(CSRF_HEADERS).send({ code: "INTRUSO", kind: "percent", percentOff: 5 }).expect(403);
+      await orgA.ownerAgent.patch(`${couponsB}/${couponId}`).set(CSRF_HEADERS).send({ percentOff: 100 }).expect(403);
+      await orgA.ownerAgent.delete(`${couponsB}/${couponId}`).set(CSRF_HEADERS).expect(403);
+
+      // Organización propia de A con el sitio de B: 404; y sitio propio de A con el cupón de B: 404.
+      const aWithSiteB = `/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/coupons`;
+      await orgA.ownerAgent.get(aWithSiteB).expect(404);
+      await orgA.ownerAgent.post(aWithSiteB).set(CSRF_HEADERS).send({ code: "INTRUSO", kind: "percent", percentOff: 5 }).expect(404);
+      const couponsA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/coupons`;
+      await orgA.ownerAgent.patch(`${couponsA}/${couponId}`).set(CSRF_HEADERS).send({ percentOff: 100 }).expect(404);
+      await orgA.ownerAgent.delete(`${couponsA}/${couponId}`).set(CSRF_HEADERS).expect(404);
+      expect(JSON.stringify((await orgA.ownerAgent.get(couponsA).expect(200)).body)).not.toContain("SOLOB");
+
+      // El código de B no vale en el sitio público de A (ni al probarlo ni al pedir).
+      const catalogA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/catalog`;
+      const productOfA = await orgA.ownerAgent.post(`${catalogA}/products`).set(CSRF_HEADERS).send({ name: "Producto de A", kind: "SERVICE", priceAmount: 10_000, priceCurrency: "CLP" }).expect(201);
+      const siteA = await prisma.site.findUniqueOrThrow({ where: { id: orgA.siteId } });
+      const publicA = `/api/v1/public/sites/${siteA.slug}/catalog`;
+      await request(httpServer).post(`${publicA}/coupons/check`).set(CSRF_HEADERS).send({ code: "SOLOB", productId: productOfA.body.id, quantity: 1 }).expect(422);
+      await request(httpServer)
+        .post(`${publicA}/orders`)
+        .set(CSRF_HEADERS)
+        .send({ productId: productOfA.body.id, quantity: 1, couponCode: "SOLOB", name: "Intruso", email: `intruso-cupon${TEST_EMAIL_DOMAIN}`, consent: true })
+        .expect(422);
+
+      const stillB = await prisma.coupon.findUniqueOrThrow({ where: { id: couponId } });
+      expect(stillB).toMatchObject({ percentOff: 30, redemptionCount: 0, organizationId: orgB.id, active: true });
+      expect(await prisma.order.count({ where: { couponCode: "SOLOB", organizationId: orgA.id } })).toBe(0);
+    });
+  });
+
   describe("Campañas (F5.6): ningún acceso cruzado entre organizaciones", () => {
     it("A no ve, edita, prueba, envía ni detiene campañas de B, y su audiencia no cuenta contactos de B", async () => {
       await prisma.contact.create({ data: { organizationId: orgB.id, email: `marketing-b${TEST_EMAIL_DOMAIN}`, marketingConsentAt: new Date() } });

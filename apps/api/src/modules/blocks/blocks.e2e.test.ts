@@ -558,7 +558,8 @@ describe("Blocks (e2e) — F2.4", () => {
       await agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId: null }).expect(200);
 
       const responses = await Promise.all(
-        [ids.link, ids.whatsapp, ids.link, ids.whatsapp].map((blockId) =>
+        // Doce cambios a la vez: sin el candado por página, Postgres detecta un deadlock (500).
+        Array.from({ length: 12 }, (_, index) => (index % 2 === 0 ? ids.link : ids.whatsapp)).map((blockId) =>
           agent.put(`${basePath}/primary`).set(CSRF_HEADERS).send({ blockId }),
         ),
       );

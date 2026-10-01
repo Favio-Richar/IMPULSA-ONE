@@ -204,6 +204,7 @@ model Organization {
   productFiles        ProductFile[]
   orders              Order[]
   orderItems          OrderItem[]
+  coupons             Coupon[]
   campaigns           Campaign[]
   themes              Theme[]
   contacts            Contact[]
@@ -471,6 +472,7 @@ model Site {
   products            Product[]
   productVariants     ProductVariant[]
   orders              Order[]
+  coupons             Coupon[]
   forms               Form[]
   analyticsEvents     AnalyticsEvent[]
   analyticsAggregates AnalyticsAggregate[]
@@ -1320,6 +1322,11 @@ model Order {
   // F5.11b (ADR-015): descargas entregadas del archivo en venta (tope por pedido) y la última.
   downloadCount        Int       @default(0) @map("download_count")
   lastDownloadedAt     DateTime? @map("last_downloaded_at") @db.Timestamptz(6)
+  // F7.8b (ADR-023): descuento de un cupón sobre el subtotal (líneas). `total_amount` es lo que se
+  // cobra (subtotal − descuento); el código se copia para que el pedido lo conserve aunque se borre.
+  discountAmount       Int       @default(0) @map("discount_amount")
+  couponId             String?   @map("coupon_id") @db.Uuid
+  couponCode           String?   @map("coupon_code")
   createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1327,6 +1334,7 @@ model Order {
   site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
   product      Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
   contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  coupon       Coupon?      @relation(fields: [couponId], references: [id], onDelete: SetNull)
   items        OrderItem[]
 
   @@index([organizationId, createdAt])
@@ -1363,6 +1371,40 @@ model ProductVariant {
   @@index([productId, position])
   @@index([organizationId])
   @@map("product_variants")
+}
+
+// Cupón de descuento de un sitio (F7.8b, ADR-023). Porcentaje (1–100) o monto fijo en `currency`;
+// mínimo de compra, ventana y tope de usos opcionales. El código se guarda en mayúsculas y es único
+// por sitio. El uso se cuenta con una actualización condicional en la transacción del pedido; el
+// `CHECK` de la base impide pasar el tope aunque algo falle arriba.
+model Coupon {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  siteId          String    @map("site_id") @db.Uuid
+  code            String
+  description     String?
+  // `percent` o `fixed` (CHECK en la migración).
+  kind            String
+  percentOff      Int?      @map("percent_off")
+  amountOff       Int?      @map("amount_off")
+  // Moneda del monto fijo y del mínimo de compra; un porcentaje sin mínimo vale en cualquier moneda.
+  currency        String?
+  minSubtotal     Int?      @map("min_subtotal")
+  startsAt        DateTime? @map("starts_at") @db.Timestamptz(6)
+  endsAt          DateTime? @map("ends_at") @db.Timestamptz(6)
+  maxRedemptions  Int?      @map("max_redemptions")
+  redemptionCount Int       @default(0) @map("redemption_count")
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  orders       Order[]
+
+  @@unique([siteId, code])
+  @@index([organizationId])
+  @@map("coupons")
 }
 
 // Línea de un pedido (F7.8a, ADR-023): copia del producto, la variante y el precio al pedir, y de

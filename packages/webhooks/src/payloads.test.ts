@@ -63,6 +63,9 @@ const order = {
   unitPriceAmount: 100,
   totalAmount: 200,
   priceCurrency: "CLP",
+  discountAmount: 0,
+  couponCode: null,
+  couponId: "cupon-secreto",
   status: "PAID",
   paidAt: date,
   providerPaymentId: "999",
@@ -102,7 +105,7 @@ describe("carga útil de los eventos (ADR-017 §5)", () => {
 
   it("nunca incluye tokens, hashes, preferencias ni enlaces internos", () => {
     const all = JSON.stringify([contactPayload(contact), bookingPayload(booking), orderPayload(order)]);
-    for (const secret of ["pref-secreta", "hash-secreto", "mp.ejemplo", "pago.ejemplo", "assignedTo", "u1", "vip", "linea-secreta", "producto-secreto", "variante-secreta", "stockSource"]) {
+    for (const secret of ["pref-secreta", "hash-secreto", "mp.ejemplo", "pago.ejemplo", "assignedTo", "u1", "vip", "linea-secreta", "producto-secreto", "variante-secreta", "stockSource", "cupon-secreto"]) {
       expect(all).not.toContain(secret);
     }
   });

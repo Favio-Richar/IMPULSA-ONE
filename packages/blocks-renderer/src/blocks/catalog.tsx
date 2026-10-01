@@ -1,9 +1,9 @@
 "use client";
 
-import { Check, CreditCard, Minus, Package, Plus, ShoppingBag } from "lucide-react";
+import { Check, CreditCard, Minus, Package, Plus, ShoppingBag, Tag } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { PublicCatalogResponse, PublicOrderConfirmationResponse } from "@impulza/contracts";
+import type { PublicCatalogResponse, PublicCouponCheckResponse, PublicOrderConfirmationResponse } from "@impulza/contracts";
 import { MARKETING_CONSENT_LABEL, type CatalogBlockConfig } from "@impulza/validation";
 import { formatPrice } from "../lib/format-price.js";
 import { fetchJson, INPUT_CLASS, Notice, PRIMARY_BUTTON } from "../ui/flow.js";
@@ -31,6 +31,9 @@ export function productPriceLabel(product: Pick<Product, "priceAmount" | "priceC
 
 const STEPPER_BUTTON =
   "flex h-11 w-11 items-center justify-center rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-background)] text-[var(--site-color-foreground)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2";
+
+const APPLY_BUTTON =
+  "flex h-11 shrink-0 items-center justify-center rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-background)] px-4 text-sm font-medium text-[var(--site-color-foreground)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2";
 
 /** Productos que muestra el bloque, según su configuración (ids elegidos o categoría). */
 export function selectCatalogProducts(products: Product[], config: Pick<CatalogBlockConfig, "productIds" | "categoryId">): Product[] {
@@ -160,6 +163,16 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
     return variants.length > 0 && available.length === 1 ? available[0]!.id : null;
   });
   const selected: ProductVariant | null = variants.find((candidate) => candidate.id === variantId) ?? null;
+  // Cupón (F7.8b): el descuento lo calcula el servidor para esta opción y cantidad. Si cambian, el
+  // descuento calculado deja de valer: se quita y se pide aplicarlo de nuevo (nunca un total inventado).
+  const [coupon, setCoupon] = useState<PublicCouponCheckResponse | null>(null);
+  const [couponStale, setCouponStale] = useState(false);
+  const orderChanged = () => {
+    if (coupon) {
+      setCoupon(null);
+      setCouponStale(true);
+    }
+  };
   const [values, setValues] = useState({ name: "", email: "", phone: "", address: "", note: "", consent: false, marketing: false, website: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -212,6 +225,7 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
         productId: product.id,
         ...(selected ? { variantId: selected.id } : {}),
         quantity,
+        ...(coupon ? { couponCode: coupon.code } : {}),
         name: values.name.trim(),
         email: values.email.trim(),
         ...(phone ? { phone } : {}),
@@ -230,11 +244,13 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
     } else if (result.status === 429) {
       setError("Hiciste muchos intentos seguidos. Espera unos minutos y vuelve a intentarlo.");
     } else {
+      // Un cupón que dejó de valer entre que se aplicó y se pidió (se agotó, venció): se quita.
+      if (result.status === 422 && coupon) setCoupon(null);
       setError(result.message);
     }
   }
 
-  const total = formatPrice(unitPrice * quantity, product.priceCurrency);
+  const total = formatPrice(coupon ? coupon.totalAmount : unitPrice * quantity, product.priceCurrency);
   const field = (key: "name" | "email" | "phone" | "address", label: string, props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <div>
       <label htmlFor={`${id}-${key}`} className="mb-1 block text-sm font-medium text-[var(--site-color-foreground)]">
@@ -283,6 +299,7 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
                     checked={checked}
                     disabled={!option.available}
                     onChange={() => {
+                      orderChanged();
                       setVariantId(option.id);
                       setQuantity((current) => Math.min(current, Math.max(1, option.maxQuantity)));
                       setError(null);
@@ -305,17 +322,45 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
           Cantidad
         </span>
         <div className="flex items-center gap-2" role="group" aria-labelledby={`${id}-cantidad`}>
-          <button type="button" className={STEPPER_BUTTON} onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="Una unidad menos">
+          <button
+            type="button"
+            className={STEPPER_BUTTON}
+            onClick={() => {
+              orderChanged();
+              setQuantity((q) => Math.max(1, q - 1));
+            }} disabled={quantity <= 1} aria-label="Una unidad menos">
             <Minus className="h-4 w-4" aria-hidden="true" />
           </button>
           <output className="w-8 text-center text-base font-semibold tabular-nums text-[var(--site-color-foreground)]" aria-live="polite">
             {quantity}
           </output>
-          <button type="button" className={STEPPER_BUTTON} onClick={() => setQuantity((q) => Math.min(maxQuantity, q + 1))} disabled={quantity >= maxQuantity} aria-label="Una unidad más">
+          <button
+            type="button"
+            className={STEPPER_BUTTON}
+            onClick={() => {
+              orderChanged();
+              setQuantity((q) => Math.min(maxQuantity, q + 1));
+            }} disabled={quantity >= maxQuantity} aria-label="Una unidad más">
             <Plus className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>
+
+      <CouponField
+        base={base}
+        productId={product.id}
+        variantId={selected?.id ?? null}
+        needsVariant={variants.length > 0 && !selected}
+        quantity={quantity}
+        currency={product.priceCurrency}
+        coupon={coupon}
+        stale={couponStale}
+        onChange={(next) => {
+          setCoupon(next);
+          setCouponStale(false);
+          setError(null);
+        }}
+      />
 
       {field("name", "Nombre *", { autoComplete: "name", maxLength: 120 })}
       {field("email", "Correo *", { type: "email", autoComplete: "email", maxLength: 254 })}
@@ -361,6 +406,11 @@ function OrderConfirmation({ confirmation, heading }: { confirmation: PublicOrde
         <span className="font-medium">
           {confirmation.quantity} × {confirmation.productName}
         </span>
+        {confirmation.discountAmount > 0 ? (
+          <>
+            . Descuento{confirmation.couponCode ? ` (${confirmation.couponCode})` : ""}: −{formatPrice(confirmation.discountAmount, confirmation.priceCurrency)}
+          </>
+        ) : null}
         . Total: <span className="font-semibold">{formatPrice(confirmation.totalAmount, confirmation.priceCurrency)}</span>. Te enviamos el detalle por correo.
       </p>
       {confirmation.checkoutUrl ? (
@@ -385,6 +435,129 @@ function OrderConfirmation({ confirmation, heading }: { confirmation: PublicOrde
       ) : (
         <p className="text-sm text-[var(--site-color-foreground)]">El negocio te contactará para coordinar el pago y la entrega.</p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Código de descuento (F7.8b, ADR-023): plegado hasta que la persona lo pide. El descuento lo calcula
+ * la API con la opción y la cantidad elegidas; cualquier código que no aplica recibe el mismo
+ * mensaje. Al pedir, la API vuelve a validarlo y cuenta el uso.
+ */
+function CouponField({
+  base,
+  productId,
+  variantId,
+  needsVariant,
+  quantity,
+  currency,
+  coupon,
+  stale,
+  onChange,
+}: {
+  base: string;
+  productId: string;
+  variantId: string | null;
+  needsVariant: boolean;
+  quantity: number;
+  currency: string;
+  coupon: PublicCouponCheckResponse | null;
+  stale: boolean;
+  onChange: (coupon: PublicCouponCheckResponse | null) => void;
+}) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply() {
+    if (needsVariant) {
+      setError("Elige una opción del producto antes de aplicar el código.");
+      return;
+    }
+    if (code.trim() === "") {
+      setError("Escribe el código.");
+      return;
+    }
+    setError(null);
+    setChecking(true);
+    const result = await fetchJson<PublicCouponCheckResponse>(`${base}/coupons/check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: code.trim(), productId, ...(variantId ? { variantId } : {}), quantity }),
+    });
+    setChecking(false);
+    if (result.ok) {
+      onChange(result.data);
+    } else {
+      setError(result.status === 429 ? "Probaste muchos códigos seguidos. Espera unos minutos." : result.message);
+    }
+  }
+
+  if (coupon) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-background)] px-3 py-2" role="status">
+        <span className="flex min-w-0 items-center gap-2 text-sm text-[var(--site-color-foreground)]">
+          <Tag className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            Código <span className="font-semibold">{coupon.code}</span>: −{formatPrice(coupon.discountAmount, currency)}
+          </span>
+        </span>
+        <button
+          type="button"
+          className="shrink-0 text-sm font-medium text-[var(--site-color-foreground)] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2"
+          onClick={() => {
+            onChange(null);
+            setOpen(true);
+          }}
+        >
+          Quitar
+        </button>
+      </div>
+    );
+  }
+
+  if (!open && !stale) {
+    return (
+      <button
+        type="button"
+        className="self-start text-sm font-medium text-[var(--site-color-foreground)] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2"
+        aria-expanded={false}
+        onClick={() => setOpen(true)}
+      >
+        ¿Tienes un código de descuento?
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor={`${id}-codigo`} className="text-sm font-medium text-[var(--site-color-foreground)]">
+        Código de descuento
+      </label>
+      <div className="flex gap-2">
+        <input
+          id={`${id}-codigo`}
+          className={INPUT_CLASS}
+          value={code}
+          maxLength={60}
+          autoCapitalize="characters"
+          autoComplete="off"
+          onChange={(event) => setCode(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              void apply();
+            }
+          }}
+        />
+        <button type="button" disabled={checking} onClick={() => void apply()} className={APPLY_BUTTON}>
+          {checking ? "Revisando…" : "Aplicar"}
+        </button>
+      </div>
+      {stale ? <p className="text-sm text-[var(--site-color-foreground)]">Cambiaste el pedido: aplica el código de nuevo para ver el descuento.</p> : null}
+      {error ? <Notice>{error}</Notice> : null}
     </div>
   );
 }

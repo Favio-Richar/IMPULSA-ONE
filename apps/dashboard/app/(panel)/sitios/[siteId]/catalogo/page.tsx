@@ -45,9 +45,14 @@ function Catalog({ organizationId, siteId }: { organizationId: string; siteId: s
             Lo que vendes desde tu página. Para mostrarlo, agrega el bloque «Tienda» en el constructor: cada producto aparece como un botón.
           </p>
         </div>
-        <Link href="/pedidos" className={buttonVariants({ variant: "secondary", size: "sm" })}>
-          Ver pedidos
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/sitios/${siteId}/cupones`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+            Cupones
+          </Link>
+          <Link href="/pedidos" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+            Ver pedidos
+          </Link>
+        </div>
       </div>
       <ProductsManager organizationId={organizationId} siteId={siteId} />
       <ProductCategories organizationId={organizationId} siteId={siteId} />

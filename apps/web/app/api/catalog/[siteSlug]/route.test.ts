@@ -6,6 +6,7 @@ vi.mock("../../../../lib/env.js", () => ({
 
 const { GET } = await import("./route.js");
 const { POST } = await import("./orders/route.js");
+const { POST: CHECK_COUPON } = await import("./coupons/check/route.js");
 const params = { params: Promise.resolve({ siteSlug: "tienda-lumen" }) };
 
 describe("rutas del catálogo del sitio público (F5.5)", () => {
@@ -45,5 +46,22 @@ describe("rutas del catálogo del sitio público (F5.5)", () => {
     expect(response.status).toBe(502);
     expect(JSON.stringify(log.mock.calls)).not.toContain("ana@example.com");
     expect((await GET(new Request("https://impulza.test/api/catalog/tienda-lumen"), params)).status).toBe(502);
+  });
+
+  it("reenvía la prueba de un código a la API (F7.8b) y devuelve su respuesta uniforme tal cual", async () => {
+    const invalid = { statusCode: 422, code: "COUPON_INVALID", message: "Ese código no es válido." };
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(invalid, { status: 422 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await CHECK_COUPON(
+      new Request("https://impulza.test/api/catalog/tienda-lumen/coupons/check", { method: "POST", body: JSON.stringify({ code: "X", productId: "p1", quantity: 1 }) }),
+      params,
+    );
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual(invalid);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    const [url, init] = fetchMock.mock.calls[0]! as [string, RequestInit];
+    expect(url).toBe("http://api.test/api/v1/public/sites/tienda-lumen/catalog/coupons/check");
+    expect((init.headers as Record<string, string>)["X-Requested-With"]).toBe("impulza-one");
+    expect((await CHECK_COUPON(new Request("https://impulza.test/x", { method: "POST", body: "no-json" }), params)).status).toBe(400);
   });
 });

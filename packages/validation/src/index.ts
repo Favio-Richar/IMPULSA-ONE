@@ -49,3 +49,4 @@ export * from "./sequences/index.js";
 export * from "./billing/index.js";
 export * from "./funnels/index.js";
 export * from "./page-campaigns/index.js";
+export * from "./coupons/index.js";

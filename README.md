@@ -6,7 +6,7 @@ captación, reservas, ventas y analítica) desde una sola URL.
 **Estado actual (2026-10-01): Fase 7 en curso — F7.1 (GA4 y píxel de Meta con consentimiento, y CSP
 en la página pública, ADR-016) y F7.2 (webhooks salientes firmados hacia Zapier, Make u otros
 sistemas, ADR-017) y F7.3 (bloques de cuenta regresiva, precios, mapa, música y eventos, ADR-018)
-F7.4 (newsletter con doble confirmación, ADR-019), F7.5 (secuencias de correo, ADR-020), F7.6 (embudos de conversión, ADR-021) y F7.7 (modo campaña, ADR-022) listas para revisión; F7.8 (tienda, ADR-023) en curso: F7.8a (variantes) lista, siguen cupones y carrito. Los cobros de
+F7.4 (newsletter con doble confirmación, ADR-019), F7.5 (secuencias de correo, ADR-020), F7.6 (embudos de conversión, ADR-021) y F7.7 (modo campaña, ADR-022) listas para revisión; F7.8 (tienda, ADR-023) en curso: F7.8a (variantes) y F7.8b (cupones) listas, sigue el carrito. Los cobros de
 los negocios (F5.8–F5.11, ADR-013 y ADR-015) quedaron completos y en revisión. Lo pendiente de todo
 el plan está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
@@ -45,7 +45,7 @@ reglas de trabajo del repositorio.
 | 4 — SaaS comercial | F4.1–F4.9 | Lista para revisión (F4.6b: Mercado Pago, falta probar con credenciales reales) |
 | 5 — Negocio digital | F5.1–F5.11 | Lista para revisión (incluye cobros con la cuenta del negocio, ADR-013/015) |
 | 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.7 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
-| 7 — Crecimiento | F7.1–F7.12 | En curso: F7.1–F7.7 y F7.8a listas para revisión; siguen F7.8b–c |
+| 7 — Crecimiento | F7.1–F7.12 | En curso: F7.1–F7.7, F7.8a y F7.8b listas para revisión; sigue F7.8c |
 
 **Para retomar el desarrollo** (también desde Claude Code en la nube): `docs/CONTINUIDAD.md`.
 
@@ -1294,6 +1294,15 @@ y Configurar, con el mismo peso) y **no carga nada de terceros sin consentimient
 vistas, clics en WhatsApp, formularios, reservas y pedidos, sin datos personales. `apps/web` ahora
 responde con CSP y cabeceras de seguridad (`lib/security-headers.ts`); todo origen nuevo que cargue
 la página pública se agrega ahí con su prueba.
+
+## Cupones de descuento (F7.8b, ADR-023)
+
+En "Catálogo → Cupones", cada sitio crea códigos de porcentaje o de monto fijo, con compra mínima,
+fechas y tope de usos opcionales, y ve sus usos y el descuento entregado. En la página pública el
+cliente escribe el código al pedir; el servidor calcula el descuento (cualquier código que no aplica
+recibe el mismo mensaje), cuenta el uso sin pasar el tope aunque lleguen pedidos a la vez, y Mercado
+Pago cobra el total ya descontado. Al desplegar: `db:migrate:deploy` (migración
+`20261001200000_f78b_coupons`, con `down.sql`).
 
 ## Variantes de producto (F7.8a, ADR-023)
 

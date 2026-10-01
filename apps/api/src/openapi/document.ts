@@ -77,6 +77,7 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     .addTag("support", "Solicitudes de soporte desde el panel (F4.5).")
     .addTag("funnels", "Embudos de conversión por sitio: pasos en orden, conversión y abandono (F7.6, ADR-021).")
     .addTag("page-campaigns", "Modo campaña: página temporal con fechas, toma del inicio y reporte separado (F7.7, ADR-022).")
+    .addTag("coupons", "Cupones de descuento del sitio: porcentaje o monto, mínimo, vigencia y tope de usos (F7.8b, ADR-023).")
     .addTag("health", "Estado de la API y sus dependencias. Sin autenticación.")
     .addTag("meta", "Raíz de la API. Sanity check, no monitoreo.")
     .build();

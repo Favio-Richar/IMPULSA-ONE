@@ -219,6 +219,12 @@ function OrderCard({ organizationId, order, siteName }: { organizationId: string
             </span>
           </p>
         )}
+        {order.discountAmount > 0 ? (
+          // Cupón (F7.8b): el total de arriba ya lo tiene restado.
+          <p className="text-sm text-foreground">
+            Cupón {order.couponCode ? <span className="font-mono">{order.couponCode}</span> : null}: −{formatMoney(order.discountAmount, order.priceCurrency)}
+          </p>
+        ) : null}
         {order.onlinePayment ? (
           <p className="mt-1 flex items-start gap-1.5 text-sm text-foreground">
             <CreditCard className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />

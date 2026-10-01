@@ -166,6 +166,7 @@ AnalyticsAggregate (N) ──1 Site (nullable, F3.6)
 Funnel (N) ──1 Site (F7.6)
 PageCampaign (N) ──1 Site, (N) ──1 Page (F7.7)
 ProductVariant (N) ──1 Product (F7.8a)
+Coupon (N) ──1 Site; Order (N) ──0..1 Coupon (F7.8b)
 OrderItem (N) ──1 Order, (N) ──0..1 Product, (N) ──0..1 ProductVariant (F7.8a)
 ```
 
@@ -176,6 +177,12 @@ OrderItem (N) ──1 Order, (N) ──0..1 Product, (N) ──0..1 ProductVaria
   - **F7.6 (ADR-021):** `subject_id` (texto, nulo): página de un `page_view`, bloque de un clic,
     producto de un pedido, servicio de una reserva. Índice `(site_id, type, created_at)` para los
     embudos. Nulo en los eventos anteriores a la migración.
+- **Coupon** (F7.8b, ADR-023): id, organization_id, site_id, code (mayúsculas, único por sitio),
+  description, kind (`percent`/`fixed`), percent_off, amount_off, currency, min_subtotal, starts_at,
+  ends_at, max_redemptions, redemption_count, active, timestamps. CHECK de coherencia (tipo, monto con
+  moneda, mínimo con moneda, ventana, usos ≤ tope). **Order** suma `discount_amount` (0),
+  `coupon_id` (SET NULL) y `coupon_code` (copia); `total_amount = unit_price_amount × quantity −
+  discount_amount`.
 - **ProductVariant** (F7.8a, ADR-023): id, organization_id, site_id, product_id (CASCADE), name
   (único por producto), price_amount (nulo = el del producto), stock (nulo = sin control), sku,
   position, active, timestamps. CHECK de stock y precio ≥ 0. Con alguna activa, el pedido exige

@@ -16,7 +16,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Lista para tu revisión (ADR-021; capturas en `docs/design/capturas/f76/`) |
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Lista para tu revisión (ADR-022; capturas en `docs/design/capturas/f77/`) |
 | F7.8 — Tienda: variantes, cupones y carrito | Lista para tu revisión (ADR-023): F7.8a variantes, F7.8b cupones y F7.8c carrito (capturas en `docs/design/capturas/f78a/`, `f78b/` y `f78c/`) |
-| F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | En curso (ADR-024): F7.9a profesionales y sucursales, F7.9b horarios y bloqueos, F7.9c calendarios e iCal |
+| F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | En curso (ADR-024): F7.9a profesionales y sucursales y F7.9b horarios y bloqueos (servidor revisado y corregido; faltan pruebas de interfaz de la página pública y del editor de horario), F7.9c calendarios e iCal (sin empezar) |
 | F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Pendiente |
 | F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Pendiente |
 | F7.12 — Aislamiento y seguridad de Fase 7 | Pendiente |
@@ -517,6 +517,22 @@ Implementación de F7.9b (2026-10-01) — lista para tu revisión:
   - Guardado y actualización de `weeklyHours` por profesional (`createStaff`, `updateStaff` con soporte para `null` y revertir a herencia de sitio).
   - Cálculo de disponibilidad respetando horarios semanales por profesional o generales si hereda, y respetando bloqueos generales vs por profesional.
   - Pruebas E2E completas añadidas a `booking-staff-branches.e2e.test.ts` (8/8 pruebas aprobadas al 100%).
+
+Revisión de F7.9a/b (2026-10-01, Claude) — correcciones aplicadas:
+- **Borrado de profesionales:** `bookings.staff_id` es `ON DELETE SET NULL` y la exclusión
+  `bookings_no_overlap` trata `NULL` como "sin profesional"; borrar a un profesional con reservas vivas
+  (`CONFIRMED` o `PENDING_PAYMENT`) dejaba reservas sin dueño y podía hacer chocar dos citas simultáneas.
+  Ahora `DELETE …/staff/:id` responde **409** si las tiene (desactivar al profesional sí es posible) y
+  el panel muestra el motivo. Prueba e2e `no deja borrar a un profesional con reservas vivas`, verificada
+  contra el código roto (sin el chequeo responde 204).
+- **Lint:** import sin usar en `booking-setup.service.ts` (`AssignStaffToServiceInput`).
+- **Prueba de interfaz:** `packages/e2e/tests/reservas-equipo.spec.ts` (alta de sucursal y profesional con
+  validación, borrado, sin desplazamiento horizontal a 412/1440 y 360 px). Capturas en
+  `docs/design/capturas/f79/`.
+- **Aún pendiente para cerrar F7.9a/b (siguen EN PROGRESO según la Definición de Terminado):** prueba de
+  interfaz de la página pública (selector de sucursal y de profesional, "Cualquiera disponible"), del editor
+  de horario propio por profesional y de los bloqueos por profesional, con sus capturas; y revisión visual
+  de la agenda con filtros.
 
 **F7.9c — Sincronización con calendarios (Feed iCal universal y Google Calendar OAuth).** Criterios de aceptación:
 - Feed iCal (`.ics`) seguro con token por sitio y por profesional (`/public/bookings/calendar-feed/:token.ics`)

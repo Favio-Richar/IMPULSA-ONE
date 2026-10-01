@@ -267,6 +267,13 @@ function StaffRow({
           Borrar
         </ConfirmButton>
       </div>
+      {deleteMutation.isError ? (
+        <p role="alert" className="w-full text-sm text-danger">
+          {deleteMutation.error instanceof ApiError
+            ? deleteMutation.error.message
+            : "No se pudo borrar al profesional. Intenta de nuevo."}
+        </p>
+      ) : null}
     </li>
   );
 }

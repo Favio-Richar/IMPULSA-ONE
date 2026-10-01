@@ -274,6 +274,37 @@ describe("Sucursales y Profesionales en Reservas (e2e) — F7.9a", () => {
     expect(count).toBe(2);
   });
 
+  it("no deja borrar a un profesional con reservas vivas (evita choque en bookings_no_overlap); sí con reservas canceladas", async () => {
+    const { agent, base, serviceId, publicBase } = await createSiteWithOwner();
+    const staff1 = (await agent.post(`${base}/staff`).set(CSRF).send({ name: "Dra. Uno", active: true }).expect(201)).body;
+    const staff2 = (await agent.post(`${base}/staff`).set(CSRF).send({ name: "Dr. Dos", active: true }).expect(201)).body;
+    await agent.put(`${base}/services/${serviceId}/staff`).set(CSRF).send({ staffIds: [staff1.id, staff2.id] }).expect(204);
+
+    // Dos reservas a la misma hora con profesionales distintos: al borrar a uno, su staff_id pasaría a NULL.
+    const slot10 = utcAt(monday, 10, 0);
+    for (const staff of [staff1, staff2]) {
+      await request(httpServer)
+        .post(publicBase)
+        .set(CSRF)
+        .set("User-Agent", BROWSER_USER_AGENT)
+        .send(bookingBody(serviceId, slot10, { staffId: staff.id }))
+        .expect(201);
+    }
+
+    const blocked = await agent.delete(`${base}/staff/${staff1.id}`).set(CSRF).expect(409);
+    expect(blocked.body.message).toMatch(/reservas confirmadas o pendientes/);
+    expect(await prisma.bookingStaff.count({ where: { id: staff1.id } })).toBe(1);
+
+    // Con la reserva cancelada ya no ocupa la hora: el borrado procede y la reserva conserva el nombre.
+    const own = await prisma.booking.findFirstOrThrow({ where: { staffId: staff1.id } });
+    await prisma.booking.update({ where: { id: own.id }, data: { status: "CANCELLED" } });
+    await agent.delete(`${base}/staff/${staff1.id}`).set(CSRF).expect(204);
+    const kept = await prisma.booking.findUniqueOrThrow({ where: { id: own.id } });
+    expect(kept.staffId).toBeNull();
+    expect(kept.staffName).toBe("Dra. Uno");
+    expect(kept.status).toBe("CANCELLED");
+  });
+
   it("balanceo automático de carga cuando el cliente no elige profesional ('any')", async () => {
     const { agent, base, serviceId, publicBase } = await createSiteWithOwner();
 

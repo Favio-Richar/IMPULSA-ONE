@@ -11,10 +11,14 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
   p. ej. `feat(newsletter): … (F7.4, ADR-019)`, y termina con la línea `Co-Authored-By` que indique
   el sistema.
 - **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.7 y F7.8 listas para revisión del propietario.
-  **F7.9a lista para revisión** (reservas: profesionales, sucursales y asignación de servicios, ADR-024).
-  **F7.9b lista para revisión** (horarios semanales por profesional `weekly_hours` y bloqueos personales por profesional).
-  **Sigue F7.9c** (sincronización con calendarios: feed iCal universal y Google Calendar OAuth).
-  Después F7.10–F7.12 en el orden del backlog.
+  **F7.9a y F7.9b (reservas con profesionales, sucursales, horarios y bloqueos por profesional,
+  ADR-024): servidor revisado y corregido por Claude, pero SIGUEN EN PROGRESO.** Faltan las pruebas de
+  interfaz (Playwright) de la página pública —selector de sucursal/profesional y "Cualquiera
+  disponible"—, del editor de horario propio y de los bloqueos por profesional, con sus capturas en
+  `docs/design/capturas/f79/` (hoy solo está el alta y borrado del equipo). Detalle en la sección
+  "Revisión de F7.9a/b" de `docs/BACKLOG_FASE_7.md`.
+  **Después F7.9c** (sincronización con calendarios: feed iCal universal y Google Calendar OAuth) y
+  F7.10–F7.12 en el orden del backlog.
 - ADR más reciente: ADR-024 (reservas: profesionales, sucursales y calendarios).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
   (`docs/BACKLOG_FASE_*.md`, `BACKLOG_PLANTILLAS.md`, `BACKLOG_PAGINA_PREMIUM.md`).
@@ -160,6 +164,13 @@ desarrollo los correos no se envían: se imprimen en la consola de la API (`emai
 - **Sujeto de los eventos del servidor**: `order_created` y `booking_created` guardan como sujeto el
   producto y el servicio (agregados por producto); el pedido o la reserva están en la clave de
   idempotencia (`order_created:<id>`). Así cruza el pago el embudo (ADR-021).
+- **Borrar un profesional (F7.9)**: `bookings.staff_id` es `SET NULL` y `bookings_no_overlap` cuenta
+  `NULL` como "sin profesional", así que el borrado se rechaza con 409 si quedan reservas
+  `CONFIRMED`/`PENDING_PAYMENT`. Cualquier recurso nuevo que entre en esa restricción necesita la misma
+  guarda. Las pruebas e2e de la API no limpian la base entre tests: filtrar por el id exacto, no por
+  nombre (otro test pudo crear "Dra. Uno").
+- **Lint de la API ≠ el archivo que crees**: el error `no-unused-vars` apunta a una línea concreta;
+  buscar el símbolo con grep antes de borrar un import (un `type` importado en dos archivos).
 
 ## 5. Reglas del propietario que no están en el código
 

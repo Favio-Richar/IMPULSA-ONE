@@ -1,4 +1,11 @@
-import { Inject, Injectable, InternalServerErrorException, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from "@nestjs/common";
 import type {
   BookableServiceResponse,
   BookingAvailabilityResponse,
@@ -25,7 +32,6 @@ import {
   MAX_SERVICES_PER_SITE,
   MAX_STAFF_PER_SITE,
   weeklyHoursSchema,
-  type AssignStaffToServiceInput,
   type BookableServiceInput,
   type BookingAvailabilityQuery,
   type BookingBlackoutInput,
@@ -43,7 +49,9 @@ import { AuditService } from "../audit/audit.service.js";
 export const SERVICE_NOT_FOUND = "Servicio no encontrado: no existe, o pertenece a otro sitio u organización (ADR-002).";
 export const BLACKOUT_NOT_FOUND = "Bloqueo no encontrado: no existe, o pertenece a otro sitio u organización (ADR-002).";
 export const BRANCH_NOT_FOUND = "Sucursal no encontrada: no existe, o pertenece a otro sitio u organización (ADR-002).";
-export const STAFF_NOT_FOUND = "Profesional no encontrado: no existe, o pertenece a otro sitio u organización (ADR-002).";
+export const STAFF_HAS_ACTIVE_BOOKINGS =
+  "No se puede borrar a este profesional porque tiene reservas confirmadas o pendientes de pago. Desactívalo para que deje de recibir reservas nuevas, o cancela primero esas reservas.";
+export const STAFF_NOT_FOUND ="Profesional no encontrado: no existe, o pertenece a otro sitio u organización (ADR-002).";
 export const MAX_BRANCHES_REACHED = "El sitio ya tiene el máximo de sucursales permitidas (20).";
 export const MAX_STAFF_REACHED = "El sitio ya tiene el máximo de profesionales permitidos (50).";
 
@@ -504,6 +512,15 @@ export class BookingSetupService {
     const current = await this.prisma.bookingStaff.findFirst({ where: { id: staffId, siteId, organizationId } });
     if (!current) {
       throw new NotFoundException(STAFF_NOT_FOUND);
+    }
+    // Al borrar, `bookings.staff_id` pasa a NULL (SET NULL) y la restricción `bookings_no_overlap` lo
+    // trata como "sin profesional": dos reservas vivas de profesionales distintos a la misma hora
+    // chocarían y la base rechazaría el borrado con un 500. Se exige que no queden reservas vivas.
+    const liveBookings = await this.prisma.booking.count({
+      where: { staffId: current.id, organizationId, status: { in: ["CONFIRMED", "PENDING_PAYMENT"] } },
+    });
+    if (liveBookings > 0) {
+      throw new ConflictException(STAFF_HAS_ACTIVE_BOOKINGS);
     }
     await this.prisma.bookingStaff.delete({ where: { id: current.id } });
     await this.auditService.record({

@@ -55,3 +55,4 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 | [ADR-019](./ADR-019-newsletter-doble-confirmacion.md) | Newsletter con doble confirmación, sin crear el contacto hasta que la persona confirma | Aceptado |
 | [ADR-020](./ADR-020-secuencias-de-correo.md) | Secuencias de correo sobre los eventos de las automatizaciones | Aceptado |
 | [ADR-021](./ADR-021-embudos-de-conversion.md) | Embudos de conversión ordenados por visita, calculados en SQL sobre los eventos | Aceptado |
+| [ADR-022](./ADR-022-modo-campana.md) | Modo campaña: página temporal con fechas, toma del inicio y vuelta automática | Aceptado |

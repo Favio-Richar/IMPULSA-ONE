@@ -18,6 +18,7 @@ import { startMediaWorkers } from "./media-workers.js";
 import { emitWebhookEvent, startWebhookWorkers } from "./webhooks.js";
 import { startNewsletterWorkers } from "./newsletter.js";
 import { startSequenceWorkers } from "./sequences.js";
+import { httpSiteRevalidator, startPageCampaignWorkers } from "./page-campaigns.js";
 import { logger } from "./observability/logger.js";
 
 initSentry({
@@ -114,6 +115,20 @@ const sequences = await startSequenceWorkers({
   linkSecret: env.BOOKING_LINK_SECRET,
 });
 
+// Modo campaña (F7.7, ADR-022): al empezar y terminar cada campaña se invalida la caché del sitio.
+// Sin apps/web configurada no corre (y lo dice): las marcas quedan para cuando se configure.
+const pageCampaigns =
+  env.WEB_APP_URL && env.WEB_REVALIDATE_SECRET
+    ? await startPageCampaignWorkers({
+        prisma,
+        connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+        revalidate: httpSiteRevalidator(env.WEB_APP_URL, env.WEB_REVALIDATE_SECRET),
+      })
+    : null;
+if (!pageCampaigns) {
+  logger.warn("page_campaign.disabled", { reason: "Sin WEB_APP_URL o WEB_REVALIDATE_SECRET: las campañas cambian en la próxima publicación." });
+}
+
 // Automatizaciones (F6.7): disparador → acción, una vez por evento. Aviso al equipo por consola hasta
 // que exista un proveedor de correo real, igual que el resto de los correos.
 const automations = startAutomationWorkers({
@@ -194,6 +209,7 @@ async function shutdown(signal: string): Promise<void> {
   await webhooks?.close();
   await newsletter.close();
   await sequences.close();
+  await pageCampaigns?.close();
   healthRedis.disconnect();
   await prisma.$disconnect();
   process.exit(0);

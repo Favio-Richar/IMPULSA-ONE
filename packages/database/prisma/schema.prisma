@@ -214,6 +214,7 @@ model Organization {
   aiUsage             AiUsage[]
   abTests             AbTest[]
   funnels             Funnel[]
+  pageCampaigns       PageCampaign[]
   automations         Automation[]
   automationRuns      AutomationRun[]
   payments            Payment[]
@@ -472,6 +473,7 @@ model Site {
   analyticsAggregates AnalyticsAggregate[]
   abTests             AbTest[]
   funnels             Funnel[]
+  pageCampaigns       PageCampaign[]
   newsletterConfirmations NewsletterConfirmation[]
 
   @@index([organizationId])
@@ -556,6 +558,7 @@ model Page {
   blocks   Block[]
   versions PageVersion[]
   abTests  AbTest[]
+  campaigns PageCampaign[]
 
   // Resolución del render público: slug de página dentro del sitio (ERD.md §3).
   //
@@ -1562,6 +1565,39 @@ model AbTest {
   @@index([siteId, status])
   @@index([pageId, status])
   @@map("ab_tests")
+}
+
+// Modo campaña (F7.7, ADR-022): una página publicada del sitio con una ventana de fechas. Fuera de la
+// ventana la página no se sirve; dentro, opcionalmente toma la raíz del sitio. Las fechas son UTC.
+// `startRevalidatedAt`/`endRevalidatedAt` los marca el worker al avisar a apps/web que invalide la
+// caché al empezar y al terminar (una sola vez cada uno).
+model PageCampaign {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @map("organization_id") @db.Uuid
+  siteId             String    @map("site_id") @db.Uuid
+  pageId             String    @map("page_id") @db.Uuid
+  name               String
+  // `TEMPLATE_OBJECTIVES` (captar, vender, reservar, mostrar, compartir).
+  objective          String
+  startsAt           DateTime  @map("starts_at") @db.Timestamptz(6)
+  endsAt             DateTime  @map("ends_at") @db.Timestamptz(6)
+  replaceHome        Boolean   @default(false) @map("replace_home")
+  utmCampaign        String    @map("utm_campaign")
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  startRevalidatedAt DateTime? @map("start_revalidated_at") @db.Timestamptz(6)
+  endRevalidatedAt   DateTime? @map("end_revalidated_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  page         Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, siteId])
+  // Resolución pública: "campañas de este sitio vigentes ahora".
+  @@index([siteId, startsAt, endsAt])
+  @@index([pageId])
+  @@map("page_campaigns")
 }
 
 // Embudo de conversión de un sitio (F7.6, ADR-021). Solo la definición: el informe se calcula al

@@ -14,7 +14,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.4 — Suscripción a newsletter con doble confirmación | Lista para tu revisión (ADR-019; capturas en `docs/design/capturas/f74/`) |
 | F7.5 — Secuencias de correo automáticas (bienvenida, seguimiento) sobre las automatizaciones | Lista para tu revisión (ADR-020; capturas en `docs/design/capturas/f75/`) |
 | F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Lista para tu revisión (ADR-021; capturas en `docs/design/capturas/f76/`) |
-| F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Pendiente |
+| F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Lista para tu revisión (ADR-022; capturas en `docs/design/capturas/f77/`) |
 | F7.8 — Tienda: variantes, cupones y carrito | Pendiente |
 | F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Pendiente |
 | F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Pendiente |
@@ -273,6 +273,57 @@ Implementación (2026-10-01):
   con el pago tomado de la creación del pedido, fallan), caso en el aislamiento central, persistencia
   del sujeto en el pipeline y Playwright (2 casos × teléfono y escritorio).
 - Límite conocido (ADR-021): "recurrencia" no se mide (exige identificar a una persona entre días).
+
+### F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática (ADR-022)
+
+Criterios de aceptación:
+- Panel "Modo campaña" por sitio: crear, editar, cancelar y borrar campañas (hasta 50 por sitio) con
+  nombre, objetivo, página publicada del sitio (nunca el inicio), inicio y fin, `utm_campaign` y la
+  opción **tomar el inicio**. Lista con estado (programada, activa, terminada, cancelada) y cuenta
+  regresiva al próximo cambio. Estados de carga, vacío, error y éxito; teléfono y escritorio.
+- Página temporal: fuera de su ventana la página de la campaña responde 404 y no aparece en el menú
+  ni en el sitemap; dentro, se ve normal. Con "tomar el inicio", la raíz del sitio muestra la página
+  de la campaña durante la ventana (con los metadatos del inicio) y vuelve sola al terminar.
+- Sin solapes: una página en una sola campaña a la vez y un solo "tomar el inicio" por sitio a la vez
+  (409 con código estable). Validación en servidor (fechas, página del sitio y publicada, UTM).
+- Hora exacta: el worker invalida la caché del sitio al empezar y al terminar cada campaña, una sola
+  vez cada una; crear, editar, cancelar o borrar invalida al instante.
+- URL con UTM lista para copiar y QR con el módulo existente; reporte separado (visitas a la página
+  en la ventana y, de ellas, interacción, contacto, reserva, pedido y pago, por fuente).
+- Leer, cualquier miembro; escribir, `site.update`. Auditoría. Log estructurado.
+- Pruebas: unitarias (esquemas, estado), API e2e (permisos, validación, solapes, 404 fuera de
+  ventana, toma del inicio, reporte, aislamiento entre organizaciones, auditoría), worker (aviso al
+  empezar y terminar, una vez) y Playwright en teléfono y escritorio.
+
+Implementación (2026-10-01):
+- Migración `20261001150000_f77_page_campaigns` (reversa verificada: aplicar, `down.sql`, reaplicar):
+  tabla `page_campaigns` con CHECK `ends_at > starts_at`, índices por sitio y ventana, y las marcas
+  `start_revalidated_at`/`end_revalidated_at` del worker.
+- `@impulza/validation/page-campaigns`: esquemas de crear/editar, `pageCampaignStatus` (la única
+  regla de "vigente", compartida por API, worker y panel; el fin es exclusivo),
+  `suggestUtmCampaign` y `pageCampaignUrl`; contratos en `@impulza/contracts/page-campaigns` y
+  `homePageSlug` en la respuesta pública del sitio.
+- API `organizations/:id/sites/:siteId/page-campaigns` (CRUD, `/:id/cancel`, `/:id/report`).
+  Solapes comprobados en una transacción con bloqueo consultivo por sitio (409
+  `PAGE_CAMPAIGN_OVERLAP` / `HOME_TAKEOVER_OVERLAP`). La API pública oculta del menú y responde 404
+  para páginas de campañas no vigentes, y `apps/web` sirve en la raíz la página que toma el inicio.
+  El reporte es SQL: visitas que vieron la página en la ventana y lo que hicieron después, por
+  `utm_source`, con el pago cruzado igual que en ADR-021.
+- Worker `revalidatePageCampaignBoundaries` cada minuto (segundo 15): reclama la marca de inicio o
+  fin, avisa una vez por sitio a `POST {WEB_APP_URL}/api/revalidate` y libera la marca si el aviso
+  falla. Se activa con `WEB_APP_URL` y `WEB_REVALIDATE_SECRET` (opcionales en el worker).
+- Panel "Sitios → su sitio → Modo campaña": lista agrupada (activas, programadas, terminadas o
+  canceladas) con estado recalculado cada 30 s, cuenta regresiva, chip "Toma el inicio", editor con
+  UTM que se arma sola y validación con el mismo esquema que la API (al editar solo se envía lo que
+  cambió), mensajes de la API por código, "Terminar ahora"/"Cancelar" y "Borrar" con confirmación en
+  pantalla, reporte con indicadores y fuentes, enlace por fuente para copiar y QR de la campaña con el
+  módulo de Enlaces y QR.
+- Pruebas: 9 de validación, 3 de mensajes del panel, 6 e2e de API, 3 del worker (verificadas contra
+  el código roto: sin ocultar, sin solapes, sin orden en el reporte o sin liberar la marca, fallan),
+  caso en el aislamiento central y Playwright (teléfono y escritorio, contra el build de producción
+  de `apps/web`).
+- Límite conocido (ADR-022): los bloques programados de F2 siguen sin cambiar a la hora exacta en
+  la página en caché; queda como seguimiento.
 
 ## Fases siguientes
 

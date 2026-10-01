@@ -101,6 +101,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
       <BookingShortcut siteId={siteId} />
       <CatalogShortcut siteId={siteId} />
       <AbTestsShortcut siteId={siteId} />
+      <CampaignModeShortcut siteId={siteId} />
       <CustomDomains organizationId={organizationId} siteId={siteId} />
       <MeasurementSettings organizationId={organizationId} siteId={siteId} />
     </div>
@@ -554,6 +555,23 @@ function AbTestsShortcut({ siteId }: { siteId: string }): React.JSX.Element {
         <p className="text-sm text-muted-foreground">Compara dos versiones de un botón o del encabezado y quédate con la que consigue más clics.</p>
         <Link href={`/sitios/${siteId}/pruebas`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
           Ver pruebas
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Acceso al modo campaña (F7.7): páginas temporales con fecha de inicio y fin. */
+function CampaignModeShortcut({ siteId }: { siteId: string }): React.JSX.Element {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Modo campaña</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Programa una página para una fecha especial: aparece sola, puede tomar tu inicio y desaparece al terminar.</p>
+        <Link href={`/sitios/${siteId}/modo-campana`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+          Ver campañas
         </Link>
       </CardContent>
     </Card>

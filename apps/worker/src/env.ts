@@ -37,6 +37,11 @@ export const env = loadEnv({
   // Automatizaciones (F6.7): origen del panel para el enlace del aviso al equipo. El mismo nombre
   // que usa la API para sus correos. Opcional: sin él, el aviso va sin enlace.
   APP_BASE_URL: urlSchema.optional(),
+  // Modo campaña (F7.7, ADR-022): el worker avisa a apps/web que invalide la caché de un sitio cuando
+  // una campaña empieza o termina. Los mismos nombres y valores que en la API. Opcionales: sin ellos
+  // el cambio se ve recién en la próxima publicación (y lo dice al arrancar).
+  WEB_APP_URL: urlSchema.optional(),
+  WEB_REVALIDATE_SECRET: z.string().min(32).optional(),
   // Renovación de suscripciones (F4.6a, ADR-012): el worker cobra cada período con Webpay Oneclick.
   // Necesita las mismas credenciales que la API y la clave que descifra la referencia de la tarjeta.
   // Opcionales: sin ellas, la renovación no corre y lo avisa en el log al arrancar.

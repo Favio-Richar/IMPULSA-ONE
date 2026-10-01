@@ -39,6 +39,7 @@ import { WebhooksModule } from "./modules/webhooks/webhooks.module.js";
 import { NewsletterModule } from "./modules/newsletter/newsletter.module.js";
 import { SequencesModule } from "./modules/sequences/sequences.module.js";
 import { FunnelsModule } from "./modules/funnels/funnels.module.js";
+import { PageCampaignsModule } from "./modules/page-campaigns/page-campaigns.module.js";
 
 // Módulo raíz — los módulos de dominio (sites, forms, ...) se agregan a partir de Fase 2, uno
 // por historia del backlog. Ver docs/BACKLOG_FASE_0_1.md.
@@ -79,6 +80,7 @@ import { FunnelsModule } from "./modules/funnels/funnels.module.js";
     NewsletterModule,
     SequencesModule,
     FunnelsModule,
+    PageCampaignsModule,
     BillingModule,
     PaymentAccountsModule,
     AdminModule,

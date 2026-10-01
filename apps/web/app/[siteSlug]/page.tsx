@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { HOME_PAGE_SLUG } from "@impulza/validation";
-import { getPublicPage } from "../../lib/api";
+import { getPublicPage, getPublicSite } from "../../lib/api";
 import { seoToMetadata } from "../../lib/seo-metadata";
 import { SitePage, utmFrom } from "../../components/site-page";
 
@@ -18,7 +18,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return page ? seoToMetadata(page.seo) : {};
 }
 
+// Modo campaña (F7.7, ADR-022): mientras una campaña toma el inicio, la raíz muestra su página. Los
+// metadatos de arriba siguen siendo los del inicio: la URL de la raíz no se le presenta a un buscador
+// como una página temporal. Al terminar la campaña, la API deja de mandar `homePageSlug`.
 export default async function SiteHomePage({ params, searchParams }: Props) {
   const { siteSlug } = await params;
-  return <SitePage siteSlug={siteSlug} pageSlug={HOME_PAGE_SLUG} utm={utmFrom(await searchParams)} />;
+  const site = await getPublicSite(siteSlug);
+  return <SitePage siteSlug={siteSlug} pageSlug={site?.homePageSlug ?? HOME_PAGE_SLUG} utm={utmFrom(await searchParams)} />;
 }

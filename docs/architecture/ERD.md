@@ -164,6 +164,7 @@ AnalyticsEvent (N) ──1 Site (nullable)
 AnalyticsAggregate (N) ──1 Organization
 AnalyticsAggregate (N) ──1 Site (nullable, F3.6)
 Funnel (N) ──1 Site (F7.6)
+PageCampaign (N) ──1 Site, (N) ──1 Page (F7.7)
 ```
 
 - **AnalyticsEvent**: id, organization_id, site_id, type (page_view/block_click/whatsapp_click/
@@ -173,6 +174,12 @@ Funnel (N) ──1 Site (F7.6)
   - **F7.6 (ADR-021):** `subject_id` (texto, nulo): página de un `page_view`, bloque de un clic,
     producto de un pedido, servicio de una reserva. Índice `(site_id, type, created_at)` para los
     embudos. Nulo en los eventos anteriores a la migración.
+- **PageCampaign** (F7.7, ADR-022): id, organization_id, site_id, page_id, name, objective,
+  starts_at, ends_at (CHECK `ends_at > starts_at`), replace_home, utm_campaign, cancelled_at,
+  start_revalidated_at, end_revalidated_at (marcas del worker para invalidar la caché una sola vez
+  por borde), timestamps. Índices `(organization_id, site_id)`, `(site_id, starts_at, ends_at)` y
+  `(page_id)`. Sin solapes por página ni de "tomar el inicio" por sitio (comprobado en la API con un
+  bloqueo consultivo por sitio). Una página con campañas no canceladas y ninguna vigente no se sirve.
 - **Funnel** (F7.6, ADR-021): id, organization_id, site_id, name, steps (JSON, `funnelStepsSchema`:
   2 a 6 pasos con eventos de un catálogo cerrado y página o bloque opcional), created_at, updated_at.
   Solo la definición: el informe se calcula al consultar sobre `analytics_events` (visitas del día en

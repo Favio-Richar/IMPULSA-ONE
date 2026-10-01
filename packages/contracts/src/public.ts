@@ -42,6 +42,12 @@ export const publicSiteResponse = z.object({
    * F7.1 sigue siendo válida (sin medición).
    */
   measurement: z.object({ ga4MeasurementId: z.string().nullable(), metaPixelId: z.string().nullable() }).optional(),
+  /**
+   * Modo campaña (F7.7, ADR-022): slug de la página que la raíz del sitio muestra ahora — la de una
+   * campaña vigente que toma el inicio — o `null`/ausente = el inicio de siempre. Opcional en el
+   * contrato: una respuesta en caché de antes de F7.7 sigue siendo válida.
+   */
+  homePageSlug: z.string().nullable().optional(),
 });
 
 export const publicBlockResponse = z.object({

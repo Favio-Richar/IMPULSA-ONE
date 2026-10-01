@@ -65,6 +65,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Salud de página: puntaje por velocidad, accesibilidad, SEO, enlaces rotos, CTA y conversión (diferenciador) | PM §14.7, ST §19 | Fase 6 — `BACKLOG_FASE_6.md` F6.1 (en revisión): puntaje y hallazgos en el servidor, tarjeta en el constructor. Enlaces rotos solo en forma estática hasta tener hosting (F4.8) y un servicio de salida aislado |
 | Smart CTA por horario, dispositivo, campaña, disponibilidad o ubicación aproximada | PM §14.2, ST §19 | Fase 6 — F6.6 (en revisión): horario, dispositivo, campaña y disponibilidad de reservas. La ubicación aproximada **no** está incluida: el criterio de F6.6 la deja fuera; sumarla (por país, sin geolocalización fina) queda como decisión tuya |
 | Pruebas A/B con ganador solo con muestra suficiente | PM §14.6, ST §19 | Fase 6 — F6.5 |
+| Modo campaña: landing temporal con URL, QR, fechas, objetivo y reporte separado | PM §14.5 | Fase 7 — F7.7 (ADR-022, en revisión): página con ventana de inicio/fin (404 y fuera del menú fuera de ella), opción de tomar el inicio, sin solapes, invalidación de caché a la hora exacta por el worker, enlace con UTM por fuente, QR y reporte por fuente |
 | Automatizaciones | ST §19 | Fase 6 — F6.7 — básicas: F6.7 (en revisión; catálogo cerrado, cola, idempotentes, registro) |
 
 ## 7. QR, enlaces y dominios

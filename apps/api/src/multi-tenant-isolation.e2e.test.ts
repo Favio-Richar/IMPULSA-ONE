@@ -658,8 +658,9 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       // un visitante anónimo no necesita ni debe recibir identificadores internos (F2.7). `background`
       // (PP3) es el fondo ya resuelto para pintar, sin ids. `measurement` (F7.1, ADR-016) son los
       // identificadores de GA4 y del píxel de Meta, públicos por naturaleza (van en el HTML de
-      // cualquier sitio que los usa) y no son ids de Impulza.
-      expect(Object.keys(publicSite.body).sort()).toEqual(["background", "measurement", "name", "pages", "slug", "theme"]);
+      // cualquier sitio que los usa) y no son ids de Impulza. `homePageSlug` (F7.7, ADR-022) es el
+      // slug de la página que se sirve en la raíz (una campaña que toma el inicio): un slug público.
+      expect(Object.keys(publicSite.body).sort()).toEqual(["background", "homePageSlug", "measurement", "name", "pages", "slug", "theme"]);
       expect(publicSite.body).not.toHaveProperty("id");
       expect(publicSite.body).not.toHaveProperty("organizationId");
       expect(JSON.stringify(publicSite.body)).not.toContain(orgB.id);
@@ -1790,6 +1791,41 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         expect((await prisma.funnel.findUniqueOrThrow({ where: { id: funnel.id } })).name).toBe("De B");
       } finally {
         await prisma.funnel.deleteMany({ where: { id: funnel.id } });
+      }
+    });
+  });
+
+  describe("Modo campaña (F7.7, ADR-022): nunca se cruza", () => {
+    it("A no ve, edita, cancela, borra ni reporta una campaña de B, ni crea una en un sitio de B", async () => {
+      const page = await prisma.page.create({ data: { siteId: orgB.siteId, slug: `campana-${Date.now().toString(36)}`, position: 90 } });
+      const campaign = await prisma.pageCampaign.create({
+        data: {
+          organizationId: orgB.id,
+          siteId: orgB.siteId,
+          pageId: page.id,
+          name: "De B",
+          objective: "vender",
+          startsAt: new Date(Date.now() - 3_600_000),
+          endsAt: new Date(Date.now() + 3_600_000),
+          utmCampaign: "de-b",
+        },
+      });
+      const ofA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/page-campaigns`;
+      try {
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/page-campaigns`).expect(403);
+        await orgA.ownerAgent
+          .post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/page-campaigns`)
+          .set(CSRF_HEADERS)
+          .send({ name: "Intrusa", objective: "vender", pageId: page.id, startsAt: new Date().toISOString(), endsAt: new Date(Date.now() + 3_600_000).toISOString(), utmCampaign: "x1" })
+          .expect(404);
+        await orgA.ownerAgent.get(`${ofA}/${campaign.id}`).expect(404);
+        await orgA.ownerAgent.get(`${ofA}/${campaign.id}/report`).expect(404);
+        await orgA.ownerAgent.patch(`${ofA}/${campaign.id}`).set(CSRF_HEADERS).send({ name: "Mía" }).expect(404);
+        await orgA.ownerAgent.post(`${ofA}/${campaign.id}/cancel`).set(CSRF_HEADERS).expect(404);
+        await orgA.ownerAgent.delete(`${ofA}/${campaign.id}`).set(CSRF_HEADERS).expect(404);
+        expect((await prisma.pageCampaign.findUniqueOrThrow({ where: { id: campaign.id } })).cancelledAt).toBeNull();
+      } finally {
+        await prisma.page.deleteMany({ where: { id: page.id } });
       }
     });
   });

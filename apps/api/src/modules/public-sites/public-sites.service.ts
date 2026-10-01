@@ -3,6 +3,7 @@ import type { PrismaClient } from "@impulza/database";
 import type { StorageAdapter } from "@impulza/storage";
 import {
   abVariantSchema,
+  pageCampaignStatus,
   isAbTestBlockType,
   smartCtaSchema,
   weeklyHoursSchema,
@@ -30,6 +31,8 @@ export interface PublicSiteView {
   pages: Array<{ slug: string; isHome: boolean; publishedAt: Date }>;
   /** Medición de terceros (F7.1, ADR-016): la página la usa solo con consentimiento del visitante. */
   measurement: { ga4MeasurementId: string | null; metaPixelId: string | null };
+  /** Modo campaña (F7.7, ADR-022): página que muestra la raíz ahora, o `null` = el inicio. */
+  homePageSlug: string | null;
 }
 
 export interface PublicBlockView {
@@ -87,8 +90,36 @@ export class PublicSitesService {
     return site;
   }
 
+  /**
+   * Modo campaña (F7.7, ADR-022), calculado con la hora actual en cada petición (la caché de apps/web
+   * la invalida el worker al empezar y terminar cada campaña):
+   * - `hiddenPageIds`: páginas que están en alguna campaña no cancelada y en ninguna vigente ahora —
+   *   fuera de su ventana no se sirven ni aparecen en el menú.
+   * - `homePageId`: la página de la campaña vigente que toma el inicio, si hay una.
+   */
+  private async campaignState(siteId: string, now: Date): Promise<{ hiddenPageIds: Set<string>; homePageId: string | null }> {
+    const campaigns = await this.prisma.pageCampaign.findMany({
+      where: { siteId, cancelledAt: null },
+      select: { pageId: true, startsAt: true, endsAt: true, replaceHome: true },
+      orderBy: { startsAt: "asc" },
+    });
+    const activePageIds = new Set<string>();
+    let homePageId: string | null = null;
+    for (const campaign of campaigns) {
+      if (pageCampaignStatus({ ...campaign, cancelledAt: null }, now) === "active") {
+        activePageIds.add(campaign.pageId);
+        if (campaign.replaceHome && homePageId === null) {
+          homePageId = campaign.pageId;
+        }
+      }
+    }
+    const hiddenPageIds = new Set(campaigns.map((campaign) => campaign.pageId).filter((pageId) => !activePageIds.has(pageId)));
+    return { hiddenPageIds, homePageId };
+  }
+
   async getSite(siteSlug: string): Promise<PublicSiteView> {
     const site = await this.getReachableSiteOrThrow(siteSlug);
+    const campaigns = await this.campaignState(site.id, new Date());
 
     // Mismo cómputo que `SitesService.getSiteTheme` para la API autenticada: un sitio sin tema
     // elegido no queda "sin apariencia", cae al del catálogo por defecto (F2.5).
@@ -107,6 +138,7 @@ export class PublicSitesService {
       where: { siteId: site.id, deletedAt: null, visibility: "PUBLIC", status: "PUBLISHED" },
       orderBy: { position: "asc" },
       select: {
+        id: true,
         slug: true,
         isHome: true,
         // `lastmod` real de F2.8: cuándo se publicó la versión vigente, no cuándo se editó el
@@ -125,13 +157,29 @@ export class PublicSitesService {
       background: resolveSiteBackground(backgroundForDisplay(site.background, theme.code), themeTokensSchema.parse(theme.tokens), (key) =>
         this.storage ? this.storage.publicUrl(key) : key,
       ),
-      pages: navPages.map((page) => ({
-        slug: page.slug,
-        isHome: page.isHome,
-        publishedAt: page.versions[0]?.publishedAt ?? new Date(0),
-      })),
+      // Una página de campaña fuera de su ventana no aparece en el menú ni en el sitemap (ADR-022).
+      pages: navPages
+        .filter((page) => !campaigns.hiddenPageIds.has(page.id))
+        .map((page) => ({
+          slug: page.slug,
+          isHome: page.isHome,
+          publishedAt: page.versions[0]?.publishedAt ?? new Date(0),
+        })),
       measurement: { ga4MeasurementId: site.ga4MeasurementId, metaPixelId: site.metaPixelId },
+      homePageSlug: await this.campaignHomeSlug(site.id, campaigns.homePageId),
     };
+  }
+
+  /** Slug de la página que toma el inicio, solo si sigue viva y publicada; si no, la raíz es el inicio. */
+  private async campaignHomeSlug(siteId: string, pageId: string | null): Promise<string | null> {
+    if (pageId === null) {
+      return null;
+    }
+    const page = await this.prisma.page.findFirst({
+      where: { id: pageId, siteId, deletedAt: null, versions: { some: {} } },
+      select: { slug: true },
+    });
+    return page?.slug ?? null;
   }
 
   async getPage(siteSlug: string, pageSlug: string): Promise<PublicPageView> {
@@ -142,6 +190,11 @@ export class PublicSitesService {
     });
 
     if (!page) {
+      throw new NotFoundException(PAGE_NOT_FOUND);
+    }
+
+    // Página temporal (F7.7, ADR-022): fuera de la ventana de su campaña no existe para el público.
+    if ((await this.campaignState(site.id, new Date())).hiddenPageIds.has(page.id)) {
       throw new NotFoundException(PAGE_NOT_FOUND);
     }
 

@@ -5,15 +5,16 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 1. Estado al 2026-10-01 (después de F7.9a)
+## 1. Estado al 2026-10-01 (después de F7.9b)
 
 - Rama principal: `master` (no `main`). Cada historia es **un commit** con el código en el asunto,
   p. ej. `feat(newsletter): … (F7.4, ADR-019)`, y termina con la línea `Co-Authored-By` que indique
   el sistema.
 - **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.7 y F7.8 listas para revisión del propietario.
   **F7.9a lista para revisión** (reservas: profesionales, sucursales y asignación de servicios, ADR-024).
-  **Sigue F7.9b** (horarios semanales por profesional `weekly_hours` y bloqueos personales por profesional).
-  Después F7.9c (sincronización con calendarios: feed iCal universal y Google Calendar OAuth) y F7.10–F7.12 en el orden del backlog.
+  **F7.9b lista para revisión** (horarios semanales por profesional `weekly_hours` y bloqueos personales por profesional).
+  **Sigue F7.9c** (sincronización con calendarios: feed iCal universal y Google Calendar OAuth).
+  Después F7.10–F7.12 en el orden del backlog.
 - ADR más reciente: ADR-024 (reservas: profesionales, sucursales y calendarios).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
   (`docs/BACKLOG_FASE_*.md`, `BACKLOG_PLANTILLAS.md`, `BACKLOG_PAGINA_PREMIUM.md`).

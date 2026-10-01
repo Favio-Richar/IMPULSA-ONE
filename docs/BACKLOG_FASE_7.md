@@ -508,6 +508,16 @@ Implementación de F7.9a (2026-10-01) — lista para tu revisión:
   cierra todo el sitio; un bloqueo con `staff_id` cierra solo a ese profesional.
 - Agenda del panel (`/reservas`): filtros por sucursal y por profesional; visualización clara de quién atiende cada cita.
 
+Implementación de F7.9b (2026-10-01) — lista para tu revisión:
+- Dashboard (`apps/dashboard`):
+  - `booking-blackouts.tsx`: selector para aplicar bloqueos a "Todo el sitio" o a un profesional específico (`staffId`). Distintivos visuales que muestran si el bloqueo afecta a todo el sitio o a un profesional individual.
+  - `booking-staff.tsx`: editor de horarios semanales completos (Lunes a Domingo con tramos horarios configurables) que permite alternar entre "Heredar del sitio" y "Horario propio" por profesional.
+  - `agenda-view.tsx` y `booking-card.tsx`: filtros por sucursal y por profesional y visualización clara del profesional asignado a cada reserva.
+- API (`apps/api`):
+  - Guardado y actualización de `weeklyHours` por profesional (`createStaff`, `updateStaff` con soporte para `null` y revertir a herencia de sitio).
+  - Cálculo de disponibilidad respetando horarios semanales por profesional o generales si hereda, y respetando bloqueos generales vs por profesional.
+  - Pruebas E2E completas añadidas a `booking-staff-branches.e2e.test.ts` (8/8 pruebas aprobadas al 100%).
+
 **F7.9c — Sincronización con calendarios (Feed iCal universal y Google Calendar OAuth).** Criterios de aceptación:
 - Feed iCal (`.ics`) seguro con token por sitio y por profesional (`/public/bookings/calendar-feed/:token.ics`)
   para suscripción instantánea en Google Calendar, Apple Calendar y Outlook sin necesidad de cuentas de desarrollador.

@@ -329,4 +329,128 @@ describe("Sucursales y Profesionales en Reservas (e2e) — F7.9a", () => {
     expect(info.staff[0]!.name).toBe("Dra. Especialista");
     expect(info.services[0]!.staffIds).toContain(staff.id);
   });
+
+  it("horarios semanales personalizados por profesional (weeklyHours) vs herencia del sitio (F7.9b)", async () => {
+    const { agent, base, serviceId } = await createSiteWithOwner();
+
+    // 1. Crear profesional inicialmente sin weeklyHours (weeklyHours: null -> hereda horario del sitio)
+    const staff = (await agent.post(`${base}/staff`).set(CSRF).send({ name: "Dra. Horario Flexible", active: true }).expect(201)).body;
+    expect(staff.weeklyHours).toBeNull();
+    await agent.put(`${base}/services/${serviceId}/staff`).set(CSRF).send({ staffIds: [staff.id] }).expect(204);
+
+    // Consulta en lunes (el sitio abre de 09:00 a 13:00): debe tener slot a las 09:00 y a las 11:00, pero no a las 14:00
+    const availInherited = bookingAvailabilityResponse.parse(
+      (await agent.get(`${base}/availability?serviceId=${serviceId}&staffId=${staff.id}&from=${monday}&days=1`).expect(200)).body,
+    );
+    expect(availInherited.days[0]!.slots).toContain(utcAt(monday, 9, 0));
+    expect(availInherited.days[0]!.slots).toContain(utcAt(monday, 11, 0));
+    expect(availInherited.days[0]!.slots).not.toContain(utcAt(monday, 14, 0));
+
+    // 2. Asignar horario personalizado: solo atiende lunes de 14:00 a 16:00
+    const customHours = {
+      mon: [{ start: "14:00", end: "16:00" }],
+      tue: [],
+      wed: [],
+      thu: [],
+      fri: [],
+      sat: [],
+      sun: [],
+    };
+    const updated = await agent
+      .patch(`${base}/staff/${staff.id}`)
+      .set(CSRF)
+      .send({ weeklyHours: customHours })
+      .expect(200);
+    expect(updated.body.weeklyHours).toEqual(customHours);
+
+    // Consulta en lunes: solo debe tener slots entre 14:00 y 16:00 para servicio de 60 min (14:00, 14:30, 15:00; 15:30 excede las 16:00)
+    const availCustom = bookingAvailabilityResponse.parse(
+      (await agent.get(`${base}/availability?serviceId=${serviceId}&staffId=${staff.id}&from=${monday}&days=1`).expect(200)).body,
+    );
+    expect(availCustom.days[0]!.slots).not.toContain(utcAt(monday, 9, 0));
+    expect(availCustom.days[0]!.slots).toContain(utcAt(monday, 14, 0));
+    expect(availCustom.days[0]!.slots).toContain(utcAt(monday, 14, 30));
+    expect(availCustom.days[0]!.slots).toContain(utcAt(monday, 15, 0));
+    expect(availCustom.days[0]!.slots).not.toContain(utcAt(monday, 15, 30));
+    expect(availCustom.days[0]!.slots).not.toContain(utcAt(monday, 16, 0));
+
+    // 3. Revertir a herencia enviando weeklyHours: null
+    const reverted = await agent
+      .patch(`${base}/staff/${staff.id}`)
+      .set(CSRF)
+      .send({ weeklyHours: null })
+      .expect(200);
+    expect(reverted.body.weeklyHours).toBeNull();
+
+    // Consulta nuevamente: vuelve a tener horario completo heredado del sitio (09:00 a 13:00)
+    const availReverted = bookingAvailabilityResponse.parse(
+      (await agent.get(`${base}/availability?serviceId=${serviceId}&staffId=${staff.id}&from=${monday}&days=1`).expect(200)).body,
+    );
+    expect(availReverted.days[0]!.slots).toContain(utcAt(monday, 9, 0));
+    expect(availReverted.days[0]!.slots).toContain(utcAt(monday, 11, 0));
+    expect(availReverted.days[0]!.slots).not.toContain(utcAt(monday, 14, 0));
+  });
+
+  it("bloqueo general de sitio (staffId = null) vs bloqueo personal por profesional (F7.9b)", async () => {
+    const { agent, base, serviceId, publicBase } = await createSiteWithOwner();
+
+    const staff1 = (await agent.post(`${base}/staff`).set(CSRF).send({ name: "Dr. Alpha", active: true }).expect(201)).body;
+    const staff2 = (await agent.post(`${base}/staff`).set(CSRF).send({ name: "Dra. Beta", active: true }).expect(201)).body;
+    await agent.put(`${base}/services/${serviceId}/staff`).set(CSRF).send({ staffIds: [staff1.id, staff2.id] }).expect(204);
+
+    // 1. Bloqueo GENERAL (staffId: null) el lunes de 11:00 a 12:00
+    const globalBlackout = (
+      await agent
+        .post(`${base}/blackouts`)
+        .set(CSRF)
+        .send({ startsAt: utcAt(monday, 11, 0), endsAt: utcAt(monday, 12, 0), reason: "Fumigación general" })
+        .expect(201)
+    ).body;
+    expect(globalBlackout.staffId).toBeNull();
+
+    // Ni Dr. Alpha ni Dra. Beta ni la página pública tienen disponible las 11:00
+    const alphaAvail = bookingAvailabilityResponse.parse(
+      (await agent.get(`${base}/availability?serviceId=${serviceId}&staffId=${staff1.id}&from=${monday}&days=1`).expect(200)).body,
+    );
+    expect(alphaAvail.days[0]!.slots).not.toContain(utcAt(monday, 11, 0));
+
+    const betaAvail = bookingAvailabilityResponse.parse(
+      (await agent.get(`${base}/availability?serviceId=${serviceId}&staffId=${staff2.id}&from=${monday}&days=1`).expect(200)).body,
+    );
+    expect(betaAvail.days[0]!.slots).not.toContain(utcAt(monday, 11, 0));
+
+    const publicAvail = bookingAvailabilityResponse.parse(
+      (await request(httpServer).get(`${publicBase}/availability?serviceId=${serviceId}&from=${monday}&days=1`).expect(200)).body,
+    );
+    expect(publicAvail.days[0]!.slots).not.toContain(utcAt(monday, 11, 0));
+
+    // 2. Eliminar el bloqueo general
+    await agent.delete(`${base}/blackouts/${globalBlackout.id}`).set(CSRF).expect(204);
+
+    // 3. Crear bloqueo PERSONAL solo para Dr. Alpha el lunes de 11:00 a 12:00
+    const personalBlackout = (
+      await agent
+        .post(`${base}/blackouts`)
+        .set(CSRF)
+        .send({ startsAt: utcAt(monday, 11, 0), endsAt: utcAt(monday, 12, 0), staffId: staff1.id, reason: "Dentista" })
+        .expect(201)
+    ).body;
+    expect(personalBlackout.staffId).toBe(staff1.id);
+
+    // Dr. Alpha no tiene libre a las 11:00, pero Dra. Beta sí, y la consulta pública combinada también
+    const alphaAvail2 = bookingAvailabilityResponse.parse(
+      (await agent.get(`${base}/availability?serviceId=${serviceId}&staffId=${staff1.id}&from=${monday}&days=1`).expect(200)).body,
+    );
+    expect(alphaAvail2.days[0]!.slots).not.toContain(utcAt(monday, 11, 0));
+
+    const betaAvail2 = bookingAvailabilityResponse.parse(
+      (await agent.get(`${base}/availability?serviceId=${serviceId}&staffId=${staff2.id}&from=${monday}&days=1`).expect(200)).body,
+    );
+    expect(betaAvail2.days[0]!.slots).toContain(utcAt(monday, 11, 0));
+
+    const publicAvail2 = bookingAvailabilityResponse.parse(
+      (await request(httpServer).get(`${publicBase}/availability?serviceId=${serviceId}&from=${monday}&days=1`).expect(200)).body,
+    );
+    expect(publicAvail2.days[0]!.slots).toContain(utcAt(monday, 11, 0));
+  });
 });

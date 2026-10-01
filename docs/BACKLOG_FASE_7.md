@@ -17,7 +17,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Lista para tu revisión (ADR-022; capturas en `docs/design/capturas/f77/`) |
 | F7.8 — Tienda: variantes, cupones y carrito | Lista para tu revisión (ADR-023): F7.8a variantes, F7.8b cupones y F7.8c carrito (capturas en `docs/design/capturas/f78a/`, `f78b/` y `f78c/`) |
 | F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Lista para tu revisión (ADR-024): F7.9a profesionales y sucursales, F7.9b horarios y bloqueos, F7.9c feed iCal y Google Calendar (capturas en `docs/design/capturas/f79/`). Google Calendar real queda pendiente de tus credenciales OAuth; probado con Google simulado |
-| F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Pendiente |
+| F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Lista para tu revisión (ADR-025; capturas en `docs/design/capturas/f710/`) |
 | F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Pendiente |
 | F7.12 — Aislamiento y seguridad de Fase 7 | Pendiente |
 
@@ -578,6 +578,50 @@ Revisión de F7.9c (2026-10-01, Claude) — defectos encontrados y corregidos:
   `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`; con ellas, probar de punta a punta (conectar, reservar, mover,
   cancelar). Hasta entonces solo está probado con Google simulado. Tampoco hay botón para conectar Google a
   nivel de un profesional en el panel (el servidor sí lo soporta con `staffId`).
+
+### F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos y Política de privacidad (ADR-025)
+
+Criterios de aceptación:
+- **Soluciones por rubro (`/soluciones`)**:
+  - Presentación comercial detallada para 6 rubros principales: Salud & Bienestar, Gastronomía & Comercios Locales, Creadores & Marca Personal, Tiendas & E-commerce, Servicios Profesionales & Consultorías, Educación & Talleres.
+  - Para cada rubro se exponen: problemas típicos resueltos, beneficios clave, bloques recomendados y plantilla recomendada.
+  - Filtro/selector interactivo accesible para explorar rubros, con CTAs claros a registro.
+- **Integraciones (`/integraciones`)**:
+  - Directorio categorizado de integraciones reales y operativas: Pagos (Webpay Oneclick, Mercado Pago), Calendarios (Google Calendar, iCal universal), Automatización (Zapier, Make, Webhooks salientes firmados), Marketing & Medición (Google Analytics 4, Meta Pixel, WhatsApp).
+  - Filtro por categoría, buscador en vivo accesible y fichas explicativas de requisitos y cómo conectarlas desde el panel.
+- **Recursos (`/recursos`)**:
+  - Centro de guías de inicio rápido, estrategias de conversión, buenas prácticas SEO/legales y accesos a soporte y preguntas frecuentes.
+- **Política de privacidad (`/privacidad`)**:
+  - Documento legal completo y sobrio adaptado a la Ley 19.628 y la Ley 21.719 de Protección de Datos Personales de Chile y principios de privacidad por diseño (ADR-004).
+  - Estructura formal: responsable del tratamiento, finalidades, datos recopilados, seguridad y cifrado (AES-256-GCM, Argon2id, HMAC), derechos ARCO y rol de encargado sobre datos de contactos finales.
+- **Diseño y navegación institucional**:
+  - Estilo sobrio y fondo claro en todo el sitio comercial (blanco `#ffffff`, pizarra suave `#f8fafc`, acento `#0f6f6b`), sin estilo enlace-en-bio.
+  - `MarketingHeader` y `MarketingFooter` actualizados con los nuevos enlaces.
+  - Cumplimiento estricto de accesibilidad WCAG 2.2 AA y sin desborde horizontal en resoluciones móviles (360/412 px) y escritorio (1440 px).
+- **Pruebas y verificación**:
+  - Pruebas unitarias de componentes y rutas en `apps/web`.
+  - Pruebas de Playwright (`sitio-comercial-paginas.spec.ts`) en proyectos `movil` y `escritorio` con capturas guardadas en `docs/design/capturas/f710/`.
+  - Verificación contra código roto.
+
+Implementación (2026-10-01):
+- **ADR-025 registrado**: `docs/decisions/ADR-025-sitio-comercial-institucional.md` fijando arquitectura estática, fondo claro (`#ffffff`/`#f8fafc`), tipografía sobria (`#0f172a`), Server Components desacoplados de la API y componentes de cliente interactivos accesibles.
+- **Catálogos estructurados (`apps/web/lib/marketing/`)**:
+  - `soluciones.ts`: 6 rubros comerciales (Salud & Bienestar, Gastronomía & Locales, Creadores & Marca, Tiendas & E-commerce, Servicios & Consultorías, Educación & Talleres) con problemas, soluciones, bloques recomendados y plantilla.
+  - `integraciones.ts`: 10 integraciones operativas categorizadas (Webpay Oneclick, Mercado Pago, Google Calendar, iCal universal, Zapier, Make, Webhooks salientes firmados, GA4 con consentimiento, Píxel de Meta, WhatsApp).
+  - `recursos.ts`: 6 guías prácticas de negocio con tiempos de lectura y puntos clave, más 3 accesos a herramientas interactivas.
+  - `privacidad.ts`: política legal estructurada conforme a la Ley 19.628 y Ley 21.719 chilena, con vigencia al 1 de octubre de 2026, detallando responsable, rol de encargado, seguridad (AES-256-GCM, Argon2id, enlaces firmados HMAC-SHA256, aislamiento multi-tenant) y derechos ARCO.
+- **Páginas e interfaces en `apps/web`**:
+  - `/soluciones` (`apps/web/app/soluciones/page.tsx`): Server Component con hero, navegación por rubros, problemas, soluciones, bloques clave y CTA.
+  - `/integraciones` (`apps/web/app/integraciones/page.tsx`): Server Component que aloja el componente cliente `IntegracionesDirectory` (`apps/web/components/marketing/integraciones-directory.tsx`) con filtros por categoría y buscador en tiempo real.
+  - `/recursos` (`apps/web/app/recursos/page.tsx`): Server Component con artículos de conocimiento, herramientas y banner de soporte.
+  - `/privacidad` (`apps/web/app/privacidad/page.tsx`): Documento institucional con índice interactivo, artículos numerados y lista de medidas de seguridad.
+  - `MarketingHeader` y `MarketingFooter`: actualizados con enlaces a Soluciones, Integraciones, Recursos y Privacidad, adaptados responsive sin desborde horizontal.
+- **Pruebas y aseguramiento**:
+  - Pruebas unitarias (`apps/web/lib/marketing/marketing-pages.test.ts`): 9 pruebas de integridad de catálogos, slugs y cumplimiento de privacidad (100 % pasando).
+  - Pruebas E2E de Playwright (`packages/e2e/tests/sitio-comercial-paginas.spec.ts`): 8 pruebas (4 en móvil Pixel 7, 4 en escritorio 1440x900) con comprobación estricta de `expectNoHorizontalScroll`, buscador de integraciones y contenido legal.
+  - Verificación contra código roto: comprobado en unitario (vaciando problemas de soluciones) y en E2E (alterando el h1 de soluciones); ambas pruebas fallaron según lo previsto y volvieron a verde tras la restauración.
+  - Capturas registradas en `docs/design/capturas/f710/`: `soluciones-escritorio.png`, `soluciones-movil.png`, `integraciones-escritorio.png`, `integraciones-movil.png`, `recursos-escritorio.png`, `recursos-movil.png`, `privacidad-escritorio.png`, `privacidad-movil.png`.
+  - Chequeo de tipos (`tsc --noEmit`) y linter (`eslint .`) limpios con código de salida 0 en `@impulza/web` y `@impulza/e2e`.
 
 ## Fases siguientes
 

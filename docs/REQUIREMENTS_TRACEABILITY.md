@@ -103,7 +103,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 
 | Requisito | Fuente | Fase |
 |---|---|---|
-| Reservas: calendario, servicios/duración/precio, profesionales, sucursales, disponibilidad, seña, cancelación/reprogramación, recordatorios, integración calendario/videollamada | PM §9.9 | Fase 5 (`BACKLOG_FASE_5.md`: F5.1–F5.4, F5.8, F5.10 en revisión); Fase 7 — `BACKLOG_FASE_7.md` F7.9a (profesionales, sucursales y multi-recurso, ADR-024), F7.9b (horarios semanales y bloqueos por profesional) y F7.9c (feed iCal universal y Google Calendar desacoplado), en revisión; sigue F7.10 |
+| Reservas: calendario, servicios/duración/precio, profesionales, sucursales, disponibilidad, seña, cancelación/reprogramación, recordatorios, integración calendario/videollamada | PM §9.9 | Fase 5 (`BACKLOG_FASE_5.md`: F5.1–F5.4, F5.8, F5.10 en revisión); Fase 7 — `BACKLOG_FASE_7.md` F7.9a (profesionales, sucursales y multi-recurso, ADR-024), F7.9b (horarios semanales y bloqueos por profesional) y F7.9c (feed iCal universal y Google Calendar desacoplado), en revisión; F7.10 (Sitio comercial: Soluciones por rubro, Integraciones, Recursos y Política de privacidad, ADR-025) en revisión; sigue F7.11 |
 | Tienda: productos físicos/digitales, servicios, variantes, stock, cupones, carrito, checkout, pedidos, pagos, reembolsos, descargas, upsell/order bump, afiliados | PM §9.10 | Fase 5 (`BACKLOG_FASE_5.md`: F5.5, F5.9, F5.11a, F5.11b en revisión); Fase 7 — `BACKLOG_FASE_7.md` F7.8 (ADR-023, en revisión): variantes con precio/stock (F7.8a), cupones (F7.8b) y carrito con varias líneas (F7.8c) |
 | Campañas de email: segmentos, listas, plantillas, secuencias, automatizaciones básicas, métricas, bajas | PM §9.11 | Fase 5 — `BACKLOG_FASE_5.md` F5.6 (en revisión): consentimiento de marketing aparte, segmentos por etiqueta/estado/origen, prueba, envío por cola con límite por hora del plan, baja firmada inmediata y métricas (enviados, fallidos, bajas). Secuencias y automatizaciones sin fase asignada; rebotes reales esperan al proveedor de correo |
 
@@ -166,10 +166,10 @@ Del PM §21 — deben resolverse **antes de fases que dependan de ellas** (marca
     `AnalyticsEvent` (sin IP cruda, visitante anonimizado con rotación diaria, exclusión de bots),
     consentimiento auditado en `Contact`, retención por defecto configurable (14 meses eventos
     crudos / revisión a los 36 meses de inactividad para contactos) y borrado/exportación por
-    API+auditoría para atender derechos ARCO+. Pendiente aún, y explícitamente fuera de esta ADR:
-    el texto público de política de privacidad, un DPO si corresponde, y el registro ante la
-    Agencia — decisiones de negocio/legales, no de ingeniería, que siguen bloqueando el
-    **lanzamiento comercial**, no la construcción del módulo.
+    API+auditoría para atender derechos ARCO+. El texto institucional de la política de privacidad
+    pública se construyó en F7.10 (`/privacidad`, ADR-025) conforme a la Ley 19.628 y Ley 21.719 chilena,
+    detallando finalidades, rol de encargado, seguridad y derechos ARCO. Pendiente de revisión legal final
+    y registro ante la Agencia antes del lanzamiento comercial definitivo.
 
 **No bloquean Fase 0/1**: se puede avanzar con fundación técnica, auth, organizaciones/roles y
 design system sin estas decisiones, siempre que no se publique nada comercialmente ni se fije el

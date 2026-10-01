@@ -5,27 +5,21 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 1. Estado al 2026-10-01 (después de F7.9c)
+## 1. Estado al 2026-10-01 (después de F7.10)
 
 - Rama principal: `master` (no `main`). Cada historia es **un commit** con el código en el asunto,
   p. ej. `feat(newsletter): … (F7.4, ADR-019)`, y termina con la línea `Co-Authored-By` que indique
   el sistema.
-- **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.8 y F7.9a/b/c listas para revisión del propietario.
+- **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.10 listas para revisión del propietario.
   - **F7.9a y F7.9b:** con sus pruebas de Playwright (móvil y escritorio) y capturas en
     `docs/design/capturas/f79/`; el servidor fue revisado y corregido (borrado de profesionales con reservas vivas).
-  - **F7.9c (sincronización con calendarios), revisada y corregida por Claude:** feed iCal con token por sitio y por
-    profesional (su token ya no se escribe en los logs), y Google Calendar de un solo sentido (Impulza → Google) con
-    `state` OAuth firmado, ruta fija de retorno `/integraciones/google-calendar`, renovación del token y sincronización
-    conectada a crear/cancelar/reprogramar. **Probado solo con Google simulado**: falta la aplicación OAuth de Google
-    del propietario (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, retorno `<APP_BASE_URL>/integraciones/google-calendar`)
-    para probarlo de punta a punta. Detalle en "Revisión de F7.9c" de `docs/BACKLOG_FASE_7.md`.
-  - **Siguiente paso: F7.10 — Sitio comercial** (Soluciones por rubro, Integraciones, Recursos y Política de
-    privacidad; ver el backlog, no es "notificaciones push"). Después F7.11 (superadministración) y F7.12
-    (aislamiento y seguridad de la Fase 7). Escribir criterios y, si hay una decisión de arquitectura, un ADR al empezar.
-- ADR más reciente: ADR-024 (reservas: profesionales, sucursales y calendarios).
+  - **F7.9c (sincronización con calendarios):** feed iCal con token por sitio y por profesional, y Google Calendar de un solo sentido con `state` firmado, renovación de token y sincronización en reservas. Probado con Google simulado (pendiente OAuth real de Google del propietario).
+  - **F7.10 (Sitio comercial institucional, ADR-025):** Soluciones por rubro (`/soluciones`, 6 rubros detallados), Integraciones (`/integraciones`, directorio con buscador reactivo y filtros de categoría), Recursos y guías (`/recursos`, guías prácticas y herramientas) y Política de privacidad (`/privacidad`, redactada conforme a Ley 19.628 y 21.719 chilena, con derechos ARCO y detalle de cifrado AES-256-GCM / Argon2id / HMAC). Fondo claro sobrio (`#ffffff` / `#f8fafc`), navegación integrada en header y footer, pruebas unitarias y pruebas de Playwright móvil y escritorio sin desborde horizontal (`expectNoHorizontalScroll`), con capturas en `docs/design/capturas/f710/`.
+  - **Siguiente paso: F7.11 — Superadministración** (estado técnico, colas, feature flags, CMS de plantillas). Después F7.12 (aislamiento y seguridad de la Fase 7).
+- ADR más reciente: ADR-025 (sitio comercial institucional: soluciones, integraciones, recursos y privacidad).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
   (`docs/BACKLOG_FASE_*.md`, `BACKLOG_PLANTILLAS.md`, `BACKLOG_PAGINA_PREMIUM.md`).
-- ADR vigentes: `docs/decisions/` (hasta ADR-024). No reabrir uno sin una razón técnica nueva.
+- ADR vigentes: `docs/decisions/` (hasta ADR-025). No reabrir uno sin una razón técnica nueva.
 
 ### Decisiones pendientes del propietario (no avanzar sobre ellas sin respuesta)
 

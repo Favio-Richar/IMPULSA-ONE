@@ -17,6 +17,7 @@ import { WebhookEventsService } from "../webhooks/webhook-events.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
 import { BookingDepositService } from "./booking-deposit.service.js";
 import { BookingNotifier } from "./booking-notifier.js";
+import { GoogleCalendarService } from "./google-calendar.service.js";
 import { BookingSetupService } from "./booking-setup.service.js";
 
 const NOT_AVAILABLE = "Este sitio no está recibiendo reservas.";
@@ -48,6 +49,7 @@ export class PublicBookingsService {
     private readonly automationEvents: AutomationEventsService,
     private readonly webhookEvents: WebhookEventsService,
     private readonly deposit: BookingDepositService,
+    private readonly googleCalendar: GoogleCalendarService,
   ) {}
 
   private async enabledSiteOrThrow(siteSlug: string) {
@@ -443,6 +445,8 @@ export class PublicBookingsService {
       // Correos (F5.4): confirmación con el enlace "gestiona tu reserva" y aviso a los dueños.
       await this.notifier.notifyCustomer("confirmed", booking, site.name);
       await this.notifier.notifyOwners("created", booking, site.name);
+      // Solo las confirmadas ocupan el calendario: las que esperan la seña entran cuando se pagan.
+      this.googleCalendar.syncBookingById(bookingId, "CREATED");
     }
     await this.automationEvents.emit({ organizationId: site.organizationId, trigger: "booking_created", subjectId: bookingId, contactId: contactResult.contact.id });
     await this.webhookEvents.emit({ organizationId: site.organizationId, type: "booking.created", subjectId: bookingId });

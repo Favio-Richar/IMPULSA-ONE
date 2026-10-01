@@ -16,6 +16,7 @@ import {
   createBookingBlackout,
   createBookingBranch,
   createBookingStaff,
+  connectGoogleCalendar,
   deleteBookableService,
   deleteBookingBlackout,
   deleteBookingBranch,
@@ -181,6 +182,14 @@ export function useGoogleCalendarStatus(organizationId: string, siteId: string) 
   return useQuery({
     queryKey: [...root(organizationId, siteId), "google-calendar"],
     queryFn: () => getGoogleCalendarStatus(organizationId, siteId),
+  });
+}
+
+export function useConnectGoogleCalendar(organizationId: string, siteId: string) {
+  const invalidate = useInvalidateBooking(organizationId, siteId);
+  return useMutation({
+    mutationFn: (body: { code: string; state: string; redirectUri: string }) => connectGoogleCalendar(organizationId, siteId, body),
+    onSuccess: invalidate,
   });
 }
 

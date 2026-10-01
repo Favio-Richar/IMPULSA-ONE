@@ -33,15 +33,24 @@ describe("Google Calendar schemas (F7.9c)", () => {
   it("valida input para conectar Google Calendar", () => {
     const valid = connectGoogleCalendarSchema.safeParse({
       code: "auth-code-123",
+      state: "cuerpo.firma",
       redirectUri: "https://dashboard.impulza.cl/api/auth/callback",
     });
     expect(valid.success).toBe(true);
 
     const emptyCode = connectGoogleCalendarSchema.safeParse({
       code: "",
+      state: "cuerpo.firma",
       redirectUri: "https://dashboard.impulza.cl/api/auth/callback",
     });
     expect(emptyCode.success).toBe(false);
+
+    // Sin `state` no hay conexión: es lo que ata la autorización a quien la inició.
+    const noState = connectGoogleCalendarSchema.safeParse({
+      code: "auth-code-123",
+      redirectUri: "https://dashboard.impulza.cl/api/auth/callback",
+    });
+    expect(noState.success).toBe(false);
   });
 
   it("valida input para desconectar Google Calendar", () => {

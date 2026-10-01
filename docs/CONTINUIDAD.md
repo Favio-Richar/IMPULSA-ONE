@@ -11,14 +11,17 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
   p. ej. `feat(newsletter): … (F7.4, ADR-019)`, y termina con la línea `Co-Authored-By` que indique
   el sistema.
 - **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.8 y F7.9a/b/c listas para revisión del propietario.
-  - **F7.9a y F7.9b cerradas al 100%:** todas las pruebas de Playwright agregadas y pasando sin desplazamiento horizontal
-    en móvil (412x915) y escritorio (1440x900), con las 10 capturas en `docs/design/capturas/f79/`.
-  - **F7.9c (sincronización con calendarios):** implementada y verificada al 100%. Feed iCal universal RFC 5545 con
-    token seguro por sitio y por profesional en `/public/bookings/calendar-feed/:token.ics`, con rotación segura;
-    adaptador desacoplado de Google Calendar (`google_calendar_connections`) que opera en modo desacoplado sin fallar si faltan
-    credenciales OAuth; migración manual con `down.sql` verificada en ambas direcciones en Postgres; suite e2e dedicada
-    (`calendar-and-google.e2e.test.ts`), prueba de aislamiento multi-tenant y verificación contra código roto.
-  - **Siguiente paso:** F7.10 (notificaciones push web) y siguientes según el backlog.
+  - **F7.9a y F7.9b:** con sus pruebas de Playwright (móvil y escritorio) y capturas en
+    `docs/design/capturas/f79/`; el servidor fue revisado y corregido (borrado de profesionales con reservas vivas).
+  - **F7.9c (sincronización con calendarios), revisada y corregida por Claude:** feed iCal con token por sitio y por
+    profesional (su token ya no se escribe en los logs), y Google Calendar de un solo sentido (Impulza → Google) con
+    `state` OAuth firmado, ruta fija de retorno `/integraciones/google-calendar`, renovación del token y sincronización
+    conectada a crear/cancelar/reprogramar. **Probado solo con Google simulado**: falta la aplicación OAuth de Google
+    del propietario (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, retorno `<APP_BASE_URL>/integraciones/google-calendar`)
+    para probarlo de punta a punta. Detalle en "Revisión de F7.9c" de `docs/BACKLOG_FASE_7.md`.
+  - **Siguiente paso: F7.10 — Sitio comercial** (Soluciones por rubro, Integraciones, Recursos y Política de
+    privacidad; ver el backlog, no es "notificaciones push"). Después F7.11 (superadministración) y F7.12
+    (aislamiento y seguridad de la Fase 7). Escribir criterios y, si hay una decisión de arquitectura, un ADR al empezar.
 - ADR más reciente: ADR-024 (reservas: profesionales, sucursales y calendarios).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
   (`docs/BACKLOG_FASE_*.md`, `BACKLOG_PLANTILLAS.md`, `BACKLOG_PAGINA_PREMIUM.md`).
@@ -169,6 +172,19 @@ desarrollo los correos no se envían: se imprimen en la consola de la API (`emai
   `CONFIRMED`/`PENDING_PAYMENT`. Cualquier recurso nuevo que entre en esa restricción necesita la misma
   guarda. Las pruebas e2e de la API no limpian la base entre tests: filtrar por el id exacto, no por
   nombre (otro test pudo crear "Dra. Uno").
+- **Secretos en la URL (F7.9c)**: el token del feed iCal viaja en el path y el log de cada petición
+  escribía la URL completa. `apps/api/src/common/redact-path.ts` oculta el token en logs y Sentry; todo
+  secreto nuevo en un path debe agregarse ahí, con su prueba.
+- **OAuth con terceros**: el `state` va firmado (HMAC) y atado a usuario, organización y sitio, y la
+  dirección de retorno es una sola ruta fija del panel (el proveedor la exige registrada exacta). No
+  reutilizar el patrón del `state` sin firma. Las pruebas del proveedor se hacen con `fetch` simulado
+  (ver `google-calendar.service.test.ts`); la prueba real necesita credenciales del propietario.
+- **No confiar en "verificado al 100%" de otra sesión**: Antigravity entregó F7.9c afirmando tipos y lint
+  limpios con un `tsc` roto, una sincronización que nadie llamaba y un panel que no completaba el
+  retorno de Google. Antes de marcar algo, correr `typecheck` y `lint` uno mismo y buscar con grep que lo
+  nuevo se llame de verdad (una función sin llamadas es código muerto).
+- **Mutaciones sobre archivos nuevos**: para probar una prueba contra el código roto en un archivo sin
+  commitear no sirve `git checkout`; copiar el archivo antes y restaurarlo desde la copia.
 - **Lint de la API ≠ el archivo que crees**: el error `no-unused-vars` apunta a una línea concreta;
   buscar el símbolo con grep antes de borrar un import (un `type` importado en dos archivos).
 

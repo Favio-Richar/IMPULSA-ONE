@@ -9,6 +9,7 @@ import { AutomationEventsService } from "../automations/automation-events.servic
 import { WebhookEventsService } from "../webhooks/webhook-events.service.js";
 import { CheckoutRefundsService } from "../payment-accounts/checkout-refunds.service.js";
 import { BookingNotifier } from "./booking-notifier.js";
+import { GoogleCalendarService } from "./google-calendar.service.js";
 import { BookingSetupService } from "./booking-setup.service.js";
 
 export const BOOKING_NOT_FOUND = "Reserva no encontrada: no existe, o pertenece a otra organización (ADR-002).";
@@ -41,6 +42,7 @@ export class AgendaService {
     private readonly webhookEvents: WebhookEventsService,
     private readonly refunds: CheckoutRefundsService,
     private readonly notifier: BookingNotifier,
+    private readonly googleCalendar: GoogleCalendarService,
   ) {}
 
   toResponse(booking: Booking): BookingResponse {
@@ -205,6 +207,7 @@ export class AgendaService {
     // sobre el contacto se omiten y queda registrado).
     await this.automationEvents.emit({ organizationId, trigger: "booking_created", subjectId: booking.id, contactId: contact?.id ?? null });
     await this.webhookEvents.emit({ organizationId, type: "booking.created", subjectId: booking.id });
+    this.googleCalendar.syncBookingById(booking.id, "CREATED");
     logger.info("reserva anotada por el negocio", { organizationId, siteId: input.siteId, bookingId: booking.id });
     return this.toResponse(booking);
   }
@@ -240,6 +243,10 @@ export class AgendaService {
     });
     if (input.status === "CANCELLED") {
       await this.webhookEvents.emit({ organizationId, type: "booking.cancelled", subjectId: current.id });
+      this.googleCalendar.syncBookingById(current.id, "CANCELLED");
+    } else if (input.status === "CONFIRMED") {
+      // Reactivada: vuelve a ocupar la hora, así que vuelve a aparecer en el calendario.
+      this.googleCalendar.syncBookingById(current.id, "CREATED");
     }
     return this.toResponse(updated);
   }

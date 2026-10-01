@@ -4,6 +4,7 @@ import { BaseExceptionFilter } from "@nestjs/core";
 import { captureException } from "@impulza/observability";
 import type { Request } from "express";
 import { logger } from "../observability/logger.js";
+import { redactPath } from "./redact-path.js";
 
 // Filtro catch-all (patrón oficial de Nest para integrar un reporter de errores externo — ver
 // docs de "Exception filters"). Solo los 5xx son incidentes reales: un 400/403/404 es un flujo
@@ -17,10 +18,10 @@ export class AllExceptionsFilter extends BaseExceptionFilter {
     if (status >= 500) {
       logger.error("excepción no controlada", {
         method: request?.method,
-        path: request?.originalUrl,
+        path: redactPath(request?.originalUrl),
         err: exception,
       });
-      captureException(exception, { method: request?.method, path: request?.originalUrl });
+      captureException(exception, { method: request?.method, path: redactPath(request?.originalUrl) });
     }
 
     super.catch(exception, host);

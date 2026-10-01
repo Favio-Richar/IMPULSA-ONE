@@ -19,17 +19,38 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { env, googleCalendarConfig } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
+import { createGoogleOAuthState, verifyGoogleOAuthState } from "./google-oauth-state.js";
 
 export const GOOGLE_CALENDAR_NOT_CONFIGURED =
   "Google Calendar no está configurado en las variables de entorno del servidor (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).";
 export const GOOGLE_CALENDAR_CONNECTION_NOT_FOUND =
   "Conexión de Google Calendar no encontrada para este sitio o profesional.";
+export const GOOGLE_CALENDAR_INVALID_REDIRECT =
+  "La dirección de retorno debe pertenecer al panel de Impulza One.";
+export const GOOGLE_CALENDAR_INVALID_STATE =
+  "La autorización de Google venció o no corresponde a esta solicitud. Vuelve a iniciar la conexión.";
+export const GOOGLE_CALENDAR_NO_REFRESH_TOKEN =
+  "Google no entregó permiso de uso continuo. Quita el acceso de Impulza en tu cuenta de Google y vuelve a conectar.";
+
+const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const GOOGLE_EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars";
+const GOOGLE_TIMEOUT_MS = 10_000;
+/** Se renueva el token de acceso cuando le quedan menos de 60 s de vida. */
+const TOKEN_REFRESH_MARGIN_MS = 60_000;
 
 interface GoogleTokenResponse {
   access_token: string;
   refresh_token?: string;
   expires_in: number;
   token_type: string;
+}
+
+export type GoogleSyncEvent = "CREATED" | "UPDATED" | "CANCELLED";
+export type GoogleSyncResult = { synced: boolean; eventId?: string; reason?: string };
+
+function googleFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS) });
 }
 
 @Injectable()
@@ -62,6 +83,29 @@ export class GoogleCalendarService {
     };
   }
 
+  /** La dirección de retorno solo puede ser del panel (APP_BASE_URL): nunca una URL elegida por el cliente. */
+  private assertRedirectUriAllowed(redirectUri: string): void {
+    let allowed: boolean;
+    try {
+      allowed = new URL(redirectUri).origin === new URL(env.APP_BASE_URL).origin;
+    } catch {
+      allowed = false;
+    }
+    if (!allowed) {
+      throw new UnprocessableEntityException(GOOGLE_CALENDAR_INVALID_REDIRECT);
+    }
+  }
+
+  private async assertStaffInSite(organizationId: string, siteId: string, staffId: string): Promise<void> {
+    const staff = await this.prisma.bookingStaff.findFirst({
+      where: { id: staffId, siteId, organizationId },
+      select: { id: true },
+    });
+    if (!staff) {
+      throw new NotFoundException("Profesional no encontrado.");
+    }
+  }
+
   /**
    * Consulta el estado de la integración de Google Calendar para un sitio y su equipo.
    */
@@ -89,23 +133,27 @@ export class GoogleCalendarService {
   }
 
   /**
-   * Genera la URL de autorización OAuth de Google Calendar.
+   * Genera la URL de autorización OAuth de Google Calendar con un `state` firmado que ata la
+   * autorización a quien la inicia, su organización, su sitio, el profesional y la dirección de retorno.
    */
-  getAuthUrl(organizationId: string, siteId: string, query: GoogleCalendarAuthUrlQuery): { url: string } {
+  async getAuthUrl(
+    organizationId: string,
+    userId: string,
+    siteId: string,
+    query: GoogleCalendarAuthUrlQuery,
+  ): Promise<{ url: string }> {
     if (!this.isConfigured()) {
       throw new UnprocessableEntityException(GOOGLE_CALENDAR_NOT_CONFIGURED);
     }
+    this.assertRedirectUriAllowed(query.redirectUri);
+    if (query.staffId) {
+      await this.assertStaffInSite(organizationId, siteId, query.staffId);
+    }
 
-    const statePayload = Buffer.from(
-      JSON.stringify({
-        organizationId,
-        siteId,
-        staffId: query.staffId ?? null,
-        redirectUri: query.redirectUri,
-        timestamp: Date.now(),
-      }),
-      "utf8",
-    ).toString("base64url");
+    const state = createGoogleOAuthState(
+      { userId, organizationId, siteId, staffId: query.staffId ?? null, redirectUri: query.redirectUri },
+      env.AUTH_ENCRYPTION_KEY,
+    );
 
     const params = new URLSearchParams({
       client_id: env.GOOGLE_CLIENT_ID!,
@@ -114,16 +162,14 @@ export class GoogleCalendarService {
       scope: "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email",
       access_type: "offline",
       prompt: "consent",
-      state: statePayload,
+      state,
     });
 
-    return {
-      url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
-    };
+    return { url: `${GOOGLE_AUTH_URL}?${params.toString()}` };
   }
 
   /**
-   * Conecta una cuenta de Google Calendar mediante el código OAuth.
+   * Conecta una cuenta de Google Calendar mediante el código OAuth, verificando antes el `state`.
    */
   async connect(
     organizationId: string,
@@ -135,6 +181,19 @@ export class GoogleCalendarService {
       throw new UnprocessableEntityException(GOOGLE_CALENDAR_NOT_CONFIGURED);
     }
 
+    const state = verifyGoogleOAuthState(input.state, env.AUTH_ENCRYPTION_KEY);
+    if (
+      !state ||
+      state.userId !== actorId ||
+      state.organizationId !== organizationId ||
+      state.siteId !== siteId ||
+      state.redirectUri !== input.redirectUri
+    ) {
+      throw new UnprocessableEntityException(GOOGLE_CALENDAR_INVALID_STATE);
+    }
+    this.assertRedirectUriAllowed(input.redirectUri);
+    const staffId = state.staffId;
+
     const site = await this.prisma.site.findFirst({
       where: { id: siteId, organizationId },
       select: { id: true },
@@ -142,19 +201,12 @@ export class GoogleCalendarService {
     if (!site) {
       throw new NotFoundException("Sitio no encontrado.");
     }
-
-    if (input.staffId) {
-      const staff = await this.prisma.bookingStaff.findFirst({
-        where: { id: input.staffId, siteId, organizationId },
-        select: { id: true },
-      });
-      if (!staff) {
-        throw new NotFoundException("Profesional no encontrado.");
-      }
+    if (staffId) {
+      await this.assertStaffInSite(organizationId, siteId, staffId);
     }
 
     // Intercambiar código OAuth por tokens
-    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    const tokenRes = await googleFetch(GOOGLE_TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -167,8 +219,8 @@ export class GoogleCalendarService {
     });
 
     if (!tokenRes.ok) {
-      const errorText = await tokenRes.text();
-      logger.error("error al intercambiar código OAuth de Google Calendar", { status: tokenRes.status, body: errorText });
+      // No se registra el cuerpo: puede traer el código o credenciales.
+      logger.error("error al intercambiar código OAuth de Google Calendar", { status: tokenRes.status });
       throw new UnprocessableEntityException("No se pudo conectar con Google Calendar. Código inválido o expirado.");
     }
 
@@ -177,10 +229,26 @@ export class GoogleCalendarService {
       throw new InternalServerErrorException("Respuesta de Google sin token de acceso.");
     }
 
+    // Buscar conexión previa para actualizarla o crear nueva
+    const existing = await this.prisma.googleCalendarConnection.findFirst({
+      where: { siteId, organizationId, staffId },
+    });
+
+    // Sin refresh token no hay uso continuo. Al reconectar, Google a veces no lo repite: se conserva el
+    // anterior. Nunca se guarda el token de acceso como si fuera de renovación.
+    let refreshTokenEncrypted: string;
+    if (tokenData.refresh_token) {
+      refreshTokenEncrypted = encryptSecret(tokenData.refresh_token, env.AUTH_ENCRYPTION_KEY);
+    } else if (existing) {
+      refreshTokenEncrypted = existing.refreshTokenEncrypted;
+    } else {
+      throw new UnprocessableEntityException(GOOGLE_CALENDAR_NO_REFRESH_TOKEN);
+    }
+
     // Obtener correo de la cuenta de Google
     let email = "cuenta-conectada@google.com";
     try {
-      const userinfoRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+      const userinfoRes = await googleFetch("https://www.googleapis.com/oauth2/v2/userinfo", {
         headers: { Authorization: `Bearer ${tokenData.access_token}` },
       });
       if (userinfoRes.ok) {
@@ -193,15 +261,6 @@ export class GoogleCalendarService {
 
     const expiresAt = new Date(Date.now() + (tokenData.expires_in ?? 3600) * 1000);
     const accessTokenEncrypted = encryptSecret(tokenData.access_token, env.AUTH_ENCRYPTION_KEY);
-    const refreshTokenEncrypted = encryptSecret(tokenData.refresh_token ?? tokenData.access_token, env.AUTH_ENCRYPTION_KEY);
-
-    // Buscar conexión previa para actualizarla o crear nueva
-    const existing = await this.prisma.googleCalendarConnection.findFirst({
-      where: {
-        siteId,
-        staffId: input.staffId ?? null,
-      },
-    });
 
     const saved = existing
       ? await this.prisma.googleCalendarConnection.update({
@@ -219,7 +278,7 @@ export class GoogleCalendarService {
           data: {
             organizationId,
             siteId,
-            staffId: input.staffId ?? null,
+            staffId,
             email,
             calendarId: "primary",
             accessTokenEncrypted,
@@ -235,7 +294,7 @@ export class GoogleCalendarService {
       action: "booking.google_calendar_connected",
       targetType: "GoogleCalendarConnection",
       targetId: saved.id,
-      metadata: { siteId, staffId: input.staffId ?? null, email },
+      metadata: { siteId, staffId, email },
     });
 
     return this.toResponse(saved);
@@ -272,37 +331,101 @@ export class GoogleCalendarService {
   }
 
   /**
+   * Devuelve un token de acceso vigente, renovándolo con el refresh token si está por vencer.
+   * Si Google revocó el acceso, marca la conexión con error (deja de intentarse) y devuelve `null`.
+   */
+  private async getValidAccessToken(connection: GoogleCalendarConnection): Promise<string | null> {
+    if (connection.expiresAt.getTime() - Date.now() > TOKEN_REFRESH_MARGIN_MS) {
+      return decryptSecret(connection.accessTokenEncrypted, env.AUTH_ENCRYPTION_KEY);
+    }
+
+    const res = await googleFetch(GOOGLE_TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: env.GOOGLE_CLIENT_ID!,
+        client_secret: env.GOOGLE_CLIENT_SECRET!,
+        refresh_token: decryptSecret(connection.refreshTokenEncrypted, env.AUTH_ENCRYPTION_KEY),
+        grant_type: "refresh_token",
+      }),
+    });
+
+    if (!res.ok) {
+      const revoked = res.status === 400 || res.status === 401;
+      await this.prisma.googleCalendarConnection.update({
+        where: { id: connection.id },
+        data: {
+          ...(revoked ? { status: "ERROR" } : {}),
+          lastError: revoked
+            ? "Google revocó el acceso. Vuelve a conectar la cuenta."
+            : "No se pudo renovar el acceso con Google.",
+        },
+      });
+      return null;
+    }
+
+    const data = (await res.json()) as GoogleTokenResponse;
+    await this.prisma.googleCalendarConnection.update({
+      where: { id: connection.id },
+      data: {
+        accessTokenEncrypted: encryptSecret(data.access_token, env.AUTH_ENCRYPTION_KEY),
+        expiresAt: new Date(Date.now() + (data.expires_in ?? 3600) * 1000),
+      },
+    });
+    return data.access_token;
+  }
+
+  /**
    * Sincroniza un evento de reserva hacia Google Calendar.
    * Si no hay credenciales o no hay conexión activa, se degrada limpiamente sin fallar.
+   * Nunca lanza: un fallo de Google no debe afectar a la reserva.
    */
-  async syncBooking(
-    booking: Booking,
-    eventType: "CREATED" | "UPDATED" | "CANCELLED",
-  ): Promise<{ synced: boolean; eventId?: string; reason?: string }> {
+  async syncBooking(booking: Booking, eventType: GoogleSyncEvent): Promise<GoogleSyncResult> {
     if (!this.isConfigured()) {
       return { synced: false, reason: "NOT_CONFIGURED" };
     }
 
-    // Priorizar conexión del profesional asignado; si no tiene, usar la del sitio
     let connection: GoogleCalendarConnection | null = null;
-    if (booking.staffId) {
-      connection = await this.prisma.googleCalendarConnection.findFirst({
-        where: { siteId: booking.siteId, staffId: booking.staffId, status: "CONNECTED" },
-      });
-    }
-    if (!connection) {
-      connection = await this.prisma.googleCalendarConnection.findFirst({
-        where: { siteId: booking.siteId, staffId: null, status: "CONNECTED" },
-      });
-    }
-
-    if (!connection) {
-      return { synced: false, reason: "NO_ACTIVE_CONNECTION" };
-    }
-
     try {
-      const accessToken = decryptSecret(connection.accessTokenEncrypted, env.AUTH_ENCRYPTION_KEY);
+      // Priorizar conexión del profesional asignado; si no tiene, usar la del sitio
+      if (booking.staffId) {
+        connection = await this.prisma.googleCalendarConnection.findFirst({
+          where: { siteId: booking.siteId, staffId: booking.staffId, status: "CONNECTED" },
+        });
+      }
+      if (!connection) {
+        connection = await this.prisma.googleCalendarConnection.findFirst({
+          where: { siteId: booking.siteId, staffId: null, status: "CONNECTED" },
+        });
+      }
+      if (!connection) {
+        return { synced: false, reason: "NO_ACTIVE_CONNECTION" };
+      }
+
+      const accessToken = await this.getValidAccessToken(connection);
+      if (!accessToken) {
+        return { synced: false, reason: "AUTH_ERROR" };
+      }
       const calendarId = encodeURIComponent(connection.calendarId);
+      const eventsUrl = `${GOOGLE_EVENTS_URL}/${calendarId}/events`;
+      const authHeaders = { Authorization: `Bearer ${accessToken}` };
+
+      if (eventType === "CANCELLED") {
+        if (!booking.googleEventId) {
+          return { synced: true };
+        }
+        const delRes = await googleFetch(`${eventsUrl}/${encodeURIComponent(booking.googleEventId)}`, {
+          method: "DELETE",
+          headers: authHeaders,
+        });
+        // 410 Gone / 404: el evento ya no existe en Google; el objetivo (que no esté) se cumplió.
+        if (!delRes.ok && delRes.status !== 404 && delRes.status !== 410) {
+          return await this.recordSyncError(connection, delRes.status);
+        }
+        await this.prisma.booking.update({ where: { id: booking.id }, data: { googleEventId: null } });
+        await this.recordSyncOk(connection);
+        return { synced: true };
+      }
 
       const eventPayload = {
         summary: booking.staffName
@@ -318,82 +441,76 @@ export class GoogleCalendarService {
         location: booking.branchName ?? undefined,
       };
 
-      if (eventType === "CANCELLED" && booking.googleEventId) {
-        await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${booking.googleEventId}`,
-          {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${accessToken}` },
-          },
-        );
-        await this.prisma.booking.update({
-          where: { id: booking.id },
-          data: { googleEventId: null },
-        });
-        return { synced: true };
-      }
-
       if (booking.googleEventId && eventType === "UPDATED") {
-        const patchRes = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${booking.googleEventId}`,
-          {
-            method: "PATCH",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(eventPayload),
-          },
-        );
+        const patchRes = await googleFetch(`${eventsUrl}/${encodeURIComponent(booking.googleEventId)}`, {
+          method: "PATCH",
+          headers: { ...authHeaders, "Content-Type": "application/json" },
+          body: JSON.stringify(eventPayload),
+        });
         if (patchRes.ok) {
-          await this.prisma.googleCalendarConnection.update({
-            where: { id: connection.id },
-            data: { lastSyncAt: new Date(), lastError: null },
-          });
+          await this.recordSyncOk(connection);
           return { synced: true, eventId: booking.googleEventId };
+        }
+        // Si el evento ya no existe se vuelve a crear; cualquier otro error se informa.
+        if (patchRes.status !== 404 && patchRes.status !== 410) {
+          return await this.recordSyncError(connection, patchRes.status);
         }
       }
 
-      // CREATED o fallback
-      const insertRes = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(eventPayload),
-        },
-      );
-
-      if (insertRes.ok) {
-        const createdEvent = (await insertRes.json()) as { id: string };
-        await this.prisma.booking.update({
-          where: { id: booking.id },
-          data: { googleEventId: createdEvent.id },
-        });
-        await this.prisma.googleCalendarConnection.update({
-          where: { id: connection.id },
-          data: { lastSyncAt: new Date(), lastError: null },
-        });
-        return { synced: true, eventId: createdEvent.id };
-      }
-
-      const errText = await insertRes.text();
-      logger.warn("error al insertar evento en Google Calendar", { status: insertRes.status, body: errText });
-      await this.prisma.googleCalendarConnection.update({
-        where: { id: connection.id },
-        data: { lastError: `Error ${insertRes.status}: no se pudo crear evento.` },
+      const insertRes = await googleFetch(eventsUrl, {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify(eventPayload),
       });
-      return { synced: false, reason: "API_ERROR" };
+      if (!insertRes.ok) {
+        return await this.recordSyncError(connection, insertRes.status);
+      }
+      const createdEvent = (await insertRes.json()) as { id: string };
+      await this.prisma.booking.update({ where: { id: booking.id }, data: { googleEventId: createdEvent.id } });
+      await this.recordSyncOk(connection);
+      return { synced: true, eventId: createdEvent.id };
     } catch (err) {
       logger.warn("excepción al sincronizar con Google Calendar", { error: err });
-      await this.prisma.googleCalendarConnection.update({
-        where: { id: connection.id },
-        data: { lastError: "Fallo de conexión con Google Calendar." },
-      });
+      if (connection) {
+        await this.prisma.googleCalendarConnection
+          .update({ where: { id: connection.id }, data: { lastError: "Fallo de conexión con Google Calendar." } })
+          .catch(() => undefined);
+      }
       return { synced: false, reason: "EXCEPTION" };
     }
+  }
+
+  /**
+   * Envío "dispara y olvida" desde los flujos de reserva: nunca bloquea ni hace fallar la solicitud.
+   * Vuelve a leer la reserva para sincronizar su estado actual (p. ej. con el `googleEventId` ya guardado).
+   */
+  syncBookingById(bookingId: string, eventType: GoogleSyncEvent): void {
+    if (!this.isConfigured()) {
+      return;
+    }
+    void (async () => {
+      const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+      if (booking) {
+        await this.syncBooking(booking, eventType);
+      }
+    })().catch((err: unknown) => {
+      logger.warn("no se pudo sincronizar la reserva con Google Calendar", { bookingId, error: err });
+    });
+  }
+
+  private async recordSyncOk(connection: GoogleCalendarConnection): Promise<void> {
+    await this.prisma.googleCalendarConnection.update({
+      where: { id: connection.id },
+      data: { lastSyncAt: new Date(), lastError: null },
+    });
+  }
+
+  private async recordSyncError(connection: GoogleCalendarConnection, status: number): Promise<GoogleSyncResult> {
+    logger.warn("Google Calendar rechazó la sincronización", { status, connectionId: connection.id });
+    await this.prisma.googleCalendarConnection.update({
+      where: { id: connection.id },
+      data: { lastError: `Error ${status}: Google no aceptó el cambio en el calendario.` },
+    });
+    return { synced: false, reason: "API_ERROR" };
   }
 }

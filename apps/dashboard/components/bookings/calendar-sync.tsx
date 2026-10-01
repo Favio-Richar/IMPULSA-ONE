@@ -11,6 +11,7 @@ import {
   useRotateSiteCalendarFeed,
 } from "../../lib/hooks/use-booking-setup";
 import { getGoogleCalendarAuthUrl } from "../../lib/api/booking";
+import { googleCalendarRedirectUri, saveGoogleOAuthContext } from "../../lib/google-calendar-oauth";
 import { ApiError } from "../../lib/api-client";
 
 interface CalendarSyncProps {
@@ -48,8 +49,11 @@ export function CalendarSync({ organizationId, siteId, settings }: CalendarSyncP
     setConnectingGoogle(true);
     setGoogleError(null);
     try {
-      const redirectUri = `${window.location.origin}${window.location.pathname}`;
-      const { url } = await getGoogleCalendarAuthUrl(organizationId, siteId, redirectUri);
+      const { url } = await getGoogleCalendarAuthUrl(organizationId, siteId, googleCalendarRedirectUri(window.location.origin));
+      const state = new URL(url).searchParams.get("state");
+      if (state) {
+        saveGoogleOAuthContext(state, { organizationId, siteId, returnPath: window.location.pathname });
+      }
       window.location.href = url;
     } catch (err) {
       setConnectingGoogle(false);
@@ -146,7 +150,8 @@ export function CalendarSync({ organizationId, siteId, settings }: CalendarSyncP
             <div>
               <h3 className="text-sm font-medium text-foreground">Google Calendar</h3>
               <p className="text-xs text-muted-foreground">
-                Sincronización directa y bidireccional de reservas con tu cuenta de Google.
+                Las reservas confirmadas se crean en tu calendario de Google, y se mueven o borran si se reprograman
+                o cancelan. Los eventos que crees en Google no se traen a Impulza.
               </p>
             </div>
             {isGoogleConfigured && googleConnection ? (
@@ -183,9 +188,15 @@ export function CalendarSync({ organizationId, siteId, settings }: CalendarSyncP
                   </span>
                 ) : null}
               </div>
-              <span className="inline-flex items-center rounded bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600">
-                Conectado
-              </span>
+              {googleConnection.status === "CONNECTED" ? (
+                <span className="inline-flex items-center rounded bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                  Conectado
+                </span>
+              ) : (
+                <Button variant="secondary" size="sm" loading={connectingGoogle} onClick={handleConnectGoogle} className="shrink-0">
+                  Volver a conectar
+                </Button>
+              )}
             </div>
           ) : (
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -204,6 +215,15 @@ export function CalendarSync({ organizationId, siteId, settings }: CalendarSyncP
               </Button>
             </div>
           )}
+
+          {isGoogleConfigured && googleConnection && googleConnection.status !== "CONNECTED" ? (
+            <p role="alert" className="mt-2 text-xs text-danger">
+              {googleConnection.lastError ?? "La conexión con Google Calendar dejó de funcionar."} Las reservas nuevas no se
+              están copiando a tu calendario.
+            </p>
+          ) : isGoogleConfigured && googleConnection?.lastError ? (
+            <p className="mt-2 text-xs text-muted-foreground">Último aviso de Google: {googleConnection.lastError}</p>
+          ) : null}
 
           {googleError ? (
             <p role="alert" className="mt-2 text-xs text-danger">

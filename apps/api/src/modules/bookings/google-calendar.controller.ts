@@ -80,9 +80,10 @@ export class GoogleCalendarController {
   getAuthUrl(
     @Param("organizationId") organizationId: string,
     @Param("siteId") siteId: string,
+    @CurrentUser() user: User,
     @Query(new ZodValidationPipe(googleCalendarAuthUrlQuerySchema)) query: GoogleCalendarAuthUrlQuery,
   ) {
-    return this.googleCalendarService.getAuthUrl(organizationId, siteId, query);
+    return this.googleCalendarService.getAuthUrl(organizationId, user.id, siteId, query);
   }
 
   @Post("connect")

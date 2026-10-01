@@ -16,7 +16,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Lista para tu revisión (ADR-021; capturas en `docs/design/capturas/f76/`) |
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Lista para tu revisión (ADR-022; capturas en `docs/design/capturas/f77/`) |
 | F7.8 — Tienda: variantes, cupones y carrito | Lista para tu revisión (ADR-023): F7.8a variantes, F7.8b cupones y F7.8c carrito (capturas en `docs/design/capturas/f78a/`, `f78b/` y `f78c/`) |
-| F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | En curso (ADR-024): F7.9a profesionales y sucursales y F7.9b horarios y bloqueos (servidor revisado y corregido; faltan pruebas de interfaz de la página pública y del editor de horario), F7.9c calendarios e iCal (sin empezar) |
+| F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Lista para tu revisión (ADR-024): F7.9a profesionales y sucursales, F7.9b horarios y bloqueos, F7.9c feed iCal y Google Calendar (capturas en `docs/design/capturas/f79/`). Google Calendar real queda pendiente de tus credenciales OAuth; probado con Google simulado |
 | F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Pendiente |
 | F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Pendiente |
 | F7.12 — Aislamiento y seguridad de Fase 7 | Pendiente |
@@ -536,13 +536,48 @@ Revisión y cierre de F7.9a y F7.9b (2026-10-01) — completadas y verificadas:
 - Feed iCal (`.ics`, RFC 5545) universal y seguro con token por sitio y por profesional en `/public/bookings/calendar-feed/:token.ics` para suscripción instantánea en Google Calendar, Apple Calendar y Outlook sin necesidad de cuentas de desarrollador.
 - Plegado de líneas a 75 octetos según RFC 5545, rate limiting y cabeceras `Content-Type: text/calendar; charset=utf-8` y `Content-Disposition: inline; filename="reservas.ics"`.
 - Rotación segura de tokens por sitio (`POST .../booking/settings/rotate-calendar-feed`) y por profesional (`POST .../booking/staff/:staffId/rotate-calendar-feed`) que invalida el enlace anterior inmediatamente.
-- Modelo y adaptador de Google Calendar (`google_calendar_connections`) para sincronización bidireccional. Si faltan las credenciales OAuth en el entorno (`GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`), opera en modo desacoplado (`configured: false`) sin fallar ni arrojar 500. Cifrado simétrico AES-256-GCM para tokens.
+- Modelo y adaptador de Google Calendar (`google_calendar_connections`), **de un solo sentido (Impulza → Google)**: crea, mueve y borra el evento de cada reserva; los eventos creados en Google no se traen. Si faltan las credenciales OAuth en el entorno (`GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`), opera en modo desacoplado (`configured: false`) sin fallar ni arrojar 500. Cifrado simétrico AES-256-GCM para tokens.
 - Migración `20261001230000_f79c_google_calendar` con `migration.sql` y `down.sql` verificada en ambas direcciones en Postgres.
 - Suite de pruebas E2E `calendar-and-google.e2e.test.ts` (8/8 pruebas aprobadas al 100%).
 - Prueba de aislamiento multi-tenant en `multi-tenant-isolation.e2e.test.ts` (verificado que ninguna organización puede rotar tokens ni acceder a conexiones de otra).
 - Prueba contra código roto realizada y comprobada (filtro de staff en feed iCal).
 - Componentes UI en Dashboard (`CalendarSync` en página de reservas del sitio y feed personal en `booking-staff.tsx`).
-- OpenAPI regenerado y validado (204 rutas, 279 operaciones). Tipos y lint 100% limpios.
+- OpenAPI regenerado y validado (204 rutas, 279 operaciones).
+
+Revisión de F7.9c (2026-10-01, Claude) — defectos encontrados y corregidos:
+- **Regresión en `apps/api/src/env.ts`:** se había borrado `...mercadoPagoOAuthEnvShape` (credenciales de la
+  aplicación de Mercado Pago, F5.8): `tsc` fallaba y la conexión de cuentas de Mercado Pago quedaba sin
+  configuración. Restaurada (commit `b3e5730`). La entrega afirmaba "tipos y lint limpios": no lo estaban.
+- **La sincronización con Google no estaba conectada:** `syncBooking` existía pero nada la llamaba, y
+  tampoco renovaba el token de acceso (vence en 1 h). Ahora `syncBookingById` (dispara y olvida, nunca
+  bloquea ni hace fallar la reserva) se invoca al confirmar una reserva (pública, manual, seña pagada,
+  reactivada), al cancelarla (negocio o cliente) y al reprogramarla. El token se renueva con el refresh
+  token; si Google lo revoca la conexión pasa a `ERROR`, el panel lo muestra con «Volver a conectar» y deja
+  de intentarse. Tiempo límite de 10 s por llamada a Google. Limitación conocida: el envío no pasa por una
+  cola (BullMQ); si el proceso se cae justo después de confirmar, ese evento no se copia.
+- **El panel nunca completaba la conexión:** redirigía a Google, pero nada recibía el `code`. Ahora hay una
+  ruta fija de retorno `/integraciones/google-calendar` (Google exige una dirección registrada exacta; la
+  anterior era distinta por sitio) que cierra la conexión y vuelve al sitio de origen, con estados de
+  carga, éxito y error.
+- **`state` de OAuth:** era un JSON base64 sin firma que `connect` nunca verificaba. Ahora es HMAC-SHA256
+  (clave derivada de `AUTH_ENCRYPTION_KEY`), con nonce y vigencia de 10 min, y ata usuario, organización,
+  sitio, profesional y dirección de retorno; `connect` lo exige (`staffId` ya no viaja en el cuerpo). La
+  `redirectUri` debe ser del origen del panel (`APP_BASE_URL`).
+- **Refresh token:** si Google no lo devolvía se guardaba el token de acceso en su lugar (fallaba en silencio
+  una hora después). Ahora se conserva el anterior al reconectar, o se rechaza la conexión.
+- **Token del feed en los logs:** el log de cada petición y el filtro de excepciones escribían la URL
+  completa, con el token del feed (da acceso a nombres, correos y teléfonos de clientes). `redactPath` lo
+  oculta en logs y en Sentry. El cuerpo de error del intercambio de código OAuth ya no se registra.
+- **Pruebas nuevas, verificadas contra el código roto (4 mutaciones, todas hicieron fallar la prueba):**
+  `google-calendar.service.test.ts` (Google simulado: `state`, redirección, refresh token, renovación,
+  revocación, crear/mover/cancelar, nunca lanza), `google-oauth-state.test.ts`, `redact-path.test.ts` y
+  Playwright `reservas-calendarios.spec.ts` (el feed se sirve, regenerar revoca el anterior, modo
+  desacoplado, retorno de Google con errores). Capturas en `docs/design/capturas/f79/`.
+- **Pendiente para Google Calendar real (necesita credenciales de Favio):** crear la aplicación OAuth en
+  Google Cloud con la dirección de retorno `<APP_BASE_URL>/integraciones/google-calendar` y poner
+  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`; con ellas, probar de punta a punta (conectar, reservar, mover,
+  cancelar). Hasta entonces solo está probado con Google simulado. Tampoco hay botón para conectar Google a
+  nivel de un profesional en el panel (el servidor sí lo soporta con `staffId`).
 
 ## Fases siguientes
 

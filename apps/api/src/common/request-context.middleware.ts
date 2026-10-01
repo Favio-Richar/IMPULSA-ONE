@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { runWithRequestContext } from "@impulza/observability";
 import { logger } from "../observability/logger.js";
+import { redactPath } from "./redact-path.js";
 
 // `traceparent` (W3C Trace Context) es el formato estándar que usan proxies/otros servicios para
 // propagar un trace entre llamadas; si no viene, aceptamos `x-trace-id` como alternativa simple,
@@ -30,7 +31,7 @@ export function requestContextMiddleware(request: Request, response: Response, n
     response.on("finish", () => {
       logger.info("request", {
         method: request.method,
-        path: request.originalUrl,
+        path: redactPath(request.originalUrl),
         status: response.statusCode,
         duration_ms: Date.now() - startedAt,
       });

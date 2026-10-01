@@ -5,6 +5,7 @@ import type {
   BookingBranchResponse,
   BookingSettingsResponse,
   BookingStaffResponse,
+  GoogleCalendarConnectionResponse,
   GoogleCalendarStatusResponse,
 } from "@impulza/contracts";
 import type {
@@ -151,6 +152,15 @@ export function getGoogleCalendarAuthUrl(
 ): Promise<{ url: string }> {
   const params = new URLSearchParams({ redirectUri, ...(staffId ? { staffId } : {}) });
   return apiFetch<{ url: string }>(`${base(organizationId, siteId)}/google-calendar/auth-url?${params.toString()}`);
+}
+
+/** Cierra la conexión con el `code` y el `state` que Google devuelve al panel. */
+export function connectGoogleCalendar(
+  organizationId: string,
+  siteId: string,
+  body: { code: string; state: string; redirectUri: string },
+): Promise<GoogleCalendarConnectionResponse> {
+  return apiFetch<GoogleCalendarConnectionResponse>(`${base(organizationId, siteId)}/google-calendar/connect`, { method: "POST", body });
 }
 
 export function disconnectGoogleCalendar(organizationId: string, siteId: string, staffId?: string): Promise<void> {

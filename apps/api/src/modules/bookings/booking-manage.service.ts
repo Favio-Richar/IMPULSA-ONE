@@ -10,6 +10,7 @@ import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { BookingDepositService } from "./booking-deposit.service.js";
 import { BookingNotifier } from "./booking-notifier.js";
+import { GoogleCalendarService } from "./google-calendar.service.js";
 import { BookingSetupService } from "./booking-setup.service.js";
 import { WebhookEventsService } from "../webhooks/webhook-events.service.js";
 
@@ -38,6 +39,7 @@ export class BookingManageService {
     private readonly auditService: AuditService,
     private readonly deposit: BookingDepositService,
     private readonly webhookEvents: WebhookEventsService,
+    private readonly googleCalendar: GoogleCalendarService,
   ) {}
 
   private async resolve(token: string) {
@@ -131,6 +133,7 @@ export class BookingManageService {
     await this.notifier.notifyCustomer("cancelled", updated, booking.site.name);
     await this.notifier.notifyOwners("cancelled", updated, booking.site.name);
     await this.webhookEvents.emit({ organizationId: booking.organizationId, type: "booking.cancelled", subjectId: booking.id });
+    this.googleCalendar.syncBookingById(booking.id, "CANCELLED");
     logger.info("reserva cancelada por el cliente", { organizationId: booking.organizationId, bookingId: booking.id });
     return this.view(token, now);
   }
@@ -178,6 +181,7 @@ export class BookingManageService {
       throw error;
     }
 
+    this.googleCalendar.syncBookingById(booking.id, "UPDATED");
     await this.auditService.record({
       organizationId: booking.organizationId,
       actorId: null,

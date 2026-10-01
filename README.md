@@ -6,7 +6,7 @@ captación, reservas, ventas y analítica) desde una sola URL.
 **Estado actual (2026-10-01): Fase 7 en curso — F7.1 (GA4 y píxel de Meta con consentimiento, y CSP
 en la página pública, ADR-016), F7.2 (webhooks salientes firmados hacia Zapier, Make u otros
 sistemas, ADR-017), F7.3 (bloques de cuenta regresiva, precios, mapa, música y eventos, ADR-018),
-F7.4 (newsletter con doble confirmación, ADR-019), F7.5 (secuencias de correo, ADR-020), F7.6 (embudos de conversión, ADR-021), F7.7 (modo campaña, ADR-022), F7.8 (tienda: variantes, cupones y carrito, ADR-023), F7.9a (reservas: sucursales, profesionales y asignación de servicios, ADR-024), F7.9b (horarios semanales y bloqueos por profesional) y F7.9c (feed iCal universal y adaptador de Google Calendar desacoplado) listas para revisión; sigue F7.10. Los cobros de
+F7.4 (newsletter con doble confirmación, ADR-019), F7.5 (secuencias de correo, ADR-020), F7.6 (embudos de conversión, ADR-021), F7.7 (modo campaña, ADR-022), F7.8 (tienda: variantes, cupones y carrito, ADR-023), F7.9a (reservas: sucursales, profesionales y asignación de servicios, ADR-024), F7.9b (horarios semanales y bloqueos por profesional) y F7.9c (feed iCal universal y Google Calendar de un solo sentido, probado con Google simulado: falta la aplicación OAuth del propietario) listas para revisión; sigue F7.10 (sitio comercial). Los cobros de
 los negocios (F5.8–F5.11, ADR-013 y ADR-015) quedaron completos y en revisión. Lo pendiente de todo
 el plan está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la

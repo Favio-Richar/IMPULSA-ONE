@@ -10,6 +10,7 @@ import { DISPUTE_STATUSES } from "../payment-accounts/checkout-refunds.service.j
 import { MERCADO_PAGO_CHECKOUT, type CheckoutConfig } from "../payment-accounts/checkout.tokens.js";
 import { PaymentAccountsService } from "../payment-accounts/payment-accounts.service.js";
 import { BookingNotifier, bookingManageUrl } from "./booking-notifier.js";
+import { GoogleCalendarService } from "./google-calendar.service.js";
 
 /** Plazo para pagar la seña. La hora queda tomada mientras tanto (nunca más allá del inicio). */
 export const DEPOSIT_TTL_MS = 30 * 60_000;
@@ -43,6 +44,7 @@ export class BookingDepositService {
     private readonly accounts: PaymentAccountsService,
     private readonly notifier: BookingNotifier,
     private readonly audit: AuditService,
+    private readonly googleCalendar: GoogleCalendarService,
   ) {}
 
   /**
@@ -189,6 +191,7 @@ export class BookingDepositService {
             metadata: { provider: "MERCADO_PAGO", paymentId: payment.id, afterExpiry: booking.status === "CANCELLED" },
           });
           await this.notifier.notifyDepositPaid(updated, siteName, payment.id);
+          this.googleCalendar.syncBookingById(booking.id, "CREATED");
           logger.info("reservas: seña confirmada por Mercado Pago", { organizationId: booking.organizationId, bookingId: booking.id });
           return "paid";
         }

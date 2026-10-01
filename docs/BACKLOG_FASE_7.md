@@ -15,7 +15,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.5 — Secuencias de correo automáticas (bienvenida, seguimiento) sobre las automatizaciones | Lista para tu revisión (ADR-020; capturas en `docs/design/capturas/f75/`) |
 | F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Lista para tu revisión (ADR-021; capturas en `docs/design/capturas/f76/`) |
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Lista para tu revisión (ADR-022; capturas en `docs/design/capturas/f77/`) |
-| F7.8 — Tienda: variantes, cupones y carrito | En curso (ADR-023): F7.8a variantes y F7.8b cupones listas para tu revisión (capturas en `docs/design/capturas/f78a/` y `f78b/`); sigue F7.8c carrito |
+| F7.8 — Tienda: variantes, cupones y carrito | Lista para tu revisión (ADR-023): F7.8a variantes, F7.8b cupones y F7.8c carrito (capturas en `docs/design/capturas/f78a/`, `f78b/` y `f78c/`) |
 | F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Pendiente |
 | F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Pendiente |
 | F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Pendiente |
@@ -423,6 +423,30 @@ Implementación de F7.8b (2026-10-01) — lista para tu revisión:
   stock de todas o de ninguna, y crea un pedido con sus líneas; el cobro es por el total.
 - Pruebas: API e2e (todas o ninguna, moneda mixta, digital mezclado, tope de líneas, aislamiento) y
   Playwright en teléfono y escritorio.
+
+Implementación de F7.8c (2026-10-01) — lista para tu revisión:
+- Sin migración: con varias líneas el pedido guarda cantidad 1 y precio = subtotal (corrección
+  registrada en ADR-023 §3), así `orders_quantity_range` y `orders_total_consistent` siguen valiendo y
+  el cobro, las descargas y los reembolsos no cambian. El detalle está en `order_items`.
+- `@impulza/validation`: `cartLineSchema`, `publicCartOrderRequestSchema` (1–20 líneas sin repetir
+  producto y variante; el navegador nunca manda precios), `publicCartCouponCheckSchema`,
+  `cartOrderSummaryName`; los correos detallan cada línea cuando hay varias.
+- API: `POST .../catalog/cart/orders` y `POST .../catalog/cart/coupons/check` (mismos cupos por
+  visitante que el pedido suelto). Todo se recalcula desde la base; una sola moneda; un producto digital
+  se compra solo; dirección si algo se entrega; el stock de todas las líneas y el uso del cupón se
+  reservan en una transacción (todo o nada, el 409 nombra la línea). El pedido suelto y el de carrito
+  comparten el mismo código para reservar stock y para lo que sigue al pedido (contacto, eventos,
+  cobro en línea, avisos). Rutas de reenvío en `apps/web` con un ayudante común.
+- Página pública: "Agregar al carrito" en cada producto no digital (con su opción y cantidad), carrito
+  por sitio en el navegador (solo ids y cantidades, validado al leer), barra "Ver carrito" al pie
+  (sticky junto a la acción principal: un `fixed` quedaba atrapado por el `@container` de la página) y
+  panel en un `<dialog>` nativo con cantidades, quitar, código de descuento, datos y confirmación. Con
+  varios bloques de tienda en la página, uno solo muestra el carrito.
+- Pruebas: 3 de validación y 1 de correos, 3 del carrito en el navegador, 1 de las rutas de reenvío,
+  5 e2e de API (verificadas contra el código roto: ignorar una línea sin stock en vez de revertir todo,
+  falla), caso en el aislamiento central y Playwright (3 casos × teléfono y escritorio, incluye que la
+  barra esté de verdad en pantalla). Tienda, cobro, variantes, cupones y acción principal siguen
+  pasando; `descargas` falla solo en la subida a MinIO (límite conocido del entorno).
 
 ## Fases siguientes
 

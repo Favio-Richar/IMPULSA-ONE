@@ -1,17 +1,21 @@
 "use client";
 
-import { Check, CreditCard, Minus, Package, Plus, ShoppingBag, Tag } from "lucide-react";
+import { Check, Minus, Package, Plus, ShoppingBag, ShoppingCart } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { PublicCatalogResponse, PublicCouponCheckResponse, PublicOrderConfirmationResponse } from "@impulza/contracts";
-import { MARKETING_CONSENT_LABEL, type CatalogBlockConfig } from "@impulza/validation";
+import { productWithVariantName, type CatalogBlockConfig } from "@impulza/validation";
 import { formatPrice } from "../lib/format-price.js";
-import { fetchJson, INPUT_CLASS, Notice, PRIMARY_BUTTON } from "../ui/flow.js";
-import { OUTBOUND_LINK } from "../ui/outbound.js";
+import { fetchJson, Notice, PRIMARY_BUTTON, SECONDARY_BUTTON } from "../ui/flow.js";
 import { SiteImage } from "../ui/site-image.js";
 import { StackButtonContent, stackButtonClass, stackSurfaceClass } from "../ui/stack-button.js";
 import { SURFACE_SCOPE } from "../ui/surface.js";
 import { emitConversion } from "../lib/conversions.js";
+import { CartPanel } from "./cart.js";
+import { addToCart, registerCartBlock, requestOpenCart, useCart, useIsCartOwner } from "./cart-store.js";
+import { CouponField } from "./coupon-field.js";
+import { CustomerFields, customerPayload, customerProblem, EMPTY_CUSTOMER, type CustomerValues } from "./customer-fields.js";
+import { OrderConfirmation } from "./order-confirmation.js";
 
 type Product = PublicCatalogResponse["products"][number];
 type ProductVariant = Product["variants"][number];
@@ -31,9 +35,6 @@ export function productPriceLabel(product: Pick<Product, "priceAmount" | "priceC
 
 const STEPPER_BUTTON =
   "flex h-11 w-11 items-center justify-center rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-background)] text-[var(--site-color-foreground)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2";
-
-const APPLY_BUTTON =
-  "flex h-11 shrink-0 items-center justify-center rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-background)] px-4 text-sm font-medium text-[var(--site-color-foreground)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2";
 
 /** Productos que muestra el bloque, según su configuración (ids elegidos o categoría). */
 export function selectCatalogProducts(products: Product[], config: Pick<CatalogBlockConfig, "productIds" | "categoryId">): Product[] {
@@ -80,6 +81,9 @@ export function CatalogBlock({
 
 function CatalogProducts({ config, siteSlug, variant }: { config: CatalogBlockConfig; siteSlug: string; variant: "glass" | "secondary" }) {
   const base = `/api/catalog/${encodeURIComponent(siteSlug)}`;
+  const blockId = useId();
+  const cartOwner = useIsCartOwner(siteSlug, blockId);
+  useEffect(() => registerCartBlock(siteSlug, blockId), [siteSlug, blockId]);
   const [catalog, setCatalog] = useState<PublicCatalogResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,6 +100,10 @@ function CatalogProducts({ config, siteSlug, variant }: { config: CatalogBlockCo
   }, [base]);
 
   const products = useMemo(() => (catalog ? selectCatalogProducts(catalog.products, config) : []), [catalog, config]);
+  const currencyOf = useMemo(() => {
+    const byId = new Map((catalog?.products ?? []).map((product) => [product.id, product.priceCurrency]));
+    return (productId: string) => byId.get(productId) ?? null;
+  }, [catalog]);
 
   if (error !== null) {
     // Un sitio sin tienda (404) no muestra nada; un fallo real, un aviso discreto.
@@ -108,21 +116,38 @@ function CatalogProducts({ config, siteSlug, variant }: { config: CatalogBlockCo
       </div>
     );
   }
+  // El carrito (F7.8c) usa el catálogo completo del sitio, no solo los productos de este bloque.
+  const cart = cartOwner ? <CartPanel siteSlug={siteSlug} base={base} products={catalog.products} /> : null;
   // Sin productos a la venta, el bloque no ocupa lugar: la pila sigue pareja.
-  if (products.length === 0) return null;
+  if (products.length === 0) return cart;
 
   return (
-    <ul className="flex flex-col gap-3" aria-label={config.label} data-catalog-block="">
-      {products.map((product) => (
-        <li key={product.id}>
-          <ProductButton product={product} base={base} variant={variant} />
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="flex flex-col gap-3" aria-label={config.label} data-catalog-block="">
+        {products.map((product) => (
+          <li key={product.id}>
+            <ProductButton product={product} base={base} siteSlug={siteSlug} currencyOf={currencyOf} variant={variant} />
+          </li>
+        ))}
+      </ul>
+      {cart}
+    </>
   );
 }
 
-function ProductButton({ product, base, variant }: { product: Product; base: string; variant: "glass" | "secondary" }) {
+function ProductButton({
+  product,
+  base,
+  siteSlug,
+  currencyOf,
+  variant,
+}: {
+  product: Product;
+  base: string;
+  siteSlug: string;
+  currencyOf: (productId: string) => string | null;
+  variant: "glass" | "secondary";
+}) {
   const [opened, setOpened] = useState(false);
   const price = productPriceLabel(product);
   const icon = product.image ? (
@@ -146,13 +171,13 @@ function ProductButton({ product, base, variant }: { product: Product; base: str
         <StackButtonContent icon={icon} label={product.name} description={detail} />
       </summary>
       <div className={`${SURFACE_SCOPE} mt-3 ${stackSurfaceClass("secondary")} p-4 sm:p-6`} data-order-panel="">
-        {opened ? <OrderFlow product={product} base={base} /> : null}
+        {opened ? <OrderFlow product={product} base={base} siteSlug={siteSlug} currencyOf={currencyOf} /> : null}
       </div>
     </details>
   );
 }
 
-function OrderFlow({ product, base }: { product: Product; base: string }) {
+function OrderFlow({ product, base, siteSlug, currencyOf }: { product: Product; base: string; siteSlug: string; currencyOf: (productId: string) => string | null }) {
   const id = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [quantity, setQuantity] = useState(1);
@@ -173,7 +198,10 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
       setCouponStale(true);
     }
   };
-  const [values, setValues] = useState({ name: "", email: "", phone: "", address: "", note: "", consent: false, marketing: false, website: "" });
+  const [values, setValues] = useState<CustomerValues>(EMPTY_CUSTOMER);
+  // Carrito (F7.8c): un producto digital se compra solo, así que no se agrega.
+  const cartLines = useCart(siteSlug);
+  const [added, setAdded] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<PublicOrderConfirmationResponse | null>(null);
@@ -203,21 +231,13 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
       setError("Elige una opción del producto.");
       return;
     }
-    if (!values.name.trim() || !values.email.trim()) {
-      setError("Escribe tu nombre y tu correo.");
-      return;
-    }
-    if (needsAddress && !values.address.trim()) {
-      setError("Escribe la dirección de entrega.");
-      return;
-    }
-    if (!values.consent) {
-      setError("Necesitamos tu autorización para guardar el pedido.");
+    const problem = customerProblem(values, needsAddress);
+    if (problem) {
+      setError(problem);
       return;
     }
     setError(null);
     setSubmitting(true);
-    const phone = values.phone.replace(/[\s()-]/g, "");
     const result = await fetchJson<PublicOrderConfirmationResponse>(`${base}/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -226,15 +246,7 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
         ...(selected ? { variantId: selected.id } : {}),
         quantity,
         ...(coupon ? { couponCode: coupon.code } : {}),
-        name: values.name.trim(),
-        email: values.email.trim(),
-        ...(phone ? { phone } : {}),
-        ...(needsAddress ? { address: values.address.trim() } : {}),
-        ...(values.note.trim() ? { note: values.note.trim() } : {}),
-        consent: true,
-        // Aparte y opcional (F5.6): solo con la casilla marcada llegan campañas.
-        ...(values.marketing ? { marketingConsent: true } : {}),
-        website: values.website,
+        ...customerPayload(values, needsAddress),
       }),
     });
     setSubmitting(false);
@@ -251,14 +263,23 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
   }
 
   const total = formatPrice(coupon ? coupon.totalAmount : unitPrice * quantity, product.priceCurrency);
-  const field = (key: "name" | "email" | "phone" | "address", label: string, props: React.InputHTMLAttributes<HTMLInputElement>) => (
-    <div>
-      <label htmlFor={`${id}-${key}`} className="mb-1 block text-sm font-medium text-[var(--site-color-foreground)]">
-        {label}
-      </label>
-      <input id={`${id}-${key}`} className={INPUT_CLASS} value={values[key]} onChange={(e) => setValues({ ...values, [key]: e.target.value })} {...props} />
-    </div>
-  );
+  // Moneda del carrito: la del primer producto que sigue en el catálogo.
+  const cartCurrency = cartLines.map((line) => currencyOf(line.productId)).find((currency) => currency !== null) ?? null;
+  function addCurrentToCart() {
+    if (variants.length > 0 && !selected) {
+      setError("Elige una opción del producto.");
+      return;
+    }
+    // Una sola moneda por carrito: un producto en otra moneda se pide por separado.
+    const otherCurrency = cartLines.some((line) => line.productId !== product.id) && cartCurrency !== null && cartCurrency !== product.priceCurrency;
+    if (otherCurrency) {
+      setError("Tu carrito tiene productos en otra moneda: pide este por separado.");
+      return;
+    }
+    const result = addToCart(siteSlug, { productId: product.id, ...(selected ? { variantId: selected.id } : {}), quantity }, maxQuantity);
+    setError(result === "full" ? "Tu carrito ya tiene 20 productos distintos: haz ese pedido primero." : null);
+    setAdded(result === "added" ? productWithVariantName(product.name, selected?.name) : null);
+  }
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4" aria-labelledby={`${id}-titulo`}>
@@ -346,12 +367,28 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
         </div>
       </div>
 
+      {product.kind === "DIGITAL" ? null : (
+        <div className="flex flex-col gap-2">
+          <button type="button" className={SECONDARY_BUTTON} onClick={addCurrentToCart}>
+            <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+            Agregar al carrito
+          </button>
+          {added ? (
+            <p className="flex flex-wrap items-center gap-x-2 text-sm text-[var(--site-color-foreground)]" role="status">
+              <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{added} quedó en tu carrito.</span>
+              <button type="button" className="font-medium underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2" onClick={() => requestOpenCart(siteSlug)}>
+                Ver carrito
+              </button>
+            </p>
+          ) : null}
+        </div>
+      )}
+
       <CouponField
-        base={base}
-        productId={product.id}
-        variantId={selected?.id ?? null}
+        checkUrl={`${base}/coupons/check`}
+        checkBody={{ productId: product.id, ...(selected ? { variantId: selected.id } : {}), quantity }}
         needsVariant={variants.length > 0 && !selected}
-        quantity={quantity}
         currency={product.priceCurrency}
         coupon={coupon}
         stale={couponStale}
@@ -362,202 +399,11 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
         }}
       />
 
-      {field("name", "Nombre *", { autoComplete: "name", maxLength: 120 })}
-      {field("email", "Correo *", { type: "email", autoComplete: "email", maxLength: 254 })}
-      {field("phone", "Teléfono (opcional)", { type: "tel", autoComplete: "tel", placeholder: "+56 9 1234 5678" })}
-      {needsAddress ? field("address", "Dirección de entrega *", { autoComplete: "street-address", maxLength: 300 }) : null}
-      <div>
-        <label htmlFor={`${id}-nota`} className="mb-1 block text-sm font-medium text-[var(--site-color-foreground)]">
-          Comentario (opcional)
-        </label>
-        <textarea id={`${id}-nota`} className={INPUT_CLASS} rows={2} maxLength={500} value={values.note} onChange={(e) => setValues({ ...values, note: e.target.value })} />
-      </div>
-      {/* Trampa antispam: invisible para personas, la completan los bots. */}
-      <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
-        <label htmlFor={`${id}-web`}>Sitio web</label>
-        <input id={`${id}-web`} tabIndex={-1} autoComplete="off" value={values.website} onChange={(e) => setValues({ ...values, website: e.target.value })} />
-      </div>
-      <label className="flex items-start gap-2 text-sm text-[var(--site-color-foreground)]">
-        <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--site-color-primary)]" checked={values.consent} onChange={(e) => setValues({ ...values, consent: e.target.checked })} />
-        <span>Acepto que este negocio guarde mis datos para gestionar mi pedido. *</span>
-      </label>
-      <label className="flex items-start gap-2 text-sm text-[var(--site-color-foreground)]">
-        <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--site-color-primary)]" checked={values.marketing} onChange={(e) => setValues({ ...values, marketing: e.target.checked })} />
-        <span>{MARKETING_CONSENT_LABEL}</span>
-      </label>
+      <CustomerFields id={id} values={values} onChange={setValues} needsAddress={needsAddress} />
       {error ? <Notice>{error}</Notice> : null}
       <button type="submit" disabled={submitting} className={PRIMARY_BUTTON}>
         {submitting ? "Enviando pedido…" : `Hacer pedido · ${total}`}
       </button>
     </form>
-  );
-}
-
-function OrderConfirmation({ confirmation, heading }: { confirmation: PublicOrderConfirmationResponse; heading: (text: string) => React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-4" role="status">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--site-color-primary)] text-[var(--site-color-primary-foreground)]">
-          <Check className="h-5 w-5" aria-hidden="true" />
-        </span>
-        {heading("¡Pedido recibido!")}
-      </div>
-      <p className="text-sm text-[var(--site-color-foreground)]">
-        <span className="font-medium">
-          {confirmation.quantity} × {confirmation.productName}
-        </span>
-        {confirmation.discountAmount > 0 ? (
-          <>
-            . Descuento{confirmation.couponCode ? ` (${confirmation.couponCode})` : ""}: −{formatPrice(confirmation.discountAmount, confirmation.priceCurrency)}
-          </>
-        ) : null}
-        . Total: <span className="font-semibold">{formatPrice(confirmation.totalAmount, confirmation.priceCurrency)}</span>. Te enviamos el detalle por correo.
-      </p>
-      {confirmation.checkoutUrl ? (
-        <>
-          {/* Misma pestaña: Mercado Pago devuelve al comprador a "Tu pedido" con el estado del pago. */}
-          <a href={confirmation.checkoutUrl} rel="noopener noreferrer" className={PRIMARY_BUTTON}>
-            <CreditCard className="h-4 w-4" aria-hidden="true" />
-            Pagar con Mercado Pago
-          </a>
-          <p className="text-xs text-[var(--site-color-muted-foreground)]">
-            Pagas en el sitio de Mercado Pago y el dinero lo recibe directamente el negocio. También te enviamos el enlace por correo.
-          </p>
-        </>
-      ) : confirmation.paymentUrl ? (
-        <>
-          <a href={confirmation.paymentUrl} {...OUTBOUND_LINK} className={PRIMARY_BUTTON}>
-            <CreditCard className="h-4 w-4" aria-hidden="true" />
-            Pagar ahora
-          </a>
-          <p className="text-xs text-[var(--site-color-muted-foreground)]">El pago lo recibe directamente el negocio.</p>
-        </>
-      ) : (
-        <p className="text-sm text-[var(--site-color-foreground)]">El negocio te contactará para coordinar el pago y la entrega.</p>
-      )}
-    </div>
-  );
-}
-
-/**
- * Código de descuento (F7.8b, ADR-023): plegado hasta que la persona lo pide. El descuento lo calcula
- * la API con la opción y la cantidad elegidas; cualquier código que no aplica recibe el mismo
- * mensaje. Al pedir, la API vuelve a validarlo y cuenta el uso.
- */
-function CouponField({
-  base,
-  productId,
-  variantId,
-  needsVariant,
-  quantity,
-  currency,
-  coupon,
-  stale,
-  onChange,
-}: {
-  base: string;
-  productId: string;
-  variantId: string | null;
-  needsVariant: boolean;
-  quantity: number;
-  currency: string;
-  coupon: PublicCouponCheckResponse | null;
-  stale: boolean;
-  onChange: (coupon: PublicCouponCheckResponse | null) => void;
-}) {
-  const id = useId();
-  const [open, setOpen] = useState(false);
-  const [code, setCode] = useState("");
-  const [checking, setChecking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function apply() {
-    if (needsVariant) {
-      setError("Elige una opción del producto antes de aplicar el código.");
-      return;
-    }
-    if (code.trim() === "") {
-      setError("Escribe el código.");
-      return;
-    }
-    setError(null);
-    setChecking(true);
-    const result = await fetchJson<PublicCouponCheckResponse>(`${base}/coupons/check`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: code.trim(), productId, ...(variantId ? { variantId } : {}), quantity }),
-    });
-    setChecking(false);
-    if (result.ok) {
-      onChange(result.data);
-    } else {
-      setError(result.status === 429 ? "Probaste muchos códigos seguidos. Espera unos minutos." : result.message);
-    }
-  }
-
-  if (coupon) {
-    return (
-      <div className="flex items-center justify-between gap-3 rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-background)] px-3 py-2" role="status">
-        <span className="flex min-w-0 items-center gap-2 text-sm text-[var(--site-color-foreground)]">
-          <Tag className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>
-            Código <span className="font-semibold">{coupon.code}</span>: −{formatPrice(coupon.discountAmount, currency)}
-          </span>
-        </span>
-        <button
-          type="button"
-          className="shrink-0 text-sm font-medium text-[var(--site-color-foreground)] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2"
-          onClick={() => {
-            onChange(null);
-            setOpen(true);
-          }}
-        >
-          Quitar
-        </button>
-      </div>
-    );
-  }
-
-  if (!open && !stale) {
-    return (
-      <button
-        type="button"
-        className="self-start text-sm font-medium text-[var(--site-color-foreground)] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2"
-        aria-expanded={false}
-        onClick={() => setOpen(true)}
-      >
-        ¿Tienes un código de descuento?
-      </button>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor={`${id}-codigo`} className="text-sm font-medium text-[var(--site-color-foreground)]">
-        Código de descuento
-      </label>
-      <div className="flex gap-2">
-        <input
-          id={`${id}-codigo`}
-          className={INPUT_CLASS}
-          value={code}
-          maxLength={60}
-          autoCapitalize="characters"
-          autoComplete="off"
-          onChange={(event) => setCode(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              void apply();
-            }
-          }}
-        />
-        <button type="button" disabled={checking} onClick={() => void apply()} className={APPLY_BUTTON}>
-          {checking ? "Revisando…" : "Aplicar"}
-        </button>
-      </div>
-      {stale ? <p className="text-sm text-[var(--site-color-foreground)]">Cambiaste el pedido: aplica el código de nuevo para ver el descuento.</p> : null}
-      {error ? <Notice>{error}</Notice> : null}
-    </div>
   );
 }

@@ -1,7 +1,18 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PublicCatalogResponse, PublicCouponCheckResponse, PublicOrderConfirmationResponse } from "@impulza/contracts";
-import type { Prisma, PrismaClient } from "@impulza/database";
-import { MAX_ORDER_QUANTITY, ORDER_HONEYPOT_FIELD, productWithVariantName, publicCouponCheckSchema, publicOrderRequestSchema } from "@impulza/validation";
+import type { Order, Prisma, PrismaClient } from "@impulza/database";
+import {
+  cartOrderSummaryName,
+  MAX_ORDER_QUANTITY,
+  ORDER_HONEYPOT_FIELD,
+  productWithVariantName,
+  publicCartCouponCheckSchema,
+  publicCartOrderRequestSchema,
+  publicCouponCheckSchema,
+  publicOrderRequestSchema,
+  type CartLine,
+  type PublicCartOrderRequest,
+} from "@impulza/validation";
 import type { Request } from "express";
 import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
 import { PRISMA } from "../../database/prisma.module.js";
@@ -21,6 +32,14 @@ export const OUT_OF_STOCK = "No quedan suficientes unidades de ese producto.";
 export const ADDRESS_REQUIRED = "Escribe la dirección de entrega.";
 export const VARIANT_REQUIRED = "Elige una opción del producto.";
 export const VARIANT_UNAVAILABLE = "Esa opción ya no está disponible.";
+export const CART_MIXED_CURRENCY = "Tu carrito tiene productos con monedas distintas: pídelos por separado.";
+export const CART_DIGITAL_ALONE = "Un producto digital se compra solo: pídelo por separado del resto del carrito.";
+
+type ResolvedLine = Awaited<ReturnType<PublicCatalogService["resolveLine"]>>;
+
+function badOrder(path: string, message: string): BadRequestException {
+  return new BadRequestException({ message: "Revisa los datos del pedido.", issues: [{ path, message }] });
+}
 
 const ACTIVE_VARIANTS = { where: { active: true }, orderBy: [{ position: "asc" as const }, { createdAt: "asc" as const }] };
 
@@ -53,7 +72,7 @@ export class PublicCatalogService {
    * Producto y variante que se piden, con su precio. La variante (F7.8a, ADR-023) la exige el
    * producto (si tiene activas), nunca lo que diga el visitante; y tiene que ser de **este** producto.
    */
-  private async resolveLine(siteId: string, productId: string, variantId: string | undefined) {
+  async resolveLine(siteId: string, productId: string, variantId: string | undefined) {
     const product = await this.prisma.product.findFirst({ where: { id: productId, siteId, active: true }, include: { variants: ACTIVE_VARIANTS } });
     if (!product) {
       throw new NotFoundException(PRODUCT_UNAVAILABLE);
@@ -184,30 +203,7 @@ export class PublicCatalogService {
     }
 
     const order = await this.prisma.$transaction(async (tx) => {
-      // Con variante, el stock que cuenta es el de la variante; sin ella, el del producto. El
-      // descuento es condicional (`stock >= cantidad`): dos pedidos a la vez no dejan stock negativo.
-      let stockSource: "variant" | "product" | null = null;
-      if (variant) {
-        if (variant.stock !== null) {
-          const reserved = await tx.productVariant.updateMany({
-            where: { id: variant.id, active: true, stock: { gte: input.quantity } },
-            data: { stock: { decrement: input.quantity } },
-          });
-          if (reserved.count === 0) {
-            throw new ConflictException(OUT_OF_STOCK);
-          }
-          stockSource = "variant";
-        }
-      } else if (product.stock !== null) {
-        const reserved = await tx.product.updateMany({
-          where: { id: product.id, stock: { gte: input.quantity } },
-          data: { stock: { decrement: input.quantity } },
-        });
-        if (reserved.count === 0) {
-          throw new ConflictException(OUT_OF_STOCK);
-        }
-        stockSource = "product";
-      }
+      const stockSource = await this.reserveLineStock(tx, { product, variant }, input.quantity, OUT_OF_STOCK);
       const tracksStock = stockSource !== null;
       if (applied) {
         await this.coupons.redeem(tx, applied.coupon.id);
@@ -252,6 +248,49 @@ export class PublicCatalogService {
       });
     });
 
+    return this.afterOrderCreated({ order, site, input, request, subjectId: product.id, confirmation });
+  }
+
+  /**
+   * Reserva el stock de una línea dentro de la transacción del pedido. Con variante, cuenta el stock
+   * de la variante; sin ella, el del producto. Condicional (`stock >= cantidad`): dos pedidos a la vez
+   * no dejan stock negativo. Devuelve de dónde reservó, para devolverlo exacto al cancelar.
+   */
+  private async reserveLineStock(
+    tx: Prisma.TransactionClient,
+    line: Pick<ResolvedLine, "product" | "variant">,
+    quantity: number,
+    outOfStockMessage: string,
+  ): Promise<"variant" | "product" | null> {
+    if (line.variant) {
+      if (line.variant.stock === null) return null;
+      const reserved = await tx.productVariant.updateMany({
+        where: { id: line.variant.id, active: true, stock: { gte: quantity } },
+        data: { stock: { decrement: quantity } },
+      });
+      if (reserved.count === 0) throw new ConflictException(outOfStockMessage);
+      return "variant";
+    }
+    if (line.product.stock === null) return null;
+    const reserved = await tx.product.updateMany({ where: { id: line.product.id, stock: { gte: quantity } }, data: { stock: { decrement: quantity } } });
+    if (reserved.count === 0) throw new ConflictException(outOfStockMessage);
+    return "product";
+  }
+
+  /**
+   * Lo que sigue a un pedido guardado, igual para un pedido suelto y uno de carrito: la ficha del
+   * contacto (con consentimiento, ADR-004), su línea de tiempo, los eventos de analítica, el cobro en
+   * línea si el negocio lo tiene, los avisos y los eventos para automatizaciones y webhooks.
+   */
+  private async afterOrderCreated(params: {
+    order: Order;
+    site: { id: string; organizationId: string; name: string };
+    input: { name: string; email: string; phone?: string; marketingConsent?: boolean };
+    request: Request;
+    subjectId: string | null;
+    confirmation: PublicOrderConfirmationResponse;
+  }): Promise<PublicOrderConfirmationResponse> {
+    const { order, site, input, request, subjectId, confirmation } = params;
     // Después de confirmar: la ficha del contacto (con consentimiento, ADR-004) y su línea de tiempo.
     const contactResult = await this.contactsService.findOrCreateFromSubmission({
       organizationId: site.organizationId,
@@ -264,7 +303,7 @@ export class PublicCatalogService {
       await this.contactsService.recordMarketingConsent(contactResult.contact.id, `order:${site.id}`);
     }
     const [linked] = await this.prisma.$transaction([
-      this.prisma.order.update({ where: { id: order.id }, data: { contactId: contactResult.contact.id } }),
+      this.prisma.order.update({ where: { id: order.id }, data: { contactId: contactResult.contact.id }, include: { items: { orderBy: { position: "asc" } } } }),
       this.prisma.contactEvent.create({
         data: {
           contactId: contactResult.contact.id,
@@ -285,7 +324,7 @@ export class PublicCatalogService {
       siteId: site.id,
       type: "order_created",
       request,
-      subjectId: product.id,
+      subjectId,
       idempotencyKey: `order_created:${order.id}`,
     });
     if (contactResult.created) {
@@ -294,7 +333,7 @@ export class PublicCatalogService {
         siteId: site.id,
         type: "lead_created",
         request,
-        subjectId: product.id,
+        subjectId,
         idempotencyKey: `lead_created:${contactResult.contact.id}`,
       });
     }
@@ -311,5 +350,136 @@ export class PublicCatalogService {
     await this.webhookEvents.emit({ organizationId: site.organizationId, type: "order.created", subjectId: order.id });
     logger.info("pedido público creado", { organizationId: site.organizationId, siteId: site.id, orderId: order.id });
     return confirmation;
+  }
+
+  // --- Carrito (F7.8c, ADR-023) ---
+
+  /** Resuelve todas las líneas y aplica las reglas del carrito: una moneda y un digital solo. */
+  private async resolveCart(siteId: string, lines: CartLine[]): Promise<ResolvedLine[]> {
+    const resolved: ResolvedLine[] = [];
+    for (const line of lines) {
+      resolved.push(await this.resolveLine(siteId, line.productId, line.variantId));
+    }
+    const currencies = new Set(resolved.map((line) => line.product.priceCurrency));
+    if (currencies.size > 1) throw badOrder("lines", CART_MIXED_CURRENCY);
+    if (resolved.length > 1 && resolved.some((line) => line.product.kind === "DIGITAL")) throw badOrder("lines", CART_DIGITAL_ALONE);
+    return resolved;
+  }
+
+  /** Probar un código con el carrito completo: el descuento va sobre el subtotal de todas las líneas. */
+  async checkCartCoupon(siteSlug: string, rawBody: unknown): Promise<PublicCouponCheckResponse> {
+    const parsed = publicCartCouponCheckSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      throw new BadRequestException({ message: "Revisa los datos.", issues: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })) });
+    }
+    const site = await this.siteOrThrow(siteSlug);
+    const resolved = await this.resolveCart(site.id, parsed.data.lines);
+    const currency = resolved[0]!.product.priceCurrency;
+    const subtotal = resolved.reduce((sum, line, index) => sum + line.unitPrice * parsed.data.lines[index]!.quantity, 0);
+    const { coupon, discount } = await this.coupons.resolve(site.id, parsed.data.code, subtotal, currency);
+    return { code: coupon.code, subtotalAmount: subtotal, discountAmount: discount, totalAmount: subtotal - discount, priceCurrency: currency };
+  }
+
+  /**
+   * Pedido desde el carrito: varias líneas en un solo pedido. Todo se recalcula desde la base; el stock
+   * de todas las líneas y el uso del cupón se reservan en una sola transacción (todo o nada). Las
+   * columnas del pedido quedan como resumen (ADR-023 §3): con varias líneas, cantidad 1 y precio =
+   * subtotal, así el cobro y las reglas de la base valen igual que para un pedido suelto.
+   */
+  async createCartOrder(siteSlug: string, rawBody: unknown, request: Request): Promise<PublicOrderConfirmationResponse> {
+    const parsed = publicCartOrderRequestSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        message: "Revisa los datos del pedido.",
+        issues: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+      });
+    }
+    const input: PublicCartOrderRequest = parsed.data;
+    const site = await this.siteOrThrow(siteSlug);
+    const resolved = await this.resolveCart(site.id, input.lines);
+    const needsAddress = resolved.some((line) => line.product.kind === "PHYSICAL");
+    if (needsAddress && !input.address) throw badOrder("address", ADDRESS_REQUIRED);
+
+    const currency = resolved[0]!.product.priceCurrency;
+    const quantities = input.lines.map((line) => line.quantity);
+    const subtotal = resolved.reduce((sum, line, index) => sum + line.unitPrice * quantities[index]!, 0);
+    const applied = input.couponCode ? await this.coupons.resolve(site.id, input.couponCode, subtotal, currency) : null;
+    const discount = applied?.discount ?? 0;
+    const total = subtotal - discount;
+    const single = resolved.length === 1;
+    const first = resolved[0]!;
+    const summaryName = cartOrderSummaryName(resolved.map((line) => line.lineName));
+    const quantity = single ? quantities[0]! : 1;
+    const unitPrice = single ? first.unitPrice : subtotal;
+    // Un enlace de pago externo es de un producto: solo sirve si el pedido es de ese producto.
+    const paymentUrl = single && total > 0 ? first.product.paymentUrl : null;
+    // Tipo del resumen: físico si algo se entrega (pide dirección); si no, el de la primera línea.
+    const kind = needsAddress ? "PHYSICAL" : first.product.kind;
+
+    const confirmation: PublicOrderConfirmationResponse = {
+      productName: summaryName,
+      quantity,
+      unitPriceAmount: unitPrice,
+      totalAmount: total,
+      priceCurrency: currency,
+      discountAmount: discount,
+      couponCode: applied?.coupon.code ?? null,
+      paymentUrl,
+      checkoutUrl: null,
+    };
+    const honeypot = input[ORDER_HONEYPOT_FIELD];
+    if (typeof honeypot === "string" && honeypot.length > 0) {
+      return confirmation;
+    }
+
+    const order = await this.prisma.$transaction(async (tx) => {
+      const sources: Array<"variant" | "product" | null> = [];
+      for (const [index, line] of resolved.entries()) {
+        sources.push(await this.reserveLineStock(tx, line, quantities[index]!, `No quedan suficientes unidades de ${line.lineName}.`));
+      }
+      if (applied) {
+        await this.coupons.redeem(tx, applied.coupon.id);
+      }
+      return tx.order.create({
+        data: {
+          organizationId: site.organizationId,
+          siteId: site.id,
+          productId: single ? first.product.id : null,
+          productName: summaryName,
+          productKind: kind,
+          unitPriceAmount: unitPrice,
+          priceCurrency: currency,
+          quantity,
+          totalAmount: total,
+          discountAmount: discount,
+          couponId: applied?.coupon.id ?? null,
+          couponCode: applied?.coupon.code ?? null,
+          paymentUrl,
+          customerName: input.name,
+          customerEmail: input.email.toLowerCase(),
+          customerPhone: input.phone ?? null,
+          deliveryAddress: needsAddress ? (input.address ?? null) : null,
+          note: input.note ?? null,
+          stockReserved: sources.some((source) => source !== null),
+          items: {
+            create: resolved.map((line, index) => ({
+              organizationId: site.organizationId,
+              productId: line.product.id,
+              variantId: line.variant?.id ?? null,
+              productName: line.product.name,
+              variantName: line.variant?.name ?? null,
+              productKind: line.product.kind,
+              unitPriceAmount: line.unitPrice,
+              quantity: quantities[index]!,
+              lineTotalAmount: line.unitPrice * quantities[index]!,
+              stockSource: sources[index]!,
+              position: index,
+            })),
+          },
+        },
+      });
+    });
+
+    return this.afterOrderCreated({ order, site, input, request, subjectId: single ? first.product.id : null, confirmation });
   }
 }

@@ -15,6 +15,12 @@ export interface OrderMessageData {
   /** Descuento de un cupón (F7.8b), ya restado de `totalAmount`. */
   discountAmount?: number;
   couponCode?: string | null;
+  /** Líneas del pedido (F7.8c): con más de una, el correo las detalla en vez del resumen. */
+  items?: ReadonlyArray<{ productName: string; variantName: string | null; quantity: number; lineTotalAmount: number }>;
+}
+
+function isMultiLine(data: OrderMessageData): boolean {
+  return (data.items?.length ?? 0) > 1;
 }
 
 function downloadLines(data: OrderMessageData): string[] {
@@ -38,8 +44,13 @@ export function formatMoneyAmount(amount: number, currency: string): string {
 
 function lines(data: OrderMessageData): string[] {
   const discount = data.discountAmount ?? 0;
+  const products = isMultiLine(data)
+    ? data.items!.map(
+        (item) => `${item.quantity} × ${item.productName}${item.variantName ? ` (${item.variantName})` : ""}: ${formatMoneyAmount(item.lineTotalAmount, data.priceCurrency)}`,
+      )
+    : [`${data.quantity} × ${data.productName} (${formatMoneyAmount(data.unitPriceAmount, data.priceCurrency)} c/u)`];
   return [
-    `${data.quantity} × ${data.productName} (${formatMoneyAmount(data.unitPriceAmount, data.priceCurrency)} c/u)`,
+    ...products,
     ...(discount > 0
       ? [`Descuento${data.couponCode ? ` (${data.couponCode})` : ""}: −${formatMoneyAmount(discount, data.priceCurrency)}`]
       : []),
@@ -108,7 +119,7 @@ export interface OwnerOrderNoticeData extends OrderMessageData {
 
 export function ownerNewOrderEmail(data: OwnerOrderNoticeData): OrderEmailContent {
   return {
-    subject: oneLine(`Nuevo pedido: ${data.quantity} × ${data.productName} de ${data.customerName}`),
+    subject: oneLine(`Nuevo pedido: ${isMultiLine(data) ? data.productName : `${data.quantity} × ${data.productName}`} de ${data.customerName}`),
     text: [
       `Nuevo pedido en ${data.siteName}.`,
       "",

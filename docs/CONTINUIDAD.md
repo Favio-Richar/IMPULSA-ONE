@@ -11,11 +11,10 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
   p. ej. `feat(newsletter): … (F7.4, ADR-019)`, y termina con la línea `Co-Authored-By` que indique
   el sistema.
 - **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.7 listas para revisión del propietario.
-  **F7.8 en curso** (ADR-023, en tres partes): F7.8a (variantes y líneas de pedido) y F7.8b
-  (cupones) listas; **sigue F7.8c (carrito)**, con los criterios ya escritos. Ojo para F7.8c: la
-  regla `orders_quantity_range` (1–99) y `orders_total_consistent` (total = precio × cantidad −
-  descuento) valen para el pedido completo; con varias líneas hay que decidir las columnas resumen
-  (ADR-023 §3) sin romper esas reglas, con una migración y su reversa. Después F7.9–F7.12 en el orden del backlog. Las historias sin criterios escritos los reciben al
+  F7.8 (tienda: variantes, cupones y carrito, ADR-023) lista. **Sigue F7.9** (reservas: varios
+  profesionales y sucursales; Google Calendar): escribir sus criterios y su ADR al empezar. Ojo: la
+  conexión con Google Calendar exige una aplicación de Google del propietario (credenciales OAuth):
+  construir el modelo y la parte interna, y dejar la conexión real como decisión pendiente si faltan. Después F7.9–F7.12 en el orden del backlog. Las historias sin criterios escritos los reciben al
   empezar (como F7.6), con su ADR si hay una decisión de arquitectura.
 - ADR más reciente: ADR-023 (tienda: variantes, cupones y carrito).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
@@ -150,6 +149,10 @@ desarrollo los correos no se envían: se imprimen en la consola de la API (`emai
 - **Capturas de Playwright**: cada corrida vacía `packages/e2e/.playwright` (es su `outputDir`),
   capturas incluidas. Copiarlas a `docs/design/capturas/fXX/` apenas termina la corrida de la
   historia, antes de correr cualquier otra prueba de Playwright.
+- **`position: fixed` en la página pública no funciona**: el `@container` de `page-blocks.tsx` (y la
+  animación de entrada de cada bloque) lo atrapan. Una barra al pie va `sticky` en el contenedor del
+  final de la página (ahí están la acción principal y el carrito); en Playwright, comprobar con
+  `toBeInViewport()`, no solo que exista.
 - **Rutas públicas nuevas**: `apps/api/src/openapi/openapi.test.ts` tiene la lista cerrada de
   operaciones sin sesión. Una ruta pública nueva se agrega ahí, con su justificación en un comentario.
 - **Pedidos con líneas (F7.8a)**: todo pedido nuevo crea sus `order_items` en la misma transacción.

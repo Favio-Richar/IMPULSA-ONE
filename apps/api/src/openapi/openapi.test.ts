@@ -132,6 +132,10 @@ describe("Documento OpenAPI", () => {
       // Cupones (F7.8b, ADR-023): probar un código antes de pedir. No revela qué códigos existen
       // (respuesta uniforme), no cuenta un uso y tiene un tope estricto por visitante.
       "POST /api/v1/public/sites/{siteSlug}/catalog/coupons/check",
+      // Carrito (F7.8c, ADR-023): el pedido de varias líneas y su prueba de código, con los mismos
+      // cupos por visitante que el pedido suelto y la prueba de código.
+      "POST /api/v1/public/sites/{siteSlug}/catalog/cart/coupons/check",
+      "POST /api/v1/public/sites/{siteSlug}/catalog/cart/orders",
       // Descargas pagadas (F5.11b): la credencial es el enlace firmado del correo; el pago se verifica en cada uso.
       "GET /api/v1/public/downloads/{token}",
       "POST /api/v1/public/downloads/{token}/url",

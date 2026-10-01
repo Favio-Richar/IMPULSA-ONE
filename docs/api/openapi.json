@@ -25645,6 +25645,344 @@
         ]
       }
     },
+    "/api/v1/public/sites/{siteSlug}/catalog/cart/coupons/check": {
+      "post": {
+        "description": "Como `coupons/check`, pero el descuento va sobre el subtotal de todas las líneas (F7.8c). Misma respuesta uniforme para cualquier código que no aplica.",
+        "operationId": "PublicCatalogController_checkCartCoupon",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "lines": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "productId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "variantId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 99
+                        }
+                      },
+                      "required": [
+                        "productId",
+                        "quantity"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "code",
+                  "lines"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Descuento calculado por el servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "subtotalAmount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "discountAmount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "totalAmount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "priceCurrency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "subtotalAmount",
+                    "discountAmount",
+                    "totalAmount",
+                    "priceCurrency"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Líneas inválidas, o: Tu carrito tiene productos con monedas distintas: pídelos por separado. O: Un producto digital se compra solo: pídelo por separado del resto del carrito."
+          },
+          "404": {
+            "description": "El sitio no existe, está archivado o su organización no está activa. O: Ese producto ya no está disponible."
+          },
+          "422": {
+            "description": "Ese código no es válido."
+          },
+          "429": {
+            "description": "Límite de peticiones superado (10 cada 10 minutos por visitante)."
+          }
+        },
+        "summary": "Probar un código de descuento con el carrito",
+        "tags": [
+          "public-catalog"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/catalog/cart/orders": {
+      "post": {
+        "description": "Hasta 20 líneas (producto y variante, sin repetir) en un solo pedido (F7.8c, ADR-023). Precios, stock y moneda salen de la base; una sola moneda por pedido y un producto digital se compra solo. El stock de todas las líneas y el uso del cupón se reservan en una transacción: todo o nada.",
+        "operationId": "PublicCatalogController_createCartOrder",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "couponCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "pattern": "^\\+[1-9]\\d{6,14}$"
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "consent": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  },
+                  "marketingConsent": {
+                    "type": "boolean"
+                  },
+                  "website": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "lines": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "productId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "variantId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 99
+                        }
+                      },
+                      "required": [
+                        "productId",
+                        "quantity"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "name",
+                  "email",
+                  "consent",
+                  "lines"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pedido recibido (el nombre es un resumen de las líneas).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "productName": {
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "unitPriceAmount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "totalAmount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "priceCurrency": {
+                      "type": "string"
+                    },
+                    "discountAmount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "couponCode": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "paymentUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "checkoutUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "productName",
+                    "quantity",
+                    "unitPriceAmount",
+                    "totalAmount",
+                    "priceCurrency",
+                    "discountAmount",
+                    "couponCode",
+                    "paymentUrl",
+                    "checkoutUrl"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos (detalle en `issues`): Tu carrito tiene productos con monedas distintas: pídelos por separado. O: Un producto digital se compra solo: pídelo por separado del resto del carrito. O: dirección faltante."
+          },
+          "404": {
+            "description": "El sitio no existe, está archivado o su organización no está activa. O: Ese producto ya no está disponible."
+          },
+          "409": {
+            "description": "No quedan suficientes unidades de una línea (el mensaje la nombra); no se reserva nada."
+          },
+          "422": {
+            "description": "Cupón que no aplica: Ese código no es válido."
+          },
+          "429": {
+            "description": "Límite de peticiones superado (10 cada 10 minutos por visitante)."
+          }
+        },
+        "summary": "Hacer un pedido desde el carrito",
+        "tags": [
+          "public-catalog"
+        ]
+      }
+    },
     "/api/v1/organizations/{organizationId}/orders": {
       "get": {
         "description": "Cualquier miembro activo los ve. Del más nuevo al más antiguo, de a 50; con conteo por estado.",

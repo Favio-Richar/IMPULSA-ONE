@@ -191,6 +191,8 @@ OrderItem (N) ──1 Order, (N) ──0..1 Product, (N) ──0..1 ProductVaria
   (SET NULL), product_name, variant_name, product_kind, unit_price_amount, quantity,
   line_total_amount (CHECK = precio × cantidad), stock_source (`product`, `variant` o nulo: dónde se
   reservó, para devolverlo exacto), position, created_at. Las columnas del pedido quedan como resumen.
+  Con varias líneas (carrito, F7.8c): `product_id` nulo, `product_name` resumen, `quantity` 1 y
+  `unit_price_amount` = subtotal, para que las reglas del total y la cantidad sigan valiendo.
 - **PageCampaign** (F7.7, ADR-022): id, organization_id, site_id, page_id, name, objective,
   starts_at, ends_at (CHECK `ends_at > starts_at`), replace_home, utm_campaign, cancelled_at,
   start_revalidated_at, end_revalidated_at (marcas del worker para invalidar la caché una sola vez

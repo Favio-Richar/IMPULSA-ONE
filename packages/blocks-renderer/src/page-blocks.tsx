@@ -1,6 +1,7 @@
 import type { PublicBlockResponse, PublicFormResponse } from "@impulza/contracts";
 import type { ThemeTokens } from "@impulza/validation";
 import type { CSSProperties } from "react";
+import { CART_BAR_SLOT_ID } from "./lib/cart-slot.js";
 import { PRIMARY_ACTION_ANCHOR, primaryActionOf } from "./lib/primary-action.js";
 import { RenderBlock } from "./registry.js";
 import { Container } from "./ui/container.js";
@@ -95,15 +96,20 @@ export function PageBlocks({
             </div>
           );
         })}
-        {primaryActionBar && primaryBlock && primaryAction ? (
-          <PrimaryActionBar
-            action={primaryAction}
-            position={primaryBlock.position}
-            type={primaryBlock.type}
-            targetId={PRIMARY_ACTION_ANCHOR}
-            mono={mono}
-          />
-        ) : null}
+        {/* Barras fijas abajo (sticky, nunca `fixed`: el `@container` de arriba atraparía un `fixed`).
+            El carrito (F7.8c) se dibuja aquí con un portal, encima de la acción principal (PP5). */}
+        <div className="sticky bottom-0 z-20 flex flex-col">
+          {mode === "public" ? <div id={CART_BAR_SLOT_ID} /> : null}
+          {primaryActionBar && primaryBlock && primaryAction ? (
+            <PrimaryActionBar
+              action={primaryAction}
+              position={primaryBlock.position}
+              type={primaryBlock.type}
+              targetId={PRIMARY_ACTION_ANCHOR}
+              mono={mono}
+            />
+          ) : null}
+        </div>
       </Container>
     </div>
   );

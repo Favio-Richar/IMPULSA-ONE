@@ -31,8 +31,11 @@ que ya existen.
    se borra.
 3. **Las columnas del pedido se conservan como resumen**, para que el código que ya las lee siga
    correcto: con una sola línea son exactamente lo que eran; con varias, `product_id` va nulo,
-   `product_name` es un resumen ("Polera — M y 2 productos más"), `quantity` es el total de unidades y
-   `unit_price_amount` es el subtotal (precio de "1 pedido"). `total_amount` es siempre lo que se
+   `product_name` es un resumen ("Polera (M) y 2 productos más"), `quantity` es 1 y
+   `unit_price_amount` es el subtotal (precio de "1 pedido"). *Corregido al implementar F7.8c: la
+   versión anterior de este punto decía "`quantity` = total de unidades", que viola dos reglas ya
+   vigentes en la base (`orders_quantity_range` 1–99 y `orders_total_consistent`); con `quantity = 1`
+   ambas siguen valiendo sin migración, y el detalle real está en las líneas.* `total_amount` es siempre lo que se
    cobra: subtotal menos descuento. Columnas nuevas: `subtotal_amount`, `discount_amount`,
    `coupon_id` (SET NULL) y `coupon_code` (copia).
 4. **Cobro**: la preferencia de Mercado Pago lleva un solo ítem por el **total a cobrar** (título =

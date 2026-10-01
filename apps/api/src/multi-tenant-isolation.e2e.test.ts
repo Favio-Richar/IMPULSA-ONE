@@ -1398,6 +1398,30 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Carrito (F7.8c, ADR-023): un carrito nunca mezcla organizaciones", () => {
+    it("un producto de B no entra en un carrito del sitio de A, ni junto a uno propio; nada de B cambia", async () => {
+      const catalogB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/catalog`;
+      const productOfB = await orgB.ownerAgent.post(`${catalogB}/products`).set(CSRF_HEADERS).send({ name: "Taza de B", kind: "SERVICE", priceAmount: 5_000, priceCurrency: "CLP", stock: 4 }).expect(201);
+      const catalogA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/catalog`;
+      const productOfA = await orgA.ownerAgent.post(`${catalogA}/products`).set(CSRF_HEADERS).send({ name: "Taza de A", kind: "SERVICE", priceAmount: 5_000, priceCurrency: "CLP" }).expect(201);
+      const siteA = await prisma.site.findUniqueOrThrow({ where: { id: orgA.siteId } });
+      const cartA = `/api/v1/public/sites/${siteA.slug}/catalog/cart`;
+      const buyer = { name: "Intruso", email: `intruso-carrito${TEST_EMAIL_DOMAIN}`, consent: true };
+
+      await request(httpServer).post(`${cartA}/orders`).set(CSRF_HEADERS).send({ ...buyer, lines: [{ productId: productOfB.body.id, quantity: 1 }] }).expect(404);
+      await request(httpServer)
+        .post(`${cartA}/orders`)
+        .set(CSRF_HEADERS)
+        .send({ ...buyer, lines: [{ productId: productOfA.body.id, quantity: 1 }, { productId: productOfB.body.id, quantity: 1 }] })
+        .expect(404);
+      await request(httpServer).post(`${cartA}/coupons/check`).set(CSRF_HEADERS).send({ code: "X", lines: [{ productId: productOfB.body.id, quantity: 1 }] }).expect(404);
+
+      expect((await prisma.product.findUniqueOrThrow({ where: { id: productOfB.body.id } })).stock).toBe(4);
+      expect(await prisma.orderItem.count({ where: { productId: productOfB.body.id } })).toBe(0);
+      expect(await prisma.order.count({ where: { customerEmail: `intruso-carrito${TEST_EMAIL_DOMAIN}` } })).toBe(0);
+    });
+  });
+
   describe("Cupones (F7.8b, ADR-023): nunca se cruzan", () => {
     it("A no lee, crea, edita ni borra cupones de B, y el código de B no vale en el sitio de A", async () => {
       const couponsB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/coupons`;

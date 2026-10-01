@@ -134,6 +134,45 @@ export const publicOrderRequestSchema = z.object({
 });
 export type PublicOrderRequest = z.infer<typeof publicOrderRequestSchema>;
 
+/** Carrito (F7.8c, ADR-023): hasta 20 líneas por pedido. */
+export const MAX_CART_LINES = 20;
+
+/** Una línea del carrito: solo qué y cuánto. Precio, stock y moneda los pone siempre la API. */
+export const cartLineSchema = z.object({
+  productId: z.uuid(),
+  variantId: z.uuid().optional(),
+  quantity: z.number().int().min(1).max(MAX_ORDER_QUANTITY),
+});
+export type CartLine = z.infer<typeof cartLineSchema>;
+
+const cartLinesSchema = z
+  .array(cartLineSchema)
+  .min(1, "Tu carrito está vacío.")
+  .max(MAX_CART_LINES, `Un pedido admite hasta ${MAX_CART_LINES} productos distintos.`)
+  .superRefine((lines, ctx) => {
+    const seen = new Set<string>();
+    for (const [index, line] of lines.entries()) {
+      const key = `${line.productId}:${line.variantId ?? ""}`;
+      if (seen.has(key)) ctx.addIssue({ code: "custom", path: [index], message: "El mismo producto aparece dos veces en el carrito." });
+      seen.add(key);
+    }
+  });
+
+/** Pedido desde el carrito: varias líneas, los mismos datos del cliente que un pedido suelto. */
+export const publicCartOrderRequestSchema = publicOrderRequestSchema.omit({ productId: true, variantId: true, quantity: true }).extend({ lines: cartLinesSchema });
+export type PublicCartOrderRequest = z.infer<typeof publicCartOrderRequestSchema>;
+
+/** Probar un código con el carrito completo (el descuento va sobre el subtotal de todas las líneas). */
+export const publicCartCouponCheckSchema = z.object({ code: z.string().trim().min(1).max(60), lines: cartLinesSchema });
+export type PublicCartCouponCheckInput = z.infer<typeof publicCartCouponCheckSchema>;
+
+/** Nombre resumen de un pedido con varias líneas ("Polera (M) y 2 productos más"). */
+export function cartOrderSummaryName(lineNames: readonly string[]): string {
+  const [first = "", ...rest] = lineNames;
+  if (rest.length === 0) return first;
+  return `${first} y ${rest.length} ${rest.length === 1 ? "producto más" : "productos más"}`;
+}
+
 export const listOrdersQuerySchema = z.object({
   siteId: z.uuid().optional(),
   status: z.enum(ORDER_STATUSES).optional(),

@@ -56,3 +56,4 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 | [ADR-020](./ADR-020-secuencias-de-correo.md) | Secuencias de correo sobre los eventos de las automatizaciones | Aceptado |
 | [ADR-021](./ADR-021-embudos-de-conversion.md) | Embudos de conversión ordenados por visita, calculados en SQL sobre los eventos | Aceptado |
 | [ADR-022](./ADR-022-modo-campana.md) | Modo campaña: página temporal con fechas, toma del inicio y vuelta automática | Aceptado |
+| [ADR-023](./ADR-023-tienda-variantes-cupones-carrito.md) | Tienda: variantes, cupones y carrito con líneas de pedido | Aceptado |

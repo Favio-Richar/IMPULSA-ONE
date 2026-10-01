@@ -15,7 +15,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.5 — Secuencias de correo automáticas (bienvenida, seguimiento) sobre las automatizaciones | Lista para tu revisión (ADR-020; capturas en `docs/design/capturas/f75/`) |
 | F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Lista para tu revisión (ADR-021; capturas en `docs/design/capturas/f76/`) |
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Lista para tu revisión (ADR-022; capturas en `docs/design/capturas/f77/`) |
-| F7.8 — Tienda: variantes, cupones y carrito | Pendiente |
+| F7.8 — Tienda: variantes, cupones y carrito | En curso (ADR-023): F7.8a variantes y líneas de pedido, F7.8b cupones, F7.8c carrito |
 | F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Pendiente |
 | F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Pendiente |
 | F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Pendiente |
@@ -324,6 +324,43 @@ Implementación (2026-10-01):
   de `apps/web`).
 - Límite conocido (ADR-022): los bloques programados de F2 siguen sin cambiar a la hora exacta en
   la página en caché; queda como seguimiento.
+
+### F7.8 — Tienda: variantes, cupones y carrito (ADR-023)
+
+Se entrega en tres partes, cada una con su commit y su Definición de Terminado.
+
+**F7.8a — Variantes y líneas de pedido.** Criterios de aceptación:
+- En el catálogo del panel, cada producto puede tener hasta 30 variantes (nombre visible, precio
+  opcional, stock opcional, SKU opcional, orden, activa). Estados de carga, vacío, error y éxito;
+  teléfono y escritorio.
+- En la página pública, un producto con variantes activas pide elegir una (con su precio y si queda
+  stock) antes de pedir; la API lo exige y toma precio y stock de la variante.
+- Cada pedido nuevo guarda sus líneas (`order_items`) con la copia de producto, variante, precio y
+  cantidad, y dónde reservó stock; los pedidos existentes reciben su línea con una migración que solo
+  inserta. Cancelar devuelve el stock a la variante; reabrir lo vuelve a reservar o responde 409.
+- Panel de pedidos, correos y webhooks muestran la variante. Nada cambia en cobros, descargas ni
+  reembolsos para un pedido de una línea.
+- Escribir variantes, `catalog.manage` (el mismo permiso del catálogo). Auditoría. Validación en
+  servidor. Pruebas: unitarias, API e2e (stock por variante sin carreras, exigir variante, variante
+  de otro producto u organización, cancelar y reabrir, aislamiento), Playwright.
+
+**F7.8b — Cupones.** Criterios de aceptación:
+- Panel por sitio: crear, editar, pausar y borrar cupones (código único por sitio, porcentaje o monto
+  fijo, mínimo de compra, ventana y tope de usos opcionales), con usos y descuento entregado.
+- La página pública acepta un código al pedir; la API calcula el descuento sobre el subtotal, cuenta
+  el uso sin pasar el tope aunque lleguen pedidos a la vez, y el cobro en Mercado Pago es por el total
+  con descuento. Mensaje único "no es válido" para cualquier código que no aplica, con tope por IP.
+- Pruebas: unitarias (cálculo y redondeo), API e2e (tope concurrente, ventana, mínimo, moneda, cobro
+  por el total con descuento, aislamiento), Playwright.
+
+**F7.8c — Carrito.** Criterios de aceptación:
+- En la página pública, "Agregar al carrito" desde cada producto, un carrito por sitio guardado en el
+  navegador (solo ids y cantidades), con resumen, cambiar cantidades, quitar, cupón y un solo
+  formulario de pedido. Un producto digital se compra solo (se explica en pantalla).
+- La API recibe hasta 20 líneas, recalcula todo desde la base, exige una sola moneda, reserva el
+  stock de todas o de ninguna, y crea un pedido con sus líneas; el cobro es por el total.
+- Pruebas: API e2e (todas o ninguna, moneda mixta, digital mezclado, tope de líneas, aislamiento) y
+  Playwright en teléfono y escritorio.
 
 ## Fases siguientes
 

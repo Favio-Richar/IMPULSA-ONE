@@ -1220,6 +1220,35 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       expect(await prisma.bookingBlackout.count({ where: { id: blackoutId } })).toBe(1);
       expect(await prisma.bookingSettings.count({ where: { siteId: orgB.siteId } })).toBe(0);
     });
+
+    it("F7.9a: A no lee, crea ni modifica sucursales ni profesionales de B; asignar staff ajeno se rechaza", async () => {
+      const baseA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/booking`;
+      const baseB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/booking`;
+
+      const branchB = (await orgB.ownerAgent.post(`${baseB}/branches`).set(CSRF_HEADERS).send({ name: "Sucursal Norte de B" }).expect(201)).body;
+      const staffB = (await orgB.ownerAgent.post(`${baseB}/staff`).set(CSRF_HEADERS).send({ name: "Dra. Especialista de B" }).expect(201)).body;
+      const serviceA = (await orgA.ownerAgent.post(`${baseA}/services`).set(CSRF_HEADERS).send({ name: "Servicio de A", durationMinutes: 30 }).expect(201)).body;
+
+      // A no puede leer sucursales ni staff de B con URL de B (403)
+      await orgA.ownerAgent.get(`${baseB}/branches`).expect(403);
+      await orgA.ownerAgent.get(`${baseB}/staff`).expect(403);
+
+      // A no puede modificar sucursal ni staff de B con su propia base (404)
+      await orgA.ownerAgent.patch(`${baseA}/branches/${branchB.id}`).set(CSRF_HEADERS).send({ name: "Hackeado" }).expect(404);
+      await orgA.ownerAgent.delete(`${baseA}/branches/${branchB.id}`).set(CSRF_HEADERS).expect(404);
+      await orgA.ownerAgent.patch(`${baseA}/staff/${staffB.id}`).set(CSRF_HEADERS).send({ name: "Hackeado" }).expect(404);
+      await orgA.ownerAgent.delete(`${baseA}/staff/${staffB.id}`).set(CSRF_HEADERS).expect(404);
+
+      // Asignar staff de B a un servicio de A es rechazado con 404
+      await orgA.ownerAgent.put(`${baseA}/services/${serviceA.id}/staff`).set(CSRF_HEADERS).send({ staffIds: [staffB.id] }).expect(404);
+
+      // Crear blackout en A con staffId de B es rechazado con 404
+      await orgA.ownerAgent
+        .post(`${baseA}/blackouts`)
+        .set(CSRF_HEADERS)
+        .send({ startsAt: "2030-01-01T10:00:00Z", endsAt: "2030-01-01T12:00:00Z", staffId: staffB.id })
+        .expect(404);
+    });
   });
 
   describe("Reserva pública (F5.2/F5.7): no cruza sitios ni organizaciones", () => {

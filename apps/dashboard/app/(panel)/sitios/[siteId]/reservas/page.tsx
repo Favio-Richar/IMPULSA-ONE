@@ -6,7 +6,9 @@ import { useParams } from "next/navigation";
 import { AvailabilityPreview } from "../../../../../components/bookings/availability-preview";
 import { BookableServices } from "../../../../../components/bookings/bookable-services";
 import { BookingBlackouts } from "../../../../../components/bookings/booking-blackouts";
+import { BookingBranches } from "../../../../../components/bookings/booking-branches";
 import { BookingSettingsForm } from "../../../../../components/bookings/booking-settings-form";
+import { BookingStaff } from "../../../../../components/bookings/booking-staff";
 import { useActiveOrgStore } from "../../../../../lib/active-org-store";
 import { ApiError } from "../../../../../lib/api-client";
 import { useBookableServices, useBookingSettings } from "../../../../../lib/hooks/use-booking-setup";
@@ -62,6 +64,8 @@ function BookingSetup({ organizationId, siteId }: { organizationId: string; site
 
       {/* El formulario toma la configuración una vez al montar y conserva lo que se escribe. */}
       <BookingSettingsForm organizationId={organizationId} siteId={siteId} settings={settings} />
+      <BookingBranches organizationId={organizationId} siteId={siteId} />
+      <BookingStaff organizationId={organizationId} siteId={siteId} />
       <BookableServices organizationId={organizationId} siteId={siteId} />
       <BookingBlackouts organizationId={organizationId} siteId={siteId} timeZone={settings.timeZone} />
       {servicesQuery.data ? (

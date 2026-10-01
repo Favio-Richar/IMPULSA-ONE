@@ -8,7 +8,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ site
   const { siteSlug } = await params;
   const incoming = new URL(request.url).searchParams;
   const query = new URLSearchParams();
-  for (const key of ["serviceId", "from", "days"]) {
+  for (const key of ["serviceId", "from", "days", "staffId", "branchId"]) {
     const value = incoming.get(key);
     if (value !== null) {
       query.set(key, value);

@@ -60,9 +60,51 @@ export const bookableServiceResponse = z.object({
 });
 export type BookableServiceResponse = z.infer<typeof bookableServiceResponse>;
 
+export const bookingBranchResponse = z.object({
+  id: uuid,
+  siteId: uuid,
+  name: z.string(),
+  address: z.string().nullable(),
+  phone: z.string().nullable(),
+  active: z.boolean(),
+  position: z.number().int(),
+  createdAt: isoDateTime,
+  updatedAt: isoDateTime,
+});
+export type BookingBranchResponse = z.infer<typeof bookingBranchResponse>;
+
+export const bookingStaffResponse = z.object({
+  id: uuid,
+  siteId: uuid,
+  name: z.string(),
+  title: z.string().nullable(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  avatarUrl: z.string().nullable(),
+  branchId: uuid.nullable(),
+  active: z.boolean(),
+  position: z.number().int(),
+  weeklyHours: z
+    .object({
+      mon: z.array(windowResponse),
+      tue: z.array(windowResponse),
+      wed: z.array(windowResponse),
+      thu: z.array(windowResponse),
+      fri: z.array(windowResponse),
+      sat: z.array(windowResponse),
+      sun: z.array(windowResponse),
+    })
+    .nullable(),
+  serviceIds: z.array(uuid),
+  createdAt: isoDateTime,
+  updatedAt: isoDateTime,
+});
+export type BookingStaffResponse = z.infer<typeof bookingStaffResponse>;
+
 export const bookingBlackoutResponse = z.object({
   id: uuid,
   siteId: uuid,
+  staffId: uuid.nullable(),
   startsAt: isoDateTime,
   endsAt: isoDateTime,
   reason: z.string().nullable(),
@@ -77,10 +119,28 @@ export const bookingAvailabilityResponse = z.object({
 });
 export type BookingAvailabilityResponse = z.infer<typeof bookingAvailabilityResponse>;
 
-/** Lo que la página pública necesita para ofrecer reservas (F5.2). */
+/** Lo que la página pública necesita para ofrecer reservas (F5.2, F7.9a). */
 export const publicBookingInfoResponse = z.object({
   timeZone: z.string(),
   maxAdvanceDays: z.number().int(),
+  branches: z.array(
+    z.object({
+      id: uuid,
+      name: z.string(),
+      address: z.string().nullable(),
+      phone: z.string().nullable(),
+    }),
+  ),
+  staff: z.array(
+    z.object({
+      id: uuid,
+      name: z.string(),
+      title: z.string().nullable(),
+      avatarUrl: z.string().nullable(),
+      branchId: uuid.nullable(),
+      serviceIds: z.array(uuid),
+    }),
+  ),
   services: z.array(
     z.object({
       id: uuid,
@@ -92,6 +152,7 @@ export const publicBookingInfoResponse = z.object({
       hasPaymentLink: z.boolean(),
       /** Seña que se pagará al reservar (F5.10); `null` si este servicio no la cobra en línea. */
       depositAmount: z.number().int().nullable(),
+      staffIds: z.array(uuid),
     }),
   ),
 });
@@ -100,6 +161,8 @@ export type PublicBookingInfoResponse = z.infer<typeof publicBookingInfoResponse
 /** Confirmación de una reserva pública: lo que el visitante ve (nunca ids internos del negocio). */
 export const publicBookingConfirmationResponse = z.object({
   serviceName: z.string(),
+  staffName: z.string().nullable(),
+  branchName: z.string().nullable(),
   startsAt: isoDateTime,
   endsAt: isoDateTime,
   timeZone: z.string(),
@@ -116,12 +179,16 @@ export const publicBookingConfirmationResponse = z.object({
 });
 export type PublicBookingConfirmationResponse = z.infer<typeof publicBookingConfirmationResponse>;
 
-/** Una reserva en la agenda del negocio (F5.3). Datos del cliente: solo para miembros de la organización. */
+/** Una reserva en la agenda del negocio (F5.3, F7.9a). Datos del cliente: solo para miembros de la organización. */
 export const bookingResponse = z.object({
   id: uuid,
   siteId: uuid,
   serviceId: uuid.nullable(),
   contactId: uuid.nullable(),
+  staffId: uuid.nullable(),
+  staffName: z.string().nullable(),
+  branchId: uuid.nullable(),
+  branchName: z.string().nullable(),
   serviceName: z.string(),
   durationMinutes: z.number().int(),
   priceAmount: z.number().int().nullable(),
@@ -146,6 +213,8 @@ export const publicManagedBookingResponse = z.object({
   siteSlug: z.string(),
   siteName: z.string(),
   serviceName: z.string(),
+  staffName: z.string().nullable(),
+  branchName: z.string().nullable(),
   /** El servicio para buscar otra hora; `null` si ya no se ofrece (entonces no se puede cambiar la hora). */
   serviceId: uuid.nullable(),
   startsAt: isoDateTime,

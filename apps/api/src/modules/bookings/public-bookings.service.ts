@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import type { PublicBookingConfirmationResponse, PublicBookingInfoResponse } from "@impulza/contracts";
 import type { Prisma, PrismaClient } from "@impulza/database";
 import {
@@ -75,14 +75,40 @@ export class PublicBookingsService {
 
   async info(siteSlug: string): Promise<PublicBookingInfoResponse> {
     const { site, settings } = await this.enabledSiteOrThrow(siteSlug);
-    const services = await this.prisma.bookableService.findMany({
-      where: { siteId: site.id, active: true },
-      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-    });
+    const [services, branches, staff] = await Promise.all([
+      this.prisma.bookableService.findMany({
+        where: { siteId: site.id, active: true },
+        include: { staff: { select: { staffId: true } } },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      }),
+      this.prisma.bookingBranch.findMany({
+        where: { siteId: site.id, active: true },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      }),
+      this.prisma.bookingStaff.findMany({
+        where: { siteId: site.id, active: true },
+        include: { services: { select: { serviceId: true } } },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      }),
+    ]);
     const depositsEnabled = services.some((service) => service.depositAmount !== null) && (await this.deposit.depositsEnabled(site.organizationId));
     return {
       timeZone: settings.timeZone,
       maxAdvanceDays: settings.maxAdvanceDays,
+      branches: branches.map((b) => ({
+        id: b.id,
+        name: b.name,
+        address: b.address,
+        phone: b.phone,
+      })),
+      staff: staff.map((s) => ({
+        id: s.id,
+        name: s.name,
+        title: s.title,
+        avatarUrl: s.avatarUrl,
+        branchId: s.branchId,
+        serviceIds: s.services.map((srv) => srv.serviceId),
+      })),
       services: services.map((service) => ({
         id: service.id,
         name: service.name,
@@ -92,6 +118,7 @@ export class PublicBookingsService {
         priceCurrency: service.priceCurrency,
         hasPaymentLink: service.paymentUrl !== null,
         depositAmount: this.deposit.depositOf(service, depositsEnabled),
+        staffIds: service.staff.map((s) => s.staffId),
       })),
     };
   }
@@ -132,7 +159,18 @@ export class PublicBookingsService {
   async availability(siteSlug: string, query: BookingAvailabilityQuery, now = new Date()) {
     const { site, settings } = await this.enabledSiteOrThrow(siteSlug);
     const service = await this.activeServiceOrThrow(site.id, query.serviceId);
-    return this.setup.computeAvailability(site.id, settings, service, query.from, query.days, now);
+    return this.setup.computeAvailability(
+      site.id,
+      settings,
+      service,
+      query.from,
+      query.days,
+      now,
+      this.prisma,
+      undefined,
+      query.staffId,
+      query.branchId,
+    );
   }
 
   async create(siteSlug: string, rawBody: unknown, request: Request, now = new Date()): Promise<PublicBookingConfirmationResponse> {
@@ -148,8 +186,42 @@ export class PublicBookingsService {
     const service = await this.activeServiceOrThrow(site.id, input.serviceId);
     const startsAt = new Date(input.startsAt);
     const endsAt = new Date(startsAt.getTime() + service.durationMinutes * 60_000);
+
+    // Validación previa de sucursal si se especificó
+    let branch: { id: string; name: string } | null = null;
+    if (input.branchId) {
+      branch = await this.prisma.bookingBranch.findFirst({
+        where: { id: input.branchId, siteId: site.id, active: true },
+        select: { id: true, name: true },
+      });
+      if (!branch) {
+        throw new NotFoundException("Sucursal no disponible.");
+      }
+    }
+
+    // Validación previa de profesional si se especificó
+    let requestedStaff: { id: string; name: string; branchId: string | null } | null = null;
+    if (input.staffId && input.staffId !== "any") {
+      const staff = await this.prisma.bookingStaff.findFirst({
+        where: { id: input.staffId, siteId: site.id, active: true },
+        include: { services: { select: { serviceId: true } } },
+      });
+      if (!staff) {
+        throw new NotFoundException("Profesional no disponible.");
+      }
+      if (staff.services.length > 0 && !staff.services.some((s) => s.serviceId === service.id)) {
+        throw new UnprocessableEntityException("Este profesional no atiende el servicio seleccionado.");
+      }
+      if (branch && staff.branchId && staff.branchId !== branch.id) {
+        throw new UnprocessableEntityException("El profesional no atiende en la sucursal seleccionada.");
+      }
+      requestedStaff = staff;
+    }
+
     const confirmation: PublicBookingConfirmationResponse = {
       serviceName: service.name,
+      staffName: null,
+      branchName: null,
       startsAt: startsAt.toISOString(),
       endsAt: endsAt.toISOString(),
       timeZone: settings.timeZone,
@@ -174,20 +246,115 @@ export class PublicBookingsService {
     const plan = await this.deposit.planFor(site.organizationId, service, startsAt, now);
 
     let bookingId: string;
+    let chosenStaff: { id: string; name: string } | null = null;
+    let chosenBranch: { id: string; name: string } | null = branch;
+
     try {
       bookingId = await this.prisma.$transaction(async (tx) => {
         // Una reserva a la vez por sitio: la comprobación de abajo y el alta no se intercalan con otra.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${site.id}::text, 0))`;
         const localDate = localDateOf(startsAt, settings.timeZone);
-        const { days } = await this.setup.computeAvailability(site.id, settings, service, localDate, 1, now, tx);
-        if (!days[0]?.slots.includes(startsAt.toISOString())) {
-          throw new ConflictException(SLOT_TAKEN);
+
+        if (requestedStaff) {
+          // Disponibilidad específica del profesional solicitado
+          const { days } = await this.setup.computeAvailability(
+            site.id,
+            settings,
+            service,
+            localDate,
+            1,
+            now,
+            tx,
+            undefined,
+            requestedStaff.id,
+            branch?.id,
+          );
+          if (!days[0]?.slots.includes(startsAt.toISOString())) {
+            throw new ConflictException(SLOT_TAKEN);
+          }
+          chosenStaff = requestedStaff;
+        } else {
+          // No se especificó profesional o se eligió "any": revisar profesionales activos calificados
+          const allStaff = await tx.bookingStaff.findMany({
+            where: { siteId: site.id, active: true, ...(branch ? { OR: [{ branchId: null }, { branchId: branch.id }] } : {}) },
+            include: { services: { select: { serviceId: true } } },
+            orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+          });
+          const qualified = allStaff.filter(
+            (s) => s.services.length === 0 || s.services.some((srv) => srv.serviceId === service.id),
+          );
+
+          if (qualified.length === 0) {
+            // Modo general del sitio sin profesionales
+            const { days } = await this.setup.computeAvailability(site.id, settings, service, localDate, 1, now, tx);
+            if (!days[0]?.slots.includes(startsAt.toISOString())) {
+              throw new ConflictException(SLOT_TAKEN);
+            }
+            chosenStaff = null;
+          } else {
+            // Encontrar qué profesionales calificados tienen libre esta hora
+            const availableStaff: typeof qualified = [];
+            for (const s of qualified) {
+              const { days } = await this.setup.computeAvailability(
+                site.id,
+                settings,
+                service,
+                localDate,
+                1,
+                now,
+                tx,
+                undefined,
+                s.id,
+              );
+              if (days[0]?.slots.includes(startsAt.toISOString())) {
+                availableStaff.push(s);
+              }
+            }
+            if (availableStaff.length === 0) {
+              throw new ConflictException(SLOT_TAKEN);
+            }
+            // Balanceo de carga: elegir el profesional con menos reservas ese día
+            const dayStart = new Date(startsAt.getFullYear(), startsAt.getMonth(), startsAt.getDate());
+            const dayEnd = new Date(dayStart.getTime() + 24 * 3_600_000);
+            let candidate = availableStaff[0]!;
+            let minBookings = Infinity;
+            for (const staffMember of availableStaff) {
+              const count = await tx.booking.count({
+                where: {
+                  siteId: site.id,
+                  staffId: staffMember.id,
+                  startsAt: { gte: dayStart, lt: dayEnd },
+                  status: { in: ["CONFIRMED", "PENDING_PAYMENT"] },
+                },
+              });
+              if (count < minBookings) {
+                minBookings = count;
+                candidate = staffMember;
+              }
+            }
+            chosenStaff = candidate;
+          }
         }
+
+        if (!chosenBranch && chosenStaff) {
+          const staffRow = await tx.bookingStaff.findUnique({
+            where: { id: chosenStaff.id },
+            select: { branch: { select: { id: true, name: true } } },
+          });
+          if (staffRow?.branch) {
+            chosenBranch = staffRow.branch;
+          }
+        }
+
         const booking = await tx.booking.create({
           data: {
             organizationId: site.organizationId,
             siteId: site.id,
             serviceId: service.id,
+            staffId: chosenStaff?.id ?? null,
+            staffName: chosenStaff?.name ?? null,
+            branchId: chosenBranch?.id ?? null,
+            branchName: chosenBranch?.name ?? null,
             serviceName: service.name,
             durationMinutes: service.durationMinutes,
             priceAmount: service.priceAmount,
@@ -215,6 +382,9 @@ export class PublicBookingsService {
       }
       throw error;
     }
+
+    confirmation.staffName = chosenStaff ? (chosenStaff as { name: string }).name : null;
+    confirmation.branchName = chosenBranch ? (chosenBranch as { name: string }).name : null;
 
     // Después de confirmar: la ficha del contacto (con consentimiento, ADR-004) y su línea de tiempo.
     const contactResult = await this.contactsService.findOrCreateFromSubmission({

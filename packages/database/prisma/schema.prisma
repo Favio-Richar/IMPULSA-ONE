@@ -197,6 +197,8 @@ model Organization {
   bookingSettings     BookingSettings[]
   bookableServices    BookableService[]
   bookingBlackouts    BookingBlackout[]
+  bookingBranches     BookingBranch[]
+  bookingStaff        BookingStaff[]
   bookings            Booking[]
   productCategories   ProductCategory[]
   products            Product[]
@@ -467,6 +469,8 @@ model Site {
   bookingSettings     BookingSettings?
   bookableServices    BookableService[]
   bookingBlackouts    BookingBlackout[]
+  bookingBranches     BookingBranch[]
+  bookingStaff        BookingStaff[]
   bookings            Booking[]
   productCategories   ProductCategory[]
   products            Product[]
@@ -1082,6 +1086,8 @@ model BookingSettings {
   maxAdvanceDays      Int      @default(60) @map("max_advance_days")
   bufferMinutes       Int      @default(0) @map("buffer_minutes")
   slotIntervalMinutes Int      @default(30) @map("slot_interval_minutes")
+  // Feed iCal (.ics) del negocio para suscripción directa desde calendarios externos (F7.9c).
+  calendarFeedToken   String?  @unique @map("calendar_feed_token")
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1090,6 +1096,72 @@ model BookingSettings {
 
   @@index([organizationId])
   @@map("booking_settings")
+}
+
+// Sucursal de atención del negocio (F7.9a, ADR-024). Hasta 20 por sitio.
+model BookingBranch {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  siteId         String   @map("site_id") @db.Uuid
+  name           String
+  address        String?
+  phone          String?
+  active         Boolean  @default(true)
+  position       Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  site         Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  staff        BookingStaff[]
+  bookings     Booking[]
+
+  @@index([siteId, position])
+  @@index([organizationId])
+  @@map("booking_branches")
+}
+
+// Profesional o prestador de atención (F7.9a, ADR-024). Hasta 50 por sitio.
+model BookingStaff {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  siteId            String   @map("site_id") @db.Uuid
+  branchId          String?  @map("branch_id") @db.Uuid
+  name              String
+  title             String?
+  email             String?
+  phone             String?
+  avatarUrl         String?  @map("avatar_url")
+  active            Boolean  @default(true)
+  position          Int      @default(0)
+  // Horario semanal opcional del profesional; si es null, usa el horario del sitio (F7.9b).
+  weeklyHours       Json?    @map("weekly_hours")
+  calendarFeedToken String?  @unique @map("calendar_feed_token")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  site         Site              @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch       BookingBranch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  services     ServiceStaff[]
+  blackouts    BookingBlackout[]
+  bookings     Booking[]
+
+  @@index([siteId, position])
+  @@index([organizationId])
+  @@map("booking_staff")
+}
+
+// Relación N:M entre servicios y profesionales que los atienden (F7.9a).
+model ServiceStaff {
+  serviceId String @map("service_id") @db.Uuid
+  staffId   String @map("staff_id") @db.Uuid
+
+  service BookableService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  staff   BookingStaff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@id([serviceId, staffId])
+  @@map("service_staff")
 }
 
 // Servicio que se puede reservar (corte, sesión, tour). Precio en unidad mínima + moneda ISO; el
@@ -1112,10 +1184,10 @@ model BookableService {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  bookings Booking[]
+  site         Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookings     Booking[]
+  staff        ServiceStaff[]
 
   @@index([siteId, position])
   @@index([organizationId])
@@ -1127,16 +1199,19 @@ model BookingBlackout {
   id             String   @id @default(uuid()) @db.Uuid
   organizationId String   @map("organization_id") @db.Uuid
   siteId         String   @map("site_id") @db.Uuid
+  staffId        String?  @map("staff_id") @db.Uuid
   startsAt       DateTime @map("starts_at") @db.Timestamptz(6)
   endsAt         DateTime @map("ends_at") @db.Timestamptz(6)
   reason         String?
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  staff        BookingStaff? @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([siteId, startsAt])
   @@index([organizationId])
+  @@index([staffId])
   @@map("booking_blackouts")
 }
 
@@ -1154,16 +1229,20 @@ enum BookingSource {
   MANUAL
 }
 
-// Reserva (F5.2). Guarda una copia del servicio (nombre, duración, precio, enlace de pago) tal como
-// era al reservar: editar o borrar el servicio después no cambia lo que se reservó. Sin doble
-// reserva: restricción de exclusión `bookings_no_overlap` (en la migración, Prisma no la expresa)
-// sobre `tstzrange(starts_at, ends_at)` de las reservas CONFIRMED de un mismo sitio.
+// Reserva (F5.2, F7.9a). Guarda una copia del servicio y del profesional/sucursal tal como
+// era al reservar: editar o borrar el servicio/profesional después no cambia lo que se reservó.
+// Sin doble reserva: restricción de exclusión `bookings_no_overlap` (en la migración, Prisma no la expresa)
+// sobre `COALESCE(staff_id, '00000000-0000-0000-0000-000000000000'::uuid)` y `tstzrange(starts_at, ends_at)`.
 model Booking {
   id              String        @id @default(uuid()) @db.Uuid
   organizationId  String        @map("organization_id") @db.Uuid
   siteId          String        @map("site_id") @db.Uuid
   serviceId       String?       @map("service_id") @db.Uuid
   contactId       String?       @map("contact_id") @db.Uuid
+  staffId         String?       @map("staff_id") @db.Uuid
+  staffName       String?       @map("staff_name")
+  branchId        String?       @map("branch_id") @db.Uuid
+  branchName      String?       @map("branch_name")
   serviceName     String        @map("service_name")
   durationMinutes Int           @map("duration_minutes")
   priceAmount     Int?          @map("price_amount")
@@ -1204,10 +1283,14 @@ model Booking {
   site         Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
   service      BookableService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   contact      Contact?         @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  staff        BookingStaff?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  branch       BookingBranch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   @@index([siteId, startsAt])
   @@index([organizationId, startsAt])
   @@index([contactId])
+  @@index([staffId, startsAt])
+  @@index([branchId, startsAt])
   @@map("bookings")
 }
 

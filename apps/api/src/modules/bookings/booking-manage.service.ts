@@ -87,6 +87,8 @@ export class BookingManageService {
       siteName: booking.site.name,
       serviceName: booking.serviceName,
       serviceId: booking.service?.active ? booking.service.id : null,
+      staffName: booking.staffName,
+      branchName: booking.branchName,
       startsAt: booking.startsAt.toISOString(),
       endsAt: booking.endsAt.toISOString(),
       timeZone: booking.timeZone,
@@ -157,6 +159,8 @@ export class BookingManageService {
           now,
           tx,
           booking.id,
+          booking.staffId ?? undefined,
+          booking.branchId ?? undefined,
         );
         if (!days[0]?.slots.includes(startsAt.toISOString())) {
           throw new ConflictException(NEW_SLOT_TAKEN);

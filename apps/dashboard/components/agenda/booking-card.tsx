@@ -102,6 +102,8 @@ export function BookingCard({ organizationId, booking }: { organizationId: strin
         <p className="text-sm text-muted-foreground">
           {booking.serviceName}
           {booking.priceAmount !== null && booking.priceCurrency ? ` · ${formatMoney(booking.priceAmount, booking.priceCurrency)}` : ""}
+          {booking.staffName ? ` · ${booking.staffName}` : ""}
+          {booking.branchName ? ` · ${booking.branchName}` : ""}
         </p>
         {deposit ? (
           <p className="mt-1 flex items-start gap-1.5 text-sm text-foreground">

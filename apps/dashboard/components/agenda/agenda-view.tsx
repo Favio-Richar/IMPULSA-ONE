@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useAgenda } from "../../lib/hooks/use-agenda";
-import { useBookableServices, useBookingSettings } from "../../lib/hooks/use-booking-setup";
+import { useBookableServices, useBookingBranches, useBookingSettings, useBookingStaff } from "../../lib/hooks/use-booking-setup";
 import { BookingCard, formatMoney } from "./booking-card";
 import { NewBookingForm } from "./new-booking-form";
 
@@ -58,6 +58,8 @@ function AgendaForSites({ organizationId, sites: active }: { organizationId: str
   const [siteId, setSiteId] = useState(active[0]!.id);
   const settingsQuery = useBookingSettings(organizationId, siteId);
   const servicesQuery = useBookableServices(organizationId, siteId);
+  const branchesQuery = useBookingBranches(organizationId, siteId);
+  const staffQuery = useBookingStaff(organizationId, siteId);
 
   if (settingsQuery.isPending) return <LoadingState label="Cargando agenda…" />;
   if (settingsQuery.isError) return <ErrorState onRetry={() => settingsQuery.refetch()} />;
@@ -86,7 +88,15 @@ function AgendaForSites({ organizationId, sites: active }: { organizationId: str
         </div>
       ) : null}
 
-      <AgendaBody key={siteId} organizationId={organizationId} siteId={siteId} timeZone={timeZone} services={servicesQuery.data ?? []} />
+      <AgendaBody
+        key={siteId}
+        organizationId={organizationId}
+        siteId={siteId}
+        timeZone={timeZone}
+        services={servicesQuery.data ?? []}
+        branches={branchesQuery.data ?? []}
+        staff={staffQuery.data ?? []}
+      />
     </div>
   );
 }
@@ -96,16 +106,22 @@ function AgendaBody({
   siteId,
   timeZone,
   services,
+  branches,
+  staff,
 }: {
   organizationId: string;
   siteId: string;
   timeZone: string;
   services: NonNullable<ReturnType<typeof useBookableServices>["data"]>;
+  branches: NonNullable<ReturnType<typeof useBookingBranches>["data"]>;
+  staff: NonNullable<ReturnType<typeof useBookingStaff>["data"]>;
 }): React.JSX.Element {
   const today = localDateOf(new Date(), timeZone);
   const [view, setView] = useState<View>("week");
   const [anchor, setAnchor] = useState(today);
   const [status, setStatus] = useState<"" | BookingStatusValue>("");
+  const [branchFilter, setBranchFilter] = useState<string>("");
+  const [staffFilter, setStaffFilter] = useState<string>("");
   const [creating, setCreating] = useState(false);
   const weekStart = mondayOf(anchor);
   const range = view === "week" ? { first: weekStart, days: 7 } : { first: anchor, days: 1 };
@@ -143,7 +159,13 @@ function AgendaBody({
   }, [weekQuery.data]);
 
   const visibleDays = Array.from({ length: range.days }, (_, i) => addDaysToDate(range.first, i));
-  const filtered = (date: string) => (byDay.get(date) ?? []).filter((booking) => !status || booking.status === status);
+  const filtered = (date: string) =>
+    (byDay.get(date) ?? []).filter((booking) => {
+      if (status && booking.status !== status) return false;
+      if (branchFilter && booking.branchId !== branchFilter) return false;
+      if (staffFilter && booking.staffId !== staffFilter) return false;
+      return true;
+    });
   const step = view === "week" ? 7 : 1;
 
   return (
@@ -189,6 +211,39 @@ function AgendaBody({
               </button>
             ))}
           </div>
+
+          {branches.length > 0 ? (
+            <select
+              aria-label="Filtrar por sucursal"
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="h-9 rounded-md border border-border-strong bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+            >
+              <option value="">Todas las sucursales</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+
+          {staff.length > 0 ? (
+            <select
+              aria-label="Filtrar por profesional"
+              value={staffFilter}
+              onChange={(e) => setStaffFilter(e.target.value)}
+              className="h-9 rounded-md border border-border-strong bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+            >
+              <option value="">Todos los profesionales</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+
           <select
             aria-label="Filtrar por estado"
             value={status}
@@ -216,6 +271,8 @@ function AgendaBody({
           siteId={siteId}
           timeZone={timeZone}
           services={services}
+          branches={branches}
+          staff={staff}
           defaultDate={anchor < today ? today : anchor}
           onDone={() => setCreating(false)}
         />

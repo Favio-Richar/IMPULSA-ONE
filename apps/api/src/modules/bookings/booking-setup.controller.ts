@@ -4,20 +4,32 @@ import {
   bookableServiceResponse,
   bookingAvailabilityResponse,
   bookingBlackoutResponse,
+  bookingBranchResponse,
   bookingSettingsResponse,
+  bookingStaffResponse,
 } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import {
+  assignStaffToServiceSchema,
   bookableServiceSchema,
   bookingAvailabilityQuerySchema,
   bookingBlackoutSchema,
+  bookingBranchSchema,
   bookingSettingsSchema,
+  bookingStaffSchema,
   updateBookableServiceSchema,
+  updateBookingBranchSchema,
+  updateBookingStaffSchema,
+  type AssignStaffToServiceInput,
   type BookableServiceInput,
   type BookingAvailabilityQuery,
   type BookingBlackoutInput,
+  type BookingBranchInput,
   type BookingSettingsInput,
+  type BookingStaffInput,
   type UpdateBookableServiceInput,
+  type UpdateBookingBranchInput,
+  type UpdateBookingStaffInput,
 } from "@impulza/validation";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
@@ -35,7 +47,13 @@ import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
 import { OrganizationMembershipGuard } from "../organizations/guards/organization-membership.guard.js";
 import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
-import { BLACKOUT_NOT_FOUND, BookingSetupService, SERVICE_NOT_FOUND } from "./booking-setup.service.js";
+import {
+  BLACKOUT_NOT_FOUND,
+  BRANCH_NOT_FOUND,
+  BookingSetupService,
+  SERVICE_NOT_FOUND,
+  STAFF_NOT_FOUND,
+} from "./booking-setup.service.js";
 
 @ApiTags("bookings")
 @ApiCookieAuth(SESSION_AUTH)
@@ -196,5 +214,151 @@ export class BookingSetupController {
     @Query(new ZodValidationPipe(bookingAvailabilityQuerySchema)) query: BookingAvailabilityQuery,
   ) {
     return this.bookingSetupService.availability(organizationId, siteId, query);
+  }
+
+  // --- Sucursales (F7.9a) ---
+
+  @Get("branches")
+  @ApiOperation({ summary: "Listar sucursales de atención del sitio" })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiZodArrayResponse(200, bookingBranchResponse, "Sucursales del sitio.")
+  listBranches(@Param("organizationId") organizationId: string, @Param("siteId") siteId: string) {
+    return this.bookingSetupService.listBranches(organizationId, siteId);
+  }
+
+  @Post("branches")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_UPDATE)
+  @ApiOperation({ summary: "Crear una sucursal de atención", description: "Requiere `site.update`. Hasta 20 por sitio." })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiZodBody(bookingBranchSchema)
+  @ApiZodResponse(201, bookingBranchResponse, "Sucursal creada.")
+  createBranch(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(bookingBranchSchema)) body: BookingBranchInput,
+  ) {
+    return this.bookingSetupService.createBranch(organizationId, user.id, siteId, body);
+  }
+
+  @Patch("branches/:branchId")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_UPDATE)
+  @ApiOperation({ summary: "Editar una sucursal", description: "Requiere `site.update`." })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiUuidParam("branchId", "Sucursal a editar.")
+  @ApiZodBody(updateBookingBranchSchema)
+  @ApiZodResponse(200, bookingBranchResponse, "Sucursal actualizada.")
+  @ApiResponse({ status: 404, description: BRANCH_NOT_FOUND })
+  updateBranch(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("branchId") branchId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(updateBookingBranchSchema)) body: UpdateBookingBranchInput,
+  ) {
+    return this.bookingSetupService.updateBranch(organizationId, user.id, siteId, branchId, body);
+  }
+
+  @Delete("branches/:branchId")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_UPDATE)
+  @ApiOperation({ summary: "Borrar una sucursal", description: "Requiere `site.update`." })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiUuidParam("branchId", "Sucursal a borrar.")
+  @ApiResponse({ status: 204, description: "Sucursal borrada." })
+  @ApiResponse({ status: 404, description: BRANCH_NOT_FOUND })
+  async deleteBranch(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("branchId") branchId: string,
+    @CurrentUser() user: User,
+  ) {
+    await this.bookingSetupService.deleteBranch(organizationId, user.id, siteId, branchId);
+  }
+
+  // --- Profesionales (F7.9a) ---
+
+  @Get("staff")
+  @ApiOperation({ summary: "Listar profesionales de atención del sitio" })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiZodArrayResponse(200, bookingStaffResponse, "Profesionales del sitio.")
+  listStaff(@Param("organizationId") organizationId: string, @Param("siteId") siteId: string) {
+    return this.bookingSetupService.listStaff(organizationId, siteId);
+  }
+
+  @Post("staff")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_UPDATE)
+  @ApiOperation({ summary: "Crear un profesional de atención", description: "Requiere `site.update`. Hasta 50 por sitio." })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiZodBody(bookingStaffSchema)
+  @ApiZodResponse(201, bookingStaffResponse, "Profesional creado.")
+  createStaff(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(bookingStaffSchema)) body: BookingStaffInput,
+  ) {
+    return this.bookingSetupService.createStaff(organizationId, user.id, siteId, body);
+  }
+
+  @Patch("staff/:staffId")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_UPDATE)
+  @ApiOperation({ summary: "Editar un profesional", description: "Requiere `site.update`." })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiUuidParam("staffId", "Profesional a editar.")
+  @ApiZodBody(updateBookingStaffSchema)
+  @ApiZodResponse(200, bookingStaffResponse, "Profesional actualizado.")
+  @ApiResponse({ status: 404, description: STAFF_NOT_FOUND })
+  updateStaff(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("staffId") staffId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(updateBookingStaffSchema)) body: UpdateBookingStaffInput,
+  ) {
+    return this.bookingSetupService.updateStaff(organizationId, user.id, siteId, staffId, body);
+  }
+
+  @Delete("staff/:staffId")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_UPDATE)
+  @ApiOperation({ summary: "Borrar un profesional", description: "Requiere `site.update`." })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiUuidParam("staffId", "Profesional a borrar.")
+  @ApiResponse({ status: 204, description: "Profesional borrado." })
+  @ApiResponse({ status: 404, description: STAFF_NOT_FOUND })
+  async deleteStaff(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("staffId") staffId: string,
+    @CurrentUser() user: User,
+  ) {
+    await this.bookingSetupService.deleteStaff(organizationId, user.id, siteId, staffId);
+  }
+
+  @Put("services/:serviceId/staff")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_UPDATE)
+  @ApiOperation({ summary: "Asignar profesionales a un servicio", description: "Requiere `site.update`." })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiUuidParam("serviceId", "Servicio a asignar.")
+  @ApiZodBody(assignStaffToServiceSchema)
+  @ApiResponse({ status: 204, description: "Profesionales asignados." })
+  @ApiResponse({ status: 404, description: SERVICE_NOT_FOUND })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async assignStaff(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("serviceId") serviceId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(assignStaffToServiceSchema)) body: AssignStaffToServiceInput,
+  ) {
+    await this.bookingSetupService.assignStaffToService(organizationId, user.id, siteId, serviceId, body.staffIds);
   }
 }

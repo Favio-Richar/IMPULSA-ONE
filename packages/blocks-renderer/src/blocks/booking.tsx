@@ -14,7 +14,7 @@ import { SURFACE_SCOPE } from "../ui/surface.js";
 import { emitConversion } from "../lib/conversions.js";
 
 type Service = PublicBookingInfoResponse["services"][number];
-type Step = "service" | "time" | "details" | "done";
+type Step = "service" | "resource" | "time" | "details" | "done";
 
 const DAYS = 7;
 /** Opción elegible (servicio, día, hora): superficie de la pila; la elegida, en el color primario. */
@@ -84,6 +84,8 @@ function BookingFlow({ siteSlug, serviceIds }: { siteSlug: string; serviceIds?: 
   const [infoError, setInfoError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("service");
   const [service, setService] = useState<Service | null>(null);
+  const [branchId, setBranchId] = useState<string | null>(null);
+  const [staffId, setStaffId] = useState<string | null>(null);
   const [slot, setSlot] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<PublicBookingConfirmationResponse | null>(null);
@@ -111,6 +113,18 @@ function BookingFlow({ siteSlug, serviceIds }: { siteSlug: string; serviceIds?: 
     [info, serviceIds],
   );
 
+  const branches = info?.branches ?? [];
+  const staff = info?.staff ?? [];
+
+  const eligibleStaff = useMemo(() => {
+    if (!service) return [];
+    return staff.filter(
+      (s) => (s.serviceIds.length === 0 || s.serviceIds.includes(service.id)) && (!branchId || !s.branchId || s.branchId === branchId),
+    );
+  }, [service, staff, branchId]);
+
+  const hasPreferences = service ? branches.length > 1 || eligibleStaff.length > 1 : false;
+
   if (infoError) return <Notice>{infoError}</Notice>;
   if (!info) return <p className="text-sm text-[var(--site-color-muted-foreground)]" role="status">Cargando horarios…</p>;
   if (services.length === 0) return <Notice>Por ahora no hay servicios disponibles para reservar en línea.</Notice>;
@@ -126,11 +140,19 @@ function BookingFlow({ siteSlug, serviceIds }: { siteSlug: string; serviceIds?: 
     return <Confirmation confirmation={confirmation} heading={heading} />;
   }
 
+  const stepLabels = hasPreferences
+    ? (["Servicio", "Preferencias", "Día y hora", "Tus datos"] as const)
+    : (["Servicio", "Día y hora", "Tus datos"] as const);
+
+  const stepIndex = hasPreferences
+    ? (["service", "resource", "time", "details"] as const).indexOf(step as "service" | "resource" | "time" | "details")
+    : (["service", "time", "details"] as const).indexOf(step as "service" | "time" | "details");
+
   return (
     <div className="flex flex-col gap-4">
       <ol className="flex gap-1.5 text-xs text-[var(--site-color-muted-foreground)]" aria-label="Pasos de la reserva">
-        {(["Servicio", "Día y hora", "Tus datos"] as const).map((label, index) => {
-          const current = (["service", "time", "details"] as const).indexOf(step as "service" | "time" | "details") === index;
+        {stepLabels.map((label, index) => {
+          const current = stepIndex === index;
           return (
             <li key={label} aria-current={current ? "step" : undefined} className={current ? "font-semibold text-[var(--site-color-foreground)]" : ""}>
               {index > 0 ? "· " : ""}
@@ -154,7 +176,16 @@ function BookingFlow({ siteSlug, serviceIds }: { siteSlug: string; serviceIds?: 
                 setService(candidate);
                 setSlot(null);
                 setNotice(null);
-                setStep("time");
+                setBranchId(null);
+                setStaffId(null);
+                const forCandidate = staff.filter((s) => s.serviceIds.length === 0 || s.serviceIds.includes(candidate.id));
+                if (branches.length > 1 || forCandidate.length > 1) {
+                  setStep("resource");
+                } else {
+                  if (branches.length === 1) setBranchId(branches[0]!.id);
+                  if (forCandidate.length === 1) setStaffId(forCandidate[0]!.id);
+                  setStep("time");
+                }
               }}
               className={`${CHOICE_BASE} ${service?.id === candidate.id ? CHOICE_SELECTED : CHOICE_IDLE} flex min-h-14 flex-col items-start gap-0.5 px-4 py-3 text-left`}
             >
@@ -173,14 +204,97 @@ function BookingFlow({ siteSlug, serviceIds }: { siteSlug: string; serviceIds?: 
         </fieldset>
       ) : null}
 
+      {step === "resource" && service ? (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {heading(`${service.name} · tus preferencias`)}
+            <button
+              type="button"
+              onClick={() => setStep("service")}
+              className="text-sm text-[var(--site-color-foreground)] underline underline-offset-2"
+            >
+              Cambiar servicio
+            </button>
+          </div>
+
+          {branches.length > 1 ? (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-2 text-sm font-medium text-[var(--site-color-foreground)]">¿En qué sucursal prefieres atenderte?</legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  aria-pressed={branchId === null}
+                  onClick={() => setBranchId(null)}
+                  className={`${CHOICE_BASE} ${branchId === null ? CHOICE_SELECTED : CHOICE_IDLE} flex flex-col items-start p-3 text-left`}
+                >
+                  <span className="font-medium">Cualquiera</span>
+                  <span className="text-xs opacity-80">Todas las sucursales</span>
+                </button>
+                {branches.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    aria-pressed={branchId === b.id}
+                    onClick={() => setBranchId(b.id)}
+                    className={`${CHOICE_BASE} ${branchId === b.id ? CHOICE_SELECTED : CHOICE_IDLE} flex flex-col items-start p-3 text-left`}
+                  >
+                    <span className="font-medium">{b.name}</span>
+                    {b.address ? <span className="text-xs opacity-80">{b.address}</span> : null}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
+
+          {eligibleStaff.length > 1 ? (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-2 text-sm font-medium text-[var(--site-color-foreground)]">¿Con quién deseas atenderte?</legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  aria-pressed={staffId === null}
+                  onClick={() => setStaffId(null)}
+                  className={`${CHOICE_BASE} ${staffId === null ? CHOICE_SELECTED : CHOICE_IDLE} flex flex-col items-start p-3 text-left`}
+                >
+                  <span className="font-medium">Cualquiera disponible</span>
+                  <span className="text-xs opacity-80">Primer horario disponible</span>
+                </button>
+                {eligibleStaff.map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    aria-pressed={staffId === st.id}
+                    onClick={() => setStaffId(st.id)}
+                    className={`${CHOICE_BASE} ${staffId === st.id ? CHOICE_SELECTED : CHOICE_IDLE} flex flex-col items-start p-3 text-left`}
+                  >
+                    <span className="font-medium">{st.name}</span>
+                    {st.title ? <span className="text-xs opacity-80">{st.title}</span> : null}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => setStep("time")}
+            className={PRIMARY_BUTTON}
+          >
+            Continuar a fecha y hora
+          </button>
+        </div>
+      ) : null}
+
       {step === "time" && service ? (
         <BookingTimePicker
           base={base}
           service={service}
+          branchId={branchId}
+          staffId={staffId}
           timeZone={timeZone}
           maxAdvanceDays={info.maxAdvanceDays}
           heading={heading}
-          onBack={() => setStep("service")}
+          onBack={() => setStep(hasPreferences ? "resource" : "service")}
           onPick={(picked) => {
             setSlot(picked);
             setNotice(null);
@@ -193,6 +307,8 @@ function BookingFlow({ siteSlug, serviceIds }: { siteSlug: string; serviceIds?: 
         <DetailsForm
           base={base}
           service={service}
+          branchId={branchId}
+          staffId={staffId}
           slot={slot}
           timeZone={timeZone}
           heading={heading}
@@ -217,6 +333,8 @@ function BookingFlow({ siteSlug, serviceIds }: { siteSlug: string; serviceIds?: 
 export function BookingTimePicker({
   base,
   service,
+  branchId,
+  staffId,
   timeZone,
   maxAdvanceDays,
   heading,
@@ -227,6 +345,8 @@ export function BookingTimePicker({
 }: {
   base: string;
   service: Service;
+  branchId?: string | null;
+  staffId?: string | null;
   timeZone: string;
   maxAdvanceDays: number;
   heading: (text: string) => React.ReactNode;
@@ -252,6 +372,8 @@ export function BookingTimePicker({
     setAvailability(null);
     setError(null);
     const params = new URLSearchParams({ serviceId: service.id, from, days: String(DAYS) });
+    if (branchId) params.set("branchId", branchId);
+    if (staffId) params.set("staffId", staffId);
     void fetchJson<BookingAvailabilityResponse>(`${base}/availability?${params.toString()}`, { cache: "no-store" }).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
@@ -265,7 +387,7 @@ export function BookingTimePicker({
     return () => {
       cancelled = true;
     };
-  }, [base, service.id, from]);
+  }, [base, service.id, from, branchId, staffId]);
 
   const selectedDay = availability?.days.find((d) => d.date === day) ?? null;
   const noneThisWeek = availability !== null && availability.days.every((d) => d.slots.length === 0);
@@ -351,6 +473,8 @@ export function BookingTimePicker({
 function DetailsForm({
   base,
   service,
+  branchId,
+  staffId,
   slot,
   timeZone,
   heading,
@@ -360,6 +484,8 @@ function DetailsForm({
 }: {
   base: string;
   service: Service;
+  branchId?: string | null;
+  staffId?: string | null;
   slot: string;
   timeZone: string;
   heading: (text: string) => React.ReactNode;
@@ -402,6 +528,8 @@ function DetailsForm({
         email: values.email.trim(),
         ...(phone ? { phone } : {}),
         ...(values.note.trim() ? { note: values.note.trim() } : {}),
+        ...(branchId ? { branchId } : {}),
+        ...(staffId ? { staffId } : {}),
         consent: true,
         // Aparte y opcional (F5.6): solo con la casilla marcada llegan campañas.
         ...(values.marketing ? { marketingConsent: true } : {}),
@@ -520,7 +648,9 @@ function Confirmation({ confirmation, heading }: { confirmation: PublicBookingCo
           {heading("Paga la seña para confirmar")}
         </div>
         <p className="text-sm text-[var(--site-color-foreground)]">
-          Guardamos tu hora: <span className="font-medium">{confirmation.serviceName}</span>, <span>{when}</span>. Paga la seña de{" "}
+          Guardamos tu hora: <span className="font-medium">{confirmation.serviceName}</span>
+          {confirmation.staffName ? ` con ${confirmation.staffName}` : ""}
+          {confirmation.branchName ? ` en ${confirmation.branchName}` : ""}, <span>{when}</span>. Paga la seña de{" "}
           <span className="font-semibold">{deposit}</span>
           {until ? ` antes de las ${until}` : ""} para confirmarla; si no, la hora se libera.
         </p>
@@ -547,7 +677,9 @@ function Confirmation({ confirmation, heading }: { confirmation: PublicBookingCo
         {heading("¡Reserva confirmada!")}
       </div>
       <p className="text-sm text-[var(--site-color-foreground)]">
-        <span className="font-medium">{confirmation.serviceName}</span>, <span>{when}</span>.
+        <span className="font-medium">{confirmation.serviceName}</span>
+        {confirmation.staffName ? ` con ${confirmation.staffName}` : ""}
+        {confirmation.branchName ? ` en ${confirmation.branchName}` : ""}, <span>{when}</span>.
         {confirmation.priceAmount !== null && confirmation.priceCurrency ? ` Valor: ${formatPrice(confirmation.priceAmount, confirmation.priceCurrency)}.` : ""}
       </p>
       <div className="flex flex-col gap-2 sm:flex-row">

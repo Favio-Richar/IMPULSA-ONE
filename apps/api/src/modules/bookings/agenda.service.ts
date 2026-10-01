@@ -49,6 +49,10 @@ export class AgendaService {
       siteId: booking.siteId,
       serviceId: booking.serviceId,
       contactId: booking.contactId,
+      staffId: booking.staffId,
+      staffName: booking.staffName,
+      branchId: booking.branchId,
+      branchName: booking.branchName,
       serviceName: booking.serviceName,
       durationMinutes: booking.durationMinutes,
       priceAmount: booking.priceAmount,
@@ -98,6 +102,8 @@ export class AgendaService {
         organizationId,
         ...(query.siteId ? { siteId: query.siteId } : {}),
         ...(query.status ? { status: query.status } : {}),
+        ...(query.staffId ? { staffId: query.staffId } : {}),
+        ...(query.branchId ? { branchId: query.branchId } : {}),
         startsAt: { lt: new Date(query.to) },
         endsAt: { gt: new Date(query.from) },
       },
@@ -118,6 +124,29 @@ export class AgendaService {
     if (!service) {
       throw new NotFoundException("Servicio no encontrado en ese sitio.");
     }
+
+    let staff: { id: string; name: string } | null = null;
+    if (input.staffId) {
+      staff = await this.prisma.bookingStaff.findFirst({
+        where: { id: input.staffId, siteId: input.siteId, organizationId },
+        select: { id: true, name: true },
+      });
+      if (!staff) {
+        throw new NotFoundException("Profesional no encontrado en ese sitio.");
+      }
+    }
+
+    let branch: { id: string; name: string } | null = null;
+    if (input.branchId) {
+      branch = await this.prisma.bookingBranch.findFirst({
+        where: { id: input.branchId, siteId: input.siteId, organizationId },
+        select: { id: true, name: true },
+      });
+      if (!branch) {
+        throw new NotFoundException("Sucursal no encontrada en ese sitio.");
+      }
+    }
+
     const settings = await this.setup.settingsFor(input.siteId);
     const startsAt = new Date(input.startsAt);
     const email = input.email.toLowerCase();
@@ -133,6 +162,10 @@ export class AgendaService {
           siteId: input.siteId,
           serviceId: service.id,
           contactId: contact?.id ?? null,
+          staffId: staff?.id ?? null,
+          staffName: staff?.name ?? null,
+          branchId: branch?.id ?? null,
+          branchName: branch?.name ?? null,
           serviceName: service.name,
           durationMinutes: service.durationMinutes,
           priceAmount: service.priceAmount,

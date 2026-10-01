@@ -2,78 +2,15 @@ import { z } from "zod";
 import { phoneSchema, plainTextSchema, safeUrlSchema } from "../blocks/primitives.js";
 import { isValidTimeZone } from "./timezone.js";
 
+import { DEFAULT_WEEKLY_HOURS, SLOT_INTERVALS, weeklyHoursSchema } from "./weekly-hours.js";
+
 export * from "./timezone.js";
 export * from "./availability.js";
+export * from "./weekly-hours.js";
 
 // Reservas (F5.1). Esquemas compartidos por la API (que siempre revalida) y el panel.
 
 export const DEFAULT_BOOKING_TIME_ZONE = "America/Santiago";
-export const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
-export type Weekday = (typeof WEEKDAYS)[number];
-export const WEEKDAY_LABELS: Record<Weekday, string> = {
-  mon: "Lunes",
-  tue: "Martes",
-  wed: "Miércoles",
-  thu: "Jueves",
-  fri: "Viernes",
-  sat: "Sábado",
-  sun: "Domingo",
-};
-/** Cada cuántos minutos se ofrece una hora de inicio. */
-export const SLOT_INTERVALS = [10, 15, 20, 30, 45, 60] as const;
-export const MAX_WINDOWS_PER_DAY = 4;
-
-/** `HH:MM` (00:00–23:59) o `24:00` como fin del día. */
-const timeOfDaySchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$|^24:00$/, "Usa el formato HH:MM, por ejemplo 09:30.");
-
-export function minutesOfDay(time: string): number {
-  const [hours, minutes] = time.split(":").map(Number) as [number, number];
-  return hours * 60 + minutes;
-}
-
-const windowSchema = z
-  .object({ start: timeOfDaySchema, end: timeOfDaySchema })
-  .refine((window) => window.start !== "24:00", { message: "La hora de inicio no puede ser 24:00.", path: ["start"] })
-  .refine((window) => minutesOfDay(window.start) < minutesOfDay(window.end), {
-    message: "La hora de término tiene que ser posterior a la de inicio.",
-    path: ["end"],
-  });
-
-/** Tramos de un día: ordenados y sin solaparse. */
-const dayWindowsSchema = z
-  .array(windowSchema)
-  .max(MAX_WINDOWS_PER_DAY)
-  .superRefine((windows, ctx) => {
-    const sorted = [...windows].sort((a, b) => minutesOfDay(a.start) - minutesOfDay(b.start));
-    for (let i = 1; i < sorted.length; i++) {
-      if (minutesOfDay(sorted[i]!.start) < minutesOfDay(sorted[i - 1]!.end)) {
-        ctx.addIssue({ code: "custom", message: "Los tramos del día no pueden solaparse.", path: [i] });
-      }
-    }
-  })
-  .transform((windows) => [...windows].sort((a, b) => minutesOfDay(a.start) - minutesOfDay(b.start)));
-
-export const weeklyHoursSchema = z.object({
-  mon: dayWindowsSchema,
-  tue: dayWindowsSchema,
-  wed: dayWindowsSchema,
-  thu: dayWindowsSchema,
-  fri: dayWindowsSchema,
-  sat: dayWindowsSchema,
-  sun: dayWindowsSchema,
-});
-export type WeeklyHours = z.infer<typeof weeklyHoursSchema>;
-
-/** Horario inicial razonable: lunes a viernes 09:00–13:00 y 15:00–19:00, sábado 10:00–14:00. */
-export const DEFAULT_WEEKLY_HOURS: WeeklyHours = {
-  mon: [{ start: "09:00", end: "13:00" }, { start: "15:00", end: "19:00" }],
-  tue: [{ start: "09:00", end: "13:00" }, { start: "15:00", end: "19:00" }],
-  wed: [{ start: "09:00", end: "13:00" }, { start: "15:00", end: "19:00" }],
-  thu: [{ start: "09:00", end: "13:00" }, { start: "15:00", end: "19:00" }],
-  fri: [{ start: "09:00", end: "13:00" }, { start: "15:00", end: "19:00" }],
-  sat: [{ start: "10:00", end: "14:00" }],
-  sun: [],
-};
 
 export const bookingSettingsSchema = z.object({
   enabled: z.boolean(),
@@ -153,6 +90,8 @@ export const updateBookableServiceSchema = z
   .partial();
 export type UpdateBookableServiceInput = z.infer<typeof updateBookableServiceSchema>;
 
+export * from "./staff-and-branches.js";
+
 /** Servicios por sitio (tope técnico; un límite por plan es la decisión #4). */
 export const MAX_SERVICES_PER_SITE = 50;
 
@@ -161,6 +100,7 @@ export const bookingBlackoutSchema = z
     startsAt: z.iso.datetime({ offset: true }),
     endsAt: z.iso.datetime({ offset: true }),
     reason: plainTextSchema(120).optional(),
+    staffId: z.string().uuid().optional(),
   })
   .refine((blackout) => Date.parse(blackout.endsAt) > Date.parse(blackout.startsAt), {
     message: "El término tiene que ser posterior al inicio.",
@@ -177,6 +117,8 @@ export const bookingAvailabilityQuerySchema = z.object({
   serviceId: z.uuid(),
   from: z.iso.date(),
   days: z.coerce.number().int().min(1).max(31).default(7),
+  branchId: z.string().uuid().optional(),
+  staffId: z.string().uuid().or(z.literal("any")).optional(),
 });
 export type BookingAvailabilityQuery = z.infer<typeof bookingAvailabilityQuerySchema>;
 
@@ -207,6 +149,8 @@ export const publicBookingRequestSchema = z.object({
   email: z.email("Escribe un correo válido.").max(254),
   phone: phoneSchema.optional(),
   note: plainTextSchema(500).optional(),
+  branchId: z.string().uuid().optional(),
+  staffId: z.string().uuid().or(z.literal("any")).optional(),
   consent: z.literal(true, { message: "Necesitamos tu autorización para guardar la reserva." }),
   /** Casilla aparte y opcional (F5.6): recibir novedades por correo. Sin ella, nunca hay campañas. */
   marketingConsent: z.boolean().optional(),
@@ -239,6 +183,8 @@ export const listBookingsQuerySchema = z
     from: z.iso.datetime({ offset: true }),
     to: z.iso.datetime({ offset: true }),
     status: z.enum(BOOKING_STATUSES).optional(),
+    branchId: z.string().uuid().optional(),
+    staffId: z.string().uuid().optional(),
   })
   .refine((query) => Date.parse(query.to) > Date.parse(query.from), { message: "El fin tiene que ser posterior al inicio.", path: ["to"] })
   .refine((query) => Date.parse(query.to) - Date.parse(query.from) <= MAX_AGENDA_RANGE_DAYS * 24 * 3_600_000, {
@@ -259,6 +205,8 @@ export const manualBookingSchema = z.object({
   email: z.email("Escribe un correo válido.").max(254),
   phone: phoneSchema.optional(),
   note: plainTextSchema(500).optional(),
+  branchId: z.string().uuid().optional(),
+  staffId: z.string().uuid().optional(),
 });
 export type ManualBookingInput = z.infer<typeof manualBookingSchema>;
 

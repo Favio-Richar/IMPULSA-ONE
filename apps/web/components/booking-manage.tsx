@@ -144,6 +144,18 @@ export function BookingManage({ token, initial, refreshHref }: { token: string; 
         <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
           <dt className="text-[var(--site-color-muted-foreground)]">Servicio</dt>
           <dd className="font-medium">{booking.serviceName}</dd>
+          {booking.staffName ? (
+            <>
+              <dt className="text-[var(--site-color-muted-foreground)]">Profesional</dt>
+              <dd className="font-medium">{booking.staffName}</dd>
+            </>
+          ) : null}
+          {booking.branchName ? (
+            <>
+              <dt className="text-[var(--site-color-muted-foreground)]">Sucursal</dt>
+              <dd className="font-medium">{booking.branchName}</dd>
+            </>
+          ) : null}
           <dt className="text-[var(--site-color-muted-foreground)]">Cuándo</dt>
           <dd className={booking.status === "CANCELLED" ? "line-through" : ""}>{formatWhen(booking.startsAt, booking.timeZone)}</dd>
           {booking.priceAmount !== null && booking.priceCurrency ? (

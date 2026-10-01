@@ -2,9 +2,21 @@ import type {
   BookableServiceResponse,
   BookingAvailabilityResponse,
   BookingBlackoutResponse,
+  BookingBranchResponse,
   BookingSettingsResponse,
+  BookingStaffResponse,
 } from "@impulza/contracts";
-import type { BookableServiceInput, BookingBlackoutInput, BookingSettingsInput, UpdateBookableServiceInput } from "@impulza/validation";
+import type {
+  AssignStaffToServiceInput,
+  BookableServiceInput,
+  BookingBlackoutInput,
+  BookingBranchInput,
+  BookingSettingsInput,
+  BookingStaffInput,
+  UpdateBookableServiceInput,
+  UpdateBookingBranchInput,
+  UpdateBookingStaffInput,
+} from "@impulza/validation";
 import { apiFetch } from "../api-client";
 
 function base(organizationId: string, siteId: string): string {
@@ -40,6 +52,57 @@ export function deleteBookableService(organizationId: string, siteId: string, se
   return apiFetch<void>(`${base(organizationId, siteId)}/services/${serviceId}`, { method: "DELETE" });
 }
 
+export function listBookingBranches(organizationId: string, siteId: string): Promise<BookingBranchResponse[]> {
+  return apiFetch<BookingBranchResponse[]>(`${base(organizationId, siteId)}/branches`);
+}
+
+export function createBookingBranch(organizationId: string, siteId: string, body: BookingBranchInput): Promise<BookingBranchResponse> {
+  return apiFetch<BookingBranchResponse>(`${base(organizationId, siteId)}/branches`, { method: "POST", body });
+}
+
+export function updateBookingBranch(
+  organizationId: string,
+  siteId: string,
+  branchId: string,
+  body: UpdateBookingBranchInput,
+): Promise<BookingBranchResponse> {
+  return apiFetch<BookingBranchResponse>(`${base(organizationId, siteId)}/branches/${branchId}`, { method: "PATCH", body });
+}
+
+export function deleteBookingBranch(organizationId: string, siteId: string, branchId: string): Promise<void> {
+  return apiFetch<void>(`${base(organizationId, siteId)}/branches/${branchId}`, { method: "DELETE" });
+}
+
+export function listBookingStaff(organizationId: string, siteId: string): Promise<BookingStaffResponse[]> {
+  return apiFetch<BookingStaffResponse[]>(`${base(organizationId, siteId)}/staff`);
+}
+
+export function createBookingStaff(organizationId: string, siteId: string, body: BookingStaffInput): Promise<BookingStaffResponse> {
+  return apiFetch<BookingStaffResponse>(`${base(organizationId, siteId)}/staff`, { method: "POST", body });
+}
+
+export function updateBookingStaff(
+  organizationId: string,
+  siteId: string,
+  staffId: string,
+  body: UpdateBookingStaffInput,
+): Promise<BookingStaffResponse> {
+  return apiFetch<BookingStaffResponse>(`${base(organizationId, siteId)}/staff/${staffId}`, { method: "PATCH", body });
+}
+
+export function deleteBookingStaff(organizationId: string, siteId: string, staffId: string): Promise<void> {
+  return apiFetch<void>(`${base(organizationId, siteId)}/staff/${staffId}`, { method: "DELETE" });
+}
+
+export function assignStaffToService(
+  organizationId: string,
+  siteId: string,
+  serviceId: string,
+  body: AssignStaffToServiceInput,
+): Promise<void> {
+  return apiFetch<void>(`${base(organizationId, siteId)}/services/${serviceId}/staff`, { method: "PUT", body });
+}
+
 export function listBookingBlackouts(organizationId: string, siteId: string): Promise<BookingBlackoutResponse[]> {
   return apiFetch<BookingBlackoutResponse[]>(`${base(organizationId, siteId)}/blackouts`);
 }
@@ -55,8 +118,14 @@ export function deleteBookingBlackout(organizationId: string, siteId: string, bl
 export function getBookingAvailability(
   organizationId: string,
   siteId: string,
-  query: { serviceId: string; from: string; days: number },
+  query: { serviceId: string; from: string; days: number; staffId?: string; branchId?: string },
 ): Promise<BookingAvailabilityResponse> {
-  const params = new URLSearchParams({ serviceId: query.serviceId, from: query.from, days: String(query.days) });
+  const params = new URLSearchParams({
+    serviceId: query.serviceId,
+    from: query.from,
+    days: String(query.days),
+    ...(query.staffId ? { staffId: query.staffId } : {}),
+    ...(query.branchId ? { branchId: query.branchId } : {}),
+  });
   return apiFetch<BookingAvailabilityResponse>(`${base(organizationId, siteId)}/availability?${params.toString()}`);
 }

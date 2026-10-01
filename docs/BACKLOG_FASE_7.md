@@ -16,7 +16,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Lista para tu revisión (ADR-021; capturas en `docs/design/capturas/f76/`) |
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Lista para tu revisión (ADR-022; capturas en `docs/design/capturas/f77/`) |
 | F7.8 — Tienda: variantes, cupones y carrito | Lista para tu revisión (ADR-023): F7.8a variantes, F7.8b cupones y F7.8c carrito (capturas en `docs/design/capturas/f78a/`, `f78b/` y `f78c/`) |
-| F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Pendiente |
+| F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | En curso (ADR-024): F7.9a profesionales y sucursales, F7.9b horarios y bloqueos, F7.9c calendarios e iCal |
 | F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Pendiente |
 | F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Pendiente |
 | F7.12 — Aislamiento y seguridad de Fase 7 | Pendiente |
@@ -447,6 +447,72 @@ Implementación de F7.8c (2026-10-01) — lista para tu revisión:
   falla), caso en el aislamiento central y Playwright (3 casos × teléfono y escritorio, incluye que la
   barra esté de verdad en pantalla). Tienda, cobro, variantes, cupones y acción principal siguen
   pasando; `descargas` falla solo en la subida a MinIO (límite conocido del entorno).
+
+### F7.9 — Reservas: varios profesionales y sucursales; Google Calendar (ADR-024)
+
+Entregas planificadas:
+
+**F7.9a — Profesionales, sucursales y asignación de servicios.** Criterios de aceptación:
+- Panel por sitio: gestión de **sucursales** (nombre, dirección, teléfono, orden y activo; hasta 20 por
+  sitio) y **profesionales** (nombre, título/especialidad, correo, teléfono, avatar opcional, orden, activo
+  y sucursal asignada).
+- Asignación flexible a servicios (`service_staff`): un servicio puede vincularse a profesionales específicos;
+  si no tiene asignaciones, está disponible para todos los profesionales activos del sitio.
+- La reserva guarda copia histórica de `staff_id`, `staff_name`, `branch_id` y `branch_name` (un profesional
+  o sucursal editado o borrado no altera citas pasadas).
+- Actualización matemática de `bookings_no_overlap` en Postgres:
+  `COALESCE("staff_id", '00000000-0000-0000-0000-000000000000'::uuid) WITH =` permite que dos profesionales
+  atiendan en paralelo a la misma hora en el mismo sitio, garantizando al 100% que ningún profesional sufra
+  doble reserva y que sitios sin profesionales sigan operando como un calendario único sin cambios.
+- Disponibilidad pública (`/availability`) y reserva pública: soporte para parámetros `branchId` y `staffId`.
+  Si se selecciona "Cualquier profesional disponible", el horario está libre si al menos un profesional calificado
+  está disponible, y al reservar se asigna atómicamente al profesional libre con menor carga.
+- Selector en la página pública: si hay 2 o más sucursales activas, permite elegir sucursal; si hay 2 o más
+  profesionales activos calificados, permite elegir profesional o "Cualquiera disponible".
+- Pruebas: unitarias de esquemas y asignación, e2e de API (creación de profesionales/sucursales, disponibilidad
+  paralela entre profesionales, rechazo de solapamiento en el mismo profesional, asignación automática, aislamiento
+  multi-tenant), y Playwright del panel y página pública.
+
+Implementación de F7.9a (2026-10-01) — lista para tu revisión:
+- Base de datos (`packages/database`):
+  - Migración `20261001220000_f79a_booking_staff_branches`.
+  - Nuevas entidades `BookingBranch`, `BookingStaff`, `ServiceStaff`.
+  - Copia histórica desnormalizada en `Booking` (`staffId`, `staffName`, `branchId`, `branchName`).
+  - Restricción de exclusión PostgreSQL GiST `bookings_no_overlap` actualizada con:
+    `COALESCE("staff_id", '00000000-0000-0000-0000-000000000000'::uuid) WITH =` garantizando reservas simultáneas
+    con distintos profesionales y exclusión estricta para el mismo profesional o sin profesional asignado.
+- Paquetes comunes (`@impulza/validation`, `@impulza/contracts`):
+  - Esquemas Zod completos para CRUD de sucursales, profesionales y asignación de servicios.
+  - Extracción de `weekly-hours.ts` previniendo dependencias circulares.
+  - Contratos OpenAPI actualizados exponiendo `staffName` y `branchName` públicos sin filtrar IDs internos.
+- API (`apps/api`):
+  - Endpoints CRUD de sucursales y profesionales bajo permisos de configuración de reservas.
+  - Cálculo de disponibilidad multi-recurso (`/availability?serviceId=...&branchId=...&staffId=...`).
+  - Balanceo de carga automático atómico cuando el visitante elige "any": asigna al profesional calificado libre
+    con menor número de reservas activas en el período.
+  - Suite E2E `booking-staff-branches.e2e.test.ts` (6/6 pruebas aprobadas al 100%).
+  - Aislamiento multi-tenant en `multi-tenant-isolation.e2e.test.ts` validando bloqueo entre organizaciones.
+  - OpenAPI regenerado y probado (198 rutas, 272 operaciones).
+- Dashboard (`apps/dashboard`):
+  - Componentes de administración de sucursales (`booking-branches.tsx`) y profesionales (`booking-staff.tsx`).
+  - Integración en `/sitios/[siteId]/reservas` con asignación de servicios por checkboxes.
+  - Agenda (`agenda-view.tsx`, `new-booking-form.tsx`) con filtros por sucursal y profesional y asignación manual.
+- Página pública y bloques (`packages/blocks-renderer`, `apps/web`):
+  - Bloque de reservas con paso interactivo de selección de sucursal y profesional calificado cuando existan 2 o más.
+  - Reenvío de parámetros en proxy `/api/bookings/[siteSlug]/availability`.
+  - Pantallas de confirmación y gestión ("Tu reserva") detallando sucursal y profesional asignado.
+
+**F7.9b — Horarios semanales y bloqueos por profesional.** Criterios de aceptación:
+- Cada profesional puede definir sus propios horarios semanales (`weekly_hours`) o heredar los del sitio.
+- Bloqueos de agenda (`booking_blackouts`): opcionalmente vinculados a un `staff_id`. Un bloqueo con `staff_id = NULL`
+  cierra todo el sitio; un bloqueo con `staff_id` cierra solo a ese profesional.
+- Agenda del panel (`/reservas`): filtros por sucursal y por profesional; visualización clara de quién atiende cada cita.
+
+**F7.9c — Sincronización con calendarios (Feed iCal universal y Google Calendar OAuth).** Criterios de aceptación:
+- Feed iCal (`.ics`) seguro con token por sitio y por profesional (`/public/bookings/calendar-feed/:token.ics`)
+  para suscripción instantánea en Google Calendar, Apple Calendar y Outlook sin necesidad de cuentas de desarrollador.
+- Modelo y adaptador de Google Calendar (`google_calendar_connections`) para sincronización bidireccional; si faltan
+  las credenciales OAuth en el entorno, opera en modo desacoplado sin fallar y queda listo para cuando se suministren.
 
 ## Fases siguientes
 

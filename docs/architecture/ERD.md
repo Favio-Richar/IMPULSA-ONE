@@ -392,6 +392,16 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   `^G-[A-Z0-9]{4,15}$` y `^[0-9]{10,20}$`). Solo identificadores: el script lo arma Impulza. La
   elección de consentimiento de cada visitante **no** se guarda en la base (vive en su navegador).
 
+## 9o-bis. Bloques de F7.3 (`BACKLOG_FASE_7.md`, ADR-018) — sin cambios de tablas
+
+- Los tipos `countdown`, `pricing`, `map`, `music` y `events` (y `newsletter` de F7.4) son entradas
+  nuevas del catálogo cerrado de `packages/validation/src/blocks/catalog.ts`: se guardan en
+  **Block.type** + **Block.config** (JSON validado por el esquema del tipo y su versión), igual que el
+  resto. Por eso no hay migración: `Block.type` es texto a propósito (ver el comentario del modelo).
+- `video` suma `vertical` (opcional) y el proveedor `tiktok` en su forma guardada; `music` guarda
+  `{provider, …ids}` y nunca una URL de iframe. Fechas de cuenta regresiva y eventos: hora de pared
+  `AAAA-MM-DDTHH:mm` + zona IANA.
+
 ## 9p. Webhooks salientes (F7.2, `BACKLOG_FASE_7.md`, ADR-017)
 
 - **WebhookEndpoint** (`webhook_endpoints`): destino de una organización. `url` (`CHECK` https),

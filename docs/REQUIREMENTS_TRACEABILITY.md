@@ -78,7 +78,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 
 | Requisito | Fuente | Fase |
 |---|---|---|
-| Eventos: vistas, clics por bloque, contactos, reservas, ventas, conversión, embudo, UTM, dispositivo, geo aproximada | PM §9.12 | Fase 3 |
+| Eventos: vistas, clics por bloque, contactos, reservas, ventas, conversión, embudo, UTM, dispositivo, geo aproximada | PM §9.12 | Fase 3 — embudos en orden por visita, con abandono y pago (PM §14.3), en F7.6 (ADR-021); en revisión |
 | Taxonomía de eventos y pipeline (endpoint → validación/rate limit → cola Redis/BullMQ → worker → agregados Postgres → dashboard) | ST §10 | Fase 3 |
 | No guardar datos personales innecesarios; anonimizar/truncar; idempotencia; diferenciar bots | ST §10, §15 | Fase 3, transversal en seguridad |
 | ClickHouse solo si Postgres deja de cumplir objetivos medidos | ST §10 | Diferido — decisión futura basada en datos |

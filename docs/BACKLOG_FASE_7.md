@@ -13,7 +13,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.3 — Bloques nuevos: cuenta regresiva, tabla de precios, mapa, video y música incrustados (lista cerrada, sin HTML libre), eventos | Lista para tu revisión (ADR-018; capturas en `docs/design/capturas/f73/`) |
 | F7.4 — Suscripción a newsletter con doble confirmación | Lista para tu revisión (ADR-019; capturas en `docs/design/capturas/f74/`) |
 | F7.5 — Secuencias de correo automáticas (bienvenida, seguimiento) sobre las automatizaciones | Lista para tu revisión (ADR-020; capturas en `docs/design/capturas/f75/`) |
-| F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Pendiente |
+| F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Lista para tu revisión (ADR-021; capturas en `docs/design/capturas/f76/`) |
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Pendiente |
 | F7.8 — Tienda: variantes, cupones y carrito | Pendiente |
 | F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Pendiente |
@@ -231,6 +231,48 @@ Implementación (2026-10-01):
 - Panel "Secuencias": lista con cadencia y avance, pausa, personas inscritas y detener; editor con
   pasos ordenables, espera en horas o días, recorrido, vista previa personalizada y prueba por paso.
 - Pruebas: 4 de validación, 1 de auth, 6 e2e de API + aislamiento central, 6 del worker, Playwright.
+
+### F7.6 — Embudos de conversión: pasos, tasas y abandono por paso (ADR-021)
+
+Criterios de aceptación:
+- Panel "Analítica → Embudos": por sitio, crear, editar, reordenar pasos y borrar embudos (hasta 10
+  por sitio, de 2 a 6 pasos). Cada paso tiene un nombre y uno o más eventos del catálogo: vista de
+  página (opcionalmente **una** página), clic en bloque (opcionalmente **un** bloque), clic en
+  WhatsApp, envío de formulario, contacto nuevo, reserva, pedido y **pago** (pedido pagado o seña
+  pagada). Botón "Usar el embudo sugerido" (visita → interacción → contacto/reserva/pedido → pago,
+  plan maestro §14.3).
+- Informe por rango de fechas (y por dispositivo, opcional): personas-día que llegan a cada paso
+  **en orden**, conversión desde el paso anterior y desde el inicio, abandono (cantidad y %) y
+  tiempo mediano desde el paso anterior; destaca el paso con más abandono. Gráfico de barras
+  accesible (con tabla equivalente), estados de carga, vacío, error y éxito, teléfono y escritorio.
+- Datos según ADR-021: visita anonimizada del día (ADR-004 intacto), cálculo en SQL sobre
+  `analytics_events` con la columna nueva `subject_id`, pago cruzado con pedidos/reservas sin tocar
+  código de cobro. Mismo límite de historial del plan (402) y un año por consulta.
+- Leer, cualquier miembro; escribir, `page.manage`. Validación en servidor (pasos, eventos, página o
+  bloque del mismo sitio). Auditoría de cada cambio. Log estructurado con la duración del cálculo.
+- Pruebas: unitarias (esquemas), API e2e (orden estricto, abandono, pago cruzado, filtros, permisos,
+  validación, aislamiento entre organizaciones, auditoría, 402), worker (persiste `subject_id`) y
+  Playwright en teléfono y escritorio.
+
+Implementación (2026-10-01):
+- Migración `20261001120000_f76_funnels` (reversa verificada: aplicar, `down.sql`, reaplicar):
+  columna `analytics_events.subject_id`, índice `(site_id, type, created_at)` y tabla `funnels`.
+  El worker (`processAnalyticsEvent`) ya guarda el sujeto de cada evento.
+- `@impulza/validation`: `funnelStepSchema`/`funnelStepsSchema`, `createFunnelSchema`,
+  `updateFunnelSchema`, `funnelReportQuerySchema` y `SUGGESTED_FUNNEL`; contratos en
+  `@impulza/contracts/funnels`.
+- API `organizations/:id/sites/:siteId/funnels` (CRUD + `/:funnelId/report`). El cálculo es una
+  sola consulta SQL con un CTE por paso; el pago se cruza por la clave de idempotencia de
+  `order_created`/`booking_created` con `orders.paid_at` y `bookings.deposit_paid_at` (el sujeto de
+  esos eventos es el producto o el servicio y no se cambió). Log `embudo calculado` con la duración.
+- Panel "Analítica → Embudos" (pestañas Resumen/Embudos): sitio, período, dispositivo de entrada,
+  lista de embudos, sugerido, editor con pasos ordenables y página o bloque opcional, informe con
+  indicadores, embudo dibujado con abandono y mediana entre pasos, paso crítico destacado con ícono y
+  texto, tabla equivalente, aviso de límite del plan. El resumen enlaza a los embudos.
+- Pruebas: 9 de validación, 7 e2e de API (verificadas contra el código roto: sin el orden estricto o
+  con el pago tomado de la creación del pedido, fallan), caso en el aislamiento central, persistencia
+  del sujeto en el pipeline y Playwright (2 casos × teléfono y escritorio).
+- Límite conocido (ADR-021): "recurrencia" no se mide (exige identificar a una persona entre días).
 
 ## Fases siguientes
 

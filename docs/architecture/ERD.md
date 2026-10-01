@@ -163,12 +163,21 @@ AnalyticsEvent (N) ──1 Organization
 AnalyticsEvent (N) ──1 Site (nullable)
 AnalyticsAggregate (N) ──1 Organization
 AnalyticsAggregate (N) ──1 Site (nullable, F3.6)
+Funnel (N) ──1 Site (F7.6)
 ```
 
 - **AnalyticsEvent**: id, organization_id, site_id, type (page_view/block_click/whatsapp_click/
   form_submit/lead_created/qr_visit/...), anonymized_visitor_id, utm, device, geo_country/city,
   created_at. Sin PII innecesaria; idempotency_key para eventos críticos. Sin columna de IP cruda
   (ADR-004): el visitante anonimizado se deriva con sal rotada por sitio/día.
+  - **F7.6 (ADR-021):** `subject_id` (texto, nulo): página de un `page_view`, bloque de un clic,
+    producto de un pedido, servicio de una reserva. Índice `(site_id, type, created_at)` para los
+    embudos. Nulo en los eventos anteriores a la migración.
+- **Funnel** (F7.6, ADR-021): id, organization_id, site_id, name, steps (JSON, `funnelStepsSchema`:
+  2 a 6 pasos con eventos de un catálogo cerrado y página o bloque opcional), created_at, updated_at.
+  Solo la definición: el informe se calcula al consultar sobre `analytics_events` (visitas del día en
+  orden) y el paso "pago" se cruza con `orders.paid_at` / `bookings.deposit_paid_at` por la clave de
+  idempotencia del evento. Hasta 10 por sitio.
 - **AnalyticsAggregate**: id, organization_id, site_id, period, metric, value — pre-agregado para
   el dashboard, generado por el worker (`apps/worker`, F3.6). `site_id` es por sitio siempre que el
   evento sea de un sitio; un rollup de organización se suma en la consulta del dashboard, no se

@@ -255,6 +255,14 @@ describe("Pipeline de analítica (e2e) — F3.6", () => {
     expect(metrics.block_click).toBe(2);
     expect(metrics[`block_click:subject:${blockIds[1]}`]).toBe(1);
     expect(Object.keys(metrics).filter((metric) => metric.startsWith("block_click:subject:"))).toHaveLength(1);
+
+    // F7.6 (ADR-021): el evento crudo guarda su sujeto, para los pasos de embudo filtrados por bloque.
+    const events = await prisma.analyticsEvent.findMany({
+      where: { organizationId, type: "block_click" },
+      orderBy: { createdAt: "asc" },
+      select: { subjectId: true },
+    });
+    expect(events.map((event) => event.subjectId).sort()).toEqual([blockIds[1], null].sort());
   });
 
   it("form_submit y lead_created nacen del servidor, una vez por envío y por lead nuevo", async () => {

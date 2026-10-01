@@ -36,3 +36,4 @@ export * from "./payment-accounts.js";
 export * from "./webhooks.js";
 export * from "./newsletter.js";
 export * from "./sequences.js";
+export * from "./funnels.js";

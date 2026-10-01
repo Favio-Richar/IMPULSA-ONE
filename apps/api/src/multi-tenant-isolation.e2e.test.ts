@@ -1770,6 +1770,30 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Embudos de conversión (F7.6, ADR-021): nunca se cruzan", () => {
+    it("A no ve, edita, borra ni calcula un embudo de B, ni crea uno en un sitio de B", async () => {
+      const ofB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/funnels`;
+      const ofA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/funnels`;
+      const steps = [
+        { label: "Visita", events: ["page_view"] },
+        { label: "Contacto", events: ["lead_created"] },
+      ];
+      const funnel = (await orgB.ownerAgent.post(ofB).set(CSRF_HEADERS).send({ name: "De B", steps }).expect(201)).body;
+      try {
+        await orgA.ownerAgent.get(ofB).expect(403);
+        await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/funnels`).set(CSRF_HEADERS).send({ name: "Intruso", steps }).expect(404);
+        await orgA.ownerAgent.get(`${ofA}/${funnel.id}`).expect(404);
+        await orgA.ownerAgent.get(`${ofA}/${funnel.id}/report`).query({ from: "2026-09-01", to: "2026-09-02" }).expect(404);
+        await orgA.ownerAgent.patch(`${ofA}/${funnel.id}`).set(CSRF_HEADERS).send({ name: "Mío" }).expect(404);
+        await orgA.ownerAgent.delete(`${ofA}/${funnel.id}`).set(CSRF_HEADERS).expect(404);
+        expect((await orgA.ownerAgent.get(ofA).expect(200)).body.map((row: { id: string }) => row.id)).not.toContain(funnel.id);
+        expect((await prisma.funnel.findUniqueOrThrow({ where: { id: funnel.id } })).name).toBe("De B");
+      } finally {
+        await prisma.funnel.deleteMany({ where: { id: funnel.id } });
+      }
+    });
+  });
+
   describe("Webhooks salientes (F7.2, ADR-017): destinos, entregas y eventos nunca se cruzan", () => {
     it("A no ve, edita, prueba, rota ni reenvía lo de B, y un evento de B nunca llega a un destino de A", async () => {
       const ofB = `/api/v1/organizations/${orgB.id}/webhooks`;

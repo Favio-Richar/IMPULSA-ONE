@@ -47,3 +47,4 @@ export * from "./webhooks/index.js";
 export * from "./newsletter/index.js";
 export * from "./sequences/index.js";
 export * from "./billing/index.js";
+export * from "./funnels/index.js";

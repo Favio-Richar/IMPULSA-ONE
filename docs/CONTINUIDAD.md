@@ -5,18 +5,19 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 1. Estado al 2026-10-01 (después de F7.5)
+## 1. Estado al 2026-10-01 (después de F7.6)
 
 - Rama principal: `master` (no `main`). Cada historia es **un commit** con el código en el asunto,
   p. ej. `feat(newsletter): … (F7.4, ADR-019)`, y termina con la línea `Co-Authored-By` que indique
   el sistema.
-- **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.5 listas para revisión del propietario.
-  **Sigue F7.6** (embudos de conversión: pasos, tasas y abandono por paso). Después F7.7–F7.12 en
-  el orden del backlog.
-- ADR más reciente: ADR-020 (secuencias de correo).
+- **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.6 listas para revisión del propietario.
+  **Sigue F7.7** (modo campaña: página temporal con fecha de inicio/fin y vuelta automática).
+  Después F7.8–F7.12 en el orden del backlog. Las historias sin criterios escritos los reciben al
+  empezar (como F7.6), con su ADR si hay una decisión de arquitectura.
+- ADR más reciente: ADR-021 (embudos de conversión).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
   (`docs/BACKLOG_FASE_*.md`, `BACKLOG_PLANTILLAS.md`, `BACKLOG_PAGINA_PREMIUM.md`).
-- ADR vigentes: `docs/decisions/` (hasta ADR-020). No reabrir uno sin una razón técnica nueva.
+- ADR vigentes: `docs/decisions/` (hasta ADR-021). No reabrir uno sin una razón técnica nueva.
 
 ### Decisiones pendientes del propietario (no avanzar sobre ellas sin respuesta)
 
@@ -130,6 +131,17 @@ desarrollo los correos no se envían: se imprimen en la consola de la API (`emai
   alertas por texto.
 - **Un servidor de desarrollo con horas de uso** puede fallar al compilar una ruta nueva ("Jest worker
   encountered … child process exceptions"). Reiniciarlo; no es un error del código.
+
+- **`next build` de `apps/web` necesita la API encendida**: la portada consulta las plantillas al
+  prerenderizar (desde `131cead`). Sin la API en el 4000 falla con `ECONNREFUSED` (también en CI si
+  se corre `pnpm build` sin servicios). Pendiente de decisión: tolerar la API caída en ese fetch.
+- **`pkill -f` con un patrón que aparece en el propio comando** mata la shell que lo ejecuta (código
+  144). Para reiniciar la API, lanzarla en otra llamada con `setsid nohup …`.
+- **En la nube**, si el `.env` local es de una sesión anterior, puede faltarle una variable nueva
+  (`DASHBOARD_BASE_URL`, `WEBPAY_*`): regenerarlo desde `.env.example` (valores de desarrollo).
+- **Sujeto de los eventos del servidor**: `order_created` y `booking_created` guardan como sujeto el
+  producto y el servicio (agregados por producto); el pedido o la reserva están en la clave de
+  idempotencia (`order_created:<id>`). Así cruza el pago el embudo (ADR-021).
 
 ## 5. Reglas del propietario que no están en el código
 

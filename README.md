@@ -3,10 +3,10 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual (2026-09-30): Fase 7 en curso — F7.1 (GA4 y píxel de Meta con consentimiento, y CSP
+**Estado actual (2026-10-01): Fase 7 en curso — F7.1 (GA4 y píxel de Meta con consentimiento, y CSP
 en la página pública, ADR-016) y F7.2 (webhooks salientes firmados hacia Zapier, Make u otros
 sistemas, ADR-017) y F7.3 (bloques de cuenta regresiva, precios, mapa, música y eventos, ADR-018)
-F7.4 (newsletter con doble confirmación, ADR-019) y F7.5 (secuencias de correo, ADR-020) listas para revisión; sigue F7.6. Los cobros de
+F7.4 (newsletter con doble confirmación, ADR-019), F7.5 (secuencias de correo, ADR-020) y F7.6 (embudos de conversión, ADR-021) listas para revisión; sigue F7.7. Los cobros de
 los negocios (F5.8–F5.11, ADR-013 y ADR-015) quedaron completos y en revisión. Lo pendiente de todo
 el plan está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
@@ -45,7 +45,7 @@ reglas de trabajo del repositorio.
 | 4 — SaaS comercial | F4.1–F4.9 | Lista para revisión (F4.6b: Mercado Pago, falta probar con credenciales reales) |
 | 5 — Negocio digital | F5.1–F5.11 | Lista para revisión (incluye cobros con la cuenta del negocio, ADR-013/015) |
 | 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.7 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
-| 7 — Crecimiento | F7.1–F7.12 | En curso: F7.1–F7.5 listas para revisión; sigue F7.6 |
+| 7 — Crecimiento | F7.1–F7.12 | En curso: F7.1–F7.6 listas para revisión; sigue F7.7 |
 
 **Para retomar el desarrollo** (también desde Claude Code en la nube): `docs/CONTINUIDAD.md`.
 
@@ -1294,6 +1294,18 @@ y Configurar, con el mismo peso) y **no carga nada de terceros sin consentimient
 vistas, clics en WhatsApp, formularios, reservas y pedidos, sin datos personales. `apps/web` ahora
 responde con CSP y cabeceras de seguridad (`lib/security-headers.ts`); todo origen nuevo que cargue
 la página pública se agrega ahí con su prueba.
+
+## Embudos de conversión (F7.6, ADR-021)
+
+En "Analítica → Embudos", cada sitio puede tener hasta 10 embudos de 2 a 6 pasos. Un paso junta uno
+o más eventos (vista de página, clic en un bloque, WhatsApp, formulario, contacto, reserva, pedido o
+**pago**) y puede apuntar a una página o un bloque concreto. El informe cuenta las visitas del día
+(anónimas, ADR-004) que hicieron los pasos **en orden**: conversión desde el paso anterior y desde el
+inicio, cuántas abandonan, el tiempo mediano entre pasos y el paso con más abandono, con gráfico y
+tabla equivalente, por período y por dispositivo de entrada. El pago se cruza con los pedidos y
+reservas pagados (Mercado Pago, seña o pago marcado a mano) sin tocar el código de cobro. Hay un
+embudo sugerido (visita → interacción → contacto/reserva/pedido → pago). Respeta el historial del
+plan. Al desplegar: `db:migrate:deploy` (migración `20261001120000_f76_funnels`, con `down.sql`).
 
 ## Secuencias de correo (F7.5, ADR-020)
 

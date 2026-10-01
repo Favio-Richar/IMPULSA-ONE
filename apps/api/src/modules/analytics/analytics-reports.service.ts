@@ -71,7 +71,7 @@ function daysBetween(from: string, to: string): string[] {
 }
 
 /** Texto propio de un bloque para mostrarlo en el ranking: el del botón o el título, si tiene. */
-function blockOwnLabel(config: unknown): string | null {
+export function blockOwnLabel(config: unknown): string | null {
   if (typeof config !== "object" || config === null) {
     return null;
   }
@@ -103,7 +103,7 @@ export class AnalyticsReportsService {
    * "hoy menos N días". Mismo 402 que el resto de los límites, así el panel ofrece subir de plan.
    * Los datos viejos no se borran por esto (eso es la retención, ADR-004): solo no se muestran.
    */
-  private async assertWithinHistoryLimit(organizationId: string, from: string): Promise<void> {
+  async assertWithinHistoryLimit(organizationId: string, from: string): Promise<void> {
     const { plan } = await this.plansService.resolveEffectivePlan(organizationId);
     const maxDays = plan.limits.analyticsHistoryDays;
     if (maxDays === null) {

@@ -20,6 +20,7 @@ import {
 import { Contact, Eye, MousePointerClick, Percent, QrCode, Sparkles, Target, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { AnalyticsTabs } from "../../../components/analytics/analytics-tabs";
 import { formatCompact, formatInteger, formatPercent, isoDayOffset } from "../../../components/analytics/format";
 import { RankedBars } from "../../../components/analytics/ranked-bars";
 import { SeriesChart } from "../../../components/analytics/series-chart";
@@ -105,6 +106,7 @@ function AnalyticsDashboard({ organizationId }: { organizationId: string }): Rea
           los visitantes son anónimos y el tráfico automático (bots) no cuenta.
         </p>
       </div>
+      <AnalyticsTabs />
 
       {/* Filtros en una sola fila, arriba de todo lo que filtran. */}
       <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 lg:flex-row lg:items-end">
@@ -269,6 +271,10 @@ function OverviewContent({ data, refreshing }: { data: AnalyticsOverviewResponse
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Panel title="Embudo de conversión" description="De cada etapa, cuánto llega a la siguiente.">
               <Funnel funnel={data.funnel} />
+              {/* F7.6: estos son totales sueltos; el embudo en orden, por visita, está en su pestaña. */}
+              <Link href="/analitica/embudos" className="mt-3 inline-block text-sm font-medium text-primary hover:underline">
+                Ver embudos paso a paso →
+              </Link>
             </Panel>
             <Panel title="Dispositivo" description="Visitas por tipo de dispositivo.">
               <RankedBars

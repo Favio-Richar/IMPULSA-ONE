@@ -213,6 +213,7 @@ model Organization {
   mediaAssets         MediaAsset[]
   aiUsage             AiUsage[]
   abTests             AbTest[]
+  funnels             Funnel[]
   automations         Automation[]
   automationRuns      AutomationRun[]
   payments            Payment[]
@@ -470,6 +471,7 @@ model Site {
   analyticsEvents     AnalyticsEvent[]
   analyticsAggregates AnalyticsAggregate[]
   abTests             AbTest[]
+  funnels             Funnel[]
   newsletterConfirmations NewsletterConfirmation[]
 
   @@index([organizationId])
@@ -926,6 +928,10 @@ model AnalyticsEvent {
   geoCity             String?  @map("geo_city")
   // Evita doble conteo por reintento de red en eventos críticos (F3.6).
   idempotencyKey      String?  @unique @map("idempotency_key")
+  // A qué se refiere el evento (F7.6, ADR-021): la página de un `page_view`, el bloque de un clic, el
+  // pedido o la reserva de los eventos del servidor. Texto y no uuid: un sujeto con otra forma nunca
+  // debe hacer perder el evento. Nulo en los eventos anteriores a la migración.
+  subjectId           String?  @map("subject_id")
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -933,6 +939,8 @@ model AnalyticsEvent {
 
   @@index([organizationId, createdAt])
   @@index([siteId, createdAt])
+  // Embudos (F7.6): cada paso busca "estos tipos, en este sitio, en este rango".
+  @@index([siteId, type, createdAt])
   @@map("analytics_events")
 }
 
@@ -1554,6 +1562,26 @@ model AbTest {
   @@index([siteId, status])
   @@index([pageId, status])
   @@map("ab_tests")
+}
+
+// Embudo de conversión de un sitio (F7.6, ADR-021). Solo la definición: el informe se calcula al
+// consultar sobre `analytics_events`, nunca se guarda. `steps` es `funnelStepsSchema` de
+// `@impulza/validation` (2 a 6 pasos, cada uno con eventos de un catálogo cerrado), validado al
+// guardar y otra vez al leer.
+model Funnel {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  siteId         String   @map("site_id") @db.Uuid
+  name           String
+  steps          Json
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, siteId])
+  @@map("funnels")
 }
 
 // --- Automatizaciones básicas (F6.7) ---------------------------------------------------------------

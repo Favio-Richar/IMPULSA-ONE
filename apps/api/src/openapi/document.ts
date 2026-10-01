@@ -75,6 +75,7 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     )
     .addTag("media", "Biblioteca de medios: subida directa al almacenamiento, verificación y procesamiento (ADR-006).")
     .addTag("support", "Solicitudes de soporte desde el panel (F4.5).")
+    .addTag("funnels", "Embudos de conversión por sitio: pasos en orden, conversión y abandono (F7.6, ADR-021).")
     .addTag("health", "Estado de la API y sus dependencias. Sin autenticación.")
     .addTag("meta", "Raíz de la API. Sanity check, no monitoreo.")
     .build();

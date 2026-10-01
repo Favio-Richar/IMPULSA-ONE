@@ -77,6 +77,8 @@ export async function processAnalyticsEvent(
           geoCity: job.geoCity,
           ...(job.utm ? { utm: { ...job.utm } as Record<string, string> } : {}),
           idempotencyKey: job.idempotencyKey,
+          // Embudos (F7.6, ADR-021): página, bloque, pedido o reserva al que se refiere el evento.
+          subjectId: job.subjectId,
           createdAt: occurredAt,
         },
       });

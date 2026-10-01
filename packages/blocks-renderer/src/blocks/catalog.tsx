@@ -14,6 +14,20 @@ import { SURFACE_SCOPE } from "../ui/surface.js";
 import { emitConversion } from "../lib/conversions.js";
 
 type Product = PublicCatalogResponse["products"][number];
+type ProductVariant = Product["variants"][number];
+
+/**
+ * Precio que se muestra en el botón del producto (F7.8a): con variantes de precios distintos,
+ * "Desde" el más bajo entre las disponibles (o entre todas, si no queda ninguna).
+ */
+export function productPriceLabel(product: Pick<Product, "priceAmount" | "priceCurrency" | "variants">): string {
+  if (product.variants.length === 0) return formatPrice(product.priceAmount, product.priceCurrency);
+  const pool = product.variants.some((variant) => variant.available) ? product.variants.filter((variant) => variant.available) : product.variants;
+  const prices = pool.map((variant) => variant.priceAmount);
+  const min = Math.min(...prices);
+  const label = formatPrice(min, product.priceCurrency);
+  return prices.some((price) => price !== min) ? `Desde ${label}` : label;
+}
 
 const STEPPER_BUTTON =
   "flex h-11 w-11 items-center justify-center rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-background)] text-[var(--site-color-foreground)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2";
@@ -107,7 +121,7 @@ function CatalogProducts({ config, siteSlug, variant }: { config: CatalogBlockCo
 
 function ProductButton({ product, base, variant }: { product: Product; base: string; variant: "glass" | "secondary" }) {
   const [opened, setOpened] = useState(false);
-  const price = formatPrice(product.priceAmount, product.priceCurrency);
+  const price = productPriceLabel(product);
   const icon = product.image ? (
     <SiteImage image={product.image} sizes="40px" width={40} height={40} className="h-10 w-10 shrink-0 rounded-[calc(var(--site-radius)/2)] object-cover" />
   ) : (
@@ -139,12 +153,22 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
   const id = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [quantity, setQuantity] = useState(1);
+  // Con una sola variante a la venta, queda elegida; con varias, la persona elige (nunca por defecto).
+  const variants = product.variants;
+  const [variantId, setVariantId] = useState<string | null>(() => {
+    const available = variants.filter((candidate) => candidate.available);
+    return variants.length > 0 && available.length === 1 ? available[0]!.id : null;
+  });
+  const selected: ProductVariant | null = variants.find((candidate) => candidate.id === variantId) ?? null;
   const [values, setValues] = useState({ name: "", email: "", phone: "", address: "", note: "", consent: false, marketing: false, website: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<PublicOrderConfirmationResponse | null>(null);
   const needsAddress = product.kind === "PHYSICAL";
-  const maxQuantity = Math.max(1, product.maxQuantity);
+  const maxQuantity = Math.max(1, selected ? selected.maxQuantity : product.maxQuantity);
+  const unitPrice = selected ? selected.priceAmount : product.priceAmount;
+  // El precio va en cada opción solo si no todas cuestan lo mismo.
+  const pricesDiffer = new Set(variants.map((option) => option.priceAmount)).size > 1;
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -162,6 +186,10 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (variants.length > 0 && !selected) {
+      setError("Elige una opción del producto.");
+      return;
+    }
     if (!values.name.trim() || !values.email.trim()) {
       setError("Escribe tu nombre y tu correo.");
       return;
@@ -182,6 +210,7 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         productId: product.id,
+        ...(selected ? { variantId: selected.id } : {}),
         quantity,
         name: values.name.trim(),
         email: values.email.trim(),
@@ -205,7 +234,7 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
     }
   }
 
-  const total = formatPrice(product.priceAmount * quantity, product.priceCurrency);
+  const total = formatPrice(unitPrice * quantity, product.priceCurrency);
   const field = (key: "name" | "email" | "phone" | "address", label: string, props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <div>
       <label htmlFor={`${id}-${key}`} className="mb-1 block text-sm font-medium text-[var(--site-color-foreground)]">
@@ -223,10 +252,53 @@ function OrderFlow({ product, base }: { product: Product; base: string }) {
         ) : null}
         <div className="flex min-w-0 flex-col gap-1">
           <span id={`${id}-titulo`}>{heading(product.name)}</span>
-          <p className="text-sm font-medium text-[var(--site-color-foreground)]">{formatPrice(product.priceAmount, product.priceCurrency)}</p>
+          <p className="text-sm font-medium text-[var(--site-color-foreground)]">
+            {selected ? formatPrice(selected.priceAmount, product.priceCurrency) : productPriceLabel(product)}
+          </p>
           {product.description ? <p className="whitespace-pre-line text-sm text-[var(--site-color-foreground)]">{product.description}</p> : null}
         </div>
       </div>
+
+      {variants.length > 0 ? (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-2 text-sm font-medium text-[var(--site-color-foreground)]">Elige una opción *</legend>
+          <div className="flex flex-wrap gap-2">
+            {variants.map((option) => {
+              const checked = option.id === variantId;
+              return (
+                <label
+                  key={option.id}
+                  className={`relative inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--site-radius)] border px-3 py-2 text-sm focus-within:outline-2 focus-within:outline-offset-2 ${
+                    checked
+                      ? "border-[var(--site-color-primary)] bg-[var(--site-color-primary)] text-[var(--site-color-primary-foreground)]"
+                      : "border-[var(--site-color-border)] bg-[var(--site-color-background)] text-[var(--site-color-foreground)]"
+                  } ${option.available ? "" : "cursor-not-allowed opacity-50 line-through"}`}
+                  data-variant-option={option.name}
+                >
+                  <input
+                    type="radio"
+                    name={`${id}-variante`}
+                    className="sr-only"
+                    value={option.id}
+                    checked={checked}
+                    disabled={!option.available}
+                    onChange={() => {
+                      setVariantId(option.id);
+                      setQuantity((current) => Math.min(current, Math.max(1, option.maxQuantity)));
+                      setError(null);
+                    }}
+                  />
+                  <span>{option.name}</span>
+                  {pricesDiffer ? (
+                    <span className="tabular-nums opacity-90">{formatPrice(option.priceAmount, product.priceCurrency)}</span>
+                  ) : null}
+                  {option.available ? null : <span className="sr-only">(agotada)</span>}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      ) : null}
 
       <div className="flex items-center justify-between gap-3">
         <span id={`${id}-cantidad`} className="text-sm font-medium text-[var(--site-color-foreground)]">

@@ -199,13 +199,26 @@ function OrderCard({ organizationId, order, siteName }: { organizationId: string
           <span className={cn("rounded-md border px-2 py-0.5 text-xs font-medium", STATUS_STYLES[order.status])}>{ORDER_STATUS_LABELS[order.status]}</span>
           {siteName ? <span className="text-xs text-muted-foreground">{siteName}</span> : null}
         </div>
-        <p className="text-sm text-foreground">
-          {order.quantity} × {order.productName}
-          <span className="text-muted-foreground">
-            {" "}
-            · {formatMoney(order.unitPriceAmount, order.priceCurrency)} c/u · {PRODUCT_KIND_LABELS[order.productKind]}
-          </span>
-        </p>
+        {order.items.length > 1 ? (
+          // Varias líneas (F7.8, ADR-023): cada una con su variante, cantidad y total.
+          <ul className="text-sm text-foreground" aria-label="Productos del pedido">
+            {order.items.map((item, index) => (
+              <li key={`${item.productId ?? "x"}-${item.variantId ?? "x"}-${index}`}>
+                {item.quantity} × {item.productName}
+                {item.variantName ? ` (${item.variantName})` : ""}
+                <span className="text-muted-foreground"> · {formatMoney(item.lineTotalAmount, order.priceCurrency)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-foreground">
+            {order.quantity} × {order.productName}
+            <span className="text-muted-foreground">
+              {" "}
+              · {formatMoney(order.unitPriceAmount, order.priceCurrency)} c/u · {PRODUCT_KIND_LABELS[order.productKind]}
+            </span>
+          </p>
+        )}
         {order.onlinePayment ? (
           <p className="mt-1 flex items-start gap-1.5 text-sm text-foreground">
             <CreditCard className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />

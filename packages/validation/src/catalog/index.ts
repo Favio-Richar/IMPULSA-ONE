@@ -65,6 +65,48 @@ export const updateProductSchema = z
   .partial();
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 
+/** Variantes por producto (F7.8a, ADR-023): talla, color, formato. */
+export const MAX_VARIANTS_PER_PRODUCT = 30;
+
+const skuSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(40, "Máximo 40 caracteres.")
+  .regex(/^[A-Za-z0-9._-]+$/, "Usa letras, números, punto, guion o guion bajo.");
+
+/**
+ * Variante de un producto. Sin `priceAmount` vale el precio del producto; sin `stock` no se
+ * controla stock. Con al menos una variante activa, el pedido exige elegir una.
+ */
+export const productVariantSchema = z.object({
+  name: plainTextSchema(60),
+  priceAmount: z.number().int().min(0).max(1_000_000_000).optional(),
+  stock: z.number().int().min(0).max(1_000_000).optional(),
+  sku: skuSchema.optional(),
+  active: z.boolean().default(true),
+});
+export type ProductVariantInput = z.infer<typeof productVariantSchema>;
+
+/** Edición: cualquier subconjunto; `null` vuelve al precio del producto, quita el stock o el SKU. */
+export const updateProductVariantSchema = z
+  .object({
+    name: plainTextSchema(60),
+    priceAmount: z.number().int().min(0).max(1_000_000_000).nullable(),
+    stock: z.number().int().min(0).max(1_000_000).nullable(),
+    sku: skuSchema.nullable(),
+    active: z.boolean(),
+    position: z.number().int().min(0).max(1_000),
+  })
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, { message: "Envía al menos un campo a modificar." });
+export type UpdateProductVariantInput = z.infer<typeof updateProductVariantSchema>;
+
+/** Nombre del producto con su variante, tal como queda en el pedido ("Polera (M / Rojo)"). */
+export function productWithVariantName(productName: string, variantName: string | null | undefined): string {
+  return variantName ? `${productName} (${variantName})` : productName;
+}
+
 /** Campo trampa del pedido público (mismo criterio que formularios y reservas). */
 export const ORDER_HONEYPOT_FIELD = "website";
 
@@ -75,6 +117,8 @@ export const ORDER_HONEYPOT_FIELD = "website";
  */
 export const publicOrderRequestSchema = z.object({
   productId: z.uuid(),
+  /** Obligatoria si el producto tiene variantes activas (lo exige la API según el producto). */
+  variantId: z.uuid().optional(),
   quantity: z.number().int().min(1).max(MAX_ORDER_QUANTITY),
   name: plainTextSchema(120),
   email: z.email("Escribe un correo válido.").max(254),

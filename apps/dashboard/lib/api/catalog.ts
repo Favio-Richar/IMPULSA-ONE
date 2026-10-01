@@ -1,5 +1,13 @@
 import type { OrderListResponse, OrderResponse, ProductCategoryResponse, ProductFileUploadResponse, ProductResponse } from "@impulza/contracts";
-import type { OrderStatusValue, ProductCategoryInput, ProductInput, RequestProductFileUploadInput, UpdateProductInput } from "@impulza/validation";
+import type {
+  OrderStatusValue,
+  ProductCategoryInput,
+  ProductInput,
+  ProductVariantInput,
+  RequestProductFileUploadInput,
+  UpdateProductInput,
+  UpdateProductVariantInput,
+} from "@impulza/validation";
 import { apiFetch } from "../api-client";
 
 // Catálogo y pedidos (F5.5).
@@ -56,6 +64,26 @@ export function updateProduct(organizationId: string, siteId: string, productId:
 
 export function deleteProduct(organizationId: string, siteId: string, productId: string): Promise<void> {
   return apiFetch<void>(`${base(organizationId, siteId)}/products/${productId}`, { method: "DELETE" });
+}
+
+// Variantes (F7.8a, ADR-023): cada cambio devuelve el producto completo.
+
+export function createProductVariant(organizationId: string, siteId: string, productId: string, body: ProductVariantInput): Promise<ProductResponse> {
+  return apiFetch<ProductResponse>(`${base(organizationId, siteId)}/products/${productId}/variants`, { method: "POST", body });
+}
+
+export function updateProductVariant(
+  organizationId: string,
+  siteId: string,
+  productId: string,
+  variantId: string,
+  body: UpdateProductVariantInput,
+): Promise<ProductResponse> {
+  return apiFetch<ProductResponse>(`${base(organizationId, siteId)}/products/${productId}/variants/${variantId}`, { method: "PATCH", body });
+}
+
+export function deleteProductVariant(organizationId: string, siteId: string, productId: string, variantId: string): Promise<ProductResponse> {
+  return apiFetch<ProductResponse>(`${base(organizationId, siteId)}/products/${productId}/variants/${variantId}`, { method: "DELETE" });
 }
 
 export interface OrdersQuery {

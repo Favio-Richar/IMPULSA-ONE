@@ -15,7 +15,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.5 — Secuencias de correo automáticas (bienvenida, seguimiento) sobre las automatizaciones | Lista para tu revisión (ADR-020; capturas en `docs/design/capturas/f75/`) |
 | F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Lista para tu revisión (ADR-021; capturas en `docs/design/capturas/f76/`) |
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Lista para tu revisión (ADR-022; capturas en `docs/design/capturas/f77/`) |
-| F7.8 — Tienda: variantes, cupones y carrito | En curso (ADR-023): F7.8a variantes y líneas de pedido, F7.8b cupones, F7.8c carrito |
+| F7.8 — Tienda: variantes, cupones y carrito | En curso (ADR-023): F7.8a variantes y líneas de pedido lista para tu revisión (capturas en `docs/design/capturas/f78a/`); siguen F7.8b cupones y F7.8c carrito |
 | F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Pendiente |
 | F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Pendiente |
 | F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Pendiente |
@@ -343,6 +343,36 @@ Se entrega en tres partes, cada una con su commit y su Definición de Terminado.
 - Escribir variantes, `catalog.manage` (el mismo permiso del catálogo). Auditoría. Validación en
   servidor. Pruebas: unitarias, API e2e (stock por variante sin carreras, exigir variante, variante
   de otro producto u organización, cancelar y reabrir, aislamiento), Playwright.
+
+Implementación de F7.8a (2026-10-01) — lista para tu revisión:
+- Migración `20261001180000_f78a_variants_order_items` (reversa verificada: aplicar, `down.sql`,
+  reaplicar; el relleno de líneas probado con un pedido de prueba en una transacción revertida):
+  tablas `product_variants` y `order_items` con CHECK de stock, precio, cantidad, total de línea y
+  fuente de stock; cada pedido existente recibe su línea.
+- `@impulza/validation`: `productVariantSchema`, `updateProductVariantSchema`,
+  `MAX_VARIANTS_PER_PRODUCT` (30), `productWithVariantName` y `variantId` en el pedido público.
+  Contratos: `variants` en el producto y en el catálogo público (precio ya resuelto, sin stock
+  exacto), `items` en el pedido.
+- API: `POST/PATCH/DELETE .../catalog/products/:productId/variants[/:variantId]` (`catalog.manage`,
+  auditoría, 409 por nombre repetido, 422 por tope). El pedido público exige una variante activa del
+  mismo producto si tiene alguna, toma su precio y descuenta su stock con actualización condicional;
+  el nombre del pedido queda "Producto (Variante)", así correos, Mercado Pago y panel la muestran sin
+  cambios. Cancelar y reabrir trabajan por línea (todas o ninguna). Webhooks: `items` en la carga.
+- Panel: sección "Variantes" en cada producto del catálogo (agregar, editar, ordenar, pausar,
+  borrar); el pedido muestra sus líneas cuando son varias. Página pública: selector de opción
+  (radios accesibles, la agotada deshabilitada), precio "Desde" en el botón y total según la opción.
+- Pruebas: 4 de validación, 4 del monto escrito en el panel, 1 del precio "Desde", 5 e2e de API
+  (verificadas contra el código roto: descontar el stock del producto en vez del de la variante, o no
+  devolverlo al cancelar, fallan), caso en el aislamiento central, carga útil de webhooks sin ids
+  internos y Playwright (3 casos × teléfono y escritorio). Las pruebas de tienda y cobro existentes
+  siguen pasando.
+- Hallazgo y corrección en devoluciones (F5.11a): el candado por pago se soltaba antes de guardar lo
+  devuelto, y el saldo se validaba con una lectura previa al candado. Dos clics podían responder 200
+  los dos (el dinero no se devolvía dos veces gracias a la clave de idempotencia, pero dos parciales
+  distintos podían validar contra el mismo saldo). Ahora `CheckoutRefundsService.refund` recibe
+  `prepare` (relee el saldo bajo el candado) y `apply` (guarda antes de soltarlo), para pedidos y
+  señas; solo suelta su propio candado. Prueba unitaria determinista del orden (falla con el orden
+  anterior) y prueba e2e de parciales simultáneos que nunca suman más que lo pagado.
 
 **F7.8b — Cupones.** Criterios de aceptación:
 - Panel por sitio: crear, editar, pausar y borrar cupones (código único por sitio, porcentaje o monto

@@ -83,7 +83,7 @@ export class ProductFilesService {
     const file = await this.prisma.productFile.findFirst({ where: { id: fileId, productId: product.id, organizationId } });
     if (!file) throw new NotFoundException(FILE_NOT_FOUND);
     // Confirmar dos veces (doble clic, reintento) no es un error.
-    if (file.status === ProductFileStatus.READY) return this.catalog.toProductResponse(product, file);
+    if (file.status === ProductFileStatus.READY) return this.catalog.toProductResponse(product, file, await this.catalog.variantsOf(product.id));
     if (file.status === ProductFileStatus.FAILED) throw new UnprocessableEntityException("Esta subida ya fue rechazada. Sube el archivo de nuevo.");
 
     const key = productFileKey(organizationId, product.id, file.id);
@@ -118,7 +118,7 @@ export class ProductFilesService {
       metadata: { fileId: file.id, contentType: file.contentType, sizeBytes: file.sizeBytes, replaced: previous !== null },
     });
     logger.info("archivo en venta listo", { organizationId, productId: product.id, fileId: file.id, sizeBytes: file.sizeBytes });
-    return this.catalog.toProductResponse(product, await this.catalog.readyFileOf(product.id));
+    return this.catalog.toProductResponse(product, await this.catalog.readyFileOf(product.id), await this.catalog.variantsOf(product.id));
   }
 
   /** Quita el archivo en venta: los compradores dejan de poder descargarlo. */
@@ -131,6 +131,6 @@ export class ProductFilesService {
     await storage.deleteObjects([productFileKey(organizationId, product.id, file.id)]);
     await this.prisma.productFile.delete({ where: { id: file.id } });
     await this.audit.record({ organizationId, actorId, action: "catalog.product_file_removed", targetType: "Product", targetId: product.id, metadata: { fileId: file.id } });
-    return this.catalog.toProductResponse(product, null);
+    return this.catalog.toProductResponse(product, null, await this.catalog.variantsOf(product.id));
   }
 }

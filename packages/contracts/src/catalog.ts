@@ -16,6 +16,23 @@ export const productCategoryResponse = z.object({
 });
 export type ProductCategoryResponse = z.infer<typeof productCategoryResponse>;
 
+/** Variante de un producto en el panel (F7.8a, ADR-023). */
+export const productVariantResponse = z.object({
+  id: uuid,
+  productId: uuid,
+  name: z.string(),
+  /** `null` = vale el precio del producto. */
+  priceAmount: z.number().int().nullable(),
+  /** `null` = sin control de stock. */
+  stock: z.number().int().nullable(),
+  sku: z.string().nullable(),
+  position: z.number().int(),
+  active: z.boolean(),
+  createdAt: isoDateTime,
+  updatedAt: isoDateTime,
+});
+export type ProductVariantResponse = z.infer<typeof productVariantResponse>;
+
 export const productResponse = z.object({
   id: uuid,
   siteId: uuid,
@@ -35,6 +52,8 @@ export const productResponse = z.object({
   downloadFile: z
     .object({ id: uuid, fileName: z.string(), contentType: z.string(), sizeBytes: z.number().int(), uploadedAt: isoDateTime })
     .nullable(),
+  /** Variantes (F7.8a), en orden. Con alguna activa, el pedido exige elegir una. */
+  variants: z.array(productVariantResponse),
   createdAt: isoDateTime,
   updatedAt: isoDateTime,
 });
@@ -80,10 +99,17 @@ export const publicCatalogResponse = z.object({
       priceAmount: z.number().int(),
       priceCurrency: z.string(),
       image: imageResponse.nullable(),
-      /** `false` si el negocio controla stock y no queda. */
+      /** `false` si el negocio controla stock y no queda (con variantes: si no queda en ninguna). */
       available: z.boolean(),
       /** Tope de unidades por pedido (el menor entre el stock y 99). */
       maxQuantity: z.number().int(),
+      /**
+       * Variantes activas (F7.8a), en orden; si hay alguna, el pedido exige elegir una. Precio ya
+       * resuelto (el de la variante o el del producto) y sin stock exacto, igual que el producto.
+       */
+      variants: z.array(
+        z.object({ id: uuid, name: z.string(), priceAmount: z.number().int(), available: z.boolean(), maxQuantity: z.number().int() }),
+      ),
     }),
   ),
 });
@@ -124,6 +150,19 @@ export const publicOrderStatusResponse = z.object({
 });
 export type PublicOrderStatusResponse = z.infer<typeof publicOrderStatusResponse>;
 
+/** Línea de un pedido (F7.8a, ADR-023): copia de lo pedido al momento de pedir. */
+export const orderItemResponse = z.object({
+  productId: uuid.nullable(),
+  variantId: uuid.nullable(),
+  productName: z.string(),
+  variantName: z.string().nullable(),
+  productKind: productKind,
+  unitPriceAmount: z.number().int(),
+  quantity: z.number().int(),
+  lineTotalAmount: z.number().int(),
+});
+export type OrderItemResponse = z.infer<typeof orderItemResponse>;
+
 /** Un pedido en el panel del negocio. Datos del cliente: solo para miembros de la organización. */
 export const orderResponse = z.object({
   id: uuid,
@@ -142,6 +181,8 @@ export const orderResponse = z.object({
   deliveryAddress: z.string().nullable(),
   note: z.string().nullable(),
   status: orderStatus,
+  /** Líneas del pedido (F7.8a); los pedidos anteriores tienen la suya, copiada en la migración. */
+  items: z.array(orderItemResponse),
   /** Cobro con Mercado Pago (F5.9): estado y id del pago en la cuenta del negocio, o `null` si el pedido no se cobra en línea. */
   onlinePayment: z
     .object({

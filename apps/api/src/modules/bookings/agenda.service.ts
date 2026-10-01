@@ -216,24 +216,36 @@ export class AgendaService {
    * de la reserva no cambia solo: el negocio decide si además la cancela.
    */
   async refundDeposit(organizationId: string, actorId: string, bookingId: string, input: RefundRequest): Promise<BookingResponse> {
+    // Validación temprana (sin candado) para responder rápido; se repite bajo el candado.
     const booking = await this.getOrThrow(organizationId, bookingId);
-    if (!booking.providerPaymentId || booking.depositAmount === null || (booking.paymentStatus !== "approved" && booking.paymentStatus !== "refunded")) {
-      throw new UnprocessableEntityException(NO_DEPOSIT_TO_REFUND);
-    }
-    const remaining = booking.depositAmount - booking.depositRefundedAmount;
-    const amount = input.amount ?? remaining;
-    if (remaining <= 0 || amount > remaining) {
-      throw new UnprocessableEntityException(remaining <= 0 ? NO_DEPOSIT_TO_REFUND : DEPOSIT_REFUND_TOO_HIGH);
-    }
-    const payment = await this.refunds.refund({
+    const refundable = (current: typeof booking) => {
+      if (!current.providerPaymentId || current.depositAmount === null || (current.paymentStatus !== "approved" && current.paymentStatus !== "refunded")) {
+        throw new UnprocessableEntityException(NO_DEPOSIT_TO_REFUND);
+      }
+      const remaining = current.depositAmount - current.depositRefundedAmount;
+      const amount = input.amount ?? remaining;
+      if (remaining <= 0 || amount > remaining) {
+        throw new UnprocessableEntityException(remaining <= 0 ? NO_DEPOSIT_TO_REFUND : DEPOSIT_REFUND_TOO_HIGH);
+      }
+      return { paymentId: current.providerPaymentId, depositAmount: current.depositAmount, amount };
+    };
+    const { paymentId, depositAmount } = refundable(booking);
+    const { updated, amount } = await this.refunds.refund({
       organizationId,
-      paymentId: booking.providerPaymentId,
-      amount,
-      idempotencyKey: `refund-booking-${booking.id}-${booking.depositRefundedAmount}-${amount}`,
-    });
-    const updated = await this.prisma.booking.update({
-      where: { id: booking.id },
-      data: { paymentStatus: payment.status, depositRefundedAmount: Math.min(payment.refundedAmount, booking.depositAmount) },
+      paymentId,
+      // Bajo el candado: se vuelve a leer lo devuelto, así dos clics no validan contra una lectura vieja.
+      prepare: async () => {
+        const fresh = await this.getOrThrow(organizationId, bookingId);
+        const { amount: freshAmount } = refundable(fresh);
+        return { amount: freshAmount, idempotencyKey: `refund-booking-${fresh.id}-${fresh.depositRefundedAmount}-${freshAmount}` };
+      },
+      apply: async (payment, refundedNow) => ({
+        amount: refundedNow,
+        updated: await this.prisma.booking.update({
+          where: { id: booking.id },
+          data: { paymentStatus: payment.status, depositRefundedAmount: Math.min(payment.refundedAmount, depositAmount) },
+        }),
+      }),
     });
     await this.auditService.record({
       organizationId,

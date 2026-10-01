@@ -200,8 +200,10 @@ model Organization {
   bookings            Booking[]
   productCategories   ProductCategory[]
   products            Product[]
+  productVariants     ProductVariant[]
   productFiles        ProductFile[]
   orders              Order[]
+  orderItems          OrderItem[]
   campaigns           Campaign[]
   themes              Theme[]
   contacts            Contact[]
@@ -467,6 +469,7 @@ model Site {
   bookings            Booking[]
   productCategories   ProductCategory[]
   products            Product[]
+  productVariants     ProductVariant[]
   orders              Order[]
   forms               Form[]
   analyticsEvents     AnalyticsEvent[]
@@ -1266,6 +1269,8 @@ model Product {
   category     ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   orders       Order[]
   files        ProductFile[]
+  variants     ProductVariant[]
+  orderItems   OrderItem[]
 
   @@index([siteId, position])
   @@index([organizationId])
@@ -1322,11 +1327,73 @@ model Order {
   site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
   product      Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
   contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  items        OrderItem[]
 
   @@index([organizationId, createdAt])
   @@index([siteId, createdAt])
   @@index([contactId])
   @@map("orders")
+}
+
+// Variante de un producto (F7.8a, ADR-023): talla, color o formato, con su precio (o el del
+// producto) y su stock (o sin control). Un producto con variantes activas exige elegir una al pedir
+// y su stock es el de la variante. Nombre único por producto; `CHECK` de stock y precio ≥ 0.
+model ProductVariant {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  siteId         String   @map("site_id") @db.Uuid
+  productId      String   @map("product_id") @db.Uuid
+  name           String
+  // Sin valor = el precio del producto.
+  priceAmount    Int?     @map("price_amount")
+  // Sin valor = sin control de stock.
+  stock          Int?
+  sku            String?
+  position       Int      @default(0)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+
+  @@unique([productId, name])
+  @@index([productId, position])
+  @@index([organizationId])
+  @@map("product_variants")
+}
+
+// Línea de un pedido (F7.8a, ADR-023): copia del producto, la variante y el precio al pedir, y de
+// dónde se reservó stock (`product`, `variant` o nulo) para devolverlo exacto al cancelar. Los
+// pedidos anteriores reciben su línea en la migración. Las columnas del pedido quedan como resumen.
+model OrderItem {
+  id              String      @id @default(uuid()) @db.Uuid
+  organizationId  String      @map("organization_id") @db.Uuid
+  orderId         String      @map("order_id") @db.Uuid
+  productId       String?     @map("product_id") @db.Uuid
+  variantId       String?     @map("variant_id") @db.Uuid
+  productName     String      @map("product_name")
+  variantName     String?     @map("variant_name")
+  productKind     ProductKind @map("product_kind")
+  unitPriceAmount Int         @map("unit_price_amount")
+  quantity        Int
+  lineTotalAmount Int         @map("line_total_amount")
+  stockSource     String?     @map("stock_source")
+  position        Int         @default(0)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  order        Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, position])
+  @@index([organizationId])
+  @@index([productId])
+  @@index([variantId])
+  @@map("order_items")
 }
 
 enum ProductFileStatus {

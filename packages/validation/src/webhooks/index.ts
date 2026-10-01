@@ -155,7 +155,7 @@ export const WEBHOOK_SAMPLE_DATA: Record<WebhookDeliveredEvent, unknown> = {
     order: {
       id: "7c6b5a49-3827-4165-9f4e-3d2c1b0a9f8e",
       siteId: "9a8b7c6d-5e4f-4a3b-9c2d-1e0f9a8b7c6d",
-      productName: "Torta de chocolate",
+      productName: "Torta de chocolate (Mediana)",
       productKind: "PHYSICAL",
       quantity: 2,
       unitPriceAmount: 12990,
@@ -167,13 +167,16 @@ export const WEBHOOK_SAMPLE_DATA: Record<WebhookDeliveredEvent, unknown> = {
       customer: { name: "Ana Pérez", email: "ana@ejemplo.cl", phone: "+56912345678" },
       deliveryAddress: "Av. Siempre Viva 742, Santiago",
       note: null,
+      items: [
+        { productName: "Torta de chocolate", variantName: "Mediana", productKind: "PHYSICAL", unitPriceAmount: 12990, quantity: 2, lineTotalAmount: 25980 },
+      ],
     },
   },
   "order.paid": {
     order: {
       id: "7c6b5a49-3827-4165-9f4e-3d2c1b0a9f8e",
       siteId: "9a8b7c6d-5e4f-4a3b-9c2d-1e0f9a8b7c6d",
-      productName: "Torta de chocolate",
+      productName: "Torta de chocolate (Mediana)",
       productKind: "PHYSICAL",
       quantity: 2,
       unitPriceAmount: 12990,
@@ -185,6 +188,9 @@ export const WEBHOOK_SAMPLE_DATA: Record<WebhookDeliveredEvent, unknown> = {
       customer: { name: "Ana Pérez", email: "ana@ejemplo.cl", phone: "+56912345678" },
       deliveryAddress: "Av. Siempre Viva 742, Santiago",
       note: null,
+      items: [
+        { productName: "Torta de chocolate", variantName: "Mediana", productKind: "PHYSICAL", unitPriceAmount: 12990, quantity: 2, lineTotalAmount: 25980 },
+      ],
     },
   },
 };

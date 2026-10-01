@@ -2,7 +2,6 @@
 
 import type { ProductCategoryResponse, ProductResponse } from "@impulza/contracts";
 import {
-  currencyFractionDigits,
   MAX_PRODUCTS_PER_SITE,
   PRODUCT_KIND_LABELS,
   PRODUCT_KINDS,
@@ -15,10 +14,12 @@ import { ImagePlus, Package, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import { useCreateProduct, useDeleteProduct, useProductCategories, useProducts, useUpdateProduct } from "../../lib/hooks/use-catalog";
+import { moneyToInput, parseMoneyInput } from "../../lib/money-input";
 import { priceLabel } from "../bookings/bookable-services";
 import { ConfirmButton } from "../confirm-button";
 import { MediaPicker } from "../media/media-picker";
 import { ProductFile } from "./product-file";
+import { ProductVariants } from "./product-variants";
 
 const CURRENCIES = ["CLP", "USD", "ARS", "PEN", "COP", "MXN", "UYU", "EUR"].map((code) => ({ value: code, label: code }));
 const KIND_OPTIONS = PRODUCT_KINDS.map((kind) => ({ value: kind, label: PRODUCT_KIND_LABELS[kind] }));
@@ -59,7 +60,7 @@ function draftOf(product: ProductResponse): ProductDraft {
     name: product.name,
     description: product.description ?? "",
     kind: product.kind,
-    price: String(product.priceAmount / 10 ** currencyFractionDigits(product.priceCurrency)),
+    price: moneyToInput(product.priceAmount, product.priceCurrency),
     priceCurrency: product.priceCurrency,
     paymentUrl: product.paymentUrl ?? "",
     stock: product.stock === null ? "" : String(product.stock),
@@ -76,12 +77,9 @@ function draftOf(product: ProductResponse): ProductDraft {
  * "12.000" o "12000" para CLP, "19,90" o "19.90" para monedas con decimales.
  */
 function toInput(draft: ProductDraft): { input?: ProductInput; error?: string } {
-  const digits = currencyFractionDigits(draft.priceCurrency);
-  const raw = draft.price.trim();
-  if (raw === "") return { error: "Escribe el precio." };
-  const normalized = digits === 0 ? raw.replace(/[.,\s]/g, "") : raw.replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
-  const amount = Math.round(Number(normalized) * 10 ** digits);
-  if (!Number.isFinite(amount) || amount < 0) return { error: "El precio tiene que ser un número." };
+  const amount = parseMoneyInput(draft.price, draft.priceCurrency);
+  if (amount === null) return { error: "Escribe el precio." };
+  if (amount === "invalid") return { error: "El precio tiene que ser un número." };
   const stockRaw = draft.stock.trim();
   const stock = stockRaw === "" ? undefined : Number(stockRaw);
   if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) return { error: "El stock tiene que ser un número entero (o vacío para no controlarlo)." };
@@ -202,7 +200,8 @@ function ProductRow({
           <p className="flex flex-wrap items-center gap-2 font-medium text-foreground">
             <span className="truncate">{product.name}</span>
             {!product.active ? <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-normal text-muted-foreground">Pausado</span> : null}
-            <StockBadge stock={product.stock} />
+            {/* Con variantes activas cuenta el stock de cada variante, no el del producto (F7.8a). */}
+            {product.variants.some((variant) => variant.active) ? null : <StockBadge stock={product.stock} />}
           </p>
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{priceLabel(product.priceAmount, product.priceCurrency)}</span>
@@ -239,6 +238,7 @@ function ProductRow({
         </ConfirmButton>
       </div>
       {product.kind === "DIGITAL" ? <ProductFile organizationId={organizationId} siteId={siteId} product={product} /> : null}
+      <ProductVariants organizationId={organizationId} siteId={siteId} product={product} />
       {update.error || remove.error ? (
         <p role="alert" className="text-sm text-danger sm:basis-full">
           {apiMessage(update.error ?? remove.error)}
@@ -396,7 +396,7 @@ function ProductForm({
             label="Stock (opcional)"
             inputMode="numeric"
             placeholder="Sin control"
-            helperText="Vacío = sin control de stock."
+            helperText="Vacío = sin control de stock. Con variantes, cuenta el de cada variante."
             value={draft.stock}
             onChange={(e) => set({ stock: e.target.value })}
           />

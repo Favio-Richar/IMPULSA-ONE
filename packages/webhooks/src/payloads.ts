@@ -1,4 +1,4 @@
-import type { Booking, Contact, Order, PrismaClient } from "@impulza/database";
+import type { Booking, Contact, Order, OrderItem, PrismaClient } from "@impulza/database";
 import type { WebhookEventType } from "@impulza/validation";
 
 // Datos de cada evento (ADR-017 §3), con la forma de `WEBHOOK_SAMPLE_DATA`. Se leen de la base en el
@@ -40,7 +40,8 @@ export function bookingPayload(booking: Booking) {
   };
 }
 
-export function orderPayload(order: Order) {
+/** `items`: las líneas del pedido (F7.8a, ADR-023); los campos de siempre quedan como resumen. */
+export function orderPayload(order: Order & { items?: OrderItem[] }) {
   return {
     order: {
       id: order.id,
@@ -57,6 +58,14 @@ export function orderPayload(order: Order) {
       customer: { name: order.customerName, email: order.customerEmail, phone: order.customerPhone },
       deliveryAddress: order.deliveryAddress,
       note: order.note,
+      items: (order.items ?? []).map((item) => ({
+        productName: item.productName,
+        variantName: item.variantName,
+        productKind: item.productKind,
+        unitPriceAmount: item.unitPriceAmount,
+        quantity: item.quantity,
+        lineTotalAmount: item.lineTotalAmount,
+      })),
     },
   };
 }
@@ -75,7 +84,7 @@ export async function buildWebhookData(prisma: PrismaClient, organizationId: str
     }
     case "order.created":
     case "order.paid": {
-      const order = await prisma.order.findFirst({ where: { id: subjectId, organizationId } });
+      const order = await prisma.order.findFirst({ where: { id: subjectId, organizationId }, include: { items: { orderBy: { position: "asc" } } } });
       return order ? orderPayload(order) : null;
     }
   }

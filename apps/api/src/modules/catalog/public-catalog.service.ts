@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PublicCatalogResponse, PublicOrderConfirmationResponse } from "@impulza/contracts";
 import type { Prisma, PrismaClient } from "@impulza/database";
-import { MAX_ORDER_QUANTITY, ORDER_HONEYPOT_FIELD, publicOrderRequestSchema } from "@impulza/validation";
+import { MAX_ORDER_QUANTITY, ORDER_HONEYPOT_FIELD, productWithVariantName, publicOrderRequestSchema } from "@impulza/validation";
 import type { Request } from "express";
 import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
 import { PRISMA } from "../../database/prisma.module.js";
@@ -18,6 +18,15 @@ const NOT_AVAILABLE = "Este sitio no está recibiendo pedidos.";
 export const PRODUCT_UNAVAILABLE = "Ese producto ya no está disponible.";
 export const OUT_OF_STOCK = "No quedan suficientes unidades de ese producto.";
 export const ADDRESS_REQUIRED = "Escribe la dirección de entrega.";
+export const VARIANT_REQUIRED = "Elige una opción del producto.";
+export const VARIANT_UNAVAILABLE = "Esa opción ya no está disponible.";
+
+const ACTIVE_VARIANTS = { where: { active: true }, orderBy: [{ position: "asc" as const }, { createdAt: "asc" as const }] };
+
+/** Tope de unidades por pedido según el stock (sin control de stock, el máximo general). */
+function maxQuantityFor(stock: number | null): number {
+  return stock === null ? MAX_ORDER_QUANTITY : Math.min(stock, MAX_ORDER_QUANTITY);
+}
 
 /**
  * Catálogo y pedidos desde la página pública (F5.5). Sin sesión: todo se resuelve por el slug del
@@ -53,22 +62,37 @@ export class PublicCatalogService {
     const site = await this.siteOrThrow(siteSlug);
     const [categories, products] = await Promise.all([
       this.prisma.productCategory.findMany({ where: { siteId: site.id }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
-      this.prisma.product.findMany({ where: { siteId: site.id, active: true }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+      this.prisma.product.findMany({
+        where: { siteId: site.id, active: true },
+        include: { variants: ACTIVE_VARIANTS },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      }),
     ]);
     return {
       categories: categories.map((category) => ({ id: category.id, name: category.name })),
-      products: products.map((product) => ({
-        id: product.id,
-        categoryId: product.categoryId,
-        name: product.name,
-        description: product.description,
-        kind: product.kind,
-        priceAmount: product.priceAmount,
-        priceCurrency: product.priceCurrency,
-        image: storedImage(product.image),
-        available: product.stock === null || product.stock > 0,
-        maxQuantity: product.stock === null ? MAX_ORDER_QUANTITY : Math.min(product.stock, MAX_ORDER_QUANTITY),
-      })),
+      products: products.map((product) => {
+        // Con variantes activas, la disponibilidad y el tope salen de las variantes (F7.8a).
+        const variants = product.variants.map((variant) => ({
+          id: variant.id,
+          name: variant.name,
+          priceAmount: variant.priceAmount ?? product.priceAmount,
+          available: variant.stock === null || variant.stock > 0,
+          maxQuantity: maxQuantityFor(variant.stock),
+        }));
+        return {
+          id: product.id,
+          categoryId: product.categoryId,
+          name: product.name,
+          description: product.description,
+          kind: product.kind,
+          priceAmount: product.priceAmount,
+          priceCurrency: product.priceCurrency,
+          image: storedImage(product.image),
+          available: variants.length > 0 ? variants.some((variant) => variant.available) : product.stock === null || product.stock > 0,
+          maxQuantity: variants.length > 0 ? Math.max(...variants.map((variant) => variant.maxQuantity)) : maxQuantityFor(product.stock),
+          variants,
+        };
+      }),
     };
   }
 
@@ -82,19 +106,35 @@ export class PublicCatalogService {
     }
     const input = parsed.data;
     const site = await this.siteOrThrow(siteSlug);
-    const product = await this.prisma.product.findFirst({ where: { id: input.productId, siteId: site.id, active: true } });
+    const product = await this.prisma.product.findFirst({ where: { id: input.productId, siteId: site.id, active: true }, include: { variants: ACTIVE_VARIANTS } });
     if (!product) {
       throw new NotFoundException(PRODUCT_UNAVAILABLE);
     }
+    // Variante (F7.8a, ADR-023): la exige el producto (si tiene activas), nunca lo que diga el
+    // visitante; y tiene que ser una variante activa de **este** producto.
+    let variant: (typeof product.variants)[number] | null = null;
+    if (product.variants.length > 0) {
+      if (!input.variantId) {
+        throw new BadRequestException({ message: "Revisa los datos del pedido.", issues: [{ path: "variantId", message: VARIANT_REQUIRED }] });
+      }
+      variant = product.variants.find((candidate) => candidate.id === input.variantId) ?? null;
+      if (!variant) {
+        throw new NotFoundException(VARIANT_UNAVAILABLE);
+      }
+    } else if (input.variantId) {
+      throw new NotFoundException(VARIANT_UNAVAILABLE);
+    }
+    const unitPrice = variant?.priceAmount ?? product.priceAmount;
+    const lineName = productWithVariantName(product.name, variant?.name);
     // Un producto físico se entrega: la dirección la exige el producto, no lo que diga el visitante.
     if (product.kind === "PHYSICAL" && !input.address) {
       throw new BadRequestException({ message: "Revisa los datos del pedido.", issues: [{ path: "address", message: ADDRESS_REQUIRED }] });
     }
     const confirmation: PublicOrderConfirmationResponse = {
-      productName: product.name,
+      productName: lineName,
       quantity: input.quantity,
-      unitPriceAmount: product.priceAmount,
-      totalAmount: product.priceAmount * input.quantity,
+      unitPriceAmount: unitPrice,
+      totalAmount: unitPrice * input.quantity,
       priceCurrency: product.priceCurrency,
       paymentUrl: product.paymentUrl,
       checkoutUrl: null,
@@ -108,8 +148,21 @@ export class PublicCatalogService {
     }
 
     const order = await this.prisma.$transaction(async (tx) => {
-      const tracksStock = product.stock !== null;
-      if (tracksStock) {
+      // Con variante, el stock que cuenta es el de la variante; sin ella, el del producto. El
+      // descuento es condicional (`stock >= cantidad`): dos pedidos a la vez no dejan stock negativo.
+      let stockSource: "variant" | "product" | null = null;
+      if (variant) {
+        if (variant.stock !== null) {
+          const reserved = await tx.productVariant.updateMany({
+            where: { id: variant.id, active: true, stock: { gte: input.quantity } },
+            data: { stock: { decrement: input.quantity } },
+          });
+          if (reserved.count === 0) {
+            throw new ConflictException(OUT_OF_STOCK);
+          }
+          stockSource = "variant";
+        }
+      } else if (product.stock !== null) {
         const reserved = await tx.product.updateMany({
           where: { id: product.id, stock: { gte: input.quantity } },
           data: { stock: { decrement: input.quantity } },
@@ -117,18 +170,20 @@ export class PublicCatalogService {
         if (reserved.count === 0) {
           throw new ConflictException(OUT_OF_STOCK);
         }
+        stockSource = "product";
       }
+      const tracksStock = stockSource !== null;
       return tx.order.create({
         data: {
           organizationId: site.organizationId,
           siteId: site.id,
           productId: product.id,
-          productName: product.name,
+          productName: lineName,
           productKind: product.kind,
-          unitPriceAmount: product.priceAmount,
+          unitPriceAmount: unitPrice,
           priceCurrency: product.priceCurrency,
           quantity: input.quantity,
-          totalAmount: product.priceAmount * input.quantity,
+          totalAmount: unitPrice * input.quantity,
           paymentUrl: product.paymentUrl,
           customerName: input.name,
           customerEmail: input.email.toLowerCase(),
@@ -136,6 +191,21 @@ export class PublicCatalogService {
           deliveryAddress: product.kind === "PHYSICAL" ? (input.address ?? null) : null,
           note: input.note ?? null,
           stockReserved: tracksStock,
+          items: {
+            create: {
+              organizationId: site.organizationId,
+              productId: product.id,
+              variantId: variant?.id ?? null,
+              productName: product.name,
+              variantName: variant?.name ?? null,
+              productKind: product.kind,
+              unitPriceAmount: unitPrice,
+              quantity: input.quantity,
+              lineTotalAmount: unitPrice * input.quantity,
+              stockSource,
+              position: 0,
+            },
+          },
         },
       });
     });

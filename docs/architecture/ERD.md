@@ -165,6 +165,8 @@ AnalyticsAggregate (N) ──1 Organization
 AnalyticsAggregate (N) ──1 Site (nullable, F3.6)
 Funnel (N) ──1 Site (F7.6)
 PageCampaign (N) ──1 Site, (N) ──1 Page (F7.7)
+ProductVariant (N) ──1 Product (F7.8a)
+OrderItem (N) ──1 Order, (N) ──0..1 Product, (N) ──0..1 ProductVariant (F7.8a)
 ```
 
 - **AnalyticsEvent**: id, organization_id, site_id, type (page_view/block_click/whatsapp_click/
@@ -174,6 +176,14 @@ PageCampaign (N) ──1 Site, (N) ──1 Page (F7.7)
   - **F7.6 (ADR-021):** `subject_id` (texto, nulo): página de un `page_view`, bloque de un clic,
     producto de un pedido, servicio de una reserva. Índice `(site_id, type, created_at)` para los
     embudos. Nulo en los eventos anteriores a la migración.
+- **ProductVariant** (F7.8a, ADR-023): id, organization_id, site_id, product_id (CASCADE), name
+  (único por producto), price_amount (nulo = el del producto), stock (nulo = sin control), sku,
+  position, active, timestamps. CHECK de stock y precio ≥ 0. Con alguna activa, el pedido exige
+  elegir una y cuenta su stock (el del producto se ignora).
+- **OrderItem** (F7.8a, ADR-023): id, organization_id, order_id (CASCADE), product_id y variant_id
+  (SET NULL), product_name, variant_name, product_kind, unit_price_amount, quantity,
+  line_total_amount (CHECK = precio × cantidad), stock_source (`product`, `variant` o nulo: dónde se
+  reservó, para devolverlo exacto), position, created_at. Las columnas del pedido quedan como resumen.
 - **PageCampaign** (F7.7, ADR-022): id, organization_id, site_id, page_id, name, objective,
   starts_at, ends_at (CHECK `ends_at > starts_at`), replace_home, utm_campaign, cancelled_at,
   start_revalidated_at, end_revalidated_at (marcas del worker para invalidar la caché una sola vez

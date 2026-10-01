@@ -11,12 +11,13 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
   p. ej. `feat(newsletter): … (F7.4, ADR-019)`, y termina con la línea `Co-Authored-By` que indique
   el sistema.
 - **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.7 listas para revisión del propietario.
-  **Sigue F7.8** (tienda: variantes, cupones y carrito). Después F7.9–F7.12 en el orden del backlog. Las historias sin criterios escritos los reciben al
+  **F7.8 en curso** (ADR-023, en tres partes): F7.8a (variantes y líneas de pedido) lista; **sigue
+  F7.8b (cupones)** y después F7.8c (carrito), con los criterios ya escritos. Después F7.9–F7.12 en el orden del backlog. Las historias sin criterios escritos los reciben al
   empezar (como F7.6), con su ADR si hay una decisión de arquitectura.
-- ADR más reciente: ADR-022 (modo campaña).
+- ADR más reciente: ADR-023 (tienda: variantes, cupones y carrito).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
   (`docs/BACKLOG_FASE_*.md`, `BACKLOG_PLANTILLAS.md`, `BACKLOG_PAGINA_PREMIUM.md`).
-- ADR vigentes: `docs/decisions/` (hasta ADR-022). No reabrir uno sin una razón técnica nueva.
+- ADR vigentes: `docs/decisions/` (hasta ADR-023). No reabrir uno sin una razón técnica nueva.
 
 ### Decisiones pendientes del propietario (no avanzar sobre ellas sin respuesta)
 
@@ -143,6 +144,12 @@ desarrollo los correos no se envían: se imprimen en la consola de la API (`emai
 - **Nombres accesibles en Playwright**: un campo `required` se llama "Nombre *" (el asterisco entra
   en el nombre), y un `<label>` que envuelve la casilla y su explicación le da todo ese texto como
   nombre. Etiquetas cortas con `htmlFor` y la explicación por `aria-describedby`.
+- **Capturas de Playwright**: cada corrida vacía `packages/e2e/.playwright` (es su `outputDir`),
+  capturas incluidas. Copiarlas a `docs/design/capturas/fXX/` apenas termina la corrida de la
+  historia, antes de correr cualquier otra prueba de Playwright.
+- **Pedidos con líneas (F7.8a)**: todo pedido nuevo crea sus `order_items` en la misma transacción.
+  Una prueba que cree pedidos a mano con Prisma no tiene líneas (el panel muestra `items: []` y
+  cancelar no mueve stock): para probar stock, crear el pedido por la API pública.
 - **Sujeto de los eventos del servidor**: `order_created` y `booking_created` guardan como sujeto el
   producto y el servicio (agregados por producto); el pedido o la reserva están en la clave de
   idempotencia (`order_created:<id>`). Así cruza el pago el embudo (ADR-021).

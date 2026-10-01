@@ -1352,6 +1352,52 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Variantes y líneas de pedido (F7.8a, ADR-023): nunca se cruzan", () => {
+    it("A no crea, edita ni borra variantes de B, ni pide una variante de B por su sitio; las líneas de B no aparecen en A", async () => {
+      const catalogB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/catalog`;
+      const productOfB = await orgB.ownerAgent.post(`${catalogB}/products`).set(CSRF_HEADERS).send({ name: "Polera de B", priceAmount: 9990, priceCurrency: "CLP" }).expect(201);
+      const productId = productOfB.body.id as string;
+      const withVariant = await orgB.ownerAgent.post(`${catalogB}/products/${productId}/variants`).set(CSRF_HEADERS).send({ name: "Talla de B", stock: 3 }).expect(201);
+      const variantId = withVariant.body.variants[0].id as string;
+      const siteB = await prisma.site.findUniqueOrThrow({ where: { id: orgB.siteId } });
+      await request(httpServer)
+        .post(`/api/v1/public/sites/${siteB.slug}/catalog/orders`)
+        .set(CSRF_HEADERS)
+        .send({ productId, variantId, quantity: 1, name: "Cliente de B", email: `cliente-variante-b${TEST_EMAIL_DOMAIN}`, address: "Calle B 1", consent: true })
+        .expect(201);
+
+      // Con la organización de B en la URL: 403.
+      await orgA.ownerAgent.post(`${catalogB}/products/${productId}/variants`).set(CSRF_HEADERS).send({ name: "Intrusa" }).expect(403);
+      await orgA.ownerAgent.patch(`${catalogB}/products/${productId}/variants/${variantId}`).set(CSRF_HEADERS).send({ stock: 999 }).expect(403);
+      await orgA.ownerAgent.delete(`${catalogB}/products/${productId}/variants/${variantId}`).set(CSRF_HEADERS).expect(403);
+
+      // Organización y sitio propios de A con los ids de B: 404.
+      const catalogA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/catalog`;
+      await orgA.ownerAgent.post(`${catalogA}/products/${productId}/variants`).set(CSRF_HEADERS).send({ name: "Intrusa" }).expect(404);
+      await orgA.ownerAgent.patch(`${catalogA}/products/${productId}/variants/${variantId}`).set(CSRF_HEADERS).send({ stock: 999 }).expect(404);
+      await orgA.ownerAgent.delete(`${catalogA}/products/${productId}/variants/${variantId}`).set(CSRF_HEADERS).expect(404);
+      // Un producto propio de A con la variante de B: 404.
+      const productOfA = await orgA.ownerAgent.post(`${catalogA}/products`).set(CSRF_HEADERS).send({ name: "Polera de A", priceAmount: 1, priceCurrency: "CLP" }).expect(201);
+      await orgA.ownerAgent.patch(`${catalogA}/products/${productOfA.body.id}/variants/${variantId}`).set(CSRF_HEADERS).send({ stock: 999 }).expect(404);
+
+      // El sitio público de A no acepta la variante de B, ni con un producto propio de A.
+      const siteA = await prisma.site.findUniqueOrThrow({ where: { id: orgA.siteId } });
+      const publicA = `/api/v1/public/sites/${siteA.slug}/catalog/orders`;
+      const intruder = { quantity: 1, name: "Intruso", email: `intruso-variante${TEST_EMAIL_DOMAIN}`, address: "Calle A 1", consent: true };
+      await request(httpServer).post(publicA).set(CSRF_HEADERS).send({ ...intruder, productId, variantId }).expect(404);
+      await request(httpServer).post(publicA).set(CSRF_HEADERS).send({ ...intruder, productId: productOfA.body.id, variantId }).expect(404);
+
+      // Las líneas de B no aparecen en los pedidos de A, y nada de B cambió.
+      const listOfA = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/orders`).expect(200);
+      expect(JSON.stringify(listOfA.body)).not.toContain(variantId);
+      expect(JSON.stringify(listOfA.body)).not.toContain("Talla de B");
+      const variant = await prisma.productVariant.findUniqueOrThrow({ where: { id: variantId } });
+      expect(variant).toMatchObject({ name: "Talla de B", stock: 2, organizationId: orgB.id });
+      expect(await prisma.orderItem.count({ where: { variantId } })).toBe(1);
+      expect(await prisma.orderItem.count({ where: { variantId, organizationId: orgA.id } })).toBe(0);
+    });
+  });
+
   describe("Campañas (F5.6): ningún acceso cruzado entre organizaciones", () => {
     it("A no ve, edita, prueba, envía ni detiene campañas de B, y su audiencia no cuenta contactos de B", async () => {
       await prisma.contact.create({ data: { organizationId: orgB.id, email: `marketing-b${TEST_EMAIL_DOMAIN}`, marketingConsentAt: new Date() } });

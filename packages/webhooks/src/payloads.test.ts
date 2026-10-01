@@ -74,6 +74,22 @@ const order = {
   customerPhone: null,
   deliveryAddress: "Calle 1",
   note: "sin gluten",
+  // Línea (F7.8a): ids internos y la fuente de stock nunca salen en la carga útil.
+  items: [
+    {
+      id: "linea-secreta",
+      orderId: "o1",
+      productId: "producto-secreto",
+      variantId: "variante-secreta",
+      productName: "Torta",
+      variantName: "Mediana",
+      productKind: "PHYSICAL",
+      unitPriceAmount: 100,
+      quantity: 2,
+      lineTotalAmount: 200,
+      stockSource: "variant",
+    },
+  ],
 } as unknown as Order;
 
 describe("carga útil de los eventos (ADR-017 §5)", () => {
@@ -86,7 +102,7 @@ describe("carga útil de los eventos (ADR-017 §5)", () => {
 
   it("nunca incluye tokens, hashes, preferencias ni enlaces internos", () => {
     const all = JSON.stringify([contactPayload(contact), bookingPayload(booking), orderPayload(order)]);
-    for (const secret of ["pref-secreta", "hash-secreto", "mp.ejemplo", "pago.ejemplo", "assignedTo", "u1", "vip"]) {
+    for (const secret of ["pref-secreta", "hash-secreto", "mp.ejemplo", "pago.ejemplo", "assignedTo", "u1", "vip", "linea-secreta", "producto-secreto", "variante-secreta", "stockSource"]) {
       expect(all).not.toContain(secret);
     }
   });

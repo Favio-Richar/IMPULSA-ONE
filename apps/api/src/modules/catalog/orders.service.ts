@@ -1,6 +1,6 @@
 import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import type { OrderListResponse, OrderResponse } from "@impulza/contracts";
-import type { Order, OrderStatus, Prisma, PrismaClient } from "@impulza/database";
+import type { Order, OrderItem, OrderStatus, Prisma, PrismaClient } from "@impulza/database";
 import { ORDER_STATUS_LABELS, ORDER_TRANSITIONS, type ListOrdersQuery, type RefundRequest, type UpdateOrderStatusInput } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
@@ -17,6 +17,42 @@ export const REFUND_TOO_HIGH = "No puedes devolver más de lo que queda del pago
 export const ONLINE_PAYMENT_UNDO = "Este pago lo confirmó Mercado Pago: no se puede deshacer desde aquí. Si debes devolver el dinero, hazlo desde tu cuenta de Mercado Pago.";
 
 export const ORDERS_PAGE_SIZE = 50;
+
+type OrderWithItems = Order & { items: OrderItem[] };
+const WITH_ITEMS = { items: { orderBy: { position: "asc" } } } satisfies Prisma.OrderInclude;
+type Tx = Prisma.TransactionClient;
+
+/** Devuelve a su fuente (variante o producto) lo que la línea había reservado (F7.8a, ADR-023). */
+async function releaseItemStock(tx: Tx, item: OrderItem): Promise<void> {
+  if (item.stockSource === "variant" && item.variantId) {
+    await tx.productVariant.updateMany({ where: { id: item.variantId, stock: { not: null } }, data: { stock: { increment: item.quantity } } });
+  } else if (item.stockSource === "product" && item.productId) {
+    // Si el producto ya no existe (FK `SET NULL`) no hay a dónde devolverlo.
+    await tx.product.updateMany({ where: { id: item.productId, stock: { not: null } }, data: { stock: { increment: item.quantity } } });
+  }
+}
+
+/**
+ * Vuelve a reservar el stock de una línea al reabrir un pedido. Una línea de variante reserva en su
+ * variante (si la variante ya no existe, no reserva: el stock del producto no cuenta para variantes);
+ * una línea sin variante, en el producto. Devuelve dónde reservó, o `null` si no hay control de stock.
+ */
+async function reserveItemStock(tx: Tx, item: OrderItem): Promise<"variant" | "product" | null> {
+  if (item.variantName !== null) {
+    if (!item.variantId) return null;
+    const variant = await tx.productVariant.findUnique({ where: { id: item.variantId }, select: { stock: true } });
+    if (!variant || variant.stock === null) return null;
+    const reserved = await tx.productVariant.updateMany({ where: { id: item.variantId, stock: { gte: item.quantity } }, data: { stock: { decrement: item.quantity } } });
+    if (reserved.count === 0) throw new ConflictException(ORDER_NO_STOCK);
+    return "variant";
+  }
+  if (!item.productId) return null;
+  const product = await tx.product.findUnique({ where: { id: item.productId }, select: { stock: true } });
+  if (!product || product.stock === null) return null;
+  const reserved = await tx.product.updateMany({ where: { id: item.productId, stock: { gte: item.quantity } }, data: { stock: { decrement: item.quantity } } });
+  if (reserved.count === 0) throw new ConflictException(ORDER_NO_STOCK);
+  return "product";
+}
 
 /**
  * Pedidos del negocio (F5.5): ver y avanzar su estado (nuevo → pagado → entregado, o cancelado).
@@ -35,7 +71,7 @@ export class OrdersService {
     private readonly webhookEvents: WebhookEventsService,
   ) {}
 
-  toResponse(order: Order): OrderResponse {
+  toResponse(order: OrderWithItems): OrderResponse {
     return {
       id: order.id,
       siteId: order.siteId,
@@ -53,6 +89,16 @@ export class OrdersService {
       deliveryAddress: order.deliveryAddress,
       note: order.note,
       status: order.status,
+      items: order.items.map((item) => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        productName: item.productName,
+        variantName: item.variantName,
+        productKind: item.productKind,
+        unitPriceAmount: item.unitPriceAmount,
+        quantity: item.quantity,
+        lineTotalAmount: item.lineTotalAmount,
+      })),
       onlinePayment: order.checkoutPreferenceId
         ? { status: order.paymentStatus, paymentId: order.providerPaymentId, refundedAmount: order.refundedAmount }
         : null,
@@ -64,8 +110,8 @@ export class OrdersService {
     };
   }
 
-  private async getOrThrow(organizationId: string, orderId: string): Promise<Order> {
-    const order = await this.prisma.order.findFirst({ where: { id: orderId, organizationId } });
+  private async getOrThrow(organizationId: string, orderId: string): Promise<OrderWithItems> {
+    const order = await this.prisma.order.findFirst({ where: { id: orderId, organizationId }, include: WITH_ITEMS });
     if (!order) {
       throw new NotFoundException(ORDER_NOT_FOUND);
     }
@@ -82,7 +128,7 @@ export class OrdersService {
     const scope: Prisma.OrderWhereInput = { organizationId, ...(query.siteId ? { siteId: query.siteId } : {}) };
     const where: Prisma.OrderWhereInput = { ...scope, ...(query.status ? { status: query.status } : {}) };
     const [items, total, grouped] = await Promise.all([
-      this.prisma.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (query.page - 1) * ORDERS_PAGE_SIZE, take: ORDERS_PAGE_SIZE }),
+      this.prisma.order.findMany({ where, include: WITH_ITEMS, orderBy: { createdAt: "desc" }, skip: (query.page - 1) * ORDERS_PAGE_SIZE, take: ORDERS_PAGE_SIZE }),
       this.prisma.order.count({ where }),
       this.prisma.order.groupBy({ by: ["status"], where: scope, _count: { _all: true } }),
     ]);
@@ -115,23 +161,27 @@ export class OrdersService {
 
     const updated = await this.prisma.$transaction(async (tx) => {
       let stockReserved = current.stockReserved;
+      // Stock por línea (F7.8a): cada línea devuelve o vuelve a reservar en su propia fuente, y
+      // reabrir reserva todas o ninguna (un 409 revierte la transacción entera).
       if (next === "CANCELLED" && current.stockReserved) {
-        // Devolver lo reservado. Si el producto ya no existe (FK `SET NULL`) no hay a dónde devolverlo.
-        if (current.productId) {
-          await tx.product.updateMany({ where: { id: current.productId, stock: { not: null } }, data: { stock: { increment: current.quantity } } });
+        for (const item of current.items) {
+          await releaseItemStock(tx, item);
+          if (item.stockSource !== null) {
+            await tx.orderItem.update({ where: { id: item.id }, data: { stockSource: null } });
+          }
         }
         stockReserved = false;
       }
-      if (current.status === "CANCELLED" && current.productId) {
-        const product = await tx.product.findUnique({ where: { id: current.productId }, select: { stock: true } });
-        if (product && product.stock !== null) {
-          const reserved = await tx.product.updateMany({
-            where: { id: current.productId, stock: { gte: current.quantity } },
-            data: { stock: { decrement: current.quantity } },
-          });
-          if (reserved.count === 0) {
-            throw new ConflictException(ORDER_NO_STOCK);
+      if (current.status === "CANCELLED") {
+        let reservedAny = false;
+        for (const item of current.items) {
+          const source = await reserveItemStock(tx, item);
+          reservedAny ||= source !== null;
+          if (source !== item.stockSource) {
+            await tx.orderItem.update({ where: { id: item.id }, data: { stockSource: source } });
           }
+        }
+        if (reservedAny) {
           stockReserved = true;
         }
       }
@@ -148,7 +198,7 @@ export class OrdersService {
       if (result.count === 0) {
         throw new ConflictException(ORDER_CHANGED);
       }
-      return tx.order.findUniqueOrThrow({ where: { id: current.id } });
+      return tx.order.findUniqueOrThrow({ where: { id: current.id }, include: WITH_ITEMS });
     });
 
     await this.auditService.record({
@@ -176,26 +226,39 @@ export class OrdersService {
    * no cambia solo: el negocio decide si además lo cancela.
    */
   async refund(organizationId: string, actorId: string, orderId: string, input: RefundRequest): Promise<OrderResponse> {
+    // Validación temprana (sin candado) para responder rápido; se repite bajo el candado.
     const order = await this.getOrThrow(organizationId, orderId);
-    if (!order.providerPaymentId || (order.paymentStatus !== "approved" && order.paymentStatus !== "refunded")) {
-      throw new UnprocessableEntityException(NOTHING_TO_REFUND);
-    }
-    const remaining = order.totalAmount - order.refundedAmount;
-    const amount = input.amount ?? remaining;
-    if (remaining <= 0 || amount > remaining) {
-      throw new UnprocessableEntityException(remaining <= 0 ? NOTHING_TO_REFUND : REFUND_TOO_HIGH);
-    }
-    const payment = await this.refunds.refund({
+    const refundable = (current: OrderWithItems) => {
+      if (!current.providerPaymentId || (current.paymentStatus !== "approved" && current.paymentStatus !== "refunded")) {
+        throw new UnprocessableEntityException(NOTHING_TO_REFUND);
+      }
+      const remaining = current.totalAmount - current.refundedAmount;
+      const amount = input.amount ?? remaining;
+      if (remaining <= 0 || amount > remaining) {
+        throw new UnprocessableEntityException(remaining <= 0 ? NOTHING_TO_REFUND : REFUND_TOO_HIGH);
+      }
+      return { paymentId: current.providerPaymentId, amount };
+    };
+    const { paymentId } = refundable(order);
+    const { updated, amount } = await this.refunds.refund({
       organizationId,
-      paymentId: order.providerPaymentId,
-      amount,
-      // Lo ya devuelto entra en la clave: un reintento del mismo pedido de devolución es idempotente,
-      // y una segunda devolución parcial (después de la primera) es otra operación.
-      idempotencyKey: `refund-order-${order.id}-${order.refundedAmount}-${amount}`,
-    });
-    const updated = await this.prisma.order.update({
-      where: { id: order.id },
-      data: { paymentStatus: payment.status, refundedAmount: Math.min(payment.refundedAmount, order.totalAmount) },
+      paymentId,
+      // Bajo el candado: se vuelve a leer lo devuelto, así dos clics no validan contra una lectura vieja.
+      prepare: async () => {
+        const fresh = await this.getOrThrow(organizationId, orderId);
+        const { amount: freshAmount } = refundable(fresh);
+        // Lo ya devuelto entra en la clave: un reintento del mismo pedido de devolución es idempotente,
+        // y una segunda devolución parcial (después de la primera) es otra operación.
+        return { amount: freshAmount, idempotencyKey: `refund-order-${fresh.id}-${fresh.refundedAmount}-${freshAmount}` };
+      },
+      apply: async (payment, refundedNow) => ({
+        amount: refundedNow,
+        updated: await this.prisma.order.update({
+          where: { id: order.id },
+          data: { paymentStatus: payment.status, refundedAmount: Math.min(payment.refundedAmount, order.totalAmount) },
+          include: WITH_ITEMS,
+        }),
+      }),
     });
     await this.auditService.record({
       organizationId,

@@ -219,6 +219,21 @@ describe("Reembolsos y contracargos (e2e) — F5.11a, ADR-013", () => {
     expect(checkout.refunds.filter((item) => item.paymentId === other.paymentId).map((item) => item.amount)).toEqual([5_000]);
   });
 
+  it("devoluciones parciales a la vez nunca suman más que lo pagado: el saldo se vuelve a leer bajo el candado", async () => {
+    const b = await business();
+    const { orderId, paymentId } = await paidOrder(b);
+    // 40.000 pagados; tres pedidos de devolución que juntos suman 75.000.
+    const responses = await Promise.all([30_000, 25_000, 20_000].map((amount) => b.owner.post(`${b.orders}/${orderId}/refund`).set(CSRF).send({ amount })));
+    expect(responses.every((r) => [200, 409, 422].includes(r.status))).toBe(true);
+    const refunded = checkout.refunds.filter((item) => item.paymentId === paymentId).reduce((sum, item) => sum + item.amount, 0);
+    expect(refunded).toBeLessThanOrEqual(40_000);
+    expect(refunded).toBeGreaterThan(0);
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+    expect(order.refundedAmount).toBe(refunded);
+    // Después, lo que queda se puede devolver; nunca más que eso.
+    await b.owner.post(`${b.orders}/${orderId}/refund`).set(CSRF).send({ amount: 40_000 - refunded + 1 }).expect(422);
+  });
+
   it("un contracargo o una devolución hecha desde Mercado Pago llegan por aviso; el contracargo avisa al negocio una sola vez", async () => {
     const b = await business();
     const { orderId, paymentId } = await paidOrder(b);

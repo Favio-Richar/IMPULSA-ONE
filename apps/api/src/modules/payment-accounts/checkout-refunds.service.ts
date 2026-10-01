@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { ConflictException, Inject, Injectable, ServiceUnavailableException, UnprocessableEntityException } from "@nestjs/common";
 import { type CheckoutPayment, PaymentGatewayError } from "@impulza/payments";
 import type { Redis } from "ioredis";
@@ -27,30 +28,50 @@ export class CheckoutRefundsService {
     private readonly accounts: PaymentAccountsService,
   ) {}
 
-  async refund(input: { organizationId: string; paymentId: string; amount: number; idempotencyKey: string }): Promise<CheckoutPayment> {
+  /**
+   * Devuelve dinero de un pago bajo un candado por pago. Todo el ciclo ocurre con el candado tomado:
+   * `prepare` vuelve a leer lo que queda por devolver y decide monto y clave de idempotencia (así dos
+   * clics no validan contra una lectura vieja), y `apply` guarda lo que informa Mercado Pago antes de
+   * soltarlo (la siguiente petición ya ve lo devuelto).
+   */
+  async refund<T>(input: {
+    organizationId: string;
+    paymentId: string;
+    prepare: () => Promise<{ amount: number; idempotencyKey: string }>;
+    apply: (payment: CheckoutPayment, amount: number) => Promise<T>;
+  }): Promise<T> {
     const account = await this.accounts.chargingAccountFor(input.organizationId);
     if (!account || !this.config) {
       throw new UnprocessableEntityException({ code: "PAYMENTS_UNAVAILABLE", message: REFUND_UNAVAILABLE });
     }
     const lockKey = `refund-lock:${input.paymentId}`;
-    const locked = await this.redis.set(lockKey, input.idempotencyKey, "EX", LOCK_TTL_SECONDS, "NX");
+    const token = randomUUID();
+    const locked = await this.redis.set(lockKey, token, "EX", LOCK_TTL_SECONDS, "NX");
     if (locked !== "OK") throw new ConflictException(REFUND_IN_PROGRESS);
     try {
-      await this.config.checkout.refundPayment(account.accessToken, input.paymentId, input.amount, input.idempotencyKey);
-      return await this.config.checkout.getPayment(account.accessToken, input.paymentId);
-    } catch (error) {
-      const code = error instanceof PaymentGatewayError ? error.code : "unknown";
-      logger.warn("pagos: Mercado Pago no hizo la devolución", { organizationId: input.organizationId, code });
-      if (error instanceof PaymentGatewayError && error.retryable) {
-        // Reintentar es seguro: la misma clave de idempotencia no devuelve dos veces.
-        throw new ServiceUnavailableException("Mercado Pago no respondió. Intenta de nuevo en un momento; no se devolverá dos veces.");
+      const { amount, idempotencyKey } = await input.prepare();
+      let payment: CheckoutPayment;
+      try {
+        await this.config.checkout.refundPayment(account.accessToken, input.paymentId, amount, idempotencyKey);
+        payment = await this.config.checkout.getPayment(account.accessToken, input.paymentId);
+      } catch (error) {
+        const code = error instanceof PaymentGatewayError ? error.code : "unknown";
+        logger.warn("pagos: Mercado Pago no hizo la devolución", { organizationId: input.organizationId, code });
+        if (error instanceof PaymentGatewayError && error.retryable) {
+          // Reintentar es seguro: la misma clave de idempotencia no devuelve dos veces.
+          throw new ServiceUnavailableException("Mercado Pago no respondió. Intenta de nuevo en un momento; no se devolverá dos veces.");
+        }
+        if (error instanceof PaymentGatewayError) {
+          throw new UnprocessableEntityException({ code: "REFUND_REJECTED", message: "Mercado Pago no aceptó la devolución. Revisa el pago en tu cuenta de Mercado Pago." });
+        }
+        throw error;
       }
-      if (error instanceof PaymentGatewayError) {
-        throw new UnprocessableEntityException({ code: "REFUND_REJECTED", message: "Mercado Pago no aceptó la devolución. Revisa el pago en tu cuenta de Mercado Pago." });
-      }
-      throw error;
+      return await input.apply(payment, amount);
     } finally {
-      await this.redis.del(lockKey);
+      // Solo se suelta el candado propio (si venció y lo tomó otra petición, no se le quita).
+      if ((await this.redis.get(lockKey)) === token) {
+        await this.redis.del(lockKey);
+      }
     }
   }
 }

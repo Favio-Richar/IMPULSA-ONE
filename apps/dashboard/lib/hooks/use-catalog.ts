@@ -1,10 +1,12 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { OrderStatusValue, ProductCategoryInput, ProductInput, UpdateProductInput } from "@impulza/validation";
+import type { OrderStatusValue, ProductCategoryInput, ProductInput, ProductVariantInput, UpdateProductInput, UpdateProductVariantInput } from "@impulza/validation";
 import {
   createProduct,
   createProductCategory,
+  createProductVariant,
   deleteProduct,
   deleteProductCategory,
+  deleteProductVariant,
   listOrders,
   listProductCategories,
   listProducts,
@@ -12,6 +14,7 @@ import {
   refundOrder,
   updateOrderStatus,
   updateProduct,
+  updateProductVariant,
   type OrdersQuery,
 } from "../api/catalog";
 
@@ -68,6 +71,23 @@ export function useUpdateProduct(organizationId: string, siteId: string) {
 export function useDeleteProduct(organizationId: string, siteId: string) {
   const invalidate = useInvalidateCatalog(organizationId, siteId);
   return useMutation({ mutationFn: (productId: string) => deleteProduct(organizationId, siteId, productId), onSuccess: invalidate });
+}
+
+/** Variantes de un producto (F7.8a): crear, editar (incluye ordenar y pausar) y borrar. */
+export function useSaveProductVariant(organizationId: string, siteId: string, productId: string) {
+  const invalidate = useInvalidateCatalog(organizationId, siteId);
+  return useMutation({
+    mutationFn: (args: { variantId: null; body: ProductVariantInput } | { variantId: string; body: UpdateProductVariantInput }) =>
+      args.variantId === null
+        ? createProductVariant(organizationId, siteId, productId, args.body)
+        : updateProductVariant(organizationId, siteId, productId, args.variantId, args.body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteProductVariant(organizationId: string, siteId: string, productId: string) {
+  const invalidate = useInvalidateCatalog(organizationId, siteId);
+  return useMutation({ mutationFn: (variantId: string) => deleteProductVariant(organizationId, siteId, productId, variantId), onSuccess: invalidate });
 }
 
 export function useOrders(organizationId: string, query: OrdersQuery) {

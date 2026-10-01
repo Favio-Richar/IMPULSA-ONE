@@ -42,9 +42,12 @@ reglas de trabajo del repositorio.
 | 1 — Cimientos y cuenta | F1.1–F1.10 | Terminada |
 | 2 — Sitio público y constructor | F2.1–F2.10 | Terminada |
 | 3 — Conversión | F3.1–F3.8 | Terminada |
-| 4 — SaaS comercial | F4.1–F4.9 | En progreso |
-| 5 — Negocio digital | F5.1–F5.7 | Lista para revisión (cobros bloqueados por decisión #6) |
+| 4 — SaaS comercial | F4.1–F4.9 | Lista para revisión (F4.6b: Mercado Pago, falta probar con credenciales reales) |
+| 5 — Negocio digital | F5.1–F5.11 | Lista para revisión (incluye cobros con la cuenta del negocio, ADR-013/015) |
 | 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.7 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
+| 7 — Crecimiento | F7.1–F7.12 | En curso: F7.1–F7.4 listas para revisión; sigue F7.5 |
+
+**Para retomar el desarrollo** (también desde Claude Code en la nube): `docs/CONTINUIDAD.md`.
 
 ## Requisitos
 

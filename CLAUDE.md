@@ -95,7 +95,9 @@ ejecutar migraciones destructivas sin respaldo y aprobación.
 ## Al empezar cualquier sesión nueva
 
 1. Lee este archivo completo.
-2. Revisa el estado real del repositorio (no asumas nada del historial de chat).
-3. Identifica en qué fase/historia del backlog estás.
-4. Si vas a tocar algo fuera del backlog activo, dilo explícitamente y pregunta antes de avanzar.
-5. Al terminar una historia, valida contra la Definición de Terminado antes de marcarla como hecha.
+2. Lee `docs/CONTINUIDAD.md`: estado actual, siguiente historia, cómo preparar el entorno (también
+   en la nube: `.claude/cloud-setup.log`) y las trampas técnicas ya encontradas.
+3. Revisa el estado real del repositorio (no asumas nada del historial de chat).
+4. Identifica en qué fase/historia del backlog estás.
+5. Si vas a tocar algo fuera del backlog activo, dilo explícitamente y pregunta antes de avanzar.
+6. Al terminar una historia, valida contra la Definición de Terminado antes de marcarla como hecha.

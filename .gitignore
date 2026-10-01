@@ -40,3 +40,7 @@ next-env.d.ts
 # no es contenido de proyecto, y CLAUDE.md real del repo vive solo en la raíz.
 apps/*/AGENTS.md
 apps/*/CLAUDE.md
+
+# Registro del arranque de sesiones en la nube (scripts/cloud-session-setup.sh) y ajustes locales.
+.claude/cloud-setup.log
+.claude/settings.local.json

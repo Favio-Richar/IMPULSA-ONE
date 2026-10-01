@@ -21,9 +21,12 @@ export class AutomationEventsService {
 
   async emit(input: { organizationId: string; trigger: AutomationTrigger; subjectId: string; contactId: string | null }): Promise<void> {
     try {
-      // Sin automatizaciones encendidas para ese disparador, no se encola nada.
-      const active = await this.prisma.automation.count({ where: { organizationId: input.organizationId, trigger: input.trigger, enabled: true } });
-      if (active === 0) {
+      // Sin automatizaciones ni secuencias (F7.5) encendidas para ese disparador, no se encola nada.
+      const [automations, sequences] = await Promise.all([
+        this.prisma.automation.count({ where: { organizationId: input.organizationId, trigger: input.trigger, enabled: true } }),
+        this.prisma.emailSequence.count({ where: { organizationId: input.organizationId, trigger: input.trigger, enabled: true } }),
+      ]);
+      if (automations + sequences === 0) {
         return;
       }
       const job: AutomationEventJob = { ...input, occurredAt: new Date().toISOString() };

@@ -5,17 +5,18 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 1. Estado al 2026-10-01
+## 1. Estado al 2026-10-01 (después de F7.5)
 
 - Rama principal: `master` (no `main`). Cada historia es **un commit** con el código en el asunto,
   p. ej. `feat(newsletter): … (F7.4, ADR-019)`, y termina con la línea `Co-Authored-By` que indique
   el sistema.
-- **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.4 listas para revisión del propietario.
-  **Sigue F7.5** (secuencias de correo automáticas sobre las automatizaciones). Después F7.6–F7.12
-  en el orden del backlog.
+- **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.5 listas para revisión del propietario.
+  **Sigue F7.6** (embudos de conversión: pasos, tasas y abandono por paso). Después F7.7–F7.12 en
+  el orden del backlog.
+- ADR más reciente: ADR-020 (secuencias de correo).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
   (`docs/BACKLOG_FASE_*.md`, `BACKLOG_PLANTILLAS.md`, `BACKLOG_PAGINA_PREMIUM.md`).
-- ADR vigentes: `docs/decisions/` (hasta ADR-019). No reabrir uno sin una razón técnica nueva.
+- ADR vigentes: `docs/decisions/` (hasta ADR-020). No reabrir uno sin una razón técnica nueva.
 
 ### Decisiones pendientes del propietario (no avanzar sobre ellas sin respuesta)
 
@@ -125,6 +126,10 @@ desarrollo los correos no se envían: se imprimen en la consola de la API (`emai
 - **Pruebas que usan el worker de desarrollo**: el worker real procesa las colas de las pruebas
   e2e. Las URL de prueba usan dominios inexistentes (`*-nx.com`) para no salir a internet.
 - **Prisma**: un valor nuevo de un `enum` no se puede usar en la misma migración que lo crea.
+- **Next.js tiene su propio `role="alert"`** (el anunciador de rutas): en Playwright, filtrar las
+  alertas por texto.
+- **Un servidor de desarrollo con horas de uso** puede fallar al compilar una ruta nueva ("Jest worker
+  encountered … child process exceptions"). Reiniciarlo; no es un error del código.
 
 ## 5. Reglas del propietario que no están en el código
 

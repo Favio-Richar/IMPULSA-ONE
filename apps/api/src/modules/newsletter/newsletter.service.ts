@@ -19,6 +19,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
+import { AutomationEventsService } from "../automations/automation-events.service.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { maskEmail } from "../campaigns/public-unsubscribe.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
@@ -43,6 +44,7 @@ export class NewsletterService {
     @Inject(EMAIL_ADAPTER) private readonly email: EmailAdapter,
     private readonly contacts: ContactsService,
     private readonly audit: AuditService,
+    private readonly automationEvents: AutomationEventsService,
   ) {}
 
   async request(siteSlug: string, raw: unknown, now = new Date()): Promise<PublicNewsletterSignupResponse> {
@@ -173,6 +175,8 @@ export class NewsletterService {
       targetId: contact.id,
       metadata: { siteId: row.siteId, consentTextVersion: row.consentTextVersion },
     });
+    // Automatizaciones y secuencias de bienvenida (F7.5). El id de la confirmación es el del evento.
+    await this.automationEvents.emit({ organizationId: row.organizationId, trigger: "newsletter_subscribed", subjectId: row.id, contactId: contact.id });
     logger.info("newsletter: suscripción confirmada", { organizationId: row.organizationId, siteId: row.siteId, contactId: contact.id });
     return this.toView({ ...row, confirmedAt: now }, now);
   }

@@ -35,3 +35,4 @@ export * from "./billing.js";
 export * from "./payment-accounts.js";
 export * from "./webhooks.js";
 export * from "./newsletter.js";
+export * from "./sequences.js";

@@ -6,13 +6,15 @@ import { contactCommercialStatusSchema, type ContactCommercialStatus } from "../
 // reglas y encola un evento cuando pasa algo; el worker lo procesa (idempotente, con registro por
 // ejecución). Isomorfo: el panel valida con estos mismos esquemas.
 
-export const AUTOMATION_TRIGGERS = ["contact_created", "booking_created", "order_created"] as const;
+export const AUTOMATION_TRIGGERS = ["contact_created", "booking_created", "order_created", "newsletter_subscribed"] as const;
 export type AutomationTrigger = (typeof AUTOMATION_TRIGGERS)[number];
 
 export const AUTOMATION_TRIGGER_LABELS: Record<AutomationTrigger, string> = {
   contact_created: "Llega un contacto nuevo",
   booking_created: "Se crea una reserva",
   order_created: "Llega un pedido",
+  // F7.4/F7.5: la persona confirmó desde su correo (doble confirmación, ADR-019).
+  newsletter_subscribed: "Alguien confirma su suscripción a la newsletter",
 };
 
 export const AUTOMATION_ACTION_TYPES = ["tag_contact", "set_commercial_status", "notify_team"] as const;
@@ -108,6 +110,7 @@ const NOTICE_TITLES: Record<AutomationTrigger, string> = {
   contact_created: "Nuevo contacto",
   booking_created: "Nueva reserva",
   order_created: "Nuevo pedido",
+  newsletter_subscribed: "Nuevo suscriptor de la newsletter",
 };
 
 /** Correo de texto plano para el equipo (ningún HTML de nadie se interpreta). */

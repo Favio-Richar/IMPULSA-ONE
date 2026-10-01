@@ -6,7 +6,7 @@ captación, reservas, ventas y analítica) desde una sola URL.
 **Estado actual (2026-09-30): Fase 7 en curso — F7.1 (GA4 y píxel de Meta con consentimiento, y CSP
 en la página pública, ADR-016) y F7.2 (webhooks salientes firmados hacia Zapier, Make u otros
 sistemas, ADR-017) y F7.3 (bloques de cuenta regresiva, precios, mapa, música y eventos, ADR-018)
-y F7.4 (newsletter con doble confirmación, ADR-019) listas para revisión; sigue F7.5. Los cobros de
+F7.4 (newsletter con doble confirmación, ADR-019) y F7.5 (secuencias de correo, ADR-020) listas para revisión; sigue F7.6. Los cobros de
 los negocios (F5.8–F5.11, ADR-013 y ADR-015) quedaron completos y en revisión. Lo pendiente de todo
 el plan está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
@@ -45,7 +45,7 @@ reglas de trabajo del repositorio.
 | 4 — SaaS comercial | F4.1–F4.9 | Lista para revisión (F4.6b: Mercado Pago, falta probar con credenciales reales) |
 | 5 — Negocio digital | F5.1–F5.11 | Lista para revisión (incluye cobros con la cuenta del negocio, ADR-013/015) |
 | 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.7 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
-| 7 — Crecimiento | F7.1–F7.12 | En curso: F7.1–F7.4 listas para revisión; sigue F7.5 |
+| 7 — Crecimiento | F7.1–F7.12 | En curso: F7.1–F7.5 listas para revisión; sigue F7.6 |
 
 **Para retomar el desarrollo** (también desde Claude Code en la nube): `docs/CONTINUIDAD.md`.
 
@@ -1294,6 +1294,16 @@ y Configurar, con el mismo peso) y **no carga nada de terceros sin consentimient
 vistas, clics en WhatsApp, formularios, reservas y pedidos, sin datos personales. `apps/web` ahora
 responde con CSP y cabeceras de seguridad (`lib/security-headers.ts`); todo origen nuevo que cargue
 la página pública se agrega ahí con su prueba.
+
+## Secuencias de correo (F7.5, ADR-020)
+
+En el panel, "Secuencias" arma series de hasta 10 correos que salen solos tras un evento (contacto
+nuevo, reserva, pedido o **suscripción confirmada a la newsletter**), cada uno con su espera desde el
+anterior y `{{nombre}}` para saludar. Cada persona entra una sola vez y solo con consentimiento de
+marketing; el worker revisa ese consentimiento antes de cada correo, respeta el límite por hora del
+plan (compartido con las campañas) y nunca envía dos veces el mismo paso. La baja desde cualquier
+correo detiene todas sus secuencias. Pausar una secuencia conserva a sus inscritos; el registro
+"Personas" muestra el avance de cada uno y permite detenerlo.
 
 ## Newsletter con doble confirmación (F7.4, ADR-019)
 

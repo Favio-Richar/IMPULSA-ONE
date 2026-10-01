@@ -416,6 +416,17 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   (`newsletter:<sitio>:double_opt_in`), la etiqueta `newsletter` y un **ContactEvent** `NEWSLETTER`.
   Purga: no confirmadas un día después de vencer; confirmadas a los 30 días.
 
+## 9r. Secuencias de correo (F7.5, `BACKLOG_FASE_7.md`, ADR-020)
+
+- **EmailSequence** (`email_sequences`): `trigger` del catálogo de automatizaciones, `enabled`,
+  `emails_per_hour` (límite del plan congelado por la API). **EmailSequenceStep**: `position`
+  (0–9, única por secuencia), `delay_hours` (0–8760, desde el paso anterior), `subject`,
+  `body_html` saneado.
+- **EmailSequenceEnrollment**: única por `sequence_id + contact_id`; `status`
+  (`ACTIVE`/`COMPLETED`/`STOPPED`), `stop_reason`, `next_step`, `next_send_at` (`CHECK`: activa ⇒
+  con hora; cerrada ⇒ con `finished_at`). **EmailSequenceSend**: única por inscripción y paso;
+  `SENT`/`FAILED`/`SKIPPED`; base del cupo por hora junto a `campaign_recipients`.
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 Variantes/cupones/carrito,

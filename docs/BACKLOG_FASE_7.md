@@ -12,7 +12,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.2 — Webhooks salientes firmados (contacto, reserva, pedido) y conector para Zapier/Make | Lista para tu revisión (ADR-017; capturas en `docs/design/capturas/f72/`) |
 | F7.3 — Bloques nuevos: cuenta regresiva, tabla de precios, mapa, video y música incrustados (lista cerrada, sin HTML libre), eventos | Lista para tu revisión (ADR-018; capturas en `docs/design/capturas/f73/`) |
 | F7.4 — Suscripción a newsletter con doble confirmación | Lista para tu revisión (ADR-019; capturas en `docs/design/capturas/f74/`) |
-| F7.5 — Secuencias de correo automáticas (bienvenida, seguimiento) sobre las automatizaciones | Pendiente |
+| F7.5 — Secuencias de correo automáticas (bienvenida, seguimiento) sobre las automatizaciones | Lista para tu revisión (ADR-020; capturas en `docs/design/capturas/f75/`) |
 | F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Pendiente |
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Pendiente |
 | F7.8 — Tienda: variantes, cupones y carrito | Pendiente |
@@ -195,6 +195,42 @@ Implementación (2026-09-30):
   a veces se perdía (lo encontró Playwright en escritorio).
 - Pruebas: 4 de validación + medición, 3 de render, 6 e2e de API (incluido aislamiento), 1 del worker
   y Playwright en teléfono y escritorio.
+
+### F7.5 — Secuencias de correo automáticas (ADR-020)
+
+Criterios de aceptación:
+- Panel "Secuencias": crear, editar, encender o apagar y borrar secuencias (hasta 10) con un
+  disparador del catálogo de automatizaciones más **suscripción confirmada a la newsletter**, y hasta
+  10 pasos: espera (horas o días desde el paso anterior), asunto y cuerpo enriquecido con `{{nombre}}`.
+  Vista previa, envío de prueba al propio correo, registro de inscripciones con su avance y opción de
+  detener una. Estados de carga, vacío, error y éxito; teléfono y escritorio.
+- Escribir exige `campaign.manage` (OWNER, ADMIN); ver, cualquier miembro. Cada cambio queda auditado.
+- El worker inscribe al contacto una sola vez por secuencia, solo con consentimiento de marketing
+  vigente; envía cada paso a su hora, con enlace de baja y `List-Unsubscribe`, sin pasarse del
+  límite por hora del plan (compartido con las campañas) y sin duplicar aunque se reintente. La baja
+  (desde una secuencia o una campaña) detiene todas sus secuencias; apagar una secuencia la pausa.
+- La confirmación de la newsletter (F7.4) dispara el nuevo evento `newsletter_subscribed`, también
+  disponible para las automatizaciones.
+- Pruebas: unitarias (esquemas, personalización escapada, firma de baja), API e2e (permisos,
+  validación, aislamiento, auditoría, evento encolado), worker contra la base real (inscripción,
+  envío a su hora, consentimiento, baja, tope por hora, idempotencia, pasos editados) y Playwright.
+
+Implementación (2026-10-01):
+- Tablas `email_sequences`, `email_sequence_steps`, `email_sequence_enrollments` y
+  `email_sequence_sends` (migración `20261001090000_f75_email_sequences`, reversa verificada).
+- `@impulza/validation`: disparador `newsletter_subscribed` (también para automatizaciones),
+  esquemas de secuencias, `personalize` (`{{nombre}}` escapado; sin nombre no deja comas sueltas) y
+  `sequenceEmail`. `@impulza/auth`: firma de baja con propósito propio para secuencias.
+- API `organizations/:id/email-sequences` (CRUD, inscripciones, detener, prueba por paso); el evento
+  se encola si hay automatizaciones **o** secuencias; la confirmación de newsletter emite
+  `newsletter_subscribed`; `/public/unsubscribe/:token` acepta enlaces de campañas y de secuencias y
+  la baja detiene todas las secuencias del contacto.
+- Worker: `enrollInSequences` dentro del procesamiento del evento y `dispatchSequences` cada minuto
+  (reclamo con concesión de 15 min, fila única por envío, cupo por hora compartido con campañas).
+  Verificado contra el código roto: sin el reclamo y la fila única salen 8 correos en vez de 4.
+- Panel "Secuencias": lista con cadencia y avance, pausa, personas inscritas y detener; editor con
+  pasos ordenables, espera en horas o días, recorrido, vista previa personalizada y prueba por paso.
+- Pruebas: 4 de validación, 1 de auth, 6 e2e de API + aislamiento central, 6 del worker, Playwright.
 
 ## Fases siguientes
 

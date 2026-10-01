@@ -37,6 +37,7 @@ import { BillingModule } from "./modules/billing/billing.module.js";
 import { PaymentAccountsModule } from "./modules/payment-accounts/payment-accounts.module.js";
 import { WebhooksModule } from "./modules/webhooks/webhooks.module.js";
 import { NewsletterModule } from "./modules/newsletter/newsletter.module.js";
+import { SequencesModule } from "./modules/sequences/sequences.module.js";
 
 // Módulo raíz — los módulos de dominio (sites, forms, ...) se agregan a partir de Fase 2, uno
 // por historia del backlog. Ver docs/BACKLOG_FASE_0_1.md.
@@ -75,6 +76,7 @@ import { NewsletterModule } from "./modules/newsletter/newsletter.module.js";
     AutomationsModule,
     WebhooksModule,
     NewsletterModule,
+    SequencesModule,
     BillingModule,
     PaymentAccountsModule,
     AdminModule,

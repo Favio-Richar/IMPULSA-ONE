@@ -5,5 +5,5 @@ export { generateTwoFactorSecret, verifyTwoFactorCode, type TwoFactorSetup } fro
 export type { EmailAdapter, EmailMessage } from "./email/EmailAdapter.js";
 export { ConsoleEmailAdapter } from "./email/ConsoleEmailAdapter.js";
 export { signBookingLinkToken, verifyBookingLinkToken } from "./booking-link.js";
-export { signUnsubscribeToken, verifyUnsubscribeToken } from "./unsubscribe-link.js";
+export { signSequenceUnsubscribeToken, signUnsubscribeToken, verifySequenceUnsubscribeToken, verifyUnsubscribeToken } from "./unsubscribe-link.js";
 export { signOrderDownloadToken, verifyOrderDownloadToken } from "./download-link.js";

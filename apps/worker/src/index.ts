@@ -17,6 +17,7 @@ import { createHealthServer } from "./health-server.js";
 import { startMediaWorkers } from "./media-workers.js";
 import { emitWebhookEvent, startWebhookWorkers } from "./webhooks.js";
 import { startNewsletterWorkers } from "./newsletter.js";
+import { startSequenceWorkers } from "./sequences.js";
 import { logger } from "./observability/logger.js";
 
 initSentry({
@@ -104,6 +105,15 @@ const campaignDispatch = await startCampaignDispatchWorkers({
   linkSecret: env.BOOKING_LINK_SECRET,
 });
 
+// Secuencias de correo (F7.5, ADR-020): mismo secreto de enlaces firmados que las campañas (baja).
+const sequences = await startSequenceWorkers({
+  prisma,
+  email: new ConsoleEmailAdapter(),
+  connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+  publicSiteBaseUrl: env.PUBLIC_SITE_BASE_URL,
+  linkSecret: env.BOOKING_LINK_SECRET,
+});
+
 // Automatizaciones (F6.7): disparador → acción, una vez por evento. Aviso al equipo por consola hasta
 // que exista un proveedor de correo real, igual que el resto de los correos.
 const automations = startAutomationWorkers({
@@ -183,6 +193,7 @@ async function shutdown(signal: string): Promise<void> {
   await paymentAccounts?.close();
   await webhooks?.close();
   await newsletter.close();
+  await sequences.close();
   healthRedis.disconnect();
   await prisma.$disconnect();
   process.exit(0);

@@ -222,6 +222,9 @@ model Organization {
   webhookEndpoints    WebhookEndpoint[]
   webhookDeliveries   WebhookDelivery[]
   newsletterConfirmations NewsletterConfirmation[]
+  emailSequences      EmailSequence[]
+  emailSequenceEnrollments EmailSequenceEnrollment[]
+  emailSequenceSends  EmailSequenceSend[]
 
   @@map("organizations")
 }
@@ -841,6 +844,7 @@ model Contact {
   orders             Order[]
   campaignRecipients CampaignRecipient[]
   newsletterConfirmations NewsletterConfirmation[]
+  emailSequenceEnrollments EmailSequenceEnrollment[]
 
   @@index([organizationId])
   @@index([organizationId, retentionReviewAt])
@@ -1834,4 +1838,101 @@ model NewsletterConfirmation {
   @@index([organizationId, confirmedAt])
   @@index([expiresAt])
   @@map("newsletter_confirmations")
+}
+
+// --- Secuencias de correo (F7.5, ADR-020) ---
+
+enum SequenceEnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  STOPPED
+}
+
+enum SequenceSendStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+// Serie de correos que arranca con un evento del catálogo de automatizaciones. `emailsPerHour` es
+// el límite del plan congelado por la API al crearla o encenderla (el worker no conoce los planes).
+model EmailSequence {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  trigger        String
+  enabled        Boolean  @default(true)
+  emailsPerHour  Int?     @map("emails_per_hour")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  steps        EmailSequenceStep[]
+  enrollments  EmailSequenceEnrollment[]
+
+  @@index([organizationId, trigger, enabled])
+  @@map("email_sequences")
+}
+
+// Un correo de la secuencia. `delayHours` cuenta desde el paso anterior (o desde la inscripción).
+// `bodyHtml` llega saneado por la API (misma política que las campañas).
+model EmailSequenceStep {
+  id         String   @id @default(uuid()) @db.Uuid
+  sequenceId String   @map("sequence_id") @db.Uuid
+  position   Int
+  delayHours Int      @map("delay_hours")
+  subject    String
+  bodyHtml   String   @map("body_html")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  sequence EmailSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  @@unique([sequenceId, position])
+  @@map("email_sequence_steps")
+}
+
+// Un contacto dentro de una secuencia: **una vez por secuencia** (único). `nextStep` es la posición
+// del próximo correo y `nextSendAt` su hora; al reclamarlo, el worker la corre 15 minutos (concesión).
+model EmailSequenceEnrollment {
+  id             String                   @id @default(uuid()) @db.Uuid
+  organizationId String                   @map("organization_id") @db.Uuid
+  sequenceId     String                   @map("sequence_id") @db.Uuid
+  contactId      String                   @map("contact_id") @db.Uuid
+  eventKey       String                   @map("event_key")
+  status         SequenceEnrollmentStatus @default(ACTIVE)
+  stopReason     String?                  @map("stop_reason")
+  nextStep       Int                      @default(0) @map("next_step")
+  nextSendAt     DateTime?                @map("next_send_at") @db.Timestamptz(6)
+  enrolledAt     DateTime                 @default(now()) @map("enrolled_at") @db.Timestamptz(6)
+  finishedAt     DateTime?                @map("finished_at") @db.Timestamptz(6)
+  updatedAt      DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sequence     EmailSequence       @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  contact      Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  sends        EmailSequenceSend[]
+
+  @@unique([sequenceId, contactId])
+  @@index([status, nextSendAt])
+  @@index([organizationId, contactId])
+  @@map("email_sequence_enrollments")
+}
+
+// Registro de cada correo enviado (o fallido/omitido). Único por inscripción y paso: un reintento
+// nunca envía dos veces. También es lo que se cuenta para el límite por hora.
+model EmailSequenceSend {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  enrollmentId   String             @map("enrollment_id") @db.Uuid
+  stepPosition   Int                @map("step_position")
+  status         SequenceSendStatus
+  error          String?
+  sentAt         DateTime           @default(now()) @map("sent_at") @db.Timestamptz(6)
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  enrollment   EmailSequenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, stepPosition])
+  @@index([organizationId, sentAt])
+  @@map("email_sequence_sends")
 }

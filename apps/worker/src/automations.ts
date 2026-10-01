@@ -11,6 +11,7 @@ import {
 } from "@impulza/validation";
 import { type ConnectionOptions, Worker } from "bullmq";
 import { logger } from "./observability/logger.js";
+import { enrollInSequences } from "./sequences.js";
 
 export interface AutomationProcessOptions {
   /** Origen del panel (`APP_BASE_URL`) para el enlace del aviso; sin él, el aviso va sin enlace. */
@@ -46,6 +47,9 @@ export async function processAutomationEvent(
   if (!organization) {
     return result;
   }
+  // Secuencias de correo (F7.5): el mismo evento inscribe al contacto (idempotente). Antes de las
+  // acciones: si una acción falla y el trabajo se reintenta, la inscripción no se duplica.
+  await enrollInSequences(prisma, job);
   const automations = await prisma.automation.findMany({
     where: { organizationId: job.organizationId, trigger: job.trigger, enabled: true },
     orderBy: { createdAt: "asc" },

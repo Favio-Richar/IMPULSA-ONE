@@ -1749,6 +1749,27 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Secuencias de correo (F7.5, ADR-020): nunca se cruzan", () => {
+    it("A no ve, edita, prueba, borra ni lee las inscripciones de una secuencia de B", async () => {
+      const ofB = `/api/v1/organizations/${orgB.id}/email-sequences`;
+      const ofA = `/api/v1/organizations/${orgA.id}/email-sequences`;
+      const step = { delayHours: 0, subject: "Hola", bodyHtml: "<p>Hola</p>" };
+      const sequence = (await orgB.ownerAgent.post(ofB).set(CSRF_HEADERS).send({ name: "De B", trigger: "contact_created", steps: [step] }).expect(201)).body;
+      try {
+        await orgA.ownerAgent.get(ofB).expect(403);
+        await orgA.ownerAgent.post(ofB).set(CSRF_HEADERS).send({ name: "Intrusa", trigger: "contact_created", steps: [step] }).expect(403);
+        await orgA.ownerAgent.patch(`${ofA}/${sequence.id}`).set(CSRF_HEADERS).send({ enabled: false }).expect(404);
+        await orgA.ownerAgent.delete(`${ofA}/${sequence.id}`).set(CSRF_HEADERS).expect(404);
+        await orgA.ownerAgent.get(`${ofA}/${sequence.id}/enrollments`).expect(404);
+        await orgA.ownerAgent.post(`${ofA}/${sequence.id}/steps/0/test`).set(CSRF_HEADERS).expect(404);
+        expect((await orgA.ownerAgent.get(ofA).expect(200)).body.map((row: { id: string }) => row.id)).not.toContain(sequence.id);
+        expect((await prisma.emailSequence.findUniqueOrThrow({ where: { id: sequence.id } })).enabled).toBe(true);
+      } finally {
+        await prisma.emailSequence.deleteMany({ where: { id: sequence.id } });
+      }
+    });
+  });
+
   describe("Webhooks salientes (F7.2, ADR-017): destinos, entregas y eventos nunca se cruzan", () => {
     it("A no ve, edita, prueba, rota ni reenvía lo de B, y un evento de B nunca llega a un destino de A", async () => {
       const ofB = `/api/v1/organizations/${orgB.id}/webhooks`;

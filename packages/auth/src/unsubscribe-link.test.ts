@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { signBookingLinkToken, verifyBookingLinkToken } from "./booking-link.js";
-import { signUnsubscribeToken, verifyUnsubscribeToken } from "./unsubscribe-link.js";
+import { signSequenceUnsubscribeToken, signUnsubscribeToken, verifySequenceUnsubscribeToken, verifyUnsubscribeToken } from "./unsubscribe-link.js";
 
 const SECRET = "s".repeat(32);
 const ID = "11111111-1111-4111-8111-111111111111";
@@ -25,5 +25,16 @@ describe("enlace de baja de campañas (F5.6/F5.7)", () => {
   it("comparte secreto con la gestión de reservas pero no la firma: ninguna sirve por la otra", () => {
     expect(verifyUnsubscribeToken(signBookingLinkToken(ID, SECRET), SECRET)).toBeNull();
     expect(verifyBookingLinkToken(signUnsubscribeToken(ID, SECRET), SECRET)).toBeNull();
+  });
+});
+
+describe("enlace de baja de secuencias (F7.5, ADR-020)", () => {
+  it("se verifica con su propio propósito y no vale como baja de campaña ni al revés", () => {
+    const sequence = signSequenceUnsubscribeToken(ID, SECRET);
+    expect(verifySequenceUnsubscribeToken(sequence, SECRET)).toBe(ID);
+    expect(verifyUnsubscribeToken(sequence, SECRET)).toBeNull();
+    expect(verifySequenceUnsubscribeToken(signUnsubscribeToken(ID, SECRET), SECRET)).toBeNull();
+    expect(verifySequenceUnsubscribeToken(signBookingLinkToken(ID, SECRET), SECRET)).toBeNull();
+    expect(verifySequenceUnsubscribeToken(sequence, "x".repeat(32))).toBeNull();
   });
 });

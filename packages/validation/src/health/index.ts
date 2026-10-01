@@ -100,7 +100,7 @@ export interface PageHealthReport {
 export const HEALTH_PENALTY: Record<HealthSeverity, number> = { critical: 24, warning: 8, info: 2 };
 
 /** Bloques cuya razón de ser es que el visitante actúe (contactar, comprar, reservar, ir a un enlace). */
-const ACTION_BLOCK_TYPES = new Set(["link", "whatsapp", "contact_actions", "contact_form", "booking", "catalog"]);
+const ACTION_BLOCK_TYPES = new Set(["link", "whatsapp", "contact_actions", "contact_form", "booking", "catalog", "newsletter"]);
 
 /** Más de estos bloques pesados y la página se vuelve lenta en un teléfono con datos móviles. */
 export const HEAVY_MEDIA_LIMITS = { videos: 3, images: 30 } as const;

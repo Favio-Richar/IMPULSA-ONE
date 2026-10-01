@@ -118,6 +118,11 @@ describe("Documento OpenAPI", () => {
       // Baja de campañas (F5.6): la credencial es el enlace firmado del correo, no una sesión.
       "GET /api/v1/public/unsubscribe/{token}",
       "POST /api/v1/public/unsubscribe/{token}",
+      // Newsletter (F7.4, ADR-019): la solicitud desde la página pública y el enlace del correo,
+      // que es la única credencial para confirmar. Con límite de tasa por IP.
+      "POST /api/v1/public/sites/{siteSlug}/newsletter",
+      "GET /api/v1/public/newsletter/{token}",
+      "POST /api/v1/public/newsletter/{token}",
       // "Gestiona tu reserva" (F5.4): la credencial es el enlace firmado del correo, no una sesión.
       "GET /api/v1/public/bookings/{token}",
       "POST /api/v1/public/bookings/{token}/cancel",

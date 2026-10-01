@@ -35,3 +35,4 @@ export { PricingBlock } from "./blocks/pricing.js";
 export { MapBlock, mapLinks } from "./blocks/map.js";
 export { MusicBlock } from "./blocks/music.js";
 export { EventsBlock } from "./blocks/events.js";
+export { NewsletterBlock } from "./blocks/newsletter.js";

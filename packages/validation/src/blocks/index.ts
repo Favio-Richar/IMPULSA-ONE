@@ -36,6 +36,7 @@ export {
   musicSchema,
   eventsSchema,
   eventItemSchema,
+  newsletterBlockSchema,
   type ProfileBlockConfig,
   type HeroBlockConfig,
   type TextBlockConfig,
@@ -60,6 +61,7 @@ export {
   type MusicBlockConfig,
   type EventsBlockConfig,
   type EventItem,
+  type NewsletterBlockConfig,
 } from "./catalog.js";
 export { parseStoredBlock, type StoredBlockResult } from "./stored-block.js";
 export { collectRichTextPaths } from "./rich-text-paths.js";

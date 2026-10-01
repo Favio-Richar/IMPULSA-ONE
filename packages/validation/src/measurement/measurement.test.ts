@@ -37,6 +37,10 @@ describe("medición de terceros (F7.1, ADR-016)", () => {
     ]);
     expect(providerCallsFor({ kind: "booking_created" }, { analytics: false, marketing: true }, both)).toEqual([{ provider: "meta", name: "Schedule", params: {} }]);
     expect(providerCallsFor({ kind: "whatsapp_click" }, { analytics: true, marketing: false }, both)).toEqual([{ provider: "ga4", name: "whatsapp_click", params: {} }]);
+    expect(providerCallsFor({ kind: "newsletter_signup" }, { analytics: true, marketing: true }, both)).toEqual([
+      { provider: "ga4", name: "sign_up", params: { method: "newsletter" } },
+      { provider: "meta", name: "Lead", params: { content_category: "newsletter" } },
+    ]);
     // Sin consentimiento, o con el proveedor apagado, nada.
     expect(providerCallsFor({ kind: "form_submitted" }, { analytics: false, marketing: false }, both)).toEqual([]);
     expect(providerCallsFor({ kind: "form_submitted" }, { analytics: true, marketing: true }, { ga4: false, meta: false })).toEqual([]);

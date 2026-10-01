@@ -6,7 +6,7 @@ captación, reservas, ventas y analítica) desde una sola URL.
 **Estado actual (2026-09-30): Fase 7 en curso — F7.1 (GA4 y píxel de Meta con consentimiento, y CSP
 en la página pública, ADR-016) y F7.2 (webhooks salientes firmados hacia Zapier, Make u otros
 sistemas, ADR-017) y F7.3 (bloques de cuenta regresiva, precios, mapa, música y eventos, ADR-018)
-listas para revisión; sigue F7.4. Los cobros de
+y F7.4 (newsletter con doble confirmación, ADR-019) listas para revisión; sigue F7.5. Los cobros de
 los negocios (F5.8–F5.11, ADR-013 y ADR-015) quedaron completos y en revisión. Lo pendiente de todo
 el plan está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
@@ -1291,6 +1291,16 @@ y Configurar, con el mismo peso) y **no carga nada de terceros sin consentimient
 vistas, clics en WhatsApp, formularios, reservas y pedidos, sin datos personales. `apps/web` ahora
 responde con CSP y cabeceras de seguridad (`lib/security-headers.ts`); todo origen nuevo que cargue
 la página pública se agrega ahí con su prueba.
+
+## Newsletter con doble confirmación (F7.4, ADR-019)
+
+El bloque **Newsletter** del constructor pide el correo (y el nombre, si el negocio quiere) con una
+casilla de consentimiento fija y no premarcada. La solicitud **no crea un contacto**: envía un enlace
+(vale 48 h) a `/suscripcion/:token`, donde la persona confirma con un clic; recién ahí queda como
+contacto con consentimiento de marketing, etiqueta `newsletter` y entra en la audiencia de las
+campañas. La respuesta pública es siempre la misma (no revela quién está suscrito) y hay topes por
+IP y por dirección. En desarrollo el correo se imprime en la consola de la API. Campañas muestra los
+suscriptores confirmados y por confirmar.
 
 ## Bloques de F7.3 (ADR-018)
 

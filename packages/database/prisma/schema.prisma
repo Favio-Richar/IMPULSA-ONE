@@ -221,6 +221,7 @@ model Organization {
   paymentAccounts     PaymentAccount[]
   webhookEndpoints    WebhookEndpoint[]
   webhookDeliveries   WebhookDelivery[]
+  newsletterConfirmations NewsletterConfirmation[]
 
   @@map("organizations")
 }
@@ -466,6 +467,7 @@ model Site {
   analyticsEvents     AnalyticsEvent[]
   analyticsAggregates AnalyticsAggregate[]
   abTests             AbTest[]
+  newsletterConfirmations NewsletterConfirmation[]
 
   @@index([organizationId])
   @@map("sites")
@@ -737,6 +739,8 @@ enum ContactEventType {
   BOOKING
   PURCHASE
   NOTE
+  // F7.4: confirmó su suscripción a la newsletter.
+  NEWSLETTER
 }
 
 model Form {
@@ -836,6 +840,7 @@ model Contact {
   bookings           Booking[]
   orders             Order[]
   campaignRecipients CampaignRecipient[]
+  newsletterConfirmations NewsletterConfirmation[]
 
   @@index([organizationId])
   @@index([organizationId, retentionReviewAt])
@@ -1801,4 +1806,32 @@ model WebhookDelivery {
   @@index([organizationId, createdAt])
   @@index([status, nextAttemptAt])
   @@map("webhook_deliveries")
+}
+
+// --- Newsletter con doble confirmación (F7.4, ADR-019) ---
+
+// Solicitud de suscripción pendiente. **No** es un contacto: el contacto se crea o actualiza recién
+// cuando la persona confirma desde su correo. El token viaja solo en ese correo; acá se guarda su
+// SHA-256. Las no confirmadas se borran al día siguiente de vencer y las confirmadas a los 30 días.
+model NewsletterConfirmation {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @map("organization_id") @db.Uuid
+  siteId             String    @map("site_id") @db.Uuid
+  email              String
+  name               String?
+  tokenHash          String    @unique @map("token_hash")
+  consentTextVersion String    @map("consent_text_version")
+  expiresAt          DateTime  @map("expires_at") @db.Timestamptz(6)
+  confirmedAt        DateTime? @map("confirmed_at") @db.Timestamptz(6)
+  contactId          String?   @map("contact_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([siteId, email, createdAt])
+  @@index([organizationId, confirmedAt])
+  @@index([expiresAt])
+  @@map("newsletter_confirmations")
 }

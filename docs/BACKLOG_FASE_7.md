@@ -11,7 +11,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.1 — Integraciones de medición: Google Analytics 4 y píxel de Meta (con consentimiento) | Lista para tu revisión (ADR-016; capturas en `docs/design/capturas/f71/`) |
 | F7.2 — Webhooks salientes firmados (contacto, reserva, pedido) y conector para Zapier/Make | Lista para tu revisión (ADR-017; capturas en `docs/design/capturas/f72/`) |
 | F7.3 — Bloques nuevos: cuenta regresiva, tabla de precios, mapa, video y música incrustados (lista cerrada, sin HTML libre), eventos | Lista para tu revisión (ADR-018; capturas en `docs/design/capturas/f73/`) |
-| F7.4 — Suscripción a newsletter con doble confirmación | Pendiente |
+| F7.4 — Suscripción a newsletter con doble confirmación | Lista para tu revisión (ADR-019; capturas en `docs/design/capturas/f74/`) |
 | F7.5 — Secuencias de correo automáticas (bienvenida, seguimiento) sobre las automatizaciones | Pendiente |
 | F7.6 — Embudos de conversión: pasos, tasas y abandono por paso | Pendiente |
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Pendiente |
@@ -160,6 +160,41 @@ Implementación (2026-09-30):
   música cuenta como medio pesado.
 - Pruebas: 12 de validación nuevas + catálogo, 2 de salud, 13 de render, 7 de CSP, 10 del motor de
   campos, 2 e2e de API y Playwright (constructor y página publicada, teléfono y escritorio).
+
+### F7.4 — Suscripción a newsletter con doble confirmación (ADR-019)
+
+Criterios de aceptación:
+- Bloque **Newsletter** en el constructor: título, texto, nombre opcional, texto del botón y mensaje
+  final. En la página pública: correo (y nombre si se pidió), casilla de consentimiento explícita y no
+  premarcada, honeypot, estados de envío, éxito y error accesibles; en la vista previa no envía.
+- La solicitud no crea un contacto: guarda una confirmación pendiente (token hasheado, 48 h) y envía
+  el correo con el enlace. Respuesta idéntica exista o no el contacto; a quien ya está suscrito le
+  llega un aviso sin enlace. Topes por IP y 3 correos por dirección y sitio cada 24 h.
+- `/suscripcion/:token` muestra el negocio y el correo enmascarado y confirma con un clic (no al
+  abrir). Al confirmar: contacto creado o actualizado, consentimiento de marketing con fuente,
+  versión y fecha, etiqueta `newsletter`, evento en el historial, auditoría, y webhooks/automatizaciones
+  de contacto nuevo si corresponde. Idempotente; enlace vencido o inválido con su mensaje.
+- El suscriptor queda en la audiencia de las campañas (F5.6) y su baja sigue funcionando igual.
+- Panel: en Campañas, suscriptores confirmados, pendientes y nuevos de los últimos 30 días.
+- Worker: borra solicitudes no confirmadas vencidas y confirmadas de más de 30 días.
+- Medición: `sign_up` (GA4) y `Lead` (Meta) con consentimiento, sin datos personales.
+- Pruebas: unitarias (esquemas, correo), API e2e (flujo completo, enumeración, topes, honeypot,
+  vencido, idempotencia, aislamiento), worker (purga) y Playwright (bloque publicado y confirmación).
+
+Implementación (2026-09-30):
+- Tabla `newsletter_confirmations` (migración `20260930120000_f74_newsletter`, con `down.sql`
+  verificada) y valor `NEWSLETTER` en `ContactEventType`.
+- API: `POST /public/sites/:slug/newsletter` (202 siempre igual; solo sitios con el bloque en una
+  página publicada), `GET|POST /public/newsletter/:token` (ver y confirmar, 410 si venció) y
+  `GET /organizations/:id/newsletter/stats`. Token de 32 bytes, solo su SHA-256 en la base.
+- `apps/web`: `/suscripcion/:token` (sin índice, sin caché, sin referer) y rutas proxy con los datos
+  del visitante para el límite de tasa.
+- Bloque `newsletter` en el catálogo, el render y el constructor; tarjetas de suscriptores en
+  Campañas; purga diaria en el worker; conversión `sign_up`/`Lead` (ADR-016).
+- El foco del resultado (enviado, confirmado) se mueve después de pintar: con `requestAnimationFrame`
+  a veces se perdía (lo encontró Playwright en escritorio).
+- Pruebas: 4 de validación + medición, 3 de render, 6 e2e de API (incluido aislamiento), 1 del worker
+  y Playwright en teléfono y escritorio.
 
 ## Fases siguientes
 

@@ -406,6 +406,16 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   error y duración; `CHECK` `(status = 'SUCCEEDED') = (delivered_at IS NOT NULL)`.
 - Migración `20260930080000_f72_webhooks` con `down.sql`; permiso `webhooks.manage` (OWNER, ADMIN).
 
+## 9q. Newsletter con doble confirmación (F7.4, `BACKLOG_FASE_7.md`, ADR-019)
+
+- **NewsletterConfirmation** (`newsletter_confirmations`): solicitud de suscripción, **no** un
+  contacto. `organization_id`, `site_id` (cascada), `email` (`CHECK` en minúsculas), `name`,
+  `token_hash` (único, `CHECK` SHA-256 hexadecimal; el token solo viaja en el correo),
+  `consent_text_version`, `expires_at` (48 h, `CHECK` > `created_at`), `confirmed_at`, `contact_id`
+  (`SET NULL`). Al confirmar se crea o actualiza el **Contact** con su consentimiento de marketing
+  (`newsletter:<sitio>:double_opt_in`), la etiqueta `newsletter` y un **ContactEvent** `NEWSLETTER`.
+  Purga: no confirmadas un día después de vencer; confirmadas a los 30 días.
+
 ## 10. Pendiente para Fase 5+ (no modelar aún)
 
 Variantes/cupones/carrito,

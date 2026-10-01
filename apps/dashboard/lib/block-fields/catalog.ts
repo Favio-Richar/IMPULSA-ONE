@@ -583,4 +583,22 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
       items: [{ name: "Nombre del evento", start: localDateTimeInDays(14, 19), soldOut: false }],
     }),
   },
+
+  // F7.4 (ADR-019): la casilla de consentimiento y su texto son fijos; acá solo los textos del bloque.
+  newsletter: {
+    fields: [
+      { name: "title", label: "Título", optional: true, helperText: "Si lo dejas vacío: «Recibe nuestras novedades».", control: { kind: "text", maxLength: 120 } },
+      { name: "description", label: "Texto", optional: true, helperText: "Qué van a recibir y cada cuánto.", control: { kind: "text", maxLength: 300 } },
+      { name: "askName", label: "Pedir también el nombre (opcional para el visitante)", control: { kind: "boolean" } },
+      { name: "buttonLabel", label: "Texto del botón", control: { kind: "text", maxLength: 40 } },
+      {
+        name: "successMessage",
+        label: "Mensaje al enviar",
+        optional: true,
+        helperText: "Se muestra antes de «Revisa tu correo para confirmar».",
+        control: { kind: "text", maxLength: 200 },
+      },
+    ],
+    seedConfig: () => ({ title: "Recibe nuestras novedades", description: "Un correo al mes con lo nuevo. Sin spam.", askName: false, buttonLabel: "Suscribirme" }),
+  },
 };

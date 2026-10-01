@@ -7,6 +7,7 @@ import {
   eventsSchema,
   mapSchema,
   musicSchema,
+  newsletterBlockSchema,
   pricingSchema,
   contactActionsSchema,
   contactFormSchema,
@@ -32,6 +33,7 @@ import { CountdownBlock } from "./blocks/countdown.js";
 import { EventsBlock } from "./blocks/events.js";
 import { MapBlock } from "./blocks/map.js";
 import { MusicBlock } from "./blocks/music.js";
+import { NewsletterBlock } from "./blocks/newsletter.js";
 import { PricingBlock } from "./blocks/pricing.js";
 import { ContactFormBlock } from "./blocks/contact-form.js";
 import { DividerBlock } from "./blocks/divider.js";
@@ -180,6 +182,10 @@ export function RenderBlock({
     case "events": {
       const parsed = eventsSchema.safeParse(block.config);
       return parsed.success ? <EventsBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
+    }
+    case "newsletter": {
+      const parsed = newsletterBlockSchema.safeParse(block.config);
+      return parsed.success ? <NewsletterBlock config={parsed.data} siteSlug={siteSlug} mode={mode} glass={buttonVariant === "glass"} /> : null;
     }
     default:
       return null;

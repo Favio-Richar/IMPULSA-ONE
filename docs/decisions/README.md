@@ -52,3 +52,4 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 | [ADR-016](./ADR-016-medicion-terceros-consentimiento.md) | Medición de terceros (GA4 y píxel de Meta) solo con consentimiento, y CSP en la página pública | Aceptado |
 | [ADR-017](./ADR-017-webhooks-salientes.md) | Webhooks salientes firmados, con protección SSRF al conectar | Aceptado |
 | [ADR-018](./ADR-018-bloques-contenido-externo-y-tiempo.md) | Bloques con contenido externo (música, mapa, video vertical) y con tiempo (cuenta regresiva, eventos) en el catálogo cerrado | Aceptado |
+| [ADR-019](./ADR-019-newsletter-doble-confirmacion.md) | Newsletter con doble confirmación, sin crear el contacto hasta que la persona confirma | Aceptado |

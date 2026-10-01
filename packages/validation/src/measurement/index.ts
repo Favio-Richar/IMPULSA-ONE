@@ -81,6 +81,7 @@ export type ConversionEvent =
   | { kind: "whatsapp_click" }
   | { kind: "form_submitted" }
   | { kind: "booking_created" }
+  | { kind: "newsletter_signup" }
   | { kind: "order_created"; value: number; currency: string };
 
 export interface ProviderCall {
@@ -121,6 +122,11 @@ export function providerCallsFor(event: ConversionEvent, consent: Pick<ConsentCh
     case "booking_created":
       if (ga4) calls.push({ provider: "ga4", name: "generate_lead", params: { lead_source: "booking" } });
       if (meta) calls.push({ provider: "meta", name: "Schedule", params: {} });
+      break;
+    // F7.4: la solicitud (la confirmación ocurre después, desde el correo).
+    case "newsletter_signup":
+      if (ga4) calls.push({ provider: "ga4", name: "sign_up", params: { method: "newsletter" } });
+      if (meta) calls.push({ provider: "meta", name: "Lead", params: { content_category: "newsletter" } });
       break;
     case "order_created": {
       const value = toMajorUnits(event.value, event.currency);

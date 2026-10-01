@@ -16,6 +16,7 @@ import { env, mercadoPagoConfig, mercadoPagoOAuthConfig, webpayConfig } from "./
 import { createHealthServer } from "./health-server.js";
 import { startMediaWorkers } from "./media-workers.js";
 import { emitWebhookEvent, startWebhookWorkers } from "./webhooks.js";
+import { startNewsletterWorkers } from "./newsletter.js";
 import { logger } from "./observability/logger.js";
 
 initSentry({
@@ -90,6 +91,9 @@ const bookingDeposits = await startBookingDepositWorkers({
     ? (booking) => emitWebhookEvent(prisma, webhooks.queue, { organizationId: booking.organizationId, type: "booking.cancelled", subjectId: booking.id })
     : undefined,
 });
+
+// Newsletter (F7.4, ADR-019): purga diaria de solicitudes que ya no hacen falta.
+const newsletter = await startNewsletterWorkers({ prisma, connection: { url: env.REDIS_URL, maxRetriesPerRequest: null } });
 
 // Campañas de email (F5.6): el enlace de baja se firma con el mismo secreto de enlaces de correo.
 const campaignDispatch = await startCampaignDispatchWorkers({
@@ -178,6 +182,7 @@ async function shutdown(signal: string): Promise<void> {
   await billing?.close();
   await paymentAccounts?.close();
   await webhooks?.close();
+  await newsletter.close();
   healthRedis.disconnect();
   await prisma.$disconnect();
   process.exit(0);

@@ -3423,7 +3423,8 @@
                       "pricing",
                       "map",
                       "music",
-                      "events"
+                      "events",
+                      "newsletter"
                     ]
                   },
                   "config": {},
@@ -32760,6 +32761,338 @@
         "summary": "Reenviar una entrega",
         "tags": [
           "webhooks"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/newsletter": {
+      "post": {
+        "description": "Envía el correo de confirmación (48 h). La respuesta es siempre la misma, exista o no el contacto (ADR-019). No crea un contacto.",
+        "operationId": "PublicNewsletterController_request",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 320
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "consent": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  },
+                  "website": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "email",
+                  "consent"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Revisar el correo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Este sitio no tiene newsletter."
+          },
+          "429": {
+            "description": "Más de 10 peticiones en 600 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Pedir la suscripción a la newsletter",
+        "tags": [
+          "public-newsletter"
+        ]
+      }
+    },
+    "/api/v1/public/newsletter/{token}": {
+      "get": {
+        "operationId": "PublicNewsletterController_view",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Negocio, correo enmascarado y estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "organizationName": {
+                      "type": "string"
+                    },
+                    "siteName": {
+                      "type": "string"
+                    },
+                    "maskedEmail": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "confirmed",
+                        "expired"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "organizationName",
+                    "siteName",
+                    "maskedEmail",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Enlace no válido."
+          }
+        },
+        "summary": "Ver a qué corresponde un enlace de confirmación",
+        "tags": [
+          "public-newsletter"
+        ]
+      },
+      "post": {
+        "description": "Con un clic (no al abrir el enlace). Idempotente.",
+        "operationId": "PublicNewsletterController_confirm",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Suscripción confirmada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "organizationName": {
+                      "type": "string"
+                    },
+                    "siteName": {
+                      "type": "string"
+                    },
+                    "maskedEmail": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "confirmed",
+                        "expired"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "organizationName",
+                    "siteName",
+                    "maskedEmail",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Enlace no válido."
+          },
+          "410": {
+            "description": "`NEWSLETTER_CONFIRMATION_EXPIRED`: el enlace venció."
+          }
+        },
+        "summary": "Confirmar la suscripción",
+        "tags": [
+          "public-newsletter"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/newsletter/stats": {
+      "get": {
+        "description": "Audiencia de campañas, confirmados por doble confirmación, pendientes y nuevos de 30 días.",
+        "operationId": "NewsletterController_stats",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resumen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "marketingAudience": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "confirmedSubscribers": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "pendingConfirmations": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "confirmedLast30Days": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "marketingAudience",
+                    "confirmedSubscribers",
+                    "pendingConfirmations",
+                    "confirmedLast30Days"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Suscriptores de la newsletter",
+        "tags": [
+          "newsletter"
         ]
       }
     },

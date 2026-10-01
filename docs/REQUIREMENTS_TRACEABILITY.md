@@ -83,6 +83,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | No guardar datos personales innecesarios; anonimizar/truncar; idempotencia; diferenciar bots | ST §10, §15 | Fase 3, transversal en seguridad |
 | ClickHouse solo si Postgres deja de cumplir objetivos medidos | ST §10 | Diferido — decisión futura basada en datos |
 | Analítica y píxeles de terceros (GA4, píxel de Meta) con consentimiento del visitante; footer de cookies | PM §9.15, §9 (10) | Fase 7 — F7.1 (ADR-016, en revisión); incluye la CSP de `apps/web` que faltaba (ST §15) |
+| Newsletter con doble confirmación (captación con consentimiento demostrable) | PM §9.12, ADR-004 | Fase 7 — F7.4 (ADR-019, en revisión): bloque `newsletter`, `/suscripcion/:token`, sin contacto hasta confirmar, purga en el worker |
 | Webhooks salientes firmados con registro de sincronización, y conexión con Zapier/Make (sin custodiar credenciales de terceros) | PM §9.15, ST §15 (webhooks firmados, SSRF) | Fase 7 — F7.2 (ADR-017, en revisión): `packages/webhooks`, módulo `webhooks` de la API, cola del worker y panel "Integraciones" |
 
 ## 9. Planes, suscripciones y pagos

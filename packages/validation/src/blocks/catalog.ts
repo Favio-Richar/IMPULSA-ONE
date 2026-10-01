@@ -40,6 +40,8 @@ export const BLOCK_TYPES = [
   "map",
   "music",
   "events",
+  // F7.4 (ADR-019)
+  "newsletter",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -306,6 +308,18 @@ export const eventsSchema = z
   });
 
 /**
+ * Suscripción a la newsletter con doble confirmación (F7.4, ADR-019). El bloque solo configura los
+ * textos: la casilla de consentimiento y su texto son fijos (no los decide el negocio).
+ */
+export const newsletterBlockSchema = z.object({
+  title: plainTextSchema(120).optional(),
+  description: plainTextSchema(300).optional(),
+  askName: z.boolean().default(false),
+  buttonLabel: plainTextSchema(40).default("Suscribirme"),
+  successMessage: plainTextSchema(200).optional(),
+});
+
+/**
  * Entrada del catálogo.
  *
  * `version` es el `config_schema_version` que se guarda con el bloque: sube cuando el esquema de
@@ -358,6 +372,7 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
   map: { type: "map", version: 1, schema: mapSchema, richTextPaths: [] },
   music: { type: "music", version: 1, schema: musicSchema, richTextPaths: [] },
   events: { type: "events", version: 1, schema: eventsSchema, richTextPaths: [] },
+  newsletter: { type: "newsletter", version: 1, schema: newsletterBlockSchema, richTextPaths: [] },
 };
 
 /**
@@ -410,3 +425,4 @@ export type MapBlockConfig = z.infer<typeof mapSchema>;
 export type MusicBlockConfig = z.infer<typeof musicSchema>;
 export type EventsBlockConfig = z.infer<typeof eventsSchema>;
 export type EventItem = z.infer<typeof eventItemSchema>;
+export type NewsletterBlockConfig = z.infer<typeof newsletterBlockSchema>;

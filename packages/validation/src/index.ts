@@ -44,4 +44,5 @@ export * from "./smart-cta/index.js";
 export * from "./automations/index.js";
 export * from "./measurement/index.js";
 export * from "./webhooks/index.js";
+export * from "./newsletter/index.js";
 export * from "./billing/index.js";

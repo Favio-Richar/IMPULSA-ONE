@@ -47,13 +47,13 @@ export class ContactsService {
    * premarcada. Volver a aceptar después de una baja la deja sin efecto (es una decisión nueva y
    * explícita). Nunca se llama desde el panel: el negocio no puede declarar consentimiento ajeno.
    */
-  async recordMarketingConsent(contactId: string, source: string): Promise<void> {
+  async recordMarketingConsent(contactId: string, source: string, textVersion: string = MARKETING_CONSENT_TEXT_VERSION): Promise<void> {
     await this.prisma.contact.update({
       where: { id: contactId },
       data: {
         marketingConsentAt: new Date(),
         marketingConsentSource: source,
-        marketingConsentTextVersion: MARKETING_CONSENT_TEXT_VERSION,
+        marketingConsentTextVersion: textVersion,
         marketingUnsubscribedAt: null,
       },
     });

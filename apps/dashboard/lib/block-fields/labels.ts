@@ -3,6 +3,7 @@ import {
   BadgeDollarSign,
   CalendarDays,
   Hourglass,
+  MailPlus,
   MapPin,
   Music,
   Briefcase,
@@ -48,6 +49,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   map: "Mapa",
   music: "Música",
   events: "Eventos",
+  newsletter: "Newsletter",
 };
 
 /** Un ícono lineal por tipo (no-negociable de UI/UX del proyecto) — la misma biblioteca
@@ -75,4 +77,5 @@ export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   map: MapPin,
   music: Music,
   events: CalendarDays,
+  newsletter: MailPlus,
 };

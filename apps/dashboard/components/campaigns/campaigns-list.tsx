@@ -6,6 +6,7 @@ import { buttonVariants, cn, EmptyState, ErrorState, LoadingState } from "@impul
 import { Mail, Plus } from "lucide-react";
 import Link from "next/link";
 import { useCampaigns } from "../../lib/hooks/use-campaigns";
+import { NewsletterStats } from "./newsletter-stats";
 
 export const CAMPAIGN_STATUS_STYLES: Record<CampaignStatusValue, string> = {
   DRAFT: "border-border bg-surface text-foreground",
@@ -55,6 +56,8 @@ export function CampaignsList({ organizationId }: { organizationId: string }): R
           Nueva campaña
         </Link>
       </div>
+
+      <NewsletterStats organizationId={organizationId} />
 
       {campaignsQuery.isPending ? (
         <LoadingState label="Cargando campañas…" />

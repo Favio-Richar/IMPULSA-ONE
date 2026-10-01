@@ -9,6 +9,7 @@ import { BookingBlackouts } from "../../../../../components/bookings/booking-bla
 import { BookingBranches } from "../../../../../components/bookings/booking-branches";
 import { BookingSettingsForm } from "../../../../../components/bookings/booking-settings-form";
 import { BookingStaff } from "../../../../../components/bookings/booking-staff";
+import { CalendarSync } from "../../../../../components/bookings/calendar-sync";
 import { useActiveOrgStore } from "../../../../../lib/active-org-store";
 import { ApiError } from "../../../../../lib/api-client";
 import { useBookableServices, useBookingSettings } from "../../../../../lib/hooks/use-booking-setup";
@@ -68,6 +69,7 @@ function BookingSetup({ organizationId, siteId }: { organizationId: string; site
       <BookingStaff organizationId={organizationId} siteId={siteId} />
       <BookableServices organizationId={organizationId} siteId={siteId} />
       <BookingBlackouts organizationId={organizationId} siteId={siteId} timeZone={settings.timeZone} />
+      <CalendarSync organizationId={organizationId} siteId={siteId} settings={settings} />
       {servicesQuery.data ? (
         <AvailabilityPreview organizationId={organizationId} siteId={siteId} timeZone={settings.timeZone} services={servicesQuery.data} />
       ) : null}

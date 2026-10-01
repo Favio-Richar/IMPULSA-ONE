@@ -13,7 +13,6 @@ import {
   mercadoPagoConfigFromEnv,
   mercadoPagoEnvShape,
   mercadoPagoOAuthConfigFromEnv,
-  mercadoPagoOAuthEnvShape,
   webpayConfigFromEnv,
   webpayEnvShape,
 } from "@impulza/payments";
@@ -73,7 +72,10 @@ export const env = loadEnv({
   // Mercado Pago (F4.6b): token de acceso y clave de firma de webhooks, los dos o ninguno.
   ...mercadoPagoEnvShape,
   // Aplicación de Impulza en Mercado Pago para que cada negocio conecte SU cuenta (F5.8, ADR-013).
-  ...mercadoPagoOAuthEnvShape,
+  // Google Calendar (F7.9c, ADR-024): credenciales OAuth para sincronización de citas.
+  // Opcionales: sin ellas opera en modo desacoplado sin fallar y queda listo para cuando se suministren.
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
   API_PUBLIC_URL: urlSchema.optional(),
 });
 
@@ -81,3 +83,7 @@ export const env = loadEnv({
 export const webpayConfig = webpayConfigFromEnv(env);
 export const mercadoPagoConfig = mercadoPagoConfigFromEnv(env);
 export const mercadoPagoOAuthConfig = mercadoPagoOAuthConfigFromEnv(env);
+export const googleCalendarConfig =
+  env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+    ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
+    : null;

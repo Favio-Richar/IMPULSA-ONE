@@ -5,6 +5,7 @@ import type {
   BookingBranchResponse,
   BookingSettingsResponse,
   BookingStaffResponse,
+  GoogleCalendarStatusResponse,
 } from "@impulza/contracts";
 import type {
   AssignStaffToServiceInput,
@@ -129,3 +130,31 @@ export function getBookingAvailability(
   });
   return apiFetch<BookingAvailabilityResponse>(`${base(organizationId, siteId)}/availability?${params.toString()}`);
 }
+
+export function rotateSiteCalendarFeed(organizationId: string, siteId: string): Promise<BookingSettingsResponse> {
+  return apiFetch<BookingSettingsResponse>(`${base(organizationId, siteId)}/settings/rotate-calendar-feed`, { method: "POST" });
+}
+
+export function rotateStaffCalendarFeed(organizationId: string, siteId: string, staffId: string): Promise<BookingStaffResponse> {
+  return apiFetch<BookingStaffResponse>(`${base(organizationId, siteId)}/staff/${staffId}/rotate-calendar-feed`, { method: "POST" });
+}
+
+export function getGoogleCalendarStatus(organizationId: string, siteId: string): Promise<GoogleCalendarStatusResponse> {
+  return apiFetch<GoogleCalendarStatusResponse>(`${base(organizationId, siteId)}/google-calendar`);
+}
+
+export function getGoogleCalendarAuthUrl(
+  organizationId: string,
+  siteId: string,
+  redirectUri: string,
+  staffId?: string,
+): Promise<{ url: string }> {
+  const params = new URLSearchParams({ redirectUri, ...(staffId ? { staffId } : {}) });
+  return apiFetch<{ url: string }>(`${base(organizationId, siteId)}/google-calendar/auth-url?${params.toString()}`);
+}
+
+export function disconnectGoogleCalendar(organizationId: string, siteId: string, staffId?: string): Promise<void> {
+  const params = staffId ? `?staffId=${encodeURIComponent(staffId)}` : "";
+  return apiFetch<void>(`${base(organizationId, siteId)}/google-calendar${params}`, { method: "DELETE" });
+}
+

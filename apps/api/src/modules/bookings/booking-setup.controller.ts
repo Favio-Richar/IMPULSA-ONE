@@ -88,6 +88,24 @@ export class BookingSetupController {
     return this.bookingSetupService.saveSettings(organizationId, user.id, siteId, body);
   }
 
+  @Post("settings/rotate-calendar-feed")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_UPDATE)
+  @ApiOperation({
+    summary: "Rotar el token del feed de calendario del sitio",
+    description: "Invalida el token anterior y genera uno nuevo para el feed iCal del sitio.",
+  })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiZodResponse(200, bookingSettingsResponse, "Configuración actualizada con nuevo feed.")
+  rotateSiteCalendarFeed(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.bookingSetupService.rotateSiteCalendarFeed(organizationId, user.id, siteId);
+  }
+
   @Get("services")
   @ApiOperation({ summary: "Listar los servicios reservables del sitio" })
   @ApiUuidParam("siteId", "Sitio de la organización.")
@@ -340,6 +358,27 @@ export class BookingSetupController {
     @CurrentUser() user: User,
   ) {
     await this.bookingSetupService.deleteStaff(organizationId, user.id, siteId, staffId);
+  }
+
+  @Post("staff/:staffId/rotate-calendar-feed")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_UPDATE)
+  @ApiOperation({
+    summary: "Rotar el token del feed de calendario de un profesional",
+    description: "Invalida el token anterior y genera uno nuevo para el feed iCal del profesional.",
+  })
+  @ApiUuidParam("siteId", "Sitio de la organización.")
+  @ApiUuidParam("staffId", "Profesional cuyo feed se rotará.")
+  @ApiZodResponse(200, bookingStaffResponse, "Profesional con nuevo feed.")
+  @ApiResponse({ status: 404, description: STAFF_NOT_FOUND })
+  rotateStaffCalendarFeed(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("staffId") staffId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.bookingSetupService.rotateStaffCalendarFeed(organizationId, user.id, siteId, staffId);
   }
 
   @Put("services/:serviceId/staff")

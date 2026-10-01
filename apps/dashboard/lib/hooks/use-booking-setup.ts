@@ -20,12 +20,16 @@ import {
   deleteBookingBlackout,
   deleteBookingBranch,
   deleteBookingStaff,
+  disconnectGoogleCalendar,
   getBookingAvailability,
   getBookingSettings,
+  getGoogleCalendarStatus,
   listBookableServices,
   listBookingBlackouts,
   listBookingBranches,
   listBookingStaff,
+  rotateSiteCalendarFeed,
+  rotateStaffCalendarFeed,
   saveBookingSettings,
   updateBookableService,
   updateBookingBranch,
@@ -154,3 +158,37 @@ export function useBookingAvailability(
     enabled: query !== null,
   });
 }
+
+// --- Feed iCal y Google Calendar (F7.9c) ---
+
+export function useRotateSiteCalendarFeed(organizationId: string, siteId: string) {
+  const invalidate = useInvalidateBooking(organizationId, siteId);
+  return useMutation({
+    mutationFn: () => rotateSiteCalendarFeed(organizationId, siteId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRotateStaffCalendarFeed(organizationId: string, siteId: string) {
+  const invalidate = useInvalidateBooking(organizationId, siteId);
+  return useMutation({
+    mutationFn: (staffId: string) => rotateStaffCalendarFeed(organizationId, siteId, staffId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useGoogleCalendarStatus(organizationId: string, siteId: string) {
+  return useQuery({
+    queryKey: [...root(organizationId, siteId), "google-calendar"],
+    queryFn: () => getGoogleCalendarStatus(organizationId, siteId),
+  });
+}
+
+export function useDisconnectGoogleCalendar(organizationId: string, siteId: string) {
+  const invalidate = useInvalidateBooking(organizationId, siteId);
+  return useMutation({
+    mutationFn: (staffId?: string) => disconnectGoogleCalendar(organizationId, siteId, staffId),
+    onSuccess: invalidate,
+  });
+}
+

@@ -42,7 +42,9 @@ import {
   type UpdateBookingBranchInput,
   type UpdateBookingStaffInput,
 } from "@impulza/validation";
+import { randomBytes } from "node:crypto";
 import { PRISMA } from "../../database/prisma.module.js";
+import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 
@@ -79,11 +81,15 @@ export class BookingSetupService {
     }
   }
 
-  // --- Configuración ---
+  private buildFeedUrl(token: string | null): string | null {
+    if (!token) return null;
+    const base = env.API_PUBLIC_URL ?? `http://localhost:${env.PORT}`;
+    return `${base.replace(/\/+$/, "")}/api/v1/public/bookings/calendar-feed/${token}.ics`;
+  }
 
   private toSettingsResponse(siteId: string, settings: BookingSettings | null): BookingSettingsResponse {
     if (!settings) {
-      return { siteId, configured: false, ...DEFAULT_BOOKING_SETTINGS };
+      return { siteId, configured: false, ...DEFAULT_BOOKING_SETTINGS, calendarFeedToken: null, calendarFeedUrl: null };
     }
     const weeklyHours = weeklyHoursSchema.safeParse(settings.weeklyHours);
     if (!weeklyHours.success) {
@@ -100,17 +106,28 @@ export class BookingSetupService {
       maxAdvanceDays: settings.maxAdvanceDays,
       bufferMinutes: settings.bufferMinutes,
       slotIntervalMinutes: settings.slotIntervalMinutes,
+      calendarFeedToken: settings.calendarFeedToken,
+      calendarFeedUrl: this.buildFeedUrl(settings.calendarFeedToken),
     };
   }
 
   async getSettings(organizationId: string, siteId: string): Promise<BookingSettingsResponse> {
     await this.assertSiteInOrganization(organizationId, siteId);
-    const settings = await this.prisma.bookingSettings.findFirst({ where: { siteId, organizationId } });
+    let settings = await this.prisma.bookingSettings.findFirst({ where: { siteId, organizationId } });
+    if (settings && !settings.calendarFeedToken) {
+      const token = randomBytes(24).toString("hex");
+      settings = await this.prisma.bookingSettings.update({
+        where: { siteId },
+        data: { calendarFeedToken: token },
+      });
+    }
     return this.toSettingsResponse(siteId, settings);
   }
 
   async saveSettings(organizationId: string, actorId: string, siteId: string, input: BookingSettingsInput): Promise<BookingSettingsResponse> {
     await this.assertSiteInOrganization(organizationId, siteId);
+    const existing = await this.prisma.bookingSettings.findUnique({ where: { siteId } });
+    const feedToken = existing?.calendarFeedToken ?? randomBytes(24).toString("hex");
     const data = {
       enabled: input.enabled,
       timeZone: input.timeZone,
@@ -119,6 +136,7 @@ export class BookingSetupService {
       maxAdvanceDays: input.maxAdvanceDays,
       bufferMinutes: input.bufferMinutes,
       slotIntervalMinutes: input.slotIntervalMinutes,
+      calendarFeedToken: feedToken,
     };
     const saved = await this.prisma.bookingSettings.upsert({
       where: { siteId },
@@ -134,6 +152,24 @@ export class BookingSetupService {
       metadata: { enabled: input.enabled, timeZone: input.timeZone },
     });
     return this.toSettingsResponse(siteId, saved);
+  }
+
+  async rotateSiteCalendarFeed(organizationId: string, actorId: string, siteId: string): Promise<BookingSettingsResponse> {
+    await this.assertSiteInOrganization(organizationId, siteId);
+    const token = randomBytes(24).toString("hex");
+    const updated = await this.prisma.bookingSettings.update({
+      where: { siteId },
+      data: { calendarFeedToken: token },
+    });
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "booking.calendar_feed_rotated",
+      targetType: "BookingSettings",
+      targetId: siteId,
+      metadata: { siteId },
+    });
+    return this.toSettingsResponse(siteId, updated);
   }
 
   // --- Servicios ---
@@ -385,6 +421,8 @@ export class BookingSetupService {
       position: staff.position,
       weeklyHours,
       serviceIds: staff.services ? staff.services.map((s) => s.serviceId) : [],
+      calendarFeedToken: staff.calendarFeedToken,
+      calendarFeedUrl: this.buildFeedUrl(staff.calendarFeedToken),
       createdAt: staff.createdAt.toISOString(),
       updatedAt: staff.updatedAt.toISOString(),
     };
@@ -415,6 +453,7 @@ export class BookingSetupService {
       const branch = await this.prisma.bookingBranch.findFirst({ where: { id: input.branchId, siteId, organizationId } });
       if (!branch) throw new NotFoundException(BRANCH_NOT_FOUND);
     }
+    const feedToken = randomBytes(24).toString("hex");
     const created = await this.prisma.$transaction(async (tx) => {
       const staff = await tx.bookingStaff.create({
         data: {
@@ -429,6 +468,7 @@ export class BookingSetupService {
           active: input.active,
           position: input.position ?? count,
           weeklyHours: (input.weeklyHours ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+          calendarFeedToken: feedToken,
         },
       });
       if (input.serviceIds && input.serviceIds.length > 0) {
@@ -531,6 +571,37 @@ export class BookingSetupService {
       targetId: current.id,
       metadata: { siteId, name: current.name },
     });
+  }
+
+  async rotateStaffCalendarFeed(
+    organizationId: string,
+    actorId: string,
+    siteId: string,
+    staffId: string,
+  ): Promise<BookingStaffResponse> {
+    await this.assertSiteInOrganization(organizationId, siteId);
+    const staff = await this.prisma.bookingStaff.findFirst({
+      where: { id: staffId, siteId, organizationId },
+      include: { services: { select: { serviceId: true } } },
+    });
+    if (!staff) {
+      throw new NotFoundException(STAFF_NOT_FOUND);
+    }
+    const token = randomBytes(24).toString("hex");
+    const updated = await this.prisma.bookingStaff.update({
+      where: { id: staff.id },
+      data: { calendarFeedToken: token },
+      include: { services: { select: { serviceId: true } } },
+    });
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "booking.staff_calendar_feed_rotated",
+      targetType: "BookingStaff",
+      targetId: staff.id,
+      metadata: { siteId, staffId: staff.id },
+    });
+    return this.toStaffResponse(updated);
   }
 
   async assignStaffToService(

@@ -7,6 +7,7 @@ import { DEFAULT_WEEKLY_HOURS, SLOT_INTERVALS, weeklyHoursSchema } from "./weekl
 export * from "./timezone.js";
 export * from "./availability.js";
 export * from "./weekly-hours.js";
+export * from "./google-calendar.js";
 
 // Reservas (F5.1). Esquemas compartidos por la API (que siempre revalida) y el panel.
 

@@ -139,6 +139,8 @@ describe("Documento OpenAPI", () => {
       // Descargas pagadas (F5.11b): la credencial es el enlace firmado del correo; el pago se verifica en cada uso.
       "GET /api/v1/public/downloads/{token}",
       "POST /api/v1/public/downloads/{token}/url",
+      // Feed iCal (F7.9c, ADR-024): suscripción universal (.ics) mediante token seguro en URL para calendarios externos.
+      "GET /api/v1/public/bookings/calendar-feed/{token}.ics",
     ]);
 
     const sinSeguridad: string[] = [];

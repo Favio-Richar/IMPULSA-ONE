@@ -5,20 +5,20 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 1. Estado al 2026-10-01 (después de F7.9b)
+## 1. Estado al 2026-10-01 (después de F7.9c)
 
 - Rama principal: `master` (no `main`). Cada historia es **un commit** con el código en el asunto,
   p. ej. `feat(newsletter): … (F7.4, ADR-019)`, y termina con la línea `Co-Authored-By` que indique
   el sistema.
-- **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.7 y F7.8 listas para revisión del propietario.
-  **F7.9a y F7.9b (reservas con profesionales, sucursales, horarios y bloqueos por profesional,
-  ADR-024): servidor revisado y corregido por Claude, pero SIGUEN EN PROGRESO.** Faltan las pruebas de
-  interfaz (Playwright) de la página pública —selector de sucursal/profesional y "Cualquiera
-  disponible"—, del editor de horario propio y de los bloqueos por profesional, con sus capturas en
-  `docs/design/capturas/f79/` (hoy solo está el alta y borrado del equipo). Detalle en la sección
-  "Revisión de F7.9a/b" de `docs/BACKLOG_FASE_7.md`.
-  **Después F7.9c** (sincronización con calendarios: feed iCal universal y Google Calendar OAuth) y
-  F7.10–F7.12 en el orden del backlog.
+- **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.8 y F7.9a/b/c listas para revisión del propietario.
+  - **F7.9a y F7.9b cerradas al 100%:** todas las pruebas de Playwright agregadas y pasando sin desplazamiento horizontal
+    en móvil (412x915) y escritorio (1440x900), con las 10 capturas en `docs/design/capturas/f79/`.
+  - **F7.9c (sincronización con calendarios):** implementada y verificada al 100%. Feed iCal universal RFC 5545 con
+    token seguro por sitio y por profesional en `/public/bookings/calendar-feed/:token.ics`, con rotación segura;
+    adaptador desacoplado de Google Calendar (`google_calendar_connections`) que opera en modo desacoplado sin fallar si faltan
+    credenciales OAuth; migración manual con `down.sql` verificada en ambas direcciones en Postgres; suite e2e dedicada
+    (`calendar-and-google.e2e.test.ts`), prueba de aislamiento multi-tenant y verificación contra código roto.
+  - **Siguiente paso:** F7.10 (notificaciones push web) y siguientes según el backlog.
 - ADR más reciente: ADR-024 (reservas: profesionales, sucursales y calendarios).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
   (`docs/BACKLOG_FASE_*.md`, `BACKLOG_PLANTILLAS.md`, `BACKLOG_PAGINA_PREMIUM.md`).

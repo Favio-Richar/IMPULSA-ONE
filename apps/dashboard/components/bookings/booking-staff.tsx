@@ -23,7 +23,7 @@ import {
   LoadingState,
   Select,
 } from "@impulza/ui";
-import { Building, Clock, Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { Building, Calendar, Check, Clock, Copy, Mail, Pencil, Phone, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import {
@@ -32,6 +32,7 @@ import {
   useBookingStaff,
   useCreateBookingStaff,
   useDeleteBookingStaff,
+  useRotateStaffCalendarFeed,
   useUpdateBookingStaff,
 } from "../../lib/hooks/use-booking-setup";
 import { ConfirmButton } from "../confirm-button";
@@ -184,10 +185,25 @@ function StaffRow({
   services: readonly BookableServiceResponse[];
 }): React.JSX.Element {
   const [editing, setEditing] = useState(false);
+  const [showFeed, setShowFeed] = useState(false);
+  const [copiedFeed, setCopiedFeed] = useState(false);
+
   const deleteMutation = useDeleteBookingStaff(organizationId, siteId);
+  const rotateFeedMutation = useRotateStaffCalendarFeed(organizationId, siteId);
 
   const branchName = branches.find((b) => b.id === member.branchId)?.name;
   const assignedServices = services.filter((s) => member.serviceIds.includes(s.id));
+
+  const handleCopyFeed = async () => {
+    if (!member.calendarFeedUrl) return;
+    try {
+      await navigator.clipboard.writeText(member.calendarFeedUrl);
+      setCopiedFeed(true);
+      setTimeout(() => setCopiedFeed(false), 2000);
+    } catch {
+      // Fallback
+    }
+  };
 
   if (editing) {
     return (
@@ -205,68 +221,127 @@ function StaffRow({
   }
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 p-4" data-staff={member.name}>
-      <div className="min-w-0">
-        <p className="flex flex-wrap items-center gap-2 font-medium text-foreground">
-          {member.name}
-          {member.title ? <span className="text-xs font-normal text-muted-foreground">({member.title})</span> : null}
-          {!member.active ? <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-normal text-muted-foreground">Inactivo</span> : null}
-          {member.weeklyHours ? (
-            <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              <Clock className="size-3" aria-hidden="true" />
-              Horario propio
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-              <Clock className="size-3" aria-hidden="true" />
-              Horario del sitio
-            </span>
-          )}
-        </p>
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          {branchName ? (
-            <span className="inline-flex items-center gap-1">
-              <Building className="size-3.5" aria-hidden="true" />
-              {branchName}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1">
-              <Building className="size-3.5" aria-hidden="true" />
-              Todas las sucursales
-            </span>
-          )}
-          {member.email ? (
-            <span className="inline-flex items-center gap-1">
-              <Mail className="size-3.5" aria-hidden="true" />
-              {member.email}
-            </span>
+    <li className="flex flex-col gap-3 p-4" data-staff={member.name}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 font-medium text-foreground">
+            {member.name}
+            {member.title ? <span className="text-xs font-normal text-muted-foreground">({member.title})</span> : null}
+            {!member.active ? <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-normal text-muted-foreground">Inactivo</span> : null}
+            {member.weeklyHours ? (
+              <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                <Clock className="size-3" aria-hidden="true" />
+                Horario propio
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                <Clock className="size-3" aria-hidden="true" />
+                Horario del sitio
+              </span>
+            )}
+          </p>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            {branchName ? (
+              <span className="inline-flex items-center gap-1">
+                <Building className="size-3.5" aria-hidden="true" />
+                {branchName}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <Building className="size-3.5" aria-hidden="true" />
+                Todas las sucursales
+              </span>
+            )}
+            {member.email ? (
+              <span className="inline-flex items-center gap-1">
+                <Mail className="size-3.5" aria-hidden="true" />
+                {member.email}
+              </span>
+            ) : null}
+            {member.phone ? (
+              <span className="inline-flex items-center gap-1">
+                <Phone className="size-3.5" aria-hidden="true" />
+                {member.phone}
+              </span>
+            ) : null}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Servicios: {assignedServices.length > 0 ? assignedServices.map((s) => s.name).join(", ") : "Todos los servicios"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {member.calendarFeedUrl ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowFeed(!showFeed)}
+              aria-label={`Ver feed de calendario de ${member.name}`}
+            >
+              <Calendar className="mr-1 size-3.5" aria-hidden="true" />
+              Feed iCal
+            </Button>
           ) : null}
-          {member.phone ? (
-            <span className="inline-flex items-center gap-1">
-              <Phone className="size-3.5" aria-hidden="true" />
-              {member.phone}
-            </span>
-          ) : null}
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Servicios: {assignedServices.length > 0 ? assignedServices.map((s) => s.name).join(", ") : "Todos los servicios"}
-        </p>
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)} aria-label={`Editar ${member.name}`}>
+            <Pencil className="size-4" aria-hidden="true" />
+            Editar
+          </Button>
+          <ConfirmButton
+            variant="ghost"
+            size="sm"
+            confirmLabel="¿Borrar profesional?"
+            loading={deleteMutation.isPending}
+            onConfirm={() => deleteMutation.mutate(member.id)}
+          >
+            Borrar
+          </ConfirmButton>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => setEditing(true)} aria-label={`Editar ${member.name}`}>
-          <Pencil className="size-4" aria-hidden="true" />
-          Editar
-        </Button>
-        <ConfirmButton
-          variant="ghost"
-          size="sm"
-          confirmLabel="¿Borrar profesional?"
-          loading={deleteMutation.isPending}
-          onConfirm={() => deleteMutation.mutate(member.id)}
-        >
-          Borrar
-        </ConfirmButton>
-      </div>
+
+      {showFeed && member.calendarFeedUrl ? (
+        <div className="rounded-md border border-border bg-surface p-3 text-xs">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="font-medium text-foreground">Feed iCal de {member.name}</span>
+            <ConfirmButton
+              variant="ghost"
+              size="sm"
+              confirmLabel="¿Regenerar enlace? Se revocarán suscripciones anteriores."
+              loading={rotateFeedMutation.isPending}
+              onConfirm={() => rotateFeedMutation.mutate(member.id)}
+            >
+              <RefreshCw className="mr-1 size-3" aria-hidden="true" />
+              Regenerar
+            </ConfirmButton>
+          </div>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="text"
+              readOnly
+              value={member.calendarFeedUrl}
+              aria-label={`URL de feed iCal de ${member.name}`}
+              className="w-full rounded border border-input bg-card px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <Button
+              variant={copiedFeed ? "primary" : "secondary"}
+              size="sm"
+              onClick={handleCopyFeed}
+              className="shrink-0"
+            >
+              {copiedFeed ? (
+                <>
+                  <Check className="mr-1 size-3" aria-hidden="true" />
+                  Copiado
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-1 size-3" aria-hidden="true" />
+                  Copiar
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {deleteMutation.isError ? (
         <p role="alert" className="w-full text-sm text-danger">
           {deleteMutation.error instanceof ApiError

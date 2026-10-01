@@ -259,24 +259,35 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 | Organization – Subscription | 1:1 activa (histórico 1:N) | |
 | Membership – Role | N:1 | rol por membresía, no por usuario global |
 
-## 9b. Reservas (F5.1, `BACKLOG_FASE_5.md`)
+## 9b. Reservas (F5.1, F7.9a/b/c, `BACKLOG_FASE_5.md`, `BACKLOG_FASE_7.md`)
 
 - **BookingSettings** (1:1 con Site, PK `site_id`): organization_id, enabled, time_zone (IANA),
   weekly_hours (JSON validado con `weeklyHoursSchema`), min_notice_minutes, max_advance_days,
-  buffer_minutes, slot_interval_minutes.
+  buffer_minutes, slot_interval_minutes, **calendar_feed_token** (F7.9c: token seguro para feed iCal .ics público).
+- **BookingBranch** (F7.9a, Site 1:N): organization_id, name, address, phone, position, created_at, updated_at.
+- **BookingStaff** (F7.9a, Site 1:N, BookingBranch N:1 con `SET NULL`): organization_id, name, title, email, phone,
+  avatar_url, active, position, weekly_hours (JSON opcional para horario propio de profesional, F7.9b),
+  **calendar_feed_token** (F7.9c: token seguro para feed iCal .ics personal del profesional), created_at, updated_at.
+- **ServiceStaff** (F7.9a, N:M entre BookableService y BookingStaff): service_id, staff_id, asignación calificada.
 - **BookableService** (Site 1:N): organization_id, name, description, duration_minutes,
   price_amount + price_currency (unidad mínima + ISO), payment_url (enlace externo del negocio:
   Impulza no cobra, decisión #6), active, position.
-- **BookingBlackout** (Site 1:N): organization_id, starts_at, ends_at (fin exclusivo), reason.
-- **Booking** (F5.2; Site 1:N, BookableService 1:N con `SET NULL`, Contact 1:N con `SET NULL`):
+- **BookingBlackout** (Site 1:N, BookingStaff N:1 con `SET NULL` opcional para bloqueos por profesional, F7.9b):
+  organization_id, starts_at, ends_at (fin exclusivo), reason, staff_id.
+- **Booking** (F5.2; Site 1:N, BookableService 1:N con `SET NULL`, Contact 1:N con `SET NULL`, BookingBranch N:1 con `SET NULL`, BookingStaff N:1 con `SET NULL`):
   organization_id, copia del servicio al reservar (service_name, duration_minutes, price_amount,
-  price_currency, payment_url), starts_at/ends_at, time_zone, datos del cliente (customer_name,
+  price_currency, payment_url), starts_at/ends_at, time_zone, branch_id, staff_id, datos del cliente (customer_name,
   customer_email, customer_phone, note), status (`CONFIRMED`/`CANCELLED`/`COMPLETED`/`NO_SHOW`),
-  source (`PUBLIC`/`MANUAL`), cancelled_at. Sin doble reserva: restricción de exclusión
-  `bookings_no_overlap` (`btree_gist`) sobre `(site_id =, tstzrange(starts_at, ends_at) &&)` de las
-  `CONFIRMED`. F5.4: `reminder_sent_at` (lo reclama el worker antes de enviar; reprogramar lo
+  source (`PUBLIC`/`MANUAL`), cancelled_at, **google_event_id** (F7.9c: ID del evento sincronizado en Google Calendar).
+  Sin doble reserva: restricción de exclusión
+  `bookings_no_overlap` (`btree_gist`) sobre `(site_id =, coalesce(staff_id, '00000000-0000-0000-0000-000000000000'::uuid) =, tstzrange(starts_at, ends_at) &&)` de las
+  `CONFIRMED` y `PENDING_PAYMENT`. F5.4: `reminder_sent_at` (lo reclama el worker antes de enviar; reprogramar lo
   vuelve a `null`). El enlace para que el cliente gestione su reserva no se guarda: se firma con
   HMAC (`BOOKING_LINK_SECRET`).
+- **GoogleCalendarConnection** (F7.9c; Site 1:N, Organization 1:N, BookingStaff 1:1 con `SET NULL`):
+  organization_id, site_id, staff_id (opcional para profesional; null si es del sitio), access_token_encrypted,
+  refresh_token_encrypted, token_type, expires_at, email, calendar_id, status (`ACTIVE`/`REVOKED`/`ERROR`),
+  last_sync_at, last_error, created_at, updated_at. Cifrado simétrico AES-256-GCM. Desacoplado si faltan credenciales en el entorno.
 
 ## 9c. Catálogo y pedidos (F5.5, `BACKLOG_FASE_5.md`)
 

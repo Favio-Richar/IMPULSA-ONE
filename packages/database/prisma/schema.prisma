@@ -232,6 +232,7 @@ model Organization {
   emailSequences      EmailSequence[]
   emailSequenceEnrollments EmailSequenceEnrollment[]
   emailSequenceSends  EmailSequenceSend[]
+  googleCalendarConnections GoogleCalendarConnection[]
 
   @@map("organizations")
 }
@@ -472,6 +473,7 @@ model Site {
   bookingBranches     BookingBranch[]
   bookingStaff        BookingStaff[]
   bookings            Booking[]
+  googleCalendarConnections GoogleCalendarConnection[]
   productCategories   ProductCategory[]
   products            Product[]
   productVariants     ProductVariant[]
@@ -1146,6 +1148,7 @@ model BookingStaff {
   services     ServiceStaff[]
   blackouts    BookingBlackout[]
   bookings     Booking[]
+  googleCalendarConnections GoogleCalendarConnection[]
 
   @@index([siteId, position])
   @@index([organizationId])
@@ -1276,6 +1279,7 @@ model Booking {
   paymentExpiredAt     DateTime? @map("payment_expired_at") @db.Timestamptz(6)
   // F5.11a: cuánto se devolvió de la seña (leído de Mercado Pago; `CHECK` ≤ seña).
   depositRefundedAmount Int      @default(0) @map("deposit_refunded_amount")
+  googleEventId   String?       @map("google_event_id")
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1292,6 +1296,38 @@ model Booking {
   @@index([staffId, startsAt])
   @@index([branchId, startsAt])
   @@map("bookings")
+}
+
+// Conexión OAuth con Google Calendar por sitio o por profesional (F7.9c, ADR-024).
+// Excepción acotada a "no custodiar credenciales de terceros": los tokens se guardan cifrados
+// (AES-256-GCM, AUTH_ENCRYPTION_KEY) y nunca salen en respuestas, logs ni auditoría.
+model GoogleCalendarConnection {
+  id                    String        @id @default(uuid()) @db.Uuid
+  organizationId        String        @map("organization_id") @db.Uuid
+  siteId                String        @map("site_id") @db.Uuid
+  staffId               String?       @map("staff_id") @db.Uuid
+  email                 String
+  calendarId            String        @default("primary") @map("calendar_id")
+  accessTokenEncrypted  String        @map("access_token_encrypted")
+  refreshTokenEncrypted String        @map("refresh_token_encrypted")
+  expiresAt             DateTime      @map("expires_at") @db.Timestamptz(6)
+  status                String        @default("CONNECTED")
+  channelId             String?       @map("channel_id")
+  resourceId            String?       @map("resource_id")
+  syncToken             String?       @map("sync_token")
+  lastSyncAt            DateTime?     @map("last_sync_at") @db.Timestamptz(6)
+  lastError             String?       @map("last_error")
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  staff        BookingStaff? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([siteId])
+  @@index([staffId])
+  @@map("google_calendar_connections")
 }
 
 // --- Catálogo y pedidos (F5.5, BACKLOG_FASE_5.md) ---

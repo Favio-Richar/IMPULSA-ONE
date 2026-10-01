@@ -39,6 +39,8 @@ export const bookingSettingsResponse = z.object({
   maxAdvanceDays: z.number().int(),
   bufferMinutes: z.number().int(),
   slotIntervalMinutes: z.number().int(),
+  calendarFeedToken: z.string().nullable().optional(),
+  calendarFeedUrl: z.string().nullable().optional(),
 });
 export type BookingSettingsResponse = z.infer<typeof bookingSettingsResponse>;
 
@@ -96,10 +98,39 @@ export const bookingStaffResponse = z.object({
     })
     .nullable(),
   serviceIds: z.array(uuid),
+  calendarFeedToken: z.string().nullable().optional(),
+  calendarFeedUrl: z.string().nullable().optional(),
   createdAt: isoDateTime,
   updatedAt: isoDateTime,
 });
 export type BookingStaffResponse = z.infer<typeof bookingStaffResponse>;
+
+export const calendarFeedInfoResponse = z.object({
+  token: z.string(),
+  feedUrl: z.string(),
+});
+export type CalendarFeedInfoResponse = z.infer<typeof calendarFeedInfoResponse>;
+
+export const googleCalendarConnectionResponse = z.object({
+  id: uuid,
+  organizationId: uuid,
+  siteId: uuid,
+  staffId: uuid.nullable(),
+  email: z.string(),
+  calendarId: z.string(),
+  status: z.string(),
+  connectedAt: isoDateTime,
+  lastSyncAt: isoDateTime.nullable(),
+  lastError: z.string().nullable(),
+});
+export type GoogleCalendarConnectionResponse = z.infer<typeof googleCalendarConnectionResponse>;
+
+export const googleCalendarStatusResponse = z.object({
+  configured: z.boolean(),
+  connection: googleCalendarConnectionResponse.nullable(),
+  staffConnections: z.array(googleCalendarConnectionResponse),
+});
+export type GoogleCalendarStatusResponse = z.infer<typeof googleCalendarStatusResponse>;
 
 export const bookingBlackoutResponse = z.object({
   id: uuid,

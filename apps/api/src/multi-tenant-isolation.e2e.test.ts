@@ -1249,6 +1249,29 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         .send({ startsAt: "2030-01-01T10:00:00Z", endsAt: "2030-01-01T12:00:00Z", staffId: staffB.id })
         .expect(404);
     });
+
+    it("F7.9c: A no rota ni lee feeds de calendario ni administra conexiones de Google Calendar de B", async () => {
+      const baseA = `/api/v1/organizations/${orgA.id}/sites/${orgA.siteId}/booking`;
+      const baseB = `/api/v1/organizations/${orgB.id}/sites/${orgB.siteId}/booking`;
+
+      const staffB = (await orgB.ownerAgent.post(`${baseB}/staff`).set(CSRF_HEADERS).send({ name: "Dr. Feed de B" }).expect(201)).body;
+
+      // A no puede rotar feed de sitio de B con URL de B (403) ni con su propia URL (404)
+      await orgA.ownerAgent.post(`${baseB}/settings/rotate-calendar-feed`).set(CSRF_HEADERS).expect(403);
+      await orgA.ownerAgent.post(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/booking/settings/rotate-calendar-feed`).set(CSRF_HEADERS).expect(404);
+
+      // A no puede rotar feed del profesional de B (403 o 404)
+      await orgA.ownerAgent.post(`${baseB}/staff/${staffB.id}/rotate-calendar-feed`).set(CSRF_HEADERS).expect(403);
+      await orgA.ownerAgent.post(`${baseA}/staff/${staffB.id}/rotate-calendar-feed`).set(CSRF_HEADERS).expect(404);
+
+      // A no puede leer estado de Google Calendar de B (403 o 404)
+      await orgA.ownerAgent.get(`${baseB}/google-calendar`).expect(403);
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/booking/google-calendar`).expect(404);
+
+      // A no puede desconectar Google Calendar de B
+      await orgA.ownerAgent.delete(`${baseB}/google-calendar`).set(CSRF_HEADERS).expect(403);
+      await orgA.ownerAgent.delete(`/api/v1/organizations/${orgA.id}/sites/${orgB.siteId}/booking/google-calendar`).set(CSRF_HEADERS).expect(404);
+    });
   });
 
   describe("Reserva pública (F5.2/F5.7): no cruza sitios ni organizaciones", () => {

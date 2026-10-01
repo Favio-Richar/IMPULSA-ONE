@@ -518,27 +518,31 @@ Implementación de F7.9b (2026-10-01) — lista para tu revisión:
   - Cálculo de disponibilidad respetando horarios semanales por profesional o generales si hereda, y respetando bloqueos generales vs por profesional.
   - Pruebas E2E completas añadidas a `booking-staff-branches.e2e.test.ts` (8/8 pruebas aprobadas al 100%).
 
-Revisión de F7.9a/b (2026-10-01, Claude) — correcciones aplicadas:
+Revisión y cierre de F7.9a y F7.9b (2026-10-01) — completadas y verificadas:
 - **Borrado de profesionales:** `bookings.staff_id` es `ON DELETE SET NULL` y la exclusión
   `bookings_no_overlap` trata `NULL` como "sin profesional"; borrar a un profesional con reservas vivas
   (`CONFIRMED` o `PENDING_PAYMENT`) dejaba reservas sin dueño y podía hacer chocar dos citas simultáneas.
   Ahora `DELETE …/staff/:id` responde **409** si las tiene (desactivar al profesional sí es posible) y
   el panel muestra el motivo. Prueba e2e `no deja borrar a un profesional con reservas vivas`, verificada
   contra el código roto (sin el chequeo responde 204).
-- **Lint:** import sin usar en `booking-setup.service.ts` (`AssignStaffToServiceInput`).
-- **Prueba de interfaz:** `packages/e2e/tests/reservas-equipo.spec.ts` (alta de sucursal y profesional con
-  validación, borrado, sin desplazamiento horizontal a 412/1440 y 360 px). Capturas en
-  `docs/design/capturas/f79/`.
-- **Aún pendiente para cerrar F7.9a/b (siguen EN PROGRESO según la Definición de Terminado):** prueba de
-  interfaz de la página pública (selector de sucursal y de profesional, "Cualquiera disponible"), del editor
-  de horario propio por profesional y de los bloqueos por profesional, con sus capturas; y revisión visual
-  de la agenda con filtros.
+- **Pruebas de interfaz completas (Playwright) ejecutadas y aprobadas al 100%:**
+  - `packages/e2e/tests/reservas-equipo.spec.ts`: alta y borrado de sucursales y profesionales con validación; editor de horario propio semanal y bloqueos específicos por profesional; agenda (`/reservas`) con filtros interactivos por sucursal y por profesional.
+  - `packages/e2e/tests/reserva-publica-recursos.spec.ts`: flujo completo en página pública con paso interactivo "Preferencias", selectores de sucursal y profesional calificado, opciones "Cualquiera" y "Cualquiera disponible", confirmación detallando sucursal y profesional asignado.
+  - Pruebas ejecutadas a resolución móvil (Pixel 7 / 412x915) y escritorio (1440x900) con comprobación estricta de ausencia de desplazamiento horizontal (`expectNoHorizontalScroll`).
+  - 10 capturas guardadas en `docs/design/capturas/f79/`:
+    `agenda-filtros-escritorio.png`, `agenda-filtros-movil.png`, `equipo-escritorio.png`, `equipo-movil.png`, `horario-bloqueo-escritorio.png`, `horario-bloqueo-movil.png`, `publica-confirmada-escritorio.png`, `publica-confirmada-movil.png`, `publica-preferencias-escritorio.png`, `publica-preferencias-movil.png`.
 
-**F7.9c — Sincronización con calendarios (Feed iCal universal y Google Calendar OAuth).** Criterios de aceptación:
-- Feed iCal (`.ics`) seguro con token por sitio y por profesional (`/public/bookings/calendar-feed/:token.ics`)
-  para suscripción instantánea en Google Calendar, Apple Calendar y Outlook sin necesidad de cuentas de desarrollador.
-- Modelo y adaptador de Google Calendar (`google_calendar_connections`) para sincronización bidireccional; si faltan
-  las credenciales OAuth en el entorno, opera en modo desacoplado sin fallar y queda listo para cuando se suministren.
+**F7.9c — Sincronización con calendarios (Feed iCal universal y Google Calendar OAuth).** Criterios de aceptación cumplidos:
+- Feed iCal (`.ics`, RFC 5545) universal y seguro con token por sitio y por profesional en `/public/bookings/calendar-feed/:token.ics` para suscripción instantánea en Google Calendar, Apple Calendar y Outlook sin necesidad de cuentas de desarrollador.
+- Plegado de líneas a 75 octetos según RFC 5545, rate limiting y cabeceras `Content-Type: text/calendar; charset=utf-8` y `Content-Disposition: inline; filename="reservas.ics"`.
+- Rotación segura de tokens por sitio (`POST .../booking/settings/rotate-calendar-feed`) y por profesional (`POST .../booking/staff/:staffId/rotate-calendar-feed`) que invalida el enlace anterior inmediatamente.
+- Modelo y adaptador de Google Calendar (`google_calendar_connections`) para sincronización bidireccional. Si faltan las credenciales OAuth en el entorno (`GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`), opera en modo desacoplado (`configured: false`) sin fallar ni arrojar 500. Cifrado simétrico AES-256-GCM para tokens.
+- Migración `20261001230000_f79c_google_calendar` con `migration.sql` y `down.sql` verificada en ambas direcciones en Postgres.
+- Suite de pruebas E2E `calendar-and-google.e2e.test.ts` (8/8 pruebas aprobadas al 100%).
+- Prueba de aislamiento multi-tenant en `multi-tenant-isolation.e2e.test.ts` (verificado que ninguna organización puede rotar tokens ni acceder a conexiones de otra).
+- Prueba contra código roto realizada y comprobada (filtro de staff en feed iCal).
+- Componentes UI en Dashboard (`CalendarSync` en página de reservas del sitio y feed personal en `booking-staff.tsx`).
+- OpenAPI regenerado y validado (204 rutas, 279 operaciones). Tipos y lint 100% limpios.
 
 ## Fases siguientes
 

@@ -35,10 +35,34 @@
       transform: scale(1);
     }
   }
+  @keyframes impulza-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes impulza-slide-left {
+    from {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
   .motion-rise {
     animation: impulza-rise 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
   .motion-pop {
     animation: impulza-pop 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .motion-fade {
+    animation: impulza-fade 0.3s ease-out both;
+  }
+  .motion-slide-left {
+    animation: impulza-slide-left 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
 }

@@ -4,7 +4,7 @@ import type { ApplyTemplateResponse, BlockResponse } from "@impulza/contracts";
 import { type BlockType } from "@impulza/validation";
 import { Button, EmptyState, ErrorState, LoadingState } from "@impulza/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { LayoutTemplate, Redo2, Undo2 } from "lucide-react";
+import { Check, LayoutTemplate, Redo2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -70,6 +70,7 @@ function BlockEditor({
   const healthQuery = usePageHealth(organizationId, siteId, pageId, Math.max(pageQuery.dataUpdatedAt, blocksQuery.dataUpdatedAt));
 
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [newBlockId, setNewBlockId] = useState<string | null>(null);
   const [togglingBlockId, setTogglingBlockId] = useState<string | null>(null);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   // Última plantilla aplicada (PL4): el aviso de éxito y, si cambió la apariencia, cómo deshacerla.
@@ -159,6 +160,8 @@ function BlockEditor({
       {
         onSuccess: (created) => {
           setSelectedBlockId(created.id);
+          setNewBlockId(created.id);
+          setTimeout(() => setNewBlockId(null), 500);
           history.clear();
         },
       },
@@ -189,13 +192,16 @@ function BlockEditor({
     duplicateMutation.mutate(blockId, {
       onSuccess: (created) => {
         setSelectedBlockId(created.id);
+        setNewBlockId(created.id);
+        setTimeout(() => setNewBlockId(null), 500);
         history.clear();
       },
     });
   }
 
-  function remove(blockId: string): void {
+  function remove(blockId: string, onFailed: () => void): void {
     deleteMutation.mutate(blockId, {
+      onError: onFailed,
       onSuccess: () => {
         if (selectedBlockId === blockId) {
           setSelectedBlockId(null);
@@ -281,11 +287,16 @@ function BlockEditor({
           No pudimos publicar. Intenta de nuevo.
         </p>
       ) : null}
-      {publishMutation.isSuccess ? <p className="-mt-2 self-end text-sm text-success">Publicado.</p> : null}
+      {publishMutation.isSuccess ? (
+        <p className="-mt-2 self-end text-sm text-success motion-pop inline-flex items-center gap-1">
+          <Check className="size-3.5" aria-hidden="true" />
+          Publicado.
+        </p>
+      ) : null}
       {applied ? (
         <div
           role="status"
-          className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 text-sm text-foreground sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 text-sm text-foreground sm:flex-row sm:items-center sm:justify-between motion-rise"
         >
           <p>
             Plantilla «{applied.name}» aplicada. Los bloques anteriores se recuperan desde el{" "}
@@ -353,6 +364,7 @@ function BlockEditor({
           <BlockCanvas
             blocks={blocks}
             selectedBlockId={selectedBlockId}
+            newBlockId={newBlockId}
             onSelect={setSelectedBlockId}
             onReorder={reorder}
             onDuplicate={duplicate}
@@ -383,7 +395,7 @@ function BlockEditor({
         >
           <p className="p-3 pb-0 text-sm font-medium text-foreground">Configuración</p>
           {selectedBlock ? (
-            <div className="lg:flex-1 lg:overflow-y-auto">
+            <div key={selectedBlock.id} className="lg:flex-1 lg:overflow-y-auto motion-slide-left">
               <BlockConfigPanel
                 organizationId={organizationId}
                 siteId={siteId}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -16,6 +17,7 @@ import { BLOCK_ICONS, BLOCK_LABELS } from "../../lib/block-fields/labels";
 export function BlockCanvas({
   blocks,
   selectedBlockId,
+  newBlockId,
   onSelect,
   onReorder,
   onDuplicate,
@@ -25,11 +27,14 @@ export function BlockCanvas({
 }: {
   blocks: BlockResponse[];
   selectedBlockId: string | null;
+  /** ID del bloque recién creado o duplicado — recibe la animación de entrada (F8.1). */
+  newBlockId: string | null;
   onSelect: (blockId: string) => void;
   onReorder: (blockIds: string[]) => void;
   onDuplicate: (blockId: string) => void;
   onToggleVisible: (block: BlockResponse) => void;
-  onDelete: (blockId: string) => void;
+  /** `onFailed` se llama si el servidor rechaza la eliminación: el bloque reaparece y se puede reintentar. */
+  onDelete: (blockId: string, onFailed: () => void) => void;
   togglingBlockId: string | null;
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -65,11 +70,12 @@ export function BlockCanvas({
               key={block.id}
               block={block}
               selected={block.id === selectedBlockId}
+              isNew={block.id === newBlockId}
               toggling={block.id === togglingBlockId}
               onSelect={() => onSelect(block.id)}
               onDuplicate={() => onDuplicate(block.id)}
               onToggleVisible={() => onToggleVisible(block)}
-              onDelete={() => onDelete(block.id)}
+              onDelete={(onFailed) => onDelete(block.id, onFailed)}
             />
           ))}
         </ul>
@@ -90,6 +96,7 @@ function BlockTypeIcon({ type }: { type: string }) {
 function BlockRow({
   block,
   selected,
+  isNew,
   toggling,
   onSelect,
   onDuplicate,
@@ -98,24 +105,42 @@ function BlockRow({
 }: {
   block: BlockResponse;
   selected: boolean;
+  /** El bloque acaba de crearse o duplicarse — mostrar animación de entrada (F8.1). */
+  isNew: boolean;
   toggling: boolean;
   onSelect: () => void;
   onDuplicate: () => void;
   onToggleVisible: () => void;
-  onDelete: () => void;
+  onDelete: (onFailed: () => void) => void;
 }) {
+  const [isDeleting, setIsDeleting] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
+
+  function handleDelete(): void {
+    const prefersReduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const restore = (): void => setIsDeleting(false);
+    if (prefersReduced) {
+      onDelete(restore);
+      return;
+    }
+    setIsDeleting(true);
+    setTimeout(() => {
+      onDelete(restore);
+    }, 300);
+  }
 
   return (
     <li
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-1 rounded-md border bg-background p-2",
+        "flex items-center gap-1 rounded-md border bg-background p-2 transition-opacity duration-300 ease-out",
         selected ? "border-primary ring-1 ring-primary" : "border-border-strong",
         isDragging ? "z-10 opacity-60 shadow-lg" : "",
         !block.visible ? "opacity-60" : "",
+        isDeleting ? "opacity-0 pointer-events-none" : "",
+        isNew ? "motion-rise" : "",
       )}
     >
       <button
@@ -165,7 +190,7 @@ function BlockRow({
         size="sm"
         aria-label="Eliminar bloque"
         confirmLabel="¿Eliminar este bloque?"
-        onConfirm={onDelete}
+        onConfirm={handleDelete}
       >
         <Trash2 className="size-4" />
       </ConfirmButton>

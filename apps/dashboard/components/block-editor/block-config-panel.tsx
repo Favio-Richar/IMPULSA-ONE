@@ -12,7 +12,7 @@ import {
 } from "@impulza/validation";
 import type { BlockResponse } from "@impulza/contracts";
 import { Button } from "@impulza/ui";
-import { Languages, Sparkles } from "lucide-react";
+import { Check, Languages, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { BLOCK_FIELD_SETS } from "../../lib/block-fields/catalog";
@@ -303,7 +303,12 @@ function SaveStatusIndicator({ status, onRetry }: { status: SaveStatus; onRetry:
     return <span className="text-sm text-muted-foreground">Guardando…</span>;
   }
   if (status === "saved") {
-    return <span className="text-sm text-success">Guardado</span>;
+    return (
+      <span className="inline-flex items-center gap-1 text-sm text-success motion-pop">
+        <Check className="size-3.5" aria-hidden="true" />
+        Guardado
+      </span>
+    );
   }
   if (status === "invalid") {
     return <span className="text-sm text-muted-foreground">Revisa los campos marcados abajo</span>;

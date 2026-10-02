@@ -2199,6 +2199,7 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     it("A no lee las estadísticas de newsletter de B, y los suscriptores de B no se suman a A", async () => {
       // A no puede consultar las estadísticas de B (403 Forbidden)
       await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/newsletter/stats`).expect(403);
+      const statsAAntes = (await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/newsletter/stats`).expect(200)).body;
 
       // Crear una suscripción confirmada en B
       const email = `sub-b-${Date.now().toString(36)}${TEST_EMAIL_DOMAIN}`;
@@ -2219,10 +2220,22 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
           organizationId: orgB.id,
           name: "Suscriptor B",
           email,
-          marketingConsent: true,
+          // Así registra el sistema una suscripción confirmada: `stats` cuenta el origen `newsletter:<sitio>`.
           marketingConsentAt: new Date(),
-          marketingConsentSource: "newsletter",
+          marketingConsentSource: `newsletter:${orgB.siteId}`,
           tags: ["newsletter"],
+        },
+      });
+      // Y una confirmación pendiente (aún vigente) de B.
+      const pendingEmail = `pend-b-${Date.now().toString(36)}${TEST_EMAIL_DOMAIN}`;
+      await prisma.newsletterConfirmation.create({
+        data: {
+          organizationId: orgB.id,
+          siteId: orgB.siteId,
+          email: pendingEmail,
+          tokenHash: createHash("sha256").update(randomBytes(32).toString("hex")).digest("hex"),
+          consentTextVersion: "2026-09-30",
+          expiresAt: new Date(Date.now() + 48 * 3600 * 1000),
         },
       });
 
@@ -2230,14 +2243,15 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         // Las estadísticas de B reflejan su suscriptor confirmado
         const statsB = (await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/newsletter/stats`).expect(200)).body;
         expect(statsB.confirmedSubscribers).toBeGreaterThanOrEqual(1);
+        expect(statsB.marketingAudience).toBeGreaterThanOrEqual(1);
+        expect(statsB.pendingConfirmations).toBeGreaterThanOrEqual(1);
 
         // Las estadísticas de A no se contaminan con el suscriptor de B
         const statsA = (await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/newsletter/stats`).expect(200)).body;
-        expect(statsA.confirmedSubscribers).toBe(0);
-        expect(statsA.marketingAudience).toBe(0);
+        expect(statsA).toEqual(statsAAntes);
       } finally {
         await prisma.contact.deleteMany({ where: { email } });
-        await prisma.newsletterConfirmation.deleteMany({ where: { email } });
+        await prisma.newsletterConfirmation.deleteMany({ where: { email: { in: [email, pendingEmail] } } });
       }
     });
   });

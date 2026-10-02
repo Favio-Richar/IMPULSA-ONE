@@ -26,8 +26,9 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
   - **F7.12 (Aislamiento y seguridad de la Fase 7):**
     - Auditoría de Rate Limiting: corrección en `CalendarFeedController` agregando `RateLimitGuard` (que faltaba en `@UseGuards`), habilitando el decorador `@RateLimit(60, 60)` y documentando `@ApiRateLimited(60, 60)`. Prueba e2e en `calendar-and-google.e2e.test.ts` verificada contra código roto.
     - Auditoría de Secretos en Logs: ampliación de `redactPath` en `apps/api/src/common/redact-path.ts` para redactar tokens de newsletter, unsubscribe, bookings, orders, downloads y parámetros sensibles de query. Pruebas unitarias completas en `redact-path.test.ts` (8/8) verificadas contra código roto.
-    - Auditoría de Aislamiento Multi-Tenant: suite de aislamiento para estadísticas de Newsletter (F7.4) en `multi-tenant-isolation.e2e.test.ts` (verificado 403 entre tenants y conteos aislados).
+    - Auditoría de Aislamiento Multi-Tenant: suite de aislamiento para estadísticas de Newsletter (F7.4) en `multi-tenant-isolation.e2e.test.ts`. **Revisada por Claude:** la prueba entregada fallaba (usaba un campo inexistente de `Contact` y un origen de consentimiento que `stats` no cuenta); corregida y verificada rompiendo el filtro por organización.
     - OpenAPI regenerado con código 429 documentado en el feed.
+  - **F7.12 revisada y corregida por Claude:** se agregó `apps/api/src/security-audit.test.ts` (auditoría estática permanente: `@RateLimit` exige `RateLimitGuard`, toda ruta `/public` tiene límite, todo token en la ruta lo oculta `redactPath`, toda ruta de organización que modifica exige permiso) y `request-context.middleware.test.ts` (los logs y Sentry usan de verdad `redactPath`). Detalle y límites en "Revisión de F7.12" de `docs/BACKLOG_FASE_7.md`.
   - **Fase 7 concluida.** Pendiente revisión final del propietario.
 - ADR más reciente: ADR-026 (superadministración: operación técnica, colas BullMQ, feature flags y plantillas).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
@@ -203,6 +204,8 @@ desarrollo los correos no se envían: se imprimen en la consola de la API (`emai
 - **No cortar `pnpm turbo` con `Select-Object -First N`**: cierra el pipe y mata el proceso (exit 255).
   Redirigir toda la salida a un archivo y leerlo después.
 - **Un interruptor sin consumidores engaña** (F7.11): toda bandera nueva debe tener rutas reales que la consulten (`FeatureFlagGuard` + `@RequireFeature`) y una prueba e2e de efecto, no solo "se guarda en la base". Las listas de nombres que se usan para actuar sobre algo real (colas, plantillas) se comparan en un test con la fuente de verdad del código.
+- **La auditoría de seguridad es un test, no una lista**: las reglas (límite de peticiones con su guard, redacción de tokens de la URL, permisos en rutas mutantes) viven en `apps/api/src/security-audit.test.ts` y se aplican a cada ruta nueva. Si agregas una ruta pública, un token en la ruta o una ruta de organización sin permiso, ese test falla y dice cuál; solo se añade a la lista de excepciones con su justificación.
+- **Los enlaces firmados no vencen**: reserva (`/public/bookings/:token`), baja de correo, descarga y estado de pedido son `id.firma` HMAC **sin vencimiento** y no se revocan uno a uno (solo rotando `BOOKING_LINK_SECRET`, que invalida todos). Hoy no exponen datos personales del cliente, pero no afirmar "vigencia" en documentos. Es una decisión pendiente del propietario.
 - **Lint de la API ≠ el archivo que crees**: el error `no-unused-vars` apunta a una línea concreta;
   buscar el símbolo con grep antes de borrar un import (un `type` importado en dos archivos).
 

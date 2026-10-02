@@ -760,6 +760,15 @@ Implementación y auditoría de F7.12 (2026-10-02) — lista para tu revisión:
 - **Documentación OpenAPI:**
   - Regenerada con 214 rutas y 289 operaciones (`docs/api/openapi.json`), documentando el código 429 en el feed iCal de reservas.
 
+Revisión de F7.12 (2026-10-02, Claude) — la auditoría entregada era parcial y tenía una prueba rota:
+- **La prueba de aislamiento de newsletter no pasaba:** insertaba un campo que no existe en `Contact` (`marketingConsent`) y un origen `"newsletter"` cuando `stats` cuenta `newsletter:<sitio>`. Corregida (y reforzada con una confirmación pendiente y la comparación de las estadísticas de A antes y después); rompiendo el filtro por organización de `stats` ahora falla.
+- **El criterio 5 afirmaba vigencia que no existe.** Newsletter sí (48 h, hash SHA-256) y el `state` de Google sí (10 min), pero los enlaces de **reserva, baja de correo, descarga y estado de pedido** son `id.firma` HMAC **sin vencimiento**, y solo se revocan todos a la vez rotando `BOOKING_LINK_SECRET`. Los feeds iCal se guardan en texto plano en la base (hay que poder mostrar la URL) y se rotan con un clic. Riesgo bajo hoy: esas respuestas públicas no incluyen nombre, correo ni teléfono del cliente. **Decisión pendiente del propietario:** ¿vencimiento para el enlace de gestión de reserva (p. ej. 30 días tras la cita)?
+- **Auditoría convertida en test permanente** (`apps/api/src/security-audit.test.ts`, 5 pruebas sobre las ~295 rutas): (1) toda `@RateLimit` tiene `RateLimitGuard`; (2) toda ruta `/public` tiene límite; (3) todo token en la ruta queda oculto por `redactPath`; (4) toda ruta de organización que modifica datos exige `@RequirePermission`, salvo 4 justificadas (tickets de soporte, audiencia de campaña, lectura comercial con IA para el rol ANALYST). Cada regla verificada rompiendo el código.
+- **`redactPath` se prueba donde importa:** `request-context.middleware.test.ts` comprueba que el log de cada petición y el filtro de excepciones (Sentry) usan la ruta redactada; antes solo se probaba la función suelta. Las 6 reglas de redacción verificadas una por una quitándolas.
+- **Barrido de accesos por `id` sin filtrar por organización** en los módulos nuevos (bookings, catálogo, campañas, embudos, webhooks, secuencias, newsletter, admin): 29 consultas sin `organizationId` en la misma llamada, todas con el `id` ya autorizado (de una fila verificada, un webhook con firma, un token firmado o el panel de superadministración). Sin hallazgos de acceso a datos ajenos.
+- **Secretos en logs:** ningún `logger` registra tokens, secretos ni claves; el secreto de un webhook (`whsec_…`) solo se devuelve al crearlo o rotarlo.
+- **Límites de esta auditoría:** el aislamiento se verificó por cobertura de rutas (todas las familias de rutas de F7 aparecen en `multi-tenant-isolation.e2e.test.ts`) y con las pruebas e2e de cada módulo; no se hizo una prueba de intrusión ni se auditaron las dependencias (eso corre en CI).
+
 ## Fases siguientes
 
 | Fase | Contenido | Estado |

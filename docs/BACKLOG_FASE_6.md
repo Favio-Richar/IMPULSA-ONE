@@ -33,8 +33,8 @@ Precondición: Fase 5 completa salvo lo bloqueado por la decisión #6 (cobros). 
 | F6.5 — Pruebas A/B | Lista para tu revisión (ADR-011; capturas en `docs/design/capturas/f65/`) |
 | F6.6 — Smart CTA | Lista para tu revisión (capturas en `docs/design/capturas/f66/`) |
 | F6.7 — Automatizaciones básicas | Lista para tu revisión (capturas en `docs/design/capturas/f67/`) |
-| F6.8 — Modo agencia | Bloqueado (decisión #8) |
-| F6.9 — Marca blanca | Bloqueado (decisión #8) |
+| F6.8 — Modo agencia | Desbloqueado el 2026-10-02 (ADR-028): se desarrolla en la Fase 9 (F9.3 a F9.6), ver `BACKLOG_FASE_9.md` |
+| F6.9 — Marca blanca | Desbloqueado el 2026-10-02 (ADR-028): se desarrolla en la Fase 9 (F9.7), ver `BACKLOG_FASE_9.md` |
 | F6.10 — Aislamiento y seguridad de Fase 6 | Lista para tu revisión (casos de F6.1–F6.7 en `multi-tenant-isolation.e2e.test.ts`; F6.8–F6.9 sumarán los suyos cuando se desbloqueen) |
 
 ### Bitácora de avance (para retomar)

@@ -1,0 +1,117 @@
+# ADR-028: Agencias, marca blanca y marca configurable por el dueño de la plataforma y por cada organización
+
+- **Estado:** Aceptado (2026-10-02). Resuelve la **decisión #8** que bloqueaba F6.8 y F6.9.
+- **Origen de la decisión:** Favio pidió el 2026-10-02 desarrollar todo lo faltante (modo agencia,
+  marca blanca, moderación) con la exigencia de que **cada usuario configure sus propios sistemas
+  —logo incluido— y el dueño del sistema también**. El alcance concreto de abajo es la propuesta por
+  defecto de Claude, aceptada al ordenar su desarrollo; es revisable por Favio sin reabrir el resto.
+- **Fuente:** `PLAN_MAESTRO…` §11 (modo agencia, marca blanca, reportes), §12 (superadministración),
+  §18 (Versión 1: «modo agencia inicial»). Relacionado: ADR-002 (multi-tenancy), ADR-005
+  (superadministración), ADR-013 (cuentas de cobro del negocio), ADR-026 (operación técnica).
+
+## Contexto
+
+Hoy cada organización es independiente y el modelo no tiene jerarquía ni marca: `Organization` no
+guarda logo ni colores, y no existe configuración de la plataforma (el nombre, el logo y los correos
+de «Impulza One» están en código). Una agencia necesita administrar varias organizaciones de clientes,
+entrar a ellas sin compartir contraseñas, presentarse con su propia marca y reportar resultados. El
+dueño del sistema necesita poder cambiar la identidad de la plataforma sin tocar código. Todo esto
+debe sostener ADR-002: **ninguna fuga de datos entre organizaciones**.
+
+## Decisión
+
+### 1. La organización del cliente sigue siendo la unidad de aislamiento
+Cada cliente de una agencia es una `Organization` normal. **Todos sus datos siguen llevando su
+`organization_id`** (ADR-002 no cambia). La agencia no «contiene» los datos del cliente: *accede* a
+ellos mediante una relación explícita, delegada, acotada y revocable.
+
+### 2. Modelo (nombres orientativos; el esquema final lo fija la migración de F9.3)
+- `Organization.kind`: `BUSINESS` (por defecto) o `AGENCY`. Una agencia es una organización con plan
+  de agencia (límite de clientes por plan).
+- `AgencyClient` (`agencyOrganizationId`, `clientOrganizationId`, `status`: `INVITED | ACTIVE | PAUSED |
+  ARCHIVED | TRANSFERRING`, `billingMode`: `CLIENT_PAYS | AGENCY_PAYS`). Un cliente tiene **como máximo
+  una agencia activa** a la vez.
+- **El acceso de la agencia a un cliente es una `Membership` en la organización del cliente**, con
+  origen `AGENCY` (`agencyClientId`), un rol delegado y permisos por módulo. No existen contraseñas
+  compartidas ni cuentas de servicio. «Entrar al cliente» es cambiar la organización activa (ADR-002
+  §3) y cada acción queda auditada con el actor real **y** la agencia.
+- **Límites duros de la delegación** (ninguno se puede saltar con un rol personalizado):
+  la agencia **nunca** puede: eliminar la organización del cliente, cambiar su propietario, ver ni
+  modificar su cuenta de cobro (token OAuth de Mercado Pago, ADR-013), cambiar datos de acceso del
+  propietario, ni exportar la lista de contactos sin el permiso explícito del cliente.
+- **El propietario del cliente puede revocar** el acceso de la agencia en cualquier momento; la
+  revocación es inmediata (sesiones de ese contexto invalidadas) y queda auditada.
+- Pausa y archivo son estados de la relación y del sitio, **no borran datos**. Transferencia: la
+  organización pasa del control de la agencia al propietario (o a otra agencia) con **doble consentimiento**
+  y sin migrar datos (solo cambia la relación). La duplicación crea una **organización nueva** copiando
+  sitios, páginas, bloques y temas, nunca contactos, pedidos ni medios con datos personales.
+- Facturación: `CLIENT_PAYS` (cada cliente su suscripción) o `AGENCY_PAYS` (la agencia paga los planes
+  de sus clientes dentro de su cupo). El cambio de modo lo confirma el propietario del cliente.
+
+### 3. Roles personalizados y aprobación antes de publicar
+- `CustomRole` por organización compuesto **solo de permisos del catálogo cerrado** (`Permission`).
+  Nadie puede otorgar un permiso que no tiene (sin escalada de privilegios) ni modificar su propio rol.
+- Permisos acotables por **módulo** y, en agencias, por **cliente**.
+- **Aprobación antes de publicar**: si la organización lo activa, un rol sin permiso de publicar solicita
+  la publicación; un aprobador la acepta o rechaza con comentario. La publicación sigue verificándose
+  en el servidor (no solo en la interfaz).
+
+### 4. Marca configurable en tres niveles, con respaldo en cascada
+1. **Plataforma** (`PlatformBranding`, singleton, solo superadministración): nombre, logo claro/oscuro,
+   favicon, colores de marca, correo y nombre del remitente, enlaces legales y de soporte.
+2. **Organización** (`BrandProfile`): nombre visible, logo, favicon, color principal y secundario,
+   datos de contacto y razón social. Alimenta el panel de ese cliente cuando hay marca blanca, los
+   correos, los reportes y los valores por defecto de las páginas públicas.
+3. **Agencia — marca blanca** (`WhiteLabelSettings`): la marca de la agencia reemplaza a la de la
+   plataforma en el panel y los correos **de sus clientes**, además de dominio propio del portal.
+- **Resolución:** marca blanca de la agencia (si el cliente la tiene) → marca de la organización →
+  marca de la plataforma. Siempre hay un valor válido (el respaldo es la marca por defecto de Impulza).
+- Toda marca cumple **WCAG 2.2 AA**: el servidor **rechaza** colores cuyo contraste con el texto/fondo
+  sea insuficiente, y los logos pasan por el pipeline de medios existente (tipos permitidos, tamaño,
+  optimización, sin SVG con scripts).
+- **Nunca se copia la marca de terceros**; sí se exige que la plataforma indique cuándo un correo viene
+  de una agencia (cabecera legal mínima) para evitar suplantación.
+
+### 5. Dominio de agencia y correos con marca
+- El dominio propio del portal reutiliza la infraestructura de dominios existente (verificación por
+  DNS, estados, HTTPS). Un dominio **no verificado nunca sirve el portal**.
+- Los correos con marca de agencia solo usan un remitente cuyo dominio esté **verificado** (SPF/DKIM
+  según el proveedor de correo). Sin verificación, el correo sale con el remitente de la plataforma y
+  el nombre de la agencia visible. Esto no requiere credenciales para desarrollarse: el estado
+  «pendiente de verificación» y el respaldo son parte del diseño.
+
+### 6. Reportes
+Informe por cliente con comparación de periodos, programación (cola BullMQ, idempotente), comentarios,
+exportación (CSV y versión imprimible, sin dependencia de PDF pesada salvo ADR nuevo) y **enlace
+compartido**: token aleatorio de alta entropía, de solo lectura, con vencimiento, revocable, sin datos
+personales de contactos y con límite de tasa. Los datos salen **solo de la organización del cliente**.
+
+### 7. Moderación y reportes de abuso (decisión #9)
+`AbuseReport` creado desde un formulario público (límite de tasa por IP, sin exigir datos personales,
+motivo de un catálogo cerrado). Cola de moderación en `apps/admin` con acciones auditadas: descartar,
+advertir al propietario, despublicar el sitio, suspender la organización. El propietario recibe aviso
+con motivo y vía de apelación. Nada se borra; todo es reversible y queda auditado.
+
+## Alternativas consideradas
+
+- **Que la agencia «contenga» los datos de sus clientes (organización padre con datos propios):**
+  descartado, rompe ADR-002 y haría que cada consulta tuviera que decidir de qué nivel viene el dato.
+- **Cuentas de servicio o contraseñas compartidas para «entrar como» el cliente:** descartado por
+  seguridad y trazabilidad; una `Membership` delegada es revocable y auditable.
+- **Marca solo por variables de entorno o en código:** descartado; el dueño y cada usuario deben
+  configurarla desde la interfaz.
+- **Aislamiento físico por agencia:** fuera de alcance (ADR-002 lo difiere hasta que un cliente lo exija).
+
+## Consecuencias
+
+- Positivo: ADR-002 se mantiene intacto; la agencia es una capa de **acceso delegado**, no de datos.
+- Positivo: la marca en cascada permite marca blanca sin duplicar pantallas.
+- Negativo: toda consulta del panel que hoy asume «mi organización activa» debe validar además, cuando
+  el acceso es delegado, que la relación `AgencyClient` esté `ACTIVE` y el módulo permitido. Se mitiga
+  con **un único guard** reutilizable y con pruebas de aislamiento por cada endpoint nuevo.
+- Negativo: migraciones sobre `organizations`, `memberships`, `roles/permissions` y plantillas
+  (`organization_id` opcional para plantillas privadas). Cada una con migración reversible y respaldo.
+- Riesgo a vigilar: suplantación por marca blanca → mitigado con la cabecera legal en correos y con la
+  verificación de dominio.
+- Seguimiento: cada historia de la Fase 9 suma sus casos a `multi-tenant-isolation.e2e.test.ts` y, para
+  el acceso delegado, un conjunto propio «agencia no sale de su cupo».

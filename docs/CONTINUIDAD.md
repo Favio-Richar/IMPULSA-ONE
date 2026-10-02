@@ -5,9 +5,23 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-02, noche) — Fase 8 completa con reservas, pendiente de commit
+## 0. RETOMAR AQUÍ (2026-10-02, noche) — Fase 8 commiteada; Fase 9 definida y lista para Antigravity
 
-**Estado real:** la Fase 7 está cerrada y commiteada (`cdb4ea6`). La **Fase 8 (F8.1–F8.4) quedó verificada** el 2026-10-02 pero **todavía sin commit** (todo está en el árbol de trabajo). Antigravity dejó el código sin pruebas de interfaz; Claude lo revisó, corrigió y probó.
+**Fase 8: commiteada y subida** (`b418cb5`…`2df931d`, rama `master`). Queda con las reservas descritas abajo.
+
+**Fase 9 «Marca y agencias»: definida, sin código.** Lo escribió Claude el 2026-10-02:
+`docs/decisions/ADR-028-agencias-marca-blanca-y-marca-configurable.md` (resuelve las decisiones #8 y #9),
+`docs/BACKLOG_FASE_9.md` (F9.1–F9.10 con criterios y reglas transversales) y
+`docs/PROMPT_ANTIGRAVITY_FASE_9.md` (texto para pegar a Antigravity). **Quién hace qué:** Antigravity
+desarrolla una historia a la vez, en orden; Claude la revisa contra la Definición de Terminado y recién
+entonces la marca «Hecho». Siguiente paso: **F9.1 (marca de la plataforma)**. Modelo actual sin marca:
+`Organization` no tiene logo ni colores y no hay configuración del dueño; F9.1 y F9.2 lo resuelven.
+Faltantes del plan maestro que **no** entran en la Fase 9: membresías y cursos, wallet, PWA, marketplace
+(ver «Hoja de ruta posterior» del backlog).
+
+### Estado de la Fase 8 (detalle)
+
+**Estado real:** la Fase 7 está cerrada y commiteada (`cdb4ea6`). La **Fase 8 (F8.1–F8.4) quedó verificada** el 2026-10-02 y está **commiteada y subida**. Antigravity dejó el código sin pruebas de interfaz; Claude lo revisó, corrigió y probó.
 
 **Corregido por Claude:**
 - `packages/contracts/src/templates.ts`: faltaba `"educacion"` (rompía el `next build` de la web). Prueba `apps/api/src/modules/templates/templates-contract.test.ts` (verificada contra código roto).
@@ -19,7 +33,7 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 **Verificado (2026-10-02):** `pnpm turbo run typecheck lint test`: todo en verde salvo `openapi.test.ts`, ya corregido y en verde. Playwright **22/22** (`experiencia-animaciones.spec.ts`, `onboarding-animaciones.spec.ts`; móvil y escritorio, con y sin movimiento reducido). Las de foco del onboarding y de borrado fallido se verificaron contra el código roto. Capturas en `docs/design/capturas/f81` a `f84`. `next build` de la web (dentro de Playwright) y del panel.
 
 **Pendiente:**
-1. **Commits:** un commit por historia o uno de fase, con `Co-Authored-By`. Revisar `git status` antes (incluye capturas f710 regeneradas).
+1. ~~Commits~~ Hecho: 5 commits subidos a `origin/master` el 2026-10-02.
 2. **Decisión del propietario:** se ajustaron dos criterios (ver `docs/BACKLOG_FASE_8.md`): F8.2 criterio 1 (el paso saliente NO se desvanece) y F8.1 criterio 6 (los toasts NO tienen salida animada). Confirmar o pedir que se implementen.
 3. **Reservas honestas** (detalle en el backlog): F8.1 criterio 8 (CLS) sin medir; `Reveal` usa `threshold`, no `rootMargin -10%`; sin contadores en la portada (no aplica); sin staging.
 4. **Corrida completa de Playwright** (toda la suite) antes de dar la fase por cerrada en CI.

@@ -3,10 +3,10 @@
 Plataforma SaaS multiusuario y multiempresa para construir un centro digital de negocio (marca,
 captación, reservas, ventas y analítica) desde una sola URL.
 
-**Estado actual (2026-10-01): Fase 7 en curso — F7.1 (GA4 y píxel de Meta con consentimiento, y CSP
+**Estado actual (2026-10-02): Fase 7 completa — F7.1 (GA4 y píxel de Meta con consentimiento, y CSP
 en la página pública, ADR-016), F7.2 (webhooks salientes firmados hacia Zapier, Make u otros
 sistemas, ADR-017), F7.3 (bloques de cuenta regresiva, precios, mapa, música y eventos, ADR-018),
-F7.4 (newsletter con doble confirmación, ADR-019), F7.5 (secuencias de correo, ADR-020), F7.6 (embudos de conversión, ADR-021), F7.7 (modo campaña, ADR-022), F7.8 (tienda: variantes, cupones y carrito, ADR-023), F7.9a/b/c (reservas: sucursales, profesionales, horarios, feed iCal y Google Calendar, ADR-024), F7.10 (sitio comercial: Soluciones por rubro, Integraciones, Recursos y Política de privacidad Ley 19.628/21.719, ADR-025) y F7.11 (superadministración: estado técnico, 14 colas BullMQ, feature flags en Redis y CMS de plantillas, ADR-026) listas para revisión; sigue F7.12 (aislamiento y seguridad de Fase 7). Los cobros de
+F7.4 (newsletter con doble confirmación, ADR-019), F7.5 (secuencias de correo, ADR-020), F7.6 (embudos de conversión, ADR-021), F7.7 (modo campaña, ADR-022), F7.8 (tienda: variantes, cupones y carrito, ADR-023), F7.9a/b/c (reservas: sucursales, profesionales, horarios, feed iCal y Google Calendar, ADR-024), F7.10 (sitio comercial: Soluciones por rubro, Integraciones, Recursos y Política de privacidad Ley 19.628/21.719, ADR-025), F7.11 (superadministración: estado técnico, 14 colas BullMQ, feature flags en Redis y CMS de plantillas, ADR-026) y F7.12 (aislamiento y seguridad de Fase 7: rate limiting en feed iCal, redactPath ampliado y auditoría multi-tenant completa) listas para revisión. Los cobros de
 los negocios (F5.8–F5.11, ADR-013 y ADR-015) quedaron completos y en revisión. Lo pendiente de todo
 el plan está en `docs/BACKLOG_FASE_7.md`.** Fase 4 — cobro de suscripciones (F4.6, ADR-012) en curso: F4.6a (motor de
 facturación y Webpay Oneclick), F4.6c (Plan y pagos en el panel) y F4.6d (Facturación en la
@@ -45,7 +45,7 @@ reglas de trabajo del repositorio.
 | 4 — SaaS comercial | F4.1–F4.9 | Lista para revisión (F4.6b: Mercado Pago, falta probar con credenciales reales) |
 | 5 — Negocio digital | F5.1–F5.11 | Lista para revisión (incluye cobros con la cuenta del negocio, ADR-013/015) |
 | 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.7 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
-| 7 — Crecimiento | F7.1–F7.12 | En curso: F7.1–F7.11 listas para revisión (ADR-026); sigue F7.12 |
+| 7 — Crecimiento | F7.1–F7.12 | Lista para revisión (F7.1–F7.12 completas, ADR-016 a ADR-026) |
 
 **Para retomar el desarrollo** (también desde Claude Code en la nube): `docs/CONTINUIDAD.md`.
 

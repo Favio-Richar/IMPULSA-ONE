@@ -24511,6 +24511,9 @@
           },
           "404": {
             "description": "Feed no encontrado o revocado."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
           }
         },
         "summary": "Feed iCal (.ics) de reservas",

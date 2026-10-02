@@ -19,7 +19,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Lista para tu revisión (ADR-024): F7.9a profesionales y sucursales, F7.9b horarios y bloqueos, F7.9c feed iCal y Google Calendar (capturas en `docs/design/capturas/f79/`). Google Calendar real queda pendiente de tus credenciales OAuth; probado con Google simulado |
 | F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Lista para tu revisión, contenido corregido (ADR-025; capturas en `docs/design/capturas/f710/`). La política de privacidad es un borrador: faltan datos del responsable, correo de privacidad y revisión legal |
 | F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Lista para tu revisión, corregida (ADR-026; capturas en `docs/design/capturas/f711/`) |
-| F7.12 — Aislamiento y seguridad de Fase 7 | Pendiente |
+| F7.12 — Aislamiento y seguridad de Fase 7 | Lista para tu revisión |
 
 ## Historias
 
@@ -716,6 +716,49 @@ Revisión de F7.11 (2026-10-02, Claude) — defectos encontrados y corregidos:
 - **Panel:** purgar una cola (borra también los trabajos fallidos) y apagar una bandera ahora piden confirmación; las acciones que fallan muestran un aviso (antes se ignoraban); botones solo con ícono tienen nombre accesible; se quitó el «13» y el «:4100» escritos a mano.
 - **Pruebas:** `feature-flags.service.test.ts`, `queue-names.test.ts`, 3 e2e de efecto real y las de Google Calendar con la bandera apagada. Verificadas contra el código roto (quitar el filtro `isActive`, evaluar «sin fila» como apagada y quitar la bandera del registro hacen fallar las pruebas).
 - **Limitaciones conocidas:** la purga y el reintento actúan sobre hasta 1000 trabajos por llamada; las 14 colas se consultan abriendo una conexión por cola en cada actualización del panel (cada 10 s); `GET /admin/feature-flags` crea las filas por defecto la primera vez; una campaña ya puesta en envío no se detiene al apagar `campanas_correo` (solo se bloquean envíos nuevos).
+
+### F7.12 — Aislamiento y seguridad de Fase 7
+
+Criterios de aceptación:
+1. **Aislamiento multi-tenant en datos comerciales (F7.1 a F7.11):**
+   - Todo endpoint con datos comerciales nuevos cuenta con prueba explícita de aislamiento entre organizaciones en `apps/api/src/multi-tenant-isolation.e2e.test.ts`.
+   - La organización A intenta leer, modificar, listar o borrar datos de la organización B (medición, secuencias, webhooks, variantes, cupones, carrito, sucursales y profesionales de reservas, feed de calendario, embudos, campañas, feature flags y estadísticas de newsletter) y el servidor rechaza con 401, 403 o 404 estricto según corresponda.
+2. **Permisos aplicados en el servidor:**
+   - La autorización y verificación de roles y membresía ocurre siempre en el backend (`OrganizationMembershipGuard`, `PermissionGuard` con `@RequirePermission`, `AdminSessionGuard`, `CsrfGuard`). Ningún permiso se confía al cliente ni a cabeceras no verificadas.
+3. **Privacidad y ausencia de fuga de IDs internos en rutas públicas:**
+   - Ninguna ruta pública (`/public/...`) expone identificadores internos de organización, foreign keys ajenas, tokens sin hashear ni datos privados de clientes de otras organizaciones (verificado en respuestas de catálogo, tienda, reservas, newsletter, feeds y analítica).
+4. **Secretos fuera de logs y trazas:**
+   - Los secretos que viajan en la URL (token de feed iCal, token de newsletter, token de desuscripción, token de descargas, token de gestión de reservas y pedidos, y parámetros `token`, `code`, `secret`, `key`, `state`) son redactados por `redactPath` antes de emitirse en logs estructurados de peticiones y excepciones de Sentry.
+   - Secretos de webhooks (`whsec_*`) y tokens OAuth no se registran en texto plano.
+5. **Tokens y URLs firmadas con expiración o revocación:**
+   - Tokens de confirmación (newsletter: 48 h) expiran y son hasheados (SHA-256 en BD).
+   - Feeds iCal: tokens rotables instantáneamente (`rotate-calendar-feed`), invalidando el enlace anterior de inmediato.
+   - Enlaces firmados HMAC (OAuth state de Google Calendar: 10 min, unsubscribe, descargas) tienen vigencia y propósito restringido.
+6. **Límite de peticiones (Rate Limiting) en rutas públicas nuevas:**
+   - Toda ruta pública nueva expuesta a visitantes cuenta con protección de tasa (`RateLimitGuard` con cuota por IP/visitante configurada) para mitigar abusos, fuerza bruta o denegación de servicio.
+
+Implementación y auditoría de F7.12 (2026-10-02) — lista para tu revisión:
+- **Auditoría de Rate Limiting y corrección en `CalendarFeedController`:**
+  - Se detectó que `CalendarFeedController` (`/public/bookings/calendar-feed/:token.ics`) decoraba `@RateLimit({ limit: 60, windowSeconds: 60, keyPrefix: "calendar-feed" })`, pero **carecía de `RateLimitGuard`** en `@UseGuards(FeatureFlagGuard)`. Al no estar el guard en el controlador, el decorador se ignoraba y las peticiones no se limitaban.
+  - Se agregó `RateLimitGuard` a `CalendarFeedController` y `@ApiRateLimited(60, 60)`.
+  - Prueba de efecto real añadida en `calendar-and-google.e2e.test.ts` verificando que al superar la cuota devuelve 429.
+  - **Verificado contra el código roto:** al retirar temporalmente `RateLimitGuard` del controlador, la prueba falló con 200 en vez de 429, y volvió a pasar al restaurarlo.
+- **Auditoría de Secretos en Logs y ampliación de `redactPath`:**
+  - `apps/api/src/common/redact-path.ts` solo redactaba `/calendar-feed/:token.ics`, omitiendo tokens bearer que viajan en paths públicos de newsletter, unsubscribe, bookings, orders y downloads.
+  - Se extendió `redactPath` para ocultar automáticamente tokens de:
+    - `/public/newsletter/:token`
+    - `/public/unsubscribe/:token`
+    - `/public/bookings/:token` (incluyendo `/cancel` y `/reschedule`)
+    - `/public/orders/:token`
+    - `/public/downloads/:token` (incluyendo `/url`)
+    - Parámetros de consulta sensibles (`token`, `code`, `secret`, `key`, `state`).
+  - Suite de pruebas unitarias exhaustiva añadida en `apps/api/src/common/redact-path.test.ts` (8/8 pruebas pasando).
+  - **Verificado contra el código roto:** al comentar la regla de newsletter, la prueba falló demostrando la fuga del token, y volvió a verde al restaurarla.
+- **Aislamiento Multi-Tenant centralizado (`multi-tenant-isolation.e2e.test.ts`):**
+  - Se agregó la suite de aislamiento de **Newsletter (F7.4, ADR-019)**: verificado que la organización A recibe 403 Forbidden al consultar `/api/v1/organizations/:id/newsletter/stats` de la organización B, y que los suscriptores confirmados de B no contaminan la audiencia ni el recuento de A.
+  - Se corroboró la cobertura de F7.1 (medición), F7.2 (webhooks), F7.5 (secuencias), F7.6 (embudos), F7.7 (modo campaña), F7.8a/b/c (variantes, cupones y carrito), F7.9a/b/c (sucursales, profesionales, horarios, bloqueos, feeds y Google Calendar) y F7.11 (superadmin y feature flags con reglas).
+- **Documentación OpenAPI:**
+  - Regenerada con 214 rutas y 289 operaciones (`docs/api/openapi.json`), documentando el código 429 en el feed iCal de reservas.
 
 ## Fases siguientes
 

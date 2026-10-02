@@ -166,6 +166,21 @@ describe("Feed iCal y Google Calendar desacoplado (e2e) — F7.9c", () => {
       expect(ics).toContain("END:VCALENDAR");
     });
 
+    it("aplica límite de peticiones (429) tras exceder la cuota configurada", async () => {
+      const site = await createSiteWithOwner();
+      const path = `/api/v1/public/bookings/calendar-feed/${site.siteCalendarFeedToken}.ics`;
+
+      // Simular que el visitante agotó la cuota en Redis para este keyPrefix e IP
+      const redisKey = `ratelimit:calendar-feed:127.0.0.1`;
+      await redis.set(redisKey, "60", "EX", 60);
+
+      try {
+        await request(httpServer).get(path).expect(429);
+      } finally {
+        await redis.del(redisKey);
+      }
+    });
+
     it("sirve el feed personal del profesional filtrando solo sus reservas", async () => {
       const site = await createSiteWithOwner();
 

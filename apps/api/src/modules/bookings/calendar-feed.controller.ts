@@ -3,6 +3,8 @@ import { ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flag.guard.js";
 import { RateLimit } from "../../common/rate-limit.decorator.js";
+import { RateLimitGuard } from "../../common/rate-limit.guard.js";
+import { ApiRateLimited } from "../../openapi/zod-openapi.js";
 import { CalendarFeedService } from "./calendar-feed.service.js";
 
 /**
@@ -12,7 +14,7 @@ import { CalendarFeedService } from "./calendar-feed.service.js";
  */
 @ApiTags("public-bookings")
 @Controller("public/bookings/calendar-feed")
-@UseGuards(FeatureFlagGuard)
+@UseGuards(FeatureFlagGuard, RateLimitGuard)
 @RequireFeature("sincronizacion_calendarios")
 export class CalendarFeedController {
   constructor(private readonly calendarFeedService: CalendarFeedService) {}
@@ -26,6 +28,7 @@ export class CalendarFeedController {
   @ApiParam({ name: "token", description: "Token secreto del feed de calendario." })
   @ApiResponse({ status: 200, description: "Archivo iCalendar (.ics, RFC 5545)." })
   @ApiResponse({ status: 404, description: "Feed no encontrado o revocado." })
+  @ApiRateLimited(60, 60)
   async getFeed(@Param("token") token: string, @Res() res: Response): Promise<void> {
     const ics = await this.calendarFeedService.getCalendarFeedIcs(token);
     res.setHeader("Content-Type", "text/calendar; charset=utf-8");

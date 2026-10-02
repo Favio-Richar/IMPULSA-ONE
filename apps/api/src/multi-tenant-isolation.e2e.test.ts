@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
@@ -2191,6 +2191,53 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
         expect(enabledForB).toBe(false);
       } finally {
         await prisma.featureFlag.deleteMany({ where: { key: flagKey } });
+      }
+    });
+  });
+
+  describe("Newsletter (F7.4, ADR-019): estadísticas y suscriptores nunca se cruzan", () => {
+    it("A no lee las estadísticas de newsletter de B, y los suscriptores de B no se suman a A", async () => {
+      // A no puede consultar las estadísticas de B (403 Forbidden)
+      await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/newsletter/stats`).expect(403);
+
+      // Crear una suscripción confirmada en B
+      const email = `sub-b-${Date.now().toString(36)}${TEST_EMAIL_DOMAIN}`;
+      const token = randomBytes(32).toString("hex");
+      await prisma.newsletterConfirmation.create({
+        data: {
+          organizationId: orgB.id,
+          siteId: orgB.siteId,
+          email,
+          tokenHash: createHash("sha256").update(token).digest("hex"),
+          consentTextVersion: "2026-09-30",
+          expiresAt: new Date(Date.now() + 48 * 3600 * 1000),
+          confirmedAt: new Date(),
+        },
+      });
+      await prisma.contact.create({
+        data: {
+          organizationId: orgB.id,
+          name: "Suscriptor B",
+          email,
+          marketingConsent: true,
+          marketingConsentAt: new Date(),
+          marketingConsentSource: "newsletter",
+          tags: ["newsletter"],
+        },
+      });
+
+      try {
+        // Las estadísticas de B reflejan su suscriptor confirmado
+        const statsB = (await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/newsletter/stats`).expect(200)).body;
+        expect(statsB.confirmedSubscribers).toBeGreaterThanOrEqual(1);
+
+        // Las estadísticas de A no se contaminan con el suscriptor de B
+        const statsA = (await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/newsletter/stats`).expect(200)).body;
+        expect(statsA.confirmedSubscribers).toBe(0);
+        expect(statsA.marketingAudience).toBe(0);
+      } finally {
+        await prisma.contact.deleteMany({ where: { email } });
+        await prisma.newsletterConfirmation.deleteMany({ where: { email } });
       }
     });
   });

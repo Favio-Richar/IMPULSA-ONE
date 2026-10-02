@@ -5,12 +5,12 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 1. Estado al 2026-10-02 (después de F7.11)
+## 1. Estado al 2026-10-02 (después de F7.12)
 
 - Rama principal: `master` (no `main`). Cada historia es **un commit** con el código en el asunto,
   p. ej. `feat(newsletter): … (F7.4, ADR-019)`, y termina con la línea `Co-Authored-By` que indique
   el sistema.
-- **Fase 7 en curso** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.11 listas para revisión del propietario.
+- **Fase 7 completa** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.12 listas para revisión del propietario.
   - **F7.9a y F7.9b:** con sus pruebas de Playwright (móvil y escritorio) y capturas en
     `docs/design/capturas/f79/`; el servidor fue revisado y corregido (borrado de profesionales con reservas vivas).
   - **F7.9c (sincronización con calendarios):** feed iCal con token por sitio y por profesional, y Google Calendar de un solo sentido con `state` firmado, renovación de token y sincronización en reservas. Probado con Google simulado (pendiente OAuth real de Google del propietario).
@@ -23,7 +23,12 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
     - Seguridad: `AdminSessionGuard` + `CsrfGuard` en todos los endpoints, auditoría estricta de cada acción de superadmin (`admin.queue_*`, `admin.feature_flag_*`, `admin.template_*`).
     - Pruebas E2E (`admin-operations.e2e.test.ts`), pruebas de aislamiento multi-tenant (miembros y dueños de orgs reciben 401; aislamiento entre orgs en flags con reglas), verificación contra código roto y pruebas de Playwright móvil y escritorio sin desborde horizontal (`expectNoHorizontalScroll`) con capturas en `docs/design/capturas/f711/`.
   - **F7.11 revisada y corregida por Claude:** las banderas ahora gobiernan de verdad registros, pagos, IA, campañas, calendarios y webhooks (antes no conectaban con nada); el CMS de plantillas ya afecta a la galería pública; nombres de colas y estado técnico leídos de la configuración real. Detalle en "Revisión de F7.11" de `docs/BACKLOG_FASE_7.md`.
-  - **Siguiente paso: F7.12 — Aislamiento y seguridad de la Fase 7**.
+  - **F7.12 (Aislamiento y seguridad de la Fase 7):**
+    - Auditoría de Rate Limiting: corrección en `CalendarFeedController` agregando `RateLimitGuard` (que faltaba en `@UseGuards`), habilitando el decorador `@RateLimit(60, 60)` y documentando `@ApiRateLimited(60, 60)`. Prueba e2e en `calendar-and-google.e2e.test.ts` verificada contra código roto.
+    - Auditoría de Secretos en Logs: ampliación de `redactPath` en `apps/api/src/common/redact-path.ts` para redactar tokens de newsletter, unsubscribe, bookings, orders, downloads y parámetros sensibles de query. Pruebas unitarias completas en `redact-path.test.ts` (8/8) verificadas contra código roto.
+    - Auditoría de Aislamiento Multi-Tenant: suite de aislamiento para estadísticas de Newsletter (F7.4) en `multi-tenant-isolation.e2e.test.ts` (verificado 403 entre tenants y conteos aislados).
+    - OpenAPI regenerado con código 429 documentado en el feed.
+  - **Fase 7 concluida.** Pendiente revisión final del propietario.
 - ADR más reciente: ADR-026 (superadministración: operación técnica, colas BullMQ, feature flags y plantillas).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
   (`docs/BACKLOG_FASE_*.md`, `BACKLOG_PLANTILLAS.md`, `BACKLOG_PAGINA_PREMIUM.md`).

@@ -39,3 +39,4 @@ export * from "./sequences.js";
 export * from "./funnels.js";
 export * from "./page-campaigns.js";
 export * from "./coupons.js";
+export * from "./branding.js";

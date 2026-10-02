@@ -101,6 +101,8 @@ describe("Documento OpenAPI", () => {
       // galería del onboarding antes de que exista una organización. Con límite de tasa por IP.
       "GET /api/v1/templates",
       "GET /api/v1/templates/{code}",
+      // Marca de la plataforma (F9.1, ADR-028 §4): solo campos públicos, sin credenciales internas.
+      "GET /api/v1/platform/branding",
       // Login de superadministración (F4.4): abre la sesión, no puede exigirla. Contraseña + 2FA.
       "POST /api/v1/admin/auth/login",
       // Resolución de dominios propios (F4.7): la llama el `proxy` de apps/web sin sesión en cada

@@ -5,19 +5,24 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-02, noche) — Fase 8 commiteada; Fase 9 definida y lista para Antigravity
+## 0. RETOMAR AQUÍ (2026-10-02, tarde/noche) — F9.1 en revisión por Claude; Fase 8 commiteada en master
+
+**F9.1 (Marca de la plataforma) — Implementada y en revisión:**
+- Desarrollada en rama dedicada `fase-9/f9-1-marca-plataforma`.
+- Modelo `PlatformBranding` singleton en PostgreSQL (`packages/database`), migración `20261002120000_f91_platform_branding` desplegada y documentada en `docs/architecture/ERD.md` (§9s). Con seed oficial de Impulza One.
+- Validación Zod en `@impulza/validation` con verificación estricta de contraste WCAG 2.2 AA (>= 4.5:1 sobre fondo claro #ffffff), saneamiento exhaustivo de SVG (bloqueo de scripts, eventos inline, entidades externas/XXE, foreignObject y URLs no seguras), y validación de tipos MIME y URLs HTTPS.
+- Contratos Zod en `@impulza/contracts` con prueba de paridad de claves y formas (`src/branding.test.ts`).
+- Endpoints en `@impulza/api`: público `GET /api/v1/platform/branding` (con rate limiting y caché Redis con invalidación) y superadministración protegidos por `AdminSessionGuard`, `CsrfGuard` y `RateLimitGuard` (`GET`, `PUT`, `POST reset`, `POST upload`).
+- OpenAPI regenerado (`docs/api/openapi.json`: 218 rutas, 294 operaciones) y pruebas de OpenAPI en verde (4/4).
+- Suite e2e de la API en `@impulza/api`: `platform-branding.e2e.test.ts` (11/11 pruebas en verde), verificada contra código roto.
+- UI en `apps/admin` (`/marca`): formulario de configuración, vista previa en tiempo real en cabecera clara, panel oscuro, correo transaccional y medidor de contraste AA; subida de archivos; restablecimiento con confirmación.
+- Consumidores integrados: `apps/web` (layout metadata, header, footer con fallback a defaults) y `apps/dashboard` (metadata, auth layout, auth mosaic, aside y drawer con fallback).
+- Pruebas Playwright en `packages/e2e/tests/platform-branding.spec.ts`: móvil (412px Pixel 7) y escritorio (1440px Desktop Chrome) 2/2 en verde. 8 capturas guardadas en `docs/design/capturas/f91/`.
+- `next build` en producción de `apps/web`, `apps/dashboard` y `apps/admin`: los tres pasan con código 0.
+- `lint` y `typecheck` limpios en todos los paquetes tocados.
+- Siguiente paso: Revisión de Claude de F9.1 antes de fusionar a `master` y comenzar F9.2.
 
 **Fase 8: commiteada y subida** (`b418cb5`…`2df931d`, rama `master`). Queda con las reservas descritas abajo.
-
-**Fase 9 «Marca y agencias»: definida, sin código.** Lo escribió Claude el 2026-10-02:
-`docs/decisions/ADR-028-agencias-marca-blanca-y-marca-configurable.md` (resuelve las decisiones #8 y #9),
-`docs/BACKLOG_FASE_9.md` (F9.1–F9.10 con criterios y reglas transversales) y
-`docs/PROMPT_ANTIGRAVITY_FASE_9.md` (texto para pegar a Antigravity). **Quién hace qué:** Antigravity
-desarrolla una historia a la vez, en orden; Claude la revisa contra la Definición de Terminado y recién
-entonces la marca «Hecho». Siguiente paso: **F9.1 (marca de la plataforma)**. Modelo actual sin marca:
-`Organization` no tiene logo ni colores y no hay configuración del dueño; F9.1 y F9.2 lo resuelven.
-Faltantes del plan maestro que **no** entran en la Fase 9: membresías y cursos, wallet, PWA, marketplace
-(ver «Hoja de ruta posterior» del backlog).
 
 ### Estado de la Fase 8 (detalle)
 

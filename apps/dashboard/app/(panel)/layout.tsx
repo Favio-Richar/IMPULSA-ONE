@@ -12,6 +12,7 @@ import { ApiError } from "../../lib/api-client";
 import { logout } from "../../lib/api/auth";
 import { listMyOrganizations } from "../../lib/api/organizations";
 import { useMe } from "../../lib/hooks/use-me";
+import { usePlatformBranding } from "../../lib/hooks/use-platform-branding";
 
 export default function PanelLayout({ children }: { children: React.ReactNode }): React.JSX.Element | null {
   const router = useRouter();
@@ -19,6 +20,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const meQuery = useMe();
+  const brandingQuery = usePlatformBranding();
+  const brandName = brandingQuery.data?.name ?? "Impulza One";
   const orgsQuery = useQuery({
     queryKey: ["organizations"],
     queryFn: listMyOrganizations,
@@ -67,7 +70,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     <div className="flex min-h-screen bg-background">
       <aside className="hidden w-56 shrink-0 border-r border-border md:block">
         <div className="flex h-14 items-center border-b border-border px-4 text-sm font-semibold text-foreground">
-          Impulza One
+          {brandingQuery.data?.logoLightUrl ? (
+            <img src={brandingQuery.data.logoLightUrl} alt={brandName} className="h-6 max-w-[140px] object-contain" />
+          ) : (
+            brandName
+          )}
         </div>
         <SidebarNav />
       </aside>
@@ -82,7 +89,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           />
           <aside className="absolute inset-y-0 left-0 w-64 bg-background shadow-md">
             <div className="flex h-14 items-center justify-between border-b border-border px-4">
-              <span className="text-sm font-semibold text-foreground">Impulza One</span>
+              <span className="text-sm font-semibold text-foreground">
+                {brandingQuery.data?.logoLightUrl ? (
+                  <img src={brandingQuery.data.logoLightUrl} alt={brandName} className="h-6 max-w-[140px] object-contain" />
+                ) : (
+                  brandName
+                )}
+              </span>
               <Button
                 variant="ghost"
                 size="sm"

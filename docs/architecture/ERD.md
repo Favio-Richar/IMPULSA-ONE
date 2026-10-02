@@ -483,8 +483,10 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   con hora; cerrada ⇒ con `finished_at`). **EmailSequenceSend**: única por inscripción y paso;
   `SENT`/`FAILED`/`SKIPPED`; base del cupo por hora junto a `campaign_recipients`.
 
-## 10. Pendiente para Fase 5+ (no modelar aún)
+## 9s. Marca de la plataforma (F9.1, BACKLOG_FASE_9.md, ADR-028 §4)
 
-Variantes/cupones/carrito,
-`Campaign`/email marketing, `Course`/`Membership` (contenido). Se diseñan cuando se inicie la Fase 5
-para evitar tablas vacías o esquemas prematuros (restricción explícita de ST §6.2).
+- **PlatformBranding** (`platform_branding`, singleton): identidad de la plataforma configurable por superadministración.
+  Campos: `name`, `logo_light_url`, `logo_dark_url`, `favicon_url`, `primary_color`, `secondary_color`, `sender_name`,
+  `sender_email`, `support_url`, `privacy_url`, `terms_url`, `footer_text`, `updated_by_admin_id` (`SET NULL`).
+  Valores por defecto reproducen exactamente la identidad "Impulza One".
+

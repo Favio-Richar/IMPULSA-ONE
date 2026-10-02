@@ -6,12 +6,15 @@ import {
   publicSiteResponse,
   planResponse,
   templateResponse,
+  publicPlatformBrandingResponse,
   type PublicFormResponse,
   type PublicPageResponse,
   type PublicSiteResponse,
   type PlanResponse,
   type TemplateResponse,
+  type PublicPlatformBrandingResponse,
 } from "@impulza/contracts";
+import { DEFAULT_PLATFORM_BRANDING } from "@impulza/validation";
 import { env } from "./env";
 
 /**
@@ -101,9 +104,13 @@ export async function getBookingAvailable(siteSlug: string): Promise<boolean | n
  * Usados por la home comercial (`app/page.tsx`) para mostrar datos reales, no maquetados.
  */
 async function fetchCatalog<T>(path: string, schema: { parse: (value: unknown) => T }): Promise<T | null> {
-  const response = await fetch(`${env.API_BASE_URL}${path}`, { next: { revalidate: 300 } });
-  if (!response.ok) return null;
-  return schema.parse(await response.json());
+  try {
+    const response = await fetch(`${env.API_BASE_URL}${path}`, { next: { revalidate: 300 } });
+    if (!response.ok) return null;
+    return schema.parse(await response.json());
+  } catch {
+    return null;
+  }
 }
 
 export async function getTemplateCatalog(): Promise<TemplateResponse[]> {
@@ -113,3 +120,23 @@ export async function getTemplateCatalog(): Promise<TemplateResponse[]> {
 export async function getPlanCatalog(): Promise<PlanResponse[]> {
   return (await fetchCatalog("/plans", z.array(planResponse))) ?? [];
 }
+
+/**
+ * Marca pública de la plataforma (F9.1, ADR-028 §4): nombre, logos, colores y enlaces legales.
+ * Caché de 60s con revalidación y fallback seguro si la API no responde.
+ */
+export async function getPlatformBranding(): Promise<PublicPlatformBrandingResponse> {
+  try {
+    const response = await fetch(`${env.API_BASE_URL}/platform/branding`, {
+      next: { revalidate: 60, tags: ["platform-branding"] },
+    });
+    if (!response.ok) {
+      return DEFAULT_PLATFORM_BRANDING as PublicPlatformBrandingResponse;
+    }
+    const data = await response.json();
+    return publicPlatformBrandingResponse.parse(data);
+  } catch {
+    return DEFAULT_PLATFORM_BRANDING as PublicPlatformBrandingResponse;
+  }
+}
+

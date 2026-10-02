@@ -15,20 +15,37 @@ const NAV_LINKS = [
 export function MarketingHeader({
   bienvenidaHref,
   loginHref,
+  branding,
 }: {
   bienvenidaHref: string;
   loginHref: string;
+  branding?: {
+    name: string;
+    logoLightUrl?: string | null;
+    primaryColor?: string;
+  };
 }) {
   const [open, setOpen] = useState(false);
+  const name = branding?.name || "Impulza One";
+  const primaryColor = branding?.primaryColor || "#0f6f6b";
+  const initials = name.slice(0, 2).toUpperCase();
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#e2e8f0] bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-[#0f172a]">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#0f6f6b] text-sm font-bold text-white">
-            IO
-          </span>
-          Impulza One
+          {branding?.logoLightUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={branding.logoLightUrl} alt={name} className="h-8 w-auto object-contain" />
+          ) : (
+            <span
+              className="flex h-8 w-8 items-center justify-center rounded-[10px] text-sm font-bold text-white"
+              style={{ backgroundColor: primaryColor }}
+            >
+              {initials}
+            </span>
+          )}
+          {name}
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">

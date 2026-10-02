@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
+import { getPlatformBranding } from "../lib/api";
 import { env } from "../lib/env";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "Impulza One",
-  description: "Sitio comercial y páginas públicas de Impulza One.",
-  // Base para resolver toda URL relativa en metadata de cualquier segmento hijo — canonical y
-  // Open Graph de cada sitio público (F2.8) mandan rutas relativas (`/mi-sitio/...`) y Next arma
-  // la URL absoluta con esto, nunca con el header `Host` de la petición (ver `lib/env.ts`).
-  metadataBase: new URL(env.PUBLIC_WEB_BASE_URL),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getPlatformBranding();
+  return {
+    title: {
+      default: branding.name,
+      template: `%s — ${branding.name}`,
+    },
+    description: `Sitio comercial y páginas públicas de ${branding.name}.`,
+    metadataBase: new URL(env.PUBLIC_WEB_BASE_URL),
+    icons: branding.faviconUrl ? [{ rel: "icon", url: branding.faviconUrl }] : undefined,
+  };
+}
 
 export default function RootLayout({
   children,

@@ -25,6 +25,8 @@ import type {
   AdminFeatureFlagResponse,
   AdminTemplateListResponse,
   AdminTemplateSummaryResponse,
+  PlatformBrandingResponse,
+  UploadBrandingAssetResponse,
 } from "@impulza/contracts";
 import type {
   AiRoutesInput,
@@ -32,6 +34,8 @@ import type {
   UpdateAiConnectionInput,
   UpdateFeatureFlagDto,
   UpdateTemplateAdminDto,
+  UpdatePlatformBrandingDto,
+  UploadBrandingAssetDto,
 } from "@impulza/validation";
 import { apiDownload, apiFetch } from "./api-client";
 
@@ -131,4 +135,14 @@ export const adminApi = {
   templates: () => apiFetch<AdminTemplateListResponse>("/admin/templates"),
   updateTemplate: (id: string, body: UpdateTemplateAdminDto) =>
     apiFetch<AdminTemplateSummaryResponse>(`/admin/templates/${id}`, { method: "PATCH", body }),
+
+  // Marca de la plataforma (F9.1, ADR-028 §4)
+  getPlatformBranding: () => apiFetch<PlatformBrandingResponse>("/admin/platform/branding"),
+  updatePlatformBranding: (body: UpdatePlatformBrandingDto) =>
+    apiFetch<PlatformBrandingResponse>("/admin/platform/branding", { method: "PUT", body }),
+  resetPlatformBranding: () =>
+    apiFetch<PlatformBrandingResponse>("/admin/platform/branding/reset", { method: "POST" }),
+  uploadPlatformBrandingAsset: (body: UploadBrandingAssetDto) =>
+    apiFetch<UploadBrandingAssetResponse>("/admin/platform/branding/upload", { method: "POST", body }),
 };
+

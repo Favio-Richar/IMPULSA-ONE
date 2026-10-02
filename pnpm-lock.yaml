@@ -807,6 +807,9 @@ importers:
       '@impulza/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@impulza/validation':
+        specifier: workspace:*
+        version: link:../validation
       typescript:
         specifier: 6.0.3
         version: 6.0.3

@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
+import { getPlatformBranding } from "../lib/api/branding";
 import { Providers } from "./providers";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "Impulza One — Panel",
-  description: "Panel del propietario, colaboradores y modo agencia.",
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getPlatformBranding();
+  return {
+    title: `${branding.name} — Panel`,
+    description: "Panel del propietario, colaboradores y modo agencia.",
+    icons: branding.faviconUrl ? [{ url: branding.faviconUrl }] : undefined,
+  };
 };
 
 export default function RootLayout({

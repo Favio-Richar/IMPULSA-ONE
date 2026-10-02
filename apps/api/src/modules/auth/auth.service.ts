@@ -17,6 +17,7 @@ import {
   type EmailAdapter,
 } from "@impulza/auth";
 import { type PrismaClient, type Session, SessionScope, type User, VerificationTokenType } from "@impulza/database";
+import { DEFAULT_PLATFORM_BRANDING } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
 import { AuditService } from "../audit/audit.service.js";
@@ -63,6 +64,15 @@ export class AuthService {
     return { userId: user.id };
   }
 
+  private async getBrandName(): Promise<string> {
+    try {
+      const branding = await this.prisma.platformBranding.findFirst({ select: { name: true } });
+      return branding?.name ?? DEFAULT_PLATFORM_BRANDING.name;
+    } catch {
+      return DEFAULT_PLATFORM_BRANDING.name;
+    }
+  }
+
   private async sendVerificationEmail(user: User): Promise<void> {
     const { raw, hash } = generateVerificationToken();
     await this.prisma.verificationToken.create({
@@ -74,10 +84,11 @@ export class AuthService {
       },
     });
 
+    const brandName = await this.getBrandName();
     const verifyUrl = `${env.APP_BASE_URL}/verificar-correo?token=${raw}`;
     await this.emailAdapter.send({
       to: user.email,
-      subject: "Verifica tu correo — Impulza One",
+      subject: `Verifica tu correo — ${brandName}`,
       text: `Confirma tu correo entrando a este enlace: ${verifyUrl}\n\nExpira en 24 horas.`,
     });
   }
@@ -189,10 +200,11 @@ export class AuthService {
       },
     });
 
+    const brandName = await this.getBrandName();
     const resetUrl = `${env.APP_BASE_URL}/restablecer-contrasena?token=${raw}`;
     await this.emailAdapter.send({
       to: user.email,
-      subject: "Recupera tu contraseña — Impulza One",
+      subject: `Recupera tu contraseña — ${brandName}`,
       text: `Restablece tu contraseña entrando a este enlace: ${resetUrl}\n\nExpira en 1 hora. Si no fuiste tú, ignora este correo.`,
     });
   }

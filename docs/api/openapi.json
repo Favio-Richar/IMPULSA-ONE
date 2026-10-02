@@ -50121,6 +50121,684 @@
         ]
       }
     },
+    "/api/v1/platform/branding": {
+      "get": {
+        "description": "Identidad pública de la plataforma (nombre, colores, enlaces legales y logotipos). Usada por el sitio web comercial, pantallas de acceso, onboarding y clientes públicos. Con caché corta e invalidación inmediata al editar. Nunca expone datos internos ni correos.",
+        "operationId": "PlatformBrandingController_getPublic",
+        "parameters": [
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Marca pública activa de la plataforma.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "logoLightUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "logoDarkUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "faviconUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "primaryColor": {
+                      "type": "string"
+                    },
+                    "secondaryColor": {
+                      "type": "string"
+                    },
+                    "supportUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "privacyUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "termsUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "footerText": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "logoLightUrl",
+                    "logoDarkUrl",
+                    "faviconUrl",
+                    "primaryColor",
+                    "secondaryColor",
+                    "supportUrl",
+                    "privacyUrl",
+                    "termsUrl",
+                    "footerText"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Más de 120 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Marca pública de la plataforma",
+        "tags": [
+          "platform-branding"
+        ]
+      }
+    },
+    "/api/v1/admin/platform/branding": {
+      "get": {
+        "description": "Solo superadministración. Devuelve la identidad completa de la plataforma, incluyendo datos del remitente y metadatos de auditoría.",
+        "operationId": "AdminPlatformBrandingController_getAdmin",
+        "parameters": [
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuración completa de la marca de plataforma.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "logoLightUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "logoDarkUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "faviconUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "primaryColor": {
+                      "type": "string"
+                    },
+                    "secondaryColor": {
+                      "type": "string"
+                    },
+                    "supportUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "privacyUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "termsUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "footerText": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "senderName": {
+                      "type": "string"
+                    },
+                    "senderEmail": {
+                      "type": "string"
+                    },
+                    "updatedByAdminId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "logoLightUrl",
+                    "logoDarkUrl",
+                    "faviconUrl",
+                    "primaryColor",
+                    "secondaryColor",
+                    "supportUrl",
+                    "privacyUrl",
+                    "termsUrl",
+                    "footerText",
+                    "id",
+                    "senderName",
+                    "senderEmail",
+                    "updatedByAdminId",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado como superadministrador."
+          },
+          "403": {
+            "description": "No autorizado (no es superadministrador)."
+          }
+        },
+        "security": [
+          {
+            "sesionAdmin": []
+          }
+        ],
+        "summary": "Consultar configuración de marca de la plataforma",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "description": "Solo superadministración. Valida contraste WCAG 2.2 AA (>= 4.5:1 sobre fondo claro) para colores de marca, formato seguro https en enlaces y genera registro de auditoría.",
+        "operationId": "AdminPlatformBrandingController_update",
+        "parameters": [
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "logoLightUrl": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "logoDarkUrl": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "faviconUrl": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "primaryColor": {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  "secondaryColor": {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  "senderName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "senderEmail": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "supportUrl": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "privacyUrl": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "termsUrl": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "footerText": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "name",
+                  "primaryColor",
+                  "secondaryColor",
+                  "senderName",
+                  "senderEmail"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Marca actualizada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "logoLightUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "logoDarkUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "faviconUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "primaryColor": {
+                      "type": "string"
+                    },
+                    "secondaryColor": {
+                      "type": "string"
+                    },
+                    "supportUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "privacyUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "termsUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "footerText": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "senderName": {
+                      "type": "string"
+                    },
+                    "senderEmail": {
+                      "type": "string"
+                    },
+                    "updatedByAdminId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "logoLightUrl",
+                    "logoDarkUrl",
+                    "faviconUrl",
+                    "primaryColor",
+                    "secondaryColor",
+                    "supportUrl",
+                    "privacyUrl",
+                    "termsUrl",
+                    "footerText",
+                    "id",
+                    "senderName",
+                    "senderEmail",
+                    "updatedByAdminId",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validación fallida (contraste insuficiente, formato o enlaces inválidos)."
+          },
+          "401": {
+            "description": "No autenticado como superadministrador."
+          },
+          "403": {
+            "description": "No autorizado."
+          },
+          "429": {
+            "description": "Más de 30 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesionAdmin": []
+          }
+        ],
+        "summary": "Actualizar marca de la plataforma",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/platform/branding/reset": {
+      "post": {
+        "description": "Solo superadministración. Restablece la identidad a los valores oficiales de Impulza One y genera registro de auditoría.",
+        "operationId": "AdminPlatformBrandingController_reset",
+        "parameters": [
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Marca restablecida a los valores por defecto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "logoLightUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "logoDarkUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "faviconUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "primaryColor": {
+                      "type": "string"
+                    },
+                    "secondaryColor": {
+                      "type": "string"
+                    },
+                    "supportUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "privacyUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "termsUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "footerText": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "senderName": {
+                      "type": "string"
+                    },
+                    "senderEmail": {
+                      "type": "string"
+                    },
+                    "updatedByAdminId": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "logoLightUrl",
+                    "logoDarkUrl",
+                    "faviconUrl",
+                    "primaryColor",
+                    "secondaryColor",
+                    "supportUrl",
+                    "privacyUrl",
+                    "termsUrl",
+                    "footerText",
+                    "id",
+                    "senderName",
+                    "senderEmail",
+                    "updatedByAdminId",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado como superadministrador."
+          },
+          "403": {
+            "description": "No autorizado."
+          },
+          "429": {
+            "description": "Más de 10 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesionAdmin": []
+          }
+        ],
+        "summary": "Restablecer marca a valores por defecto",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/platform/branding/upload": {
+      "post": {
+        "description": "Solo superadministración. Permite PNG, JPG, WebP o SVG saneado (sin scripts ni referencias externas).",
+        "operationId": "AdminPlatformBrandingController_upload",
+        "parameters": [
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "target": {
+                    "type": "string",
+                    "enum": [
+                      "logo_light",
+                      "logo_dark",
+                      "favicon"
+                    ]
+                  },
+                  "fileName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "enum": [
+                      "image/png",
+                      "image/jpeg",
+                      "image/webp",
+                      "image/svg+xml"
+                    ]
+                  },
+                  "sizeBytes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "base64Data": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "target",
+                  "fileName",
+                  "contentType",
+                  "sizeBytes",
+                  "base64Data"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "URL pública del archivo subido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Formato inválido, SVG con scripts o tamaño excedido."
+          },
+          "401": {
+            "description": "No autenticado como superadministrador."
+          },
+          "403": {
+            "description": "No autorizado."
+          },
+          "429": {
+            "description": "Más de 30 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesionAdmin": []
+          }
+        ],
+        "summary": "Subir archivo de logotipo o favicon",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "description": "Sin sesión ni CSRF: lo consume infraestructura. Fuera de `/api/v1` porque no es un endpoint de negocio. Una dependencia caída degrada el reporte, no tumba el endpoint.",

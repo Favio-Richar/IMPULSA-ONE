@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { PlanResponse } from "@impulza/contracts";
-import { getPlanCatalog, getTemplateCatalog } from "../lib/api";
+import { getPlanCatalog, getTemplateCatalog, getPlatformBranding } from "../lib/api";
 import { getDashboardLinks } from "../lib/dashboard-links";
 import { MarketingHeader } from "../components/marketing/header";
 import { MarketingFooter } from "../components/marketing/footer";
@@ -14,14 +14,18 @@ import { CorridorHero } from "../components/marketing/corridor-hero";
 import { FEATURES, FeatureIcon, STEPS, PlanCard } from "../components/marketing/shared";
 
 export default async function MarketingHomePage() {
-  const [templates, plansRaw] = await Promise.all([getTemplateCatalog(), getPlanCatalog()]);
+  const [templates, plansRaw, branding] = await Promise.all([
+    getTemplateCatalog(),
+    getPlanCatalog(),
+    getPlatformBranding(),
+  ]);
   const { bienvenidaHref, loginHref } = getDashboardLinks();
   const carouselTemplates = templates.slice(0, 8);
   const plans: PlanResponse[] = [...plansRaw].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} branding={branding} />
 
       {/* Portada: corredor de fotos de negocios detrás del mensaje principal. */}
       <CorridorHero>
@@ -227,7 +231,7 @@ export default async function MarketingHomePage() {
         </Reveal>
       </section>
 
-      <MarketingFooter bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <MarketingFooter bienvenidaHref={bienvenidaHref} loginHref={loginHref} branding={branding} />
     </div>
   );
 }

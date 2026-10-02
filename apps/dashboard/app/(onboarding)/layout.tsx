@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiError } from "../../lib/api-client";
 import { useMe } from "../../lib/hooks/use-me";
+import { usePlatformBranding } from "../../lib/hooks/use-platform-branding";
 
 /**
  * Marco del onboarding (PM §8.2): sin la barra lateral del panel, para que el usuario se concentre
@@ -13,6 +14,8 @@ import { useMe } from "../../lib/hooks/use-me";
 export default function OnboardingLayout({ children }: { children: React.ReactNode }): React.JSX.Element | null {
   const router = useRouter();
   const meQuery = useMe();
+  const brandingQuery = usePlatformBranding();
+  const brandName = brandingQuery.data?.name ?? "Impulza One";
 
   if (meQuery.isError) {
     if (meQuery.error instanceof ApiError && meQuery.error.status === 401) {
@@ -43,7 +46,13 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="flex h-14 items-center justify-between gap-3 border-b border-border px-4">
-        <span className="text-sm font-semibold text-foreground">Impulza One</span>
+        <span className="text-sm font-semibold text-foreground">
+          {brandingQuery.data?.logoLightUrl ? (
+            <img src={brandingQuery.data.logoLightUrl} alt={brandName} className="h-6 max-w-[140px] object-contain" />
+          ) : (
+            brandName
+          )}
+        </span>
         <Link href="/" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
           Salir del asistente
         </Link>

@@ -141,6 +141,7 @@ model User {
   aiUsage              AiUsage[]           @relation("AiUsageUser")
   billingCheckouts     BillingCheckout[]
   legalAcceptances     LegalAcceptance[]
+  platformBrandingsUpdated PlatformBranding[] @relation("PlatformBrandingAdmin")
 
   @@map("users")
 }
@@ -398,6 +399,30 @@ model FeatureFlag {
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("feature_flags")
+}
+
+// F9.1 (ADR-028 §4): Marca de la plataforma configurable por superadministración (singleton).
+model PlatformBranding {
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String   @default("Impulza One")
+  logoLightUrl     String?  @map("logo_light_url")
+  logoDarkUrl      String?  @map("logo_dark_url")
+  faviconUrl       String?  @map("favicon_url")
+  primaryColor     String   @default("#0f6f6b") @map("primary_color")
+  secondaryColor   String   @default("#0b5450") @map("secondary_color")
+  senderName       String   @default("Impulza One") @map("sender_name")
+  senderEmail      String   @default("notificaciones@impulza.app") @map("sender_email")
+  supportUrl       String?  @map("support_url")
+  privacyUrl       String?  @map("privacy_url")
+  termsUrl         String?  @map("terms_url")
+  footerText       String?  @map("footer_text")
+  updatedByAdminId String?  @map("updated_by_admin_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  updatedByAdmin   User?    @relation("PlatformBrandingAdmin", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+
+  @@map("platform_branding")
 }
 
 model VerificationToken {

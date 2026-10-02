@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
+import type { PublicPlatformBrandingResponse } from "@impulza/contracts";
+import { DEFAULT_PLATFORM_BRANDING } from "@impulza/validation";
 import { listTemplates } from "../../lib/api/templates";
+import { getPlatformBranding } from "../../lib/api/branding";
 import { AuthMosaic } from "../../components/auth/auth-mosaic";
 import { env } from "../../lib/env";
 
@@ -10,7 +13,7 @@ import { env } from "../../lib/env";
  * público (PL1: sin sesión ni organización, igual que el onboarding lo usa) — si la API no
  * responde, el panel igual se muestra sin el mosaico en vez de romper el acceso al sistema.
  *
- * El enlace "Volver a Impulza One" (y el logo del panel derecho) apuntan a NEXT_PUBLIC_WEB_BASE_URL
+ * El enlace "Volver a..." (y el logo del panel derecho) apuntan a NEXT_PUBLIC_WEB_BASE_URL
  * -- el sitio de marketing (apps/web), un proceso/origen distinto al panel -- igual que Linktree,
  * Beacons, etc. dejan volver a su landing desde el login.
  */
@@ -22,6 +25,13 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
     templates = [];
   }
 
+  let branding: PublicPlatformBrandingResponse = DEFAULT_PLATFORM_BRANDING as PublicPlatformBrandingResponse;
+  try {
+    branding = await getPlatformBranding();
+  } catch {
+    branding = DEFAULT_PLATFORM_BRANDING as PublicPlatformBrandingResponse;
+  }
+
   return (
     <div className="grid min-h-screen md:grid-cols-2">
       <main className="relative flex items-center justify-center bg-background p-4 sm:p-8">
@@ -30,13 +40,21 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
           className="absolute left-4 top-4 flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:left-8 sm:top-8"
         >
           <span aria-hidden="true">←</span>
-          Volver a Impulza One
+          Volver a {branding.name}
         </a>
         <div className="w-full max-w-sm">{children}</div>
       </main>
-      <div className="relative hidden bg-[#0f6f6b] md:block">
-        <AuthMosaic templates={templates} webBaseUrl={env.NEXT_PUBLIC_WEB_BASE_URL} />
+      <div
+        className="relative hidden md:block"
+        style={{ backgroundColor: branding.primaryColor || "#0f6f6b" }}
+      >
+        <AuthMosaic
+          templates={templates}
+          webBaseUrl={env.NEXT_PUBLIC_WEB_BASE_URL}
+          branding={branding}
+        />
       </div>
     </div>
   );
 }
+

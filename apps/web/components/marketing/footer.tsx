@@ -1,19 +1,48 @@
 import Link from "next/link";
 
-export function MarketingFooter({ bienvenidaHref, loginHref }: { bienvenidaHref: string; loginHref: string }) {
+export function MarketingFooter({
+  bienvenidaHref,
+  loginHref,
+  branding,
+}: {
+  bienvenidaHref: string;
+  loginHref: string;
+  branding?: {
+    name: string;
+    logoLightUrl?: string | null;
+    primaryColor?: string;
+    footerText?: string | null;
+    termsUrl?: string | null;
+    privacyUrl?: string | null;
+    supportUrl?: string | null;
+  };
+}) {
+  const name = branding?.name || "Impulza One";
+  const primaryColor = branding?.primaryColor || "#0f6f6b";
+  const initials = name.slice(0, 2).toUpperCase();
+  const footerText =
+    branding?.footerText ||
+    "Portal biográfico, reservas, catálogo, mini-CRM, formularios, QR y analítica en un solo sistema.";
+
   return (
     <footer className="border-t border-[#e2e8f0] py-14">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div className="flex flex-col gap-3">
           <span className="flex items-center gap-2 text-base font-semibold text-[#0f172a]">
-            <span className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-[#0f6f6b] text-xs font-bold text-white">
-              IO
-            </span>
-            Impulza One
+            {branding?.logoLightUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={branding.logoLightUrl} alt={name} className="h-7 w-auto object-contain" />
+            ) : (
+              <span
+                className="flex h-7 w-7 items-center justify-center rounded-[8px] text-xs font-bold text-white"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {initials}
+              </span>
+            )}
+            {name}
           </span>
-          <p className="max-w-xs text-sm text-[#64748b]">
-            Portal biográfico, reservas, catálogo, mini-CRM, formularios, QR y analítica en un solo sistema.
-          </p>
+          <p className="max-w-xs text-sm text-[#64748b]">{footerText}</p>
         </div>
 
         <div className="flex flex-col gap-2 text-sm">
@@ -63,7 +92,7 @@ export function MarketingFooter({ bienvenidaHref, loginHref }: { bienvenidaHref:
       </div>
 
       <div className="mx-auto mt-10 max-w-6xl border-t border-[#e2e8f0] px-4 pt-6 text-sm text-[#94a3b8] sm:px-6">
-        <span>© {new Date().getFullYear()} Impulza One.</span>
+        <span>© {new Date().getFullYear()} {name}.</span>
       </div>
     </footer>
   );

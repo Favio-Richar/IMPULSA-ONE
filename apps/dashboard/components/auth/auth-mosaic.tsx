@@ -1,4 +1,4 @@
-import type { TemplateResponse } from "@impulza/contracts";
+import type { PublicPlatformBrandingResponse, TemplateResponse } from "@impulza/contracts";
 import { TemplateAvatar } from "./template-avatar";
 
 interface ThemeTokensPreview {
@@ -14,15 +14,24 @@ const ROTATIONS = ["-rotate-3", "rotate-2", "-rotate-1", "rotate-3", "rotate-1",
 /**
  * Panel visual de las pantallas de acceso (login/registro/verificación): mosaico con vistas
  * previas reales del catálogo de plantillas (nunca fotos de personas inventadas), sobre el color
- * de marca oficial de Impulza One (verde azulado #0f6f6b, decidido por el propietario del
- * producto — ver README "Identidad de marca"). Mismo patrón visual que el hero del sitio
+ * de marca oficial de la plataforma (ADR-028 §4). Mismo patrón visual que el hero del sitio
  * comercial (apps/web), adaptado a este panel oscuro. El logo enlaza de vuelta a ese sitio
  * (webBaseUrl = NEXT_PUBLIC_WEB_BASE_URL), igual que Linktree/Beacons dejan volver a su landing
  * desde el login.
  */
-export function AuthMosaic({ templates, webBaseUrl }: { templates: TemplateResponse[]; webBaseUrl: string }) {
+export function AuthMosaic({
+  templates,
+  webBaseUrl,
+  branding,
+}: {
+  templates: TemplateResponse[];
+  webBaseUrl: string;
+  branding?: PublicPlatformBrandingResponse;
+}) {
   const hasTemplates = templates.length > 0;
   const tiles = hasTemplates ? Array.from({ length: 9 }, (_, index) => templates[index % templates.length]!) : [];
+  const brandName = branding?.name ?? "Impulza One";
+  const initials = brandName.slice(0, 2).toUpperCase();
 
   return (
     <div className="relative flex h-full flex-col justify-between overflow-hidden p-10">
@@ -43,8 +52,14 @@ export function AuthMosaic({ templates, webBaseUrl }: { templates: TemplateRespo
         href={webBaseUrl}
         className="relative flex w-fit items-center gap-2 text-white transition-opacity hover:opacity-80"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-white/15 text-xs font-bold">IO</span>
-        <span className="text-base font-semibold">Impulza One</span>
+        {branding?.logoDarkUrl ? (
+          <img src={branding.logoDarkUrl} alt={brandName} className="h-8 max-w-[160px] object-contain" />
+        ) : (
+          <>
+            <span className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-white/15 text-xs font-bold">{initials}</span>
+            <span className="text-base font-semibold">{brandName}</span>
+          </>
+        )}
       </a>
 
       {hasTemplates ? (

@@ -60,4 +60,5 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 | [ADR-024](./ADR-024-reservas-profesionales-sucursales-calendarios.md) | Reservas: profesionales, sucursales y sincronización con calendarios (iCal y Google Calendar) | Aceptado |
 | [ADR-025](./ADR-025-sitio-comercial-institucional.md) | Arquitectura de páginas institucionales y comerciales de Impulza One (`/soluciones`, `/integraciones`, `/recursos`, `/privacidad`) | Aceptado |
 | [ADR-026](./ADR-026-superadministracion-operacion-colas-flags-plantillas.md) | Operación, colas BullMQ, feature flags y CMS de plantillas en la superadministración | Aceptado |
+| [ADR-027](./ADR-027-animaciones-microinteracciones-fase8.md) | Estrategia de animaciones y microinteracciones para la Fase 8 | Aceptado |
 

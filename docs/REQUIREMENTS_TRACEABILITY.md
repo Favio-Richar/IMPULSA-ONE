@@ -54,6 +54,10 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Buscador/filtros de plantillas por industria, objetivo, estilo, color; preview móvil/escritorio | PM §7.4 | Fase 2 (comercial) — backlog `BACKLOG_PLANTILLAS.md`: modelo y API de lectura en PL1 (`GET /api/v1/templates`, filtros industria/objetivo/estilo), catálogo en PL3, galería en PL4 |
 | Dirección visual obligatoria: fondo claro, profesional, iconos lineales, sombras discretas, bordes moderados, sin exceso de tarjetas, WCAG 2.2 AA | PM §15, ST §14 | Transversal, desde design system (Fase 1) |
 | No copiar interfaz visual de competidores | ST §14, §22 | Restricción permanente |
+| Microinteracciones discretas en constructor y panel (animaciones GPU sin dependencias, WCAG 2.2 AA) | PM §9.4, ST §14 | Fase 8 (F8.1, ADR-027) — Hecho 2026-10-02 (Playwright; criterios 6 y 8 con reserva, ver BACKLOG_FASE_8) |
+| Transiciones suaves en onboarding (fade, hover lift, stagger de galería, checks) | PM §8.2, §9.4 | Fase 8 (F8.2, ADR-027) — Hecho 2026-10-02 (Playwright; criterio 1 ajustado, ver BACKLOG_FASE_8) |
+| Animaciones de scroll en sitio comercial (Reveal en integraciones, recursos y soluciones) | PM §9.4, ST §14 | Fase 8 (F8.3, ADR-027) — Hecho 2026-10-02 (Playwright en 4 páginas; criterios 4 y 7 con reserva) |
+| Catálogo ampliado con rubros educación, fitness, música y restaurante con bloques avanzados | PM §7.4 | Fase 8 (F8.4, ADR-027) — Hecho 2026-10-02 (4 plantillas reales, OpenAPI regenerado, Playwright) |
 
 ## 6. Conversión: formularios, contactos, mini-CRM
 

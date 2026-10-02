@@ -5,35 +5,45 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 1. Estado al 2026-10-02 (después de F7.12)
+## 0. RETOMAR AQUÍ (2026-10-02, noche) — Fase 8 completa con reservas, pendiente de commit
+
+**Estado real:** la Fase 7 está cerrada y commiteada (`cdb4ea6`). La **Fase 8 (F8.1–F8.4) quedó verificada** el 2026-10-02 pero **todavía sin commit** (todo está en el árbol de trabajo). Antigravity dejó el código sin pruebas de interfaz; Claude lo revisó, corrigió y probó.
+
+**Corregido por Claude:**
+- `packages/contracts/src/templates.ts`: faltaba `"educacion"` (rompía el `next build` de la web). Prueba `apps/api/src/modules/templates/templates-contract.test.ts` (verificada contra código roto).
+- `docs/api/openapi.json` regenerado con el rubro `educacion` (lo detectó `openapi.test.ts`; Antigravity no lo había hecho).
+- Borrado de bloques: si el servidor rechazaba, el bloque quedaba con `opacity-0` y sin clics; ahora se restaura (`onDelete(blockId, onFailed)`).
+- Plantilla "Músico y banda": se quitó "venta de entradas" (el sistema solo enlaza a una venta externa).
+- La prueba que "se colgaba" no era un defecto del código: tras un borrado fallido el `ConfirmButton` sigue abierto y la prueba buscaba el botón «Eliminar bloque», que ya no existe. Se corrigió la prueba (reintenta con «Sí»).
+
+**Verificado (2026-10-02):** `pnpm turbo run typecheck lint test`: todo en verde salvo `openapi.test.ts`, ya corregido y en verde. Playwright **22/22** (`experiencia-animaciones.spec.ts`, `onboarding-animaciones.spec.ts`; móvil y escritorio, con y sin movimiento reducido). Las de foco del onboarding y de borrado fallido se verificaron contra el código roto. Capturas en `docs/design/capturas/f81` a `f84`. `next build` de la web (dentro de Playwright) y del panel.
+
+**Pendiente:**
+1. **Commits:** un commit por historia o uno de fase, con `Co-Authored-By`. Revisar `git status` antes (incluye capturas f710 regeneradas).
+2. **Decisión del propietario:** se ajustaron dos criterios (ver `docs/BACKLOG_FASE_8.md`): F8.2 criterio 1 (el paso saliente NO se desvanece) y F8.1 criterio 6 (los toasts NO tienen salida animada). Confirmar o pedir que se implementen.
+3. **Reservas honestas** (detalle en el backlog): F8.1 criterio 8 (CLS) sin medir; `Reveal` usa `threshold`, no `rootMargin -10%`; sin contadores en la portada (no aplica); sin staging.
+4. **Corrida completa de Playwright** (toda la suite) antes de dar la fase por cerrada en CI.
+
+**Lección para Antigravity:** `typecheck` y `lint` limpios **no** detectan un contrato duplicado ni un OpenAPI desactualizado; hay que correr el build, la suite completa y las pruebas de interfaz antes de marcar algo como listo. No marcar nada sin Playwright y capturas, y no tocar archivos ajenos a la historia.
+
+**Servicios en esta máquina:** API 4000 y worker 4100 en `ok`; panel 3100, administración 3200 y sitio público 3300 arriba (se levantaron a mano; `vite-node --watch` de la API se cae al regenerar Prisma o recompilar paquetes: reiniciarla). Docker (Postgres, Redis, MinIO) arriba. Variables nuevas ya en el `.env` local: `WEB_APP_URL`, `WEB_REVALIDATE_SECRET`, `WORKER_HEALTH_URL`.
+
+**Decisiones pendientes del propietario (no bloquean la Fase 8):** política de privacidad (razón social, RUT, domicilio, correo y revisión de un abogado); aplicación OAuth de Google (`GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`, con retorno `<APP_BASE_URL>/integraciones/google-calendar`); vencimiento de los enlaces firmados de reserva; planes con medición y webhooks; Mercado Pago real; bucket R2; app de Zapier; hosting de producción (sin él no hay correo real, backups con prueba de restauración ni staging).
+
+## 1. Estado al 2026-10-02 (Fase 8 en progreso; ver §0)
 
 - Rama principal: `master` (no `main`). Cada historia es **un commit** con el código en el asunto,
-  p. ej. `feat(newsletter): … (F7.4, ADR-019)`, y termina con la línea `Co-Authored-By` que indique
+  p. ej. `feat(experiencia): … (F8.X, ADR-027)`, y termina con la línea `Co-Authored-By` que indique
   el sistema.
-- **Fase 7 completa** (`docs/BACKLOG_FASE_7.md`): F7.1–F7.12 listas para revisión del propietario.
-  - **F7.9a y F7.9b:** con sus pruebas de Playwright (móvil y escritorio) y capturas en
-    `docs/design/capturas/f79/`; el servidor fue revisado y corregido (borrado de profesionales con reservas vivas).
-  - **F7.9c (sincronización con calendarios):** feed iCal con token por sitio y por profesional, y Google Calendar de un solo sentido con `state` firmado, renovación de token y sincronización en reservas. Probado con Google simulado (pendiente OAuth real de Google del propietario).
-  - **F7.10 (Sitio comercial institucional, ADR-025):** Soluciones por rubro (`/soluciones`, 6 rubros detallados), Integraciones (`/integraciones`, directorio con buscador reactivo y filtros de categoría), Recursos y guías (`/recursos`, guías prácticas y herramientas) y Política de privacidad (`/privacidad`, redactada conforme a Ley 19.628 y 21.719 chilena, con derechos ARCO y detalle de cifrado AES-256-GCM / Argon2id / HMAC). Fondo claro sobrio (`#ffffff` / `#f8fafc`), navegación integrada en header y footer, pruebas unitarias y pruebas de Playwright móvil y escritorio sin desborde horizontal (`expectNoHorizontalScroll`), con capturas en `docs/design/capturas/f710/`. **Revisada y corregida por Claude:** el contenido prometía cosas que no existen (cabecera `X-Impulza-Signature` y evento `booking.confirmed` falsos, plantillas inventadas, "emisión automática de comprobantes", cupos con aforo, TLS 1.3 / "nivel bancario", Google Calendar como "Disponible"); se corrigió y `marketing-pages.test.ts` ahora cruza el texto con el producto real. La política de privacidad **no está lista para publicar**: falta el responsable legal (razón social, RUT, domicilio) y un correo de privacidad, y debe revisarla un abogado.
-  - **F7.11 (Superadministración técnica, colas, feature flags y plantillas, ADR-026):**
-    - Estado técnico del sistema en tiempo real en `/operacion`: PostgreSQL, Redis, Worker HTTP (`:4100/health`), Storage (MinIO/R2), Pasarelas (Webpay y Mercado Pago) y métricas de proceso Node.js (`heapUsed`, `heapTotal`, `rss`, `uptime`).
-    - Monitoreo y control operativo de colas BullMQ (14 colas reales del sistema: métricas activas/en espera/fallidas/completadas, pausa, reanudación, reintento de fallidos y purga/limpieza).
-    - Feature flags con modelo PostgreSQL (`FeatureFlag`), caché Redis con invalidación inmediata al mutar, conmutador reactivo y soporte de reglas JSON para segmentación por organización o plan. Banderas sembradas por defecto (`registros_abiertos`, `pagos_en_linea`, `ia_generativa`, `campanas_correo`, `sincronizacion_calendarios`, `webhooks_salientes`).
-    - CMS de plantillas públicas en `/plantillas`: catálogo con búsqueda reactiva, control de visibilidad (`isActive`), destacada en galería (`isFeatured`) y orden de aparición (`sortOrder`).
-    - Seguridad: `AdminSessionGuard` + `CsrfGuard` en todos los endpoints, auditoría estricta de cada acción de superadmin (`admin.queue_*`, `admin.feature_flag_*`, `admin.template_*`).
-    - Pruebas E2E (`admin-operations.e2e.test.ts`), pruebas de aislamiento multi-tenant (miembros y dueños de orgs reciben 401; aislamiento entre orgs en flags con reglas), verificación contra código roto y pruebas de Playwright móvil y escritorio sin desborde horizontal (`expectNoHorizontalScroll`) con capturas en `docs/design/capturas/f711/`.
-  - **F7.11 revisada y corregida por Claude:** las banderas ahora gobiernan de verdad registros, pagos, IA, campañas, calendarios y webhooks (antes no conectaban con nada); el CMS de plantillas ya afecta a la galería pública; nombres de colas y estado técnico leídos de la configuración real. Detalle en "Revisión de F7.11" de `docs/BACKLOG_FASE_7.md`.
-  - **F7.12 (Aislamiento y seguridad de la Fase 7):**
-    - Auditoría de Rate Limiting: corrección en `CalendarFeedController` agregando `RateLimitGuard` (que faltaba en `@UseGuards`), habilitando el decorador `@RateLimit(60, 60)` y documentando `@ApiRateLimited(60, 60)`. Prueba e2e en `calendar-and-google.e2e.test.ts` verificada contra código roto.
-    - Auditoría de Secretos en Logs: ampliación de `redactPath` en `apps/api/src/common/redact-path.ts` para redactar tokens de newsletter, unsubscribe, bookings, orders, downloads y parámetros sensibles de query. Pruebas unitarias completas en `redact-path.test.ts` (8/8) verificadas contra código roto.
-    - Auditoría de Aislamiento Multi-Tenant: suite de aislamiento para estadísticas de Newsletter (F7.4) en `multi-tenant-isolation.e2e.test.ts`. **Revisada por Claude:** la prueba entregada fallaba (usaba un campo inexistente de `Contact` y un origen de consentimiento que `stats` no cuenta); corregida y verificada rompiendo el filtro por organización.
-    - OpenAPI regenerado con código 429 documentado en el feed.
-  - **F7.12 revisada y corregida por Claude:** se agregó `apps/api/src/security-audit.test.ts` (auditoría estática permanente: `@RateLimit` exige `RateLimitGuard`, toda ruta `/public` tiene límite, todo token en la ruta lo oculta `redactPath`, toda ruta de organización que modifica exige permiso) y `request-context.middleware.test.ts` (los logs y Sentry usan de verdad `redactPath`). Detalle y límites en "Revisión de F7.12" de `docs/BACKLOG_FASE_7.md`.
-  - **Fase 7 concluida.** Pendiente revisión final del propietario.
-- ADR más reciente: ADR-026 (superadministración: operación técnica, colas BullMQ, feature flags y plantillas).
-- Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
+- **Fase 8 en progreso, sin commit** (`docs/BACKLOG_FASE_8.md`, `ADR-027`). Lo siguiente describe lo que Antigravity implementó, **no** lo verificado (ver §0):
+  - **F8.1 (Microinteracciones en constructor y panel):** clases `.motion-fade` y `.motion-slide-left` añadidas en `globals.css` bajo `prefers-reduced-motion: no-preference`. Entradas `.motion-rise` al crear y duplicar bloques en `BlockCanvas`. Salida suave de 300 ms con `opacity-0` en `BlockRow` antes de desmontar. Panel lateral con entrada `motion-slide-left`. Indicadores de guardado y publicación con `.motion-pop` y check verde. Typecheck y lint en `@impulza/dashboard` limpios (0 errores).
+  - **F8.2 (Transiciones animadas en el onboarding):** contenedor del paso con `.motion-fade` y foco automático en el título. Efecto hover lift en `ChoiceCards` con `translateY(-2px)` y sombra suave. Entrada escalonada de tarjetas de plantilla en `TemplateGallery` (`animationDelay: index * 60ms`). Indicador de completitud de tareas de publicación con `.motion-pop`.
+  - **F8.3 (Animaciones de scroll en el sitio comercial):** componentes `Reveal` integrados en las tarjetas del directorio de `/integraciones` y en las guías y herramientas de `/recursos`. Actualizado `soluciones.ts` para apuntar a la plantilla real de educación. Typecheck y lint en `@impulza/web` limpios (0 errores).
+  - **F8.4 (Plantillas nuevas por rubro):** agregada industria `educacion` a `TEMPLATE_INDUSTRIES`. 4 plantillas nuevas reales en `TEMPLATE_CATALOG`: "Academia y talleres" (`academia-talleres`), "Fitness y entrenamiento" (`fitness-entrenamiento`), "Músico y banda" (`musico-banda`), y "Restaurante con menú" (`restaurante-menu`), utilizando bloques avanzados (`booking`, `catalog`, `pricing`, `events`, `music`, `video`, `map`, `gallery`, `newsletter`). Suite de 65 pruebas unitarias en verde (`catalog.test.ts`), verificadas contra el código roto y paquete `@impulza/validation` compilado.
+- ADR más reciente: ADR-027 (animaciones y microinteracciones para la Fase 8).
+- Fases 0–7 cerradas o en revisión; el detalle de cada historia está en su backlog
   (`docs/BACKLOG_FASE_*.md`, `BACKLOG_PLANTILLAS.md`, `BACKLOG_PAGINA_PREMIUM.md`).
-- ADR vigentes: `docs/decisions/` (hasta ADR-026). No reabrir uno sin una razón técnica nueva.
+- ADR vigentes: `docs/decisions/` (hasta ADR-027). No reabrir uno sin una razón técnica nueva.
 
 ### Decisiones pendientes del propietario (no avanzar sobre ellas sin respuesta)
 

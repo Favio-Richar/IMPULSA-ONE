@@ -2446,7 +2446,8 @@
                 "eventos",
                 "comercio",
                 "creador",
-                "emprendimiento"
+                "emprendimiento",
+                "educacion"
               ],
               "type": "string"
             }
@@ -2502,7 +2503,8 @@
                             "eventos",
                             "comercio",
                             "creador",
-                            "emprendimiento"
+                            "emprendimiento",
+                            "educacion"
                           ]
                         }
                       },
@@ -2678,7 +2680,8 @@
                           "eventos",
                           "comercio",
                           "creador",
-                          "emprendimiento"
+                          "emprendimiento",
+                          "educacion"
                         ]
                       }
                     },
@@ -3012,7 +3015,8 @@
                           "eventos",
                           "comercio",
                           "creador",
-                          "emprendimiento"
+                          "emprendimiento",
+                          "educacion"
                         ]
                       }
                     },

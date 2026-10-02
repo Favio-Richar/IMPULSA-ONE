@@ -27,11 +27,41 @@ describe("TEMPLATE_CATALOG (PL3)", () => {
       ["Creador/Personal", ["creador"]],
       ["Salud/Bienestar", ["salud", "belleza-bienestar"]],
       ["Eventos/Turismo", ["eventos", "turismo"]],
+      ["Educación/Talleres (F8.4)", ["educacion"]],
     ];
     for (const [segment, industries] of required) {
       const covered = TEMPLATE_CATALOG.some((template) => industries.every((tag) => template.industryTags.includes(tag)));
       expect(covered, segment).toBe(true);
     }
+  });
+
+  it("las plantillas nuevas de F8.4 usan bloques enriquecidos del sistema", () => {
+    const academia = TEMPLATE_CATALOG.find((t) => t.code === "academia-talleres")!;
+    const fitness = TEMPLATE_CATALOG.find((t) => t.code === "fitness-entrenamiento")!;
+    const musico = TEMPLATE_CATALOG.find((t) => t.code === "musico-banda")!;
+    const restaurante = TEMPLATE_CATALOG.find((t) => t.code === "restaurante-menu")!;
+
+    expect(academia).toBeDefined();
+    expect(fitness).toBeDefined();
+    expect(musico).toBeDefined();
+    expect(restaurante).toBeDefined();
+
+    const academiaTypes = academia.blocksSeed.map((b) => b.type);
+    expect(academiaTypes).toContain("events");
+    expect(academiaTypes).toContain("newsletter");
+
+    const fitnessTypes = fitness.blocksSeed.map((b) => b.type);
+    expect(fitnessTypes).toContain("booking");
+    expect(fitnessTypes).toContain("pricing");
+
+    const musicoTypes = musico.blocksSeed.map((b) => b.type);
+    expect(musicoTypes).toContain("music");
+    expect(musicoTypes).toContain("events");
+    expect(musicoTypes).toContain("video");
+
+    const restauranteTypes = restaurante.blocksSeed.map((b) => b.type);
+    expect(restauranteTypes).toContain("catalog");
+    expect(restauranteTypes).toContain("map");
   });
 
   it("la plantilla de creador usa un tema de la línea oscura (PL2)", () => {

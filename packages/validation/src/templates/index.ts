@@ -50,6 +50,7 @@ export const TEMPLATE_INDUSTRIES = [
   "comercio",
   "creador",
   "emprendimiento",
+  "educacion",
 ] as const;
 export type TemplateIndustry = (typeof TEMPLATE_INDUSTRIES)[number];
 
@@ -57,13 +58,14 @@ export const TEMPLATE_INDUSTRY_LABELS: Record<TemplateIndustry, string> = {
   profesional: "Profesionales y servicios",
   "servicios-locales": "Negocios locales",
   "belleza-bienestar": "Belleza y bienestar",
-  salud: "Salud",
+  "salud": "Salud",
   gastronomia: "Café y gastronomía",
   turismo: "Turismo",
   eventos: "Eventos",
   comercio: "Comercio y tiendas",
   creador: "Creadores y artistas",
   emprendimiento: "Emprendedores",
+  educacion: "Educación y talleres",
 };
 
 export const templateCodeSchema = z

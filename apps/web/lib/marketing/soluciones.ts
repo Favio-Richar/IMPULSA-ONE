@@ -182,8 +182,8 @@ export const SOLUCIONES_RUBROS: SolucionRubro[] = [
       { nombre: "Preguntas frecuentes", motivo: "Resuelve dudas sobre requisitos, nivel y horarios." },
     ],
     plantillaRecomendada: {
-      nombre: "Eventos y turismo",
-      descripcion: "Plantilla pensada para eventos y actividades, con fechas y llamadas a la acción destacadas.",
+      nombre: "Academia y talleres",
+      descripcion: "Plantilla pensada para academias, cursos y talleres con agenda, servicios y captación.",
     },
   },
 ];

@@ -18,6 +18,7 @@ export const templateIndustry = z.enum([
   "comercio",
   "creador",
   "emprendimiento",
+  "educacion",
 ]);
 
 export const templateObjective = z.enum(["captar", "vender", "reservar", "mostrar", "compartir"]);

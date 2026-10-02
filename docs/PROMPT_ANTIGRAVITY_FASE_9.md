@@ -15,6 +15,14 @@ desarrollar la **Fase 9: Marca y agencias**, **una historia a la vez y en orden*
 4. El código existente del área (módulos de la API, pantallas del panel y de `apps/admin`) y **reutiliza**
    lo que ya hay (medios, dominios, auditoría, colas BullMQ, correo, guards). No dupliques.
 
+**Cómo proteger el sistema (obligatorio):**
+- **Trabaja en una rama aparte, nunca en `master`:** `git switch -c fase-9/f9-1-marca-plataforma` (una rama por
+  historia, creada desde `master` actualizado). No hagas `push` a `master`. Sube **solo tu rama**
+  (`git push -u origin <rama>`). Claude revisa y, si todo está bien, la fusiona.
+- **Antes de empezar:** `git status` debe estar limpio y las pruebas existentes en verde. Si no lo están,
+  avisa y no empieces.
+- **Una historia por vez.** No empieces F9.(N+1) hasta que Claude marque F9.N como «Hecho».
+
 **Qué se espera del producto:** que el **dueño del sistema** y **cada usuario** configuren su marca
 (logo, colores, datos) desde la interfaz, y que una **agencia** administre clientes con acceso delegado,
 marca blanca y reportes. Diseño **idéntico** al resto del producto (mismos tokens, fondo claro, sobrio),

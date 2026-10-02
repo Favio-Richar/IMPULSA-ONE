@@ -6,6 +6,7 @@ import {
   INTEGRACIONES,
   type IntegracionCategoria,
 } from "../../lib/marketing/integraciones";
+import { Reveal } from "./reveal";
 
 export function IntegracionesDirectory({ bienvenidaHref }: { bienvenidaHref: string }): React.JSX.Element {
   const [selectedCategoria, setSelectedCategoria] = useState<IntegracionCategoria | "todas">("todas");
@@ -78,11 +79,11 @@ export function IntegracionesDirectory({ bienvenidaHref }: { bienvenidaHref: str
       {/* Grilla de fichas de integración */}
       {filteredIntegraciones.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredIntegraciones.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col justify-between rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition hover:shadow-md"
-            >
+          {filteredIntegraciones.map((item, index) => (
+            <Reveal key={item.id} delayMs={Math.min(index, 6) * 40} className="h-full">
+              <div
+                className="flex h-full flex-col justify-between rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition hover:shadow-md"
+              >
               <div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[11px] font-medium uppercase tracking-wider text-[#0f6f6b]">
@@ -138,6 +139,7 @@ export function IntegracionesDirectory({ bienvenidaHref }: { bienvenidaHref: str
                 </div>
               </div>
             </div>
+          </Reveal>
           ))}
         </div>
       ) : (

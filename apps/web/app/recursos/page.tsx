@@ -48,41 +48,42 @@ export default function RecursosPage(): React.JSX.Element {
         </div>
 
         <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {RECURSOS_GUIAS.map((guia) => (
-            <article
-              key={guia.id}
-              className="flex flex-col justify-between rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition hover:shadow-md"
-            >
-              <div>
-                <div className="flex items-center justify-between text-xs text-[#64748b]">
-                  <span className="rounded bg-[#e6f5f3] px-2.5 py-0.5 font-medium text-[#0f6f6b]">
-                    {guia.categoria}
-                  </span>
-                  <span>{guia.tiempoLectura}</span>
-                </div>
-                <h3 className="mt-3 text-base font-semibold text-[#0f172a] leading-snug">{guia.titulo}</h3>
-                <p className="mt-2 text-xs leading-relaxed text-[#64748b]">{guia.resumen}</p>
+          {RECURSOS_GUIAS.map((guia, index) => (
+            <Reveal key={guia.id} delayMs={Math.min(index, 6) * 40} className="h-full">
+              <article
+                className="flex h-full flex-col justify-between rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition hover:shadow-md"
+              >
+                <div>
+                  <div className="flex items-center justify-between text-xs text-[#64748b]">
+                    <span className="rounded bg-[#e6f5f3] px-2.5 py-0.5 font-medium text-[#0f6f6b]">
+                      {guia.categoria}
+                    </span>
+                    <span>{guia.tiempoLectura}</span>
+                  </div>
+                  <h3 className="mt-3 text-base font-semibold text-[#0f172a] leading-snug">{guia.titulo}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-[#64748b]">{guia.resumen}</p>
 
-                <div className="mt-4 border-t border-[#e2e8f0] pt-3">
-                  <span className="text-[11px] font-semibold text-[#0f172a]">Lo que aprenderás:</span>
-                  <ul className="mt-2 flex flex-col gap-1 text-[11px] text-[#475569]">
-                    {guia.puntosClave.map((punto, pIdx) => (
-                      <li key={pIdx} className="flex items-start gap-1.5">
-                        <span className="text-[#0f6f6b] font-bold">•</span>
-                        <span>{punto}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="mt-4 border-t border-[#e2e8f0] pt-3">
+                    <span className="text-[11px] font-semibold text-[#0f172a]">Lo que aprenderás:</span>
+                    <ul className="mt-2 flex flex-col gap-1 text-[11px] text-[#475569]">
+                      {guia.puntosClave.map((punto, pIdx) => (
+                        <li key={pIdx} className="flex items-start gap-1.5">
+                          <span className="text-[#0f6f6b] font-bold">•</span>
+                          <span>{punto}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-6 border-t border-[#e2e8f0] pt-3 flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#0f6f6b]">Disponible en la plataforma</span>
-                <a href={bienvenidaHref} className="text-xs font-medium text-[#0f6f6b] hover:underline">
-                  Aplicar ahora →
-                </a>
-              </div>
-            </article>
+                <div className="mt-6 border-t border-[#e2e8f0] pt-3 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#0f6f6b]">Disponible en la plataforma</span>
+                  <a href={bienvenidaHref} className="text-xs font-medium text-[#0f6f6b] hover:underline">
+                    Aplicar ahora →
+                  </a>
+                </div>
+              </article>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -99,23 +100,24 @@ export default function RecursosPage(): React.JSX.Element {
 
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {HERRAMIENTAS_UTILES.map((herramienta, idx) => (
-              <div
-                key={idx}
-                className="flex flex-col justify-between rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm"
-              >
-                <div>
-                  <h3 className="text-base font-semibold text-[#0f172a]">{herramienta.titulo}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-[#64748b]">{herramienta.descripcion}</p>
+              <Reveal key={idx} delayMs={idx * 50} className="h-full">
+                <div
+                  className="flex h-full flex-col justify-between rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm"
+                >
+                  <div>
+                    <h3 className="text-base font-semibold text-[#0f172a]">{herramienta.titulo}</h3>
+                    <p className="mt-2 text-xs leading-relaxed text-[#64748b]">{herramienta.descripcion}</p>
+                  </div>
+                  <div className="mt-6 border-t border-[#e2e8f0] pt-4">
+                    <Link
+                      href={herramienta.enlace}
+                      className="text-xs font-semibold text-[#0f6f6b] hover:underline"
+                    >
+                      {herramienta.label} →
+                    </Link>
+                  </div>
                 </div>
-                <div className="mt-6 border-t border-[#e2e8f0] pt-4">
-                  <Link
-                    href={herramienta.enlace}
-                    className="text-xs font-semibold text-[#0f6f6b] hover:underline"
-                  >
-                    {herramienta.label} →
-                  </Link>
-                </div>
-              </div>
+              </Reveal>
             ))}
           </div>
 

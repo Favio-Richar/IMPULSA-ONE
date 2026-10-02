@@ -18,8 +18,21 @@ import type {
   AdminUserListResponse,
   PlanLimitsResponse,
   PlanResponse,
+  AdminSystemHealthResponse,
+  AdminQueueMetricsResponse,
+  AdminQueueActionResultResponse,
+  AdminFeatureFlagListResponse,
+  AdminFeatureFlagResponse,
+  AdminTemplateListResponse,
+  AdminTemplateSummaryResponse,
 } from "@impulza/contracts";
-import type { AiRoutesInput, CreateAiConnectionInput, UpdateAiConnectionInput } from "@impulza/validation";
+import type {
+  AiRoutesInput,
+  CreateAiConnectionInput,
+  UpdateAiConnectionInput,
+  UpdateFeatureFlagDto,
+  UpdateTemplateAdminDto,
+} from "@impulza/validation";
 import { apiDownload, apiFetch } from "./api-client";
 
 // Un archivo, una función por endpoint de `/api/v1/admin` (F4.4). Los tipos salen de
@@ -98,4 +111,24 @@ export const adminApi = {
     apiFetch<AdminPaymentResponse>(`/admin/billing/payments/${id}/tax-document`, { method: "POST", body: { documentNumber } }),
   refundPayment: (id: string, reason: string) => apiFetch<AdminRefundResponse>(`/admin/billing/payments/${id}/refund`, { method: "POST", body: { reason } }),
   downloadPaymentsCsv: (month: string) => apiDownload(`/admin/billing/payments.csv${query({ month })}`, `impulza-cobros-${month}.csv`),
+
+  // Operación técnica, colas, feature flags y plantillas (F7.11, ADR-026)
+  health: () => apiFetch<AdminSystemHealthResponse>("/admin/operations/health"),
+  queues: () => apiFetch<AdminQueueMetricsResponse>("/admin/operations/queues"),
+  pauseQueue: (name: string) =>
+    apiFetch<AdminQueueActionResultResponse>(`/admin/operations/queues/${name}/pause`, { method: "POST" }),
+  resumeQueue: (name: string) =>
+    apiFetch<AdminQueueActionResultResponse>(`/admin/operations/queues/${name}/resume`, { method: "POST" }),
+  retryFailedJobs: (name: string) =>
+    apiFetch<AdminQueueActionResultResponse>(`/admin/operations/queues/${name}/retry-failed`, { method: "POST" }),
+  cleanQueue: (name: string) =>
+    apiFetch<AdminQueueActionResultResponse>(`/admin/operations/queues/${name}/clean`, { method: "POST" }),
+
+  featureFlags: () => apiFetch<AdminFeatureFlagListResponse>("/admin/feature-flags"),
+  updateFeatureFlag: (key: string, body: UpdateFeatureFlagDto) =>
+    apiFetch<AdminFeatureFlagResponse>(`/admin/feature-flags/${key}`, { method: "PUT", body }),
+
+  templates: () => apiFetch<AdminTemplateListResponse>("/admin/templates"),
+  updateTemplate: (id: string, body: UpdateTemplateAdminDto) =>
+    apiFetch<AdminTemplateSummaryResponse>(`/admin/templates/${id}`, { method: "PATCH", body }),
 };

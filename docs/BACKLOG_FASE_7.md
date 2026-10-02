@@ -18,7 +18,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.8 — Tienda: variantes, cupones y carrito | Lista para tu revisión (ADR-023): F7.8a variantes, F7.8b cupones y F7.8c carrito (capturas en `docs/design/capturas/f78a/`, `f78b/` y `f78c/`) |
 | F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Lista para tu revisión (ADR-024): F7.9a profesionales y sucursales, F7.9b horarios y bloqueos, F7.9c feed iCal y Google Calendar (capturas en `docs/design/capturas/f79/`). Google Calendar real queda pendiente de tus credenciales OAuth; probado con Google simulado |
 | F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Lista para tu revisión, contenido corregido (ADR-025; capturas en `docs/design/capturas/f710/`). La política de privacidad es un borrador: faltan datos del responsable, correo de privacidad y revisión legal |
-| F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Pendiente |
+| F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Lista para tu revisión (ADR-026; capturas en `docs/design/capturas/f711/`) |
 | F7.12 — Aislamiento y seguridad de Fase 7 | Pendiente |
 
 ## Historias
@@ -649,6 +649,63 @@ Revisión de F7.10 (2026-10-02, Claude) — el contenido prometía cosas que el 
   promesas de boletas/SII, códigos ADR y "nivel bancario". Verificadas contra el contenido original: las 6
   fallan; con el corregido pasan (15/15).
 - Enlaces internos de las 4 páginas y de la portada comprobados en vivo: ninguno roto.
+
+### F7.11 — Superadministración: estado técnico, colas, feature flags y administración de plantillas (ADR-026)
+
+Criterios de aceptación:
+- **Estado técnico de la plataforma (`/admin/operacion`)**:
+  - Monitoreo en vivo de los componentes de infraestructura: PostgreSQL (`SELECT 1`, latencia en ms, conteos agregados de `users`, `organizations`, `sites`, `bookings`, `orders`), Redis (ping, latencia, memoria consumida, clientes conectados), Worker HTTP (`/health` en puerto 4100), almacenamiento de medios (MinIO local / R2) y pasarelas de pago configuradas (Webpay Oneclick y Mercado Pago).
+  - Métricas del proceso Node de la API: tiempo de actividad (uptime), consumo de memoria (`heapUsed`, `heapTotal`, `rss`) y versión de Node.js.
+  - Acceso restringido exclusivamente a superadministradores autenticados mediante `AdminSessionGuard` y protección anti-CSRF (`CsrfGuard`).
+  - La inspección del estado queda registrada en la auditoría (`admin.system_health_inspected`).
+- **Colas BullMQ y control de tareas en segundo plano (`/admin/operacion`)**:
+  - Monitoreo en tiempo real de las 13 colas reales del sistema (`analytics-events`, `automation-events`, `media-process`, `media-video-process`, `webhook-deliveries`, `billing-renewals`, `booking-deposits`, `booking-reminders`, `campaign-dispatch`, `newsletter-confirmation`, `page-campaign-boundary`, `payment-accounts-reconciliation`, `sequence-dispatch`).
+  - Métricas por cola: trabajos en espera (`waiting`), activos (`active`), completados (`completed`), fallidos (`failed`), demorados (`delayed`) y estado de pausa (`paused`).
+  - Acciones de operación para el superadministrador: pausar cola, reanudar cola, reintentar trabajos fallidos y purgar trabajos completados o fallidos antiguos.
+  - Cada acción de control de cola queda auditada obligatoriamente con el identificador del superadministrador (`admin.queue_paused`, `admin.queue_resumed`, `admin.queue_retried`, `admin.queue_cleaned`).
+- **Feature flags globales y por organización (`/admin/operacion`)**:
+  - Modelo persistente en PostgreSQL (`FeatureFlag`, tabla `feature_flags`) con campos `id`, `key` (único), `name`, `description`, `enabled`, `rules` (JSON opcional para reglas específicas por organización o porcentaje), `created_at`, `updated_at`.
+  - Migración con su correspondiente `down.sql` verificada en ambas direcciones en Postgres.
+  - Banderas iniciales del sistema conectadas a funciones reales:
+    - `registros_abiertos`: controla si se permiten nuevos registros de usuarios en la plataforma.
+    - `pagos_en_linea`: conmutador maestro de cobros y checkout de planes/pedidos.
+    - `ia_generativa`: habilita o pausa las llamadas a proveedores de IA en el constructor y analítica.
+    - `campanas_correo`: habilita o pausa el despacho de campañas masivas por el worker.
+    - `sincronizacion_calendarios`: habilita o pausa llamadas hacia Google Calendar y generación de feeds.
+    - `webhooks_salientes`: habilita o pausa la emisión de eventos hacia destinos de webhooks.
+  - Caché de flags en Redis con invalidación instantánea tras cada modificación para evaluación de latencia mínima.
+  - Consulta y modificación desde la interfaz de administración, auditada con el actor real (`admin.feature_flag_updated`).
+- **CMS y administración de plantillas (`/admin/plantillas`)**:
+  - Gestión integral del catálogo de plantillas públicas (`templates` en BD): listado completo con nombre, código, temas, familia de diseño, tags de industria y objetivo.
+  - Campos `isActive` (determina si la plantilla se ofrece públicamente y en el onboarding) e `isFeatured` (marca destacada con insignia en la galería).
+  - Edición de visibilidad, destacada y orden de aparición (`sortOrder`) desde la UI de superadministración, auditada (`admin.template_updated`).
+- **Diseño e interfaz en `apps/admin`**:
+  - Página `/operacion` con subsecciones para Estado Técnico, Colas BullMQ y Feature Flags.
+  - Página `/plantillas` para el catálogo de plantillas.
+  - Navegación actualizada en `AdminNav` con acceso directo a Operación (`Activity`) y Plantillas (`Layers`).
+  - Estados de carga, vacío, error y éxito; WCAG 2.2 AA; responsive móvil y escritorio sin desborde horizontal.
+- **Pruebas y verificación**:
+  - Pruebas unitarias de esquemas y contratos (`@impulza/validation` y `@impulza/contracts`).
+  - Pruebas E2E de la API (`admin-operations.e2e.test.ts`), verificando autenticación de superadministrador, rechazo sin 2FA o sin sesión `ADMIN`, CSRF y registro en `AuditLog`.
+  - Prueba obligatoria en `multi-tenant-isolation.e2e.test.ts`.
+  - Pruebas Playwright en móvil y escritorio con capturas en `docs/design/capturas/f711/`.
+  - Verificación contra código roto.
+  - Documento OpenAPI regenerado (`openapi.json`), `typecheck` y `lint` limpios en todos los paquetes afectados.
+
+> **Implementación de F7.11 (2026-10-01):**
+> - **Base de datos:** migración manual `20261002000000_f711_feature_flags_and_template_admin` con su `down.sql` verificada en ambos sentidos en PostgreSQL. Creación de tabla `feature_flags` e incorporación de columnas `is_active` e `is_featured` en `templates`.
+> - **Esquemas y Contratos:** esquemas en `@impulza/validation/src/admin` (`BULLMQ_QUEUES`, `SYSTEM_FEATURE_FLAGS`, `updateFeatureFlagSchema`, `updateTemplateAdminSchema`, `queueActionSchema`) con pruebas unitarias (620/620 passing en validation); contratos de respuesta en `@impulza/contracts/src/admin.ts`.
+> - **API y Backend:** controlador `AdminOperationsController` y servicio `AdminOperationsService` registrados en `AdminModule`:
+>   - `GET /api/v1/admin/operations/health`: ping y latencia de PostgreSQL con conteos agregados reales, ping y memoria de Redis, chequeo HTTP del worker (:4100), estado de pasarelas y métricas del proceso Node (`heapUsed`, `heapTotal`, `rss`, uptime), auditado con `admin.system_health_inspected`.
+>   - `GET /api/v1/admin/operations/queues`: métricas de las 13 colas BullMQ del sistema (`waiting`, `active`, `completed`, `failed`, `delayed`, `paused`).
+>   - `POST /api/v1/admin/operations/queues/:name/{pause,resume,retry-failed,clean}`: control de colas, auditado con `admin.queue_*`.
+>   - `GET /api/v1/admin/feature-flags` y `PUT /api/v1/admin/feature-flags/:key`: gestión de flags con caché Redis e invalidación inmediata, auditado con `admin.feature_flag_updated`.
+>   - `GET /api/v1/admin/templates` y `PATCH /api/v1/admin/templates/:id`: administración CMS de plantillas públicas, auditado con `admin.template_updated`.
+> - **Seguridad y Aislamiento:** todos los endpoints protegidos con `AdminSessionGuard` (sesión `ADMIN`, superadmin y 2FA activo en cada petición) y `CsrfGuard`. Verificado en `multi-tenant-isolation.e2e.test.ts` que ni propietarios ni miembros de organizaciones pueden acceder a operaciones de superadmin, y que las reglas de flags por organización aíslan efectivamente a los tenants.
+> - **Pruebas contra código roto:** prueba e2e falló de forma controlada al romper la persistencia de feature flags y fue restaurada desde copia. Prueba Playwright falló al romper selectores y fue restaurada.
+> - **Documentación OpenAPI:** regenerada con 214 rutas y 289 operaciones (`pnpm --filter @impulza/api run openapi:generate`).
+> - **Frontend en `apps/admin`:** pantalla `/operacion` con subsecciones para Estado Técnico, Colas BullMQ y Feature Flags; pantalla `/plantillas` para CMS de catálogo; `AdminNav` actualizado con accesos directos `Activity` y `Layers`. `next build` exitoso con 13 rutas compiladas.
+> - **Playwright E2E:** 4/4 pruebas pasadas (`movil` y `escritorio`) en `packages/e2e/tests/admin-operacion.spec.ts` con capturas copiadas en `docs/design/capturas/f711/` (`operacion-escritorio.png`, `operacion-movil.png`, `plantillas-escritorio.png`, `plantillas-movil.png`).
 
 ## Fases siguientes
 

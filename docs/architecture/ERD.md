@@ -98,7 +98,7 @@ Site/Page (N) ──1 Template (opcional, origen de la página)
     objective_tags[] (`TEMPLATE_OBJECTIVES`: captar/vender/reservar/mostrar/compartir), theme_code
     (FK lógica a `THEME_CATALOG`), family (= "style", siempre la línea del tema), background (JSON,
     `siteBackgroundSchema` limitado a color/degradado), preview_image_url, blocks_seed (JSON, formato
-    del snapshot de `PageVersion`), sort_order. Validado con `templateSchema` al sembrar y al leer.
+    del snapshot de `PageVersion`), sort_order. En F7.11 (ADR-026) se agregan `is_active` (boolean, visibilidad pública) e `is_featured` (boolean, destacada en galería). Validado con `templateSchema` al sembrar y al leer.
   - **Sin FK desde `Site`/`Page`** (la línea "Site/Page (N) ──1 Template" de arriba queda como
     referencia histórica): el criterio de PL1 exige no tocar `Site`/`Page`/`Block`, y aplicar una
     plantilla (PL4) **copia** tema, fondo y bloques al sitio, que nunca queda atado a ella. El origen
@@ -221,13 +221,13 @@ OrderItem (N) ──1 Order, (N) ──0..1 Product, (N) ──0..1 ProductVaria
 ```text
 Organization (1) ──< Notification
 Organization (1) ──< AuditLog
-FeatureFlag independiente (global u organization_id nullable)
+FeatureFlag independiente (global con reglas JSON opcionales por organización/plan)
 ```
 
 - **Notification**: id, organization_id, user_id (nullable si es org-wide), type, payload, read_at.
 - **AuditLog**: id, organization_id (nullable para acciones de superadmin), actor_id, action,
   target_type, target_id, metadata, created_at.
-- **FeatureFlag**: id, key, scope (global/organization), enabled, rules.
+- **FeatureFlag**: id, key (único), name, description, enabled (boolean), rules (JSONB opcional), created_at, updated_at (F7.11, ADR-026).
 
 ### Soporte (F4.5)
 

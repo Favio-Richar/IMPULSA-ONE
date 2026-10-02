@@ -151,3 +151,126 @@ export type AdminUserSummaryResponse = z.infer<typeof adminUserSummaryResponse>;
 export type AdminUserListResponse = z.infer<typeof adminUserListResponse>;
 export type AdminAuditEntryResponse = z.infer<typeof adminAuditEntryResponse>;
 export type AdminAuditListResponse = z.infer<typeof adminAuditListResponse>;
+
+// F7.11 (ADR-026): Operación técnica, colas BullMQ, feature flags y plantillas
+
+export const adminSystemHealthResponse = z.object({
+  status: z.enum(["ok", "degraded", "error"]),
+  database: z.object({
+    status: z.enum(["ok", "error"]),
+    latencyMs: z.number(),
+    counts: z.object({
+      users: z.number().int(),
+      organizations: z.number().int(),
+      sites: z.number().int(),
+      bookings: z.number().int(),
+      orders: z.number().int(),
+    }),
+    error: z.string().optional(),
+  }),
+  redis: z.object({
+    status: z.enum(["ok", "error"]),
+    latencyMs: z.number(),
+    memoryUsedBytes: z.number().int().optional(),
+    connectedClients: z.number().int().optional(),
+    error: z.string().optional(),
+  }),
+  worker: z.object({
+    status: z.enum(["ok", "down"]),
+    latencyMs: z.number().optional(),
+    error: z.string().optional(),
+  }),
+  storage: z.object({
+    status: z.enum(["configured", "not_configured"]),
+    provider: z.string(),
+    bucket: z.string().optional(),
+  }),
+  gateways: z.object({
+    webpay: z.object({
+      configured: z.boolean(),
+      mode: z.enum(["test", "production", "disabled"]),
+    }),
+    mercadoPago: z.object({
+      configured: z.boolean(),
+      mode: z.enum(["test", "production", "disabled"]),
+    }),
+  }),
+  process: z.object({
+    uptimeSeconds: z.number(),
+    memory: z.object({
+      heapUsedBytes: z.number().int(),
+      heapTotalBytes: z.number().int(),
+      rssBytes: z.number().int(),
+    }),
+    nodeVersion: z.string(),
+  }),
+});
+
+export const adminQueueItemResponse = z.object({
+  name: z.string(),
+  displayName: z.string(),
+  waiting: z.number().int(),
+  active: z.number().int(),
+  completed: z.number().int(),
+  failed: z.number().int(),
+  delayed: z.number().int(),
+  paused: z.boolean(),
+});
+
+export const adminQueueMetricsResponse = z.object({
+  queues: z.array(adminQueueItemResponse),
+});
+
+export const adminQueueActionResultResponse = z.object({
+  success: z.boolean(),
+  queueName: z.string(),
+  action: z.string(),
+  message: z.string().optional(),
+});
+
+export const adminFeatureFlagResponse = z.object({
+  id: uuid,
+  key: z.string(),
+  name: z.string(),
+  description: z.string(),
+  enabled: z.boolean(),
+  rules: z.record(z.string(), z.unknown()).nullable(),
+  createdAt: isoDateTime,
+  updatedAt: isoDateTime,
+});
+
+export const adminFeatureFlagListResponse = z.object({
+  items: z.array(adminFeatureFlagResponse),
+  total: z.number().int(),
+});
+
+export const adminTemplateSummaryResponse = z.object({
+  id: uuid,
+  code: z.string(),
+  name: z.string(),
+  description: z.string(),
+  industryTags: z.array(z.string()),
+  objectiveTags: z.array(z.string()),
+  themeCode: z.string(),
+  family: z.string(),
+  previewImageUrl: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  isFeatured: z.boolean(),
+  createdAt: isoDateTime,
+  updatedAt: isoDateTime,
+});
+
+export const adminTemplateListResponse = z.object({
+  items: z.array(adminTemplateSummaryResponse),
+  total: z.number().int(),
+});
+
+export type AdminSystemHealthResponse = z.infer<typeof adminSystemHealthResponse>;
+export type AdminQueueItemResponse = z.infer<typeof adminQueueItemResponse>;
+export type AdminQueueMetricsResponse = z.infer<typeof adminQueueMetricsResponse>;
+export type AdminQueueActionResultResponse = z.infer<typeof adminQueueActionResultResponse>;
+export type AdminFeatureFlagResponse = z.infer<typeof adminFeatureFlagResponse>;
+export type AdminFeatureFlagListResponse = z.infer<typeof adminFeatureFlagListResponse>;
+export type AdminTemplateSummaryResponse = z.infer<typeof adminTemplateSummaryResponse>;
+export type AdminTemplateListResponse = z.infer<typeof adminTemplateListResponse>;

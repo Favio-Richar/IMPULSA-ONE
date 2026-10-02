@@ -22,6 +22,7 @@ import { REDIS } from "./redis/redis.module.js";
 import { BROWSER_USER_AGENT, startAnalyticsTestWorker } from "./test-support/analytics-pipeline.js";
 import { assignRoomyPlan } from "./test-support/plans.js";
 import { listenForTests } from "./test-support/http.js";
+import { AdminOperationsService } from "./modules/admin/admin-operations.service.js";
 
 // F1.9 — prueba transversal de aislamiento multi-tenant (ADR-002). Dos organizaciones reales,
 // exactamente lo que exige el backlog: "verificar que ningún endpoint de Fase 1 permite leer o
@@ -2153,6 +2154,43 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       } finally {
         await prisma.payment.deleteMany({ where: { id: payment.id } });
         await prisma.subscription.deleteMany({ where: { id: subscription.id } });
+      }
+    });
+  });
+
+  describe("Superadministración y Feature Flags (F7.11, ADR-026): aislamiento estricto", () => {
+    it("los usuarios y administradores de organizaciones no pueden acceder a endpoints de operación técnica", async () => {
+      // Las sesiones de usuario/organización normales son rechazadas inmediatamente por AdminSessionGuard
+      await orgA.ownerAgent.get("/api/v1/admin/operations/health").expect(401);
+      await orgA.adminAgent.get("/api/v1/admin/operations/queues").expect(401);
+      await orgB.ownerAgent.get("/api/v1/admin/feature-flags").expect(401);
+      await orgB.ownerAgent.get("/api/v1/admin/templates").expect(401);
+    });
+
+    it("las reglas de feature flags por organización aíslan a A de B", async () => {
+      const operationsService = app.get(AdminOperationsService);
+      const flagKey = `iso_flag_${Date.now().toString(36)}`;
+
+      await prisma.featureFlag.create({
+        data: {
+          key: flagKey,
+          name: "Flag de aislamiento",
+          description: "Prueba de aislamiento",
+          enabled: true,
+          rules: {
+            allowedOrganizations: [orgA.id],
+          },
+        },
+      });
+
+      try {
+        const enabledForA = await operationsService.isFeatureEnabled(flagKey, orgA.id);
+        const enabledForB = await operationsService.isFeatureEnabled(flagKey, orgB.id);
+
+        expect(enabledForA).toBe(true);
+        expect(enabledForB).toBe(false);
+      } finally {
+        await prisma.featureFlag.deleteMany({ where: { key: flagKey } });
       }
     });
   });

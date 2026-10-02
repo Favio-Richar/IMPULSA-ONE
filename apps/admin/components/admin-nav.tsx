@@ -1,12 +1,14 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { Building2, CreditCard, LayoutDashboard, LifeBuoy, Receipt, ScrollText, Sparkles, Users } from "lucide-react";
+import { Activity, Building2, CreditCard, Layers, LayoutDashboard, LifeBuoy, Receipt, ScrollText, Sparkles, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/", label: "Resumen", icon: LayoutDashboard },
+  { href: "/operacion", label: "Operación", icon: Activity },
+  { href: "/plantillas", label: "Plantillas", icon: Layers },
   { href: "/organizaciones", label: "Organizaciones", icon: Building2 },
   { href: "/usuarios", label: "Usuarios", icon: Users },
   { href: "/soporte", label: "Soporte", icon: LifeBuoy },

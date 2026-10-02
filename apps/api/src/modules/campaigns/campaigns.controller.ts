@@ -19,6 +19,7 @@ import { ApiOrganizationIdParam, ApiOrganizationScopedErrors, ApiUuidParam, ApiZ
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
 import { OrganizationMembershipGuard } from "../organizations/guards/organization-membership.guard.js";
+import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flag.guard.js";
 import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
 import { ANOTHER_SENDING, CAMPAIGN_NOT_DRAFT, CAMPAIGN_NOT_FOUND, CampaignsService, LINKS_NOT_CONFIGURED, NO_AUDIENCE } from "./campaigns.service.js";
@@ -124,8 +125,9 @@ export class CampaignsController {
 
   @Post(":campaignId/send")
   @HttpCode(HttpStatus.OK)
-  @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard, FeatureFlagGuard)
   @RequirePermission(PERMISSIONS.CAMPAIGN_MANAGE)
+  @RequireFeature("campanas_correo")
   @ApiOperation({
     summary: "Enviar la campaña",
     description:

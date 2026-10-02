@@ -11,21 +11,13 @@ import {
 } from "./index.js";
 
 describe("Admin validation schemas (F7.11, ADR-026)", () => {
-  it("BULLMQ_QUEUES contiene exactamente las 13 colas del sistema", () => {
-    expect(BULLMQ_QUEUES).toHaveLength(13);
-    expect(BULLMQ_QUEUES).toContain("analytics-events");
-    expect(BULLMQ_QUEUES).toContain("automation-events");
-    expect(BULLMQ_QUEUES).toContain("media-process");
-    expect(BULLMQ_QUEUES).toContain("media-video-process");
-    expect(BULLMQ_QUEUES).toContain("webhook-deliveries");
-    expect(BULLMQ_QUEUES).toContain("billing-renewals");
-    expect(BULLMQ_QUEUES).toContain("booking-deposits");
-    expect(BULLMQ_QUEUES).toContain("booking-reminders");
-    expect(BULLMQ_QUEUES).toContain("campaign-dispatch");
-    expect(BULLMQ_QUEUES).toContain("newsletter-confirmation");
-    expect(BULLMQ_QUEUES).toContain("page-campaign-boundary");
-    expect(BULLMQ_QUEUES).toContain("payment-accounts-reconciliation");
-    expect(BULLMQ_QUEUES).toContain("sequence-dispatch");
+  // Esta lista debe coincidir con las colas que de verdad existen en el código; la comparación con el
+  // código fuente está en `apps/api/src/modules/admin/queue-names.test.ts` (aquí solo la forma).
+  it("BULLMQ_QUEUES no repite nombres y son nombres de cola válidos", () => {
+    expect(new Set(BULLMQ_QUEUES).size).toBe(BULLMQ_QUEUES.length);
+    for (const name of BULLMQ_QUEUES) {
+      expect(name).toMatch(/^[a-z]+(-[a-z]+)+$/);
+    }
   });
 
   it("bullMqQueueNameSchema valida nombres válidos y rechaza desconocidos", () => {

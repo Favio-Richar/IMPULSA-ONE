@@ -49228,7 +49228,7 @@
     },
     "/api/v1/admin/operations/queues": {
       "get": {
-        "description": "Retorna el conteo de trabajos y estado de las 13 colas BullMQ del sistema.",
+        "description": "Retorna el conteo de trabajos y estado de las colas BullMQ del sistema.",
         "operationId": "AdminOperationsController_getQueues",
         "parameters": [
           {
@@ -49246,7 +49246,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Métricas y estado de las 13 colas BullMQ.",
+            "description": "Métricas y estado de las colas BullMQ.",
             "content": {
               "application/json": {
                 "schema": {

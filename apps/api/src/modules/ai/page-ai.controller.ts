@@ -1,3 +1,4 @@
+import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flag.guard.js";
 import { Body, Controller, HttpCode, HttpStatus, Param, Post, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { aiBlockProposalsResponse, aiSeoProposalsResponse } from "@impulza/contracts";
@@ -35,7 +36,8 @@ const NO_PROPOSAL = "`AI_NO_USEFUL_PROPOSAL`: el modelo respondió, pero ninguna
 @ApiOrganizationIdParam()
 @ApiOrganizationScopedErrors()
 @Controller("organizations/:organizationId/sites/:siteId/pages/:pageId/ai")
-@UseGuards(CsrfGuard, SessionAuthGuard, OrganizationMembershipGuard)
+@UseGuards(CsrfGuard, SessionAuthGuard, OrganizationMembershipGuard, FeatureFlagGuard)
+@RequireFeature("ia_generativa")
 export class PageAiController {
   constructor(private readonly pageAiService: PageAiService) {}
 

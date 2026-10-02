@@ -10,7 +10,7 @@ La plataforma cuenta con una aplicación de superadministración (`apps/admin`, 
 
 Para completar la operación técnica de la Fase 7 (F7.11) se requiere resolver cuatro capacidades de control global:
 1. **Estado técnico (`/admin/operacion`)**: diagnóstico en tiempo real de los servicios del monolito (Postgres, Redis, Worker, MinIO/R2, pasarelas de pago y recursos del proceso Node).
-2. **Colas BullMQ (`/admin/operacion`)**: visibilidad y control sobre las 13 colas de procesamiento asíncrono existentes en el sistema (pausa, reanudación, reintento de fallidos y purga).
+2. **Colas BullMQ (`/admin/operacion`)**: visibilidad y control sobre las 14 colas de procesamiento asíncrono existentes en el sistema (pausa, reanudación, reintento de fallidos y purga).
 3. **Feature flags (`/admin/operacion`)**: conmutación inmediata de características críticas a nivel global o con reglas por organización, sin necesidad de re-desplegar contenedores.
 4. **CMS de plantillas (`/admin/plantillas`)**: administración del catálogo de plantillas públicas (`templates`), permitiendo activar/desactivar su visibilidad en el constructor y onboarding, marcarlas como destacadas y ordenar su presentación.
 
@@ -26,26 +26,27 @@ Todo esto bajo las restricciones no negociables de seguridad:
    - Monitorea directamente los servicios clave:
      - PostgreSQL: ping (`SELECT 1`), tiempo de respuesta en milisegundos y agregados estadísticos globales (`users`, `organizations`, `sites`, `bookings`, `orders`).
      - Redis: ping `PING/PONG`, latencia, memoria consumida (`used_memory_human`) y clientes conectados.
-     - Worker HTTP: health check hacia `http://localhost:4100/health` (con timeout estricto de 2 s).
+     - Worker HTTP: health check a la URL de `WORKER_HEALTH_URL` (por defecto `http://localhost:4100/health` fuera de producción; en producción debe definirse), con timeout estricto de 1,5 s.
      - Storage (MinIO / R2): disponibilidad del cliente S3 y conectividad de bucket de medios.
      - Pasarelas y servicios: estado de configuración de Webpay Oneclick, Mercado Pago, Google Calendar OAuth e IA.
      - Proceso Node: tiempo de actividad (`uptime`), memoria (`heapUsed`, `heapTotal`, `rss`) y versión de Node.
-   - Auditoría: cada inspección deja registro en `AuditLog` (`action: "admin.system_health_inspected"`).
+   - Es una lectura que el panel repite cada 10 s: **no se audita** (llenaría la bitácora de ruido). Almacenamiento y pasarelas se leen con las mismas funciones de configuración del sistema (`parseStorageConfig`, `webpayConfig`, `mercadoPagoConfig`), no con nombres de variables supuestos.
 
 2. **Control de colas BullMQ (`/api/v1/admin/operations/queues`)**:
-   - Mapea las 13 colas reales del monorepo:
+   - Mapea las 14 colas reales del monorepo (`BULLMQ_QUEUES`; la prueba `queue-names.test.ts` la compara con las constantes `*_QUEUE` del código, así no se puede desviar):
      - `analytics-events`
+     - `analytics-maintenance`
      - `automation-events`
      - `media-process`
-     - `media-video-process`
+     - `media-video`
      - `webhook-deliveries`
      - `billing-renewals`
      - `booking-deposits`
      - `booking-reminders`
      - `campaign-dispatch`
-     - `newsletter-confirmation`
-     - `page-campaign-boundary`
-     - `payment-accounts-reconciliation`
+     - `newsletter-maintenance`
+     - `page-campaign-boundaries`
+     - `payment-accounts-refresh`
      - `sequence-dispatch`
    - Lectura de métricas nativas vía cliente BullMQ: `waiting`, `active`, `completed`, `failed`, `delayed`, `paused`.
    - Endpoints de control:
@@ -57,7 +58,7 @@ Todo esto bajo las restricciones no negociables de seguridad:
 
 3. **Feature flags en base de datos y caché Redis**:
    - Tabla `feature_flags` en PostgreSQL (prevista en `ERD.md` §8) con esquema:
-     `id` (UUID), `key` (String unique), `name` (String), `description` (String), `enabled` (Boolean), `rules` (JSONB opcional para reglas de organización: `{ allowedOrganizationIds?: string[] }`), `created_at`, `updated_at`.
+     `id` (UUID), `key` (String unique), `name` (String), `description` (String), `enabled` (Boolean), `rules` (JSONB opcional para reglas de organización: `{ allowedOrganizations?: string[], blockedOrganizations?: string[] }`; con lista permitida no vacía solo esas organizaciones tienen la función; si no, la bloqueada las excluye), `created_at`, `updated_at`.
    - Banderas iniciales de plataforma:
      - `registros_abiertos`: apertura o pausa de nuevos registros en la plataforma.
      - `pagos_en_linea`: conmutador maestro de cobros (Webpay / Mercado Pago).
@@ -65,7 +66,8 @@ Todo esto bajo las restricciones no negociables de seguridad:
      - `campanas_correo`: despacho de campañas masivas por el worker.
      - `sincronizacion_calendarios`: integración Google Calendar y feed iCal.
      - `webhooks_salientes`: emisión de eventos hacia webhooks externos.
-   - Evaluación de alto rendimiento: la API lee el estado de la bandera desde caché Redis (`feature_flag:<key>`) con TTL de 5 minutos, e invalida la clave de inmediato en cada actualización.
+   - Evaluación de alto rendimiento: la API lee el estado de la bandera desde caché Redis (`feature_flag:<key>`) con TTL de 60 segundos, e invalida la clave de inmediato en cada actualización. Una bandera sin fila vale su `defaultEnabled` (nunca "apagada") y, si Redis o la base fallan, la función sigue disponible: el interruptor lo acciona una persona, no una caída de infraestructura.
+   - **Cada bandera gobierna rutas reales** (`FeatureFlagGuard` + `@RequireFeature`, o la comprobación dentro del servicio): `registros_abiertos` → `POST /auth/register`; `pagos_en_linea` → inicio de cobro de suscripción, pedidos públicos (con y sin carrito) y señas de reservas; `ia_generativa` → los tres controladores de IA de la organización; `campanas_correo` → `POST …/campaigns/:id/send` (una campaña ya enviándose la termina el worker); `sincronizacion_calendarios` → feed iCal público y conexión/copia a Google Calendar; `webhooks_salientes` → no se emite ni encola ningún evento. Apagadas responden `503` con un mensaje claro. Un interruptor sin consumidores es peor que no tenerlo: se creería haber cerrado algo que sigue abierto.
    - Modificación mediante `PUT /api/v1/admin/feature-flags/:key` con auditoría `admin.feature_flag_updated`.
 
 4. **CMS de plantillas (`/admin/plantillas`)**:

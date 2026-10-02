@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Param, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
+import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flag.guard.js";
 import { ApiCookieAuth, ApiExcludeEndpoint, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { billingOverviewResponse, billingSubscriptionResponse, checkoutRedirectResponse, withdrawalResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
@@ -55,6 +56,8 @@ export class BillingController {
   @ApiResponse({ status: 409, description: "`SUBSCRIPTION_ACTIVE`: ya hay un plan de pago activo." })
   @ApiResponse({ status: 422, description: "`GATEWAY_UNAVAILABLE`, `PLAN_NOT_PURCHASABLE` o `GATEWAY_ERROR`." })
   @ApiRateLimited(10, 600)
+  @UseGuards(FeatureFlagGuard)
+  @RequireFeature("pagos_en_linea")
   async checkout(@Param("organizationId") organizationId: string, @CurrentUser() user: User, @Body(new ZodValidationPipe(startCheckoutSchema)) body: StartCheckoutInput) {
     return this.billing.startCheckout(organizationId, user, body);
   }

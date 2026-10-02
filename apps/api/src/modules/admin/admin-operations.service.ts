@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Queue } from "bullmq";
+import { parseStorageConfig } from "@impulza/storage";
 import type { Redis } from "ioredis";
 import {
   type AdminFeatureFlagListResponse,
@@ -25,23 +26,25 @@ import {
   type UpdateTemplateAdminDto,
 } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
-import { env } from "../../env.js";
+import { env, mercadoPagoConfig, webpayConfig } from "../../env.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { AuditService } from "../audit/audit.service.js";
+import { FeatureFlagsService } from "../feature-flags/feature-flags.service.js";
 
 const QUEUE_DISPLAY_NAMES: Record<BullMqQueueName, string> = {
   "analytics-events": "Eventos de analítica",
+  "analytics-maintenance": "Mantenimiento de analítica",
   "automation-events": "Automatizaciones",
   "media-process": "Procesamiento de imágenes",
-  "media-video-process": "Procesamiento de video",
+  "media-video": "Procesamiento de video",
   "webhook-deliveries": "Entregas de webhooks",
   "billing-renewals": "Renovaciones de suscripción",
   "booking-deposits": "Depósitos de reservas",
   "booking-reminders": "Recordatorios de reservas",
   "campaign-dispatch": "Despacho de campañas",
-  "newsletter-confirmation": "Confirmaciones de newsletter",
-  "page-campaign-boundary": "Vigencia de campañas de página",
-  "payment-accounts-reconciliation": "Conciliación de cuentas de pago",
+  "newsletter-maintenance": "Mantenimiento de newsletter",
+  "page-campaign-boundaries": "Vigencia de campañas de página",
+  "payment-accounts-refresh": "Renovación de cuentas de pago",
   "sequence-dispatch": "Despacho de secuencias de email",
 };
 
@@ -51,12 +54,14 @@ export class AdminOperationsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(REDIS) private readonly redis: Redis,
     @Inject(AuditService) private readonly auditService: AuditService,
+    private readonly flags: FeatureFlagsService,
   ) {}
 
   /**
    * Inspección completa del estado técnico de la plataforma (F7.11, ADR-026).
    */
-  async getSystemHealth(adminId: string): Promise<AdminSystemHealthResponse> {
+  // Solo lectura: no se audita (el panel consulta cada 10 s y llenaría la bitácora de ruido).
+  async getSystemHealth(): Promise<AdminSystemHealthResponse> {
     const startDb = Date.now();
     let dbStatus: "ok" | "error" = "ok";
     let dbError: string | undefined;
@@ -107,9 +112,12 @@ export class AdminOperationsService {
     let workerStatus: "ok" | "down" = "ok";
     let workerLatencyMs: number | undefined;
     let workerError: string | undefined;
+    // La URL sale de la configuración (WORKER_HEALTH_URL): en producción el worker no está en localhost.
+    const workerUrl = env.WORKER_HEALTH_URL ?? (env.NODE_ENV === "production" ? undefined : "http://localhost:4100/health");
     try {
+      if (!workerUrl) throw new Error("WORKER_HEALTH_URL no está configurada");
       const startWorker = Date.now();
-      const res = await fetch("http://localhost:4100/health", {
+      const res = await fetch(workerUrl, {
         signal: AbortSignal.timeout(1500),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -119,31 +127,37 @@ export class AdminOperationsService {
       workerError = err instanceof Error ? err.message : String(err);
     }
 
-    const storageConfigured = !!(process.env.STORAGE_PROVIDER || process.env.S3_BUCKET || process.env.STORAGE_BUCKET);
+    // Almacenamiento y pasarelas se leen con las mismas funciones de configuración que usa el sistema
+    // (nunca con nombres de variables supuestos): así lo que el panel dice es lo que de verdad opera.
+    let storageConfig: ReturnType<typeof parseStorageConfig> = null;
+    let storageError: string | undefined;
+    try {
+      storageConfig = parseStorageConfig(process.env);
+    } catch (err) {
+      storageError = err instanceof Error ? err.message : String(err);
+    }
     const storage = {
-      status: storageConfigured ? ("configured" as const) : ("not_configured" as const),
-      provider: process.env.STORAGE_PROVIDER || (storageConfigured ? "s3-compatible" : "none"),
-      bucket: process.env.S3_BUCKET || process.env.STORAGE_BUCKET || undefined,
+      status: storageConfig ? ("configured" as const) : ("not_configured" as const),
+      provider: storageConfig ? "s3-compatible" : "none",
+      bucket: storageConfig?.bucket,
+      ...(storageError ? { error: storageError } : {}),
     };
 
-    const webpayConfigured = !!(process.env.WEBPAY_COMMERCE_CODE || process.env.WEBPAY_API_KEY);
-    const mpConfigured = !!process.env.MERCADO_PAGO_ACCESS_TOKEN;
     const gateways = {
       webpay: {
-        configured: webpayConfigured,
-        mode: (webpayConfigured
-          ? process.env.WEBPAY_ENVIRONMENT === "production"
-            ? "production"
-            : "test"
-          : "disabled") as "test" | "production" | "disabled",
+        configured: webpayConfig !== null,
+        mode: (webpayConfig ? (webpayConfig.environment === "production" ? "production" : "test") : "disabled") as
+          | "test"
+          | "production"
+          | "disabled",
       },
       mercadoPago: {
-        configured: mpConfigured,
-        mode: (mpConfigured
-          ? process.env.MERCADO_PAGO_ENVIRONMENT === "production"
-            ? "production"
-            : "test"
-          : "disabled") as "test" | "production" | "disabled",
+        configured: mercadoPagoConfig !== null,
+        // Los tokens de prueba de Mercado Pago empiezan con `TEST-`.
+        mode: (mercadoPagoConfig ? (mercadoPagoConfig.accessToken.startsWith("TEST-") ? "test" : "production") : "disabled") as
+          | "test"
+          | "production"
+          | "disabled",
       },
     };
 
@@ -164,14 +178,6 @@ export class AdminOperationsService {
         : workerStatus === "down"
           ? "degraded"
           : "ok";
-
-    await this.auditService.record({
-      actorId: adminId,
-      action: "admin.system_health_inspected",
-      targetType: "System",
-      targetId: "health",
-      metadata: { status, dbStatus, redisStatus, workerStatus },
-    });
 
     return {
       status,
@@ -200,7 +206,7 @@ export class AdminOperationsService {
   }
 
   /**
-   * Métricas en tiempo real de las 13 colas BullMQ.
+   * Métricas en tiempo real de las colas BullMQ.
    */
   async getQueueMetrics(): Promise<AdminQueueMetricsResponse> {
     const queues: AdminQueueMetricsResponse["queues"] = [];
@@ -336,8 +342,8 @@ export class AdminOperationsService {
       },
     });
 
-    await this.redis.del(`feature_flag:${key}`);
-    await this.redis.del("feature_flags:all");
+    // El cambio rige de inmediato: se descarta la copia en caché que usan las rutas.
+    await this.flags.invalidate(key);
 
     await this.auditService.record({
       actorId: adminId,
@@ -357,48 +363,6 @@ export class AdminOperationsService {
       createdAt: updated.createdAt.toISOString(),
       updatedAt: updated.updatedAt.toISOString(),
     };
-  }
-
-  /**
-   * Evaluación de un feature flag con soporte de caché en Redis (ADR-026).
-   */
-  async isFeatureEnabled(key: string, organizationId?: string): Promise<boolean> {
-    const cacheKey = `feature_flag:${key}`;
-    const cached = await this.redis.get(cacheKey);
-    let flagData: { enabled: boolean; rules: Record<string, unknown> | null };
-
-    if (cached) {
-      try {
-        flagData = JSON.parse(cached);
-      } catch {
-        flagData = await this.fetchFlagAndCache(key, cacheKey);
-      }
-    } else {
-      flagData = await this.fetchFlagAndCache(key, cacheKey);
-    }
-
-    if (!flagData.enabled) return false;
-    if (!organizationId || !flagData.rules) return true;
-
-    const allowlist = flagData.rules.allowedOrganizations as string[] | undefined;
-    if (Array.isArray(allowlist) && allowlist.length > 0) {
-      return allowlist.includes(organizationId);
-    }
-    const blocklist = flagData.rules.blockedOrganizations as string[] | undefined;
-    if (Array.isArray(blocklist) && blocklist.length > 0) {
-      return !blocklist.includes(organizationId);
-    }
-
-    return true;
-  }
-
-  private async fetchFlagAndCache(key: string, cacheKey: string) {
-    const flag = await this.prisma.featureFlag.findUnique({ where: { key } });
-    const data = flag
-      ? { enabled: flag.enabled, rules: (flag.rules as Record<string, unknown>) ?? null }
-      : { enabled: false, rules: null };
-    await this.redis.set(cacheKey, JSON.stringify(data), "EX", 60);
-    return data;
   }
 
   /**

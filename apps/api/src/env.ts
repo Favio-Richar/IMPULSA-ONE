@@ -79,6 +79,9 @@ export const env = loadEnv({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   API_PUBLIC_URL: urlSchema.optional(),
+  // Panel de operaciones (F7.11): URL del `/health` del worker. Sin ella, fuera de producción se usa
+  // `http://localhost:4100/health`; en producción el panel informa que no está configurada.
+  WORKER_HEALTH_URL: urlSchema.optional(),
 });
 
 // Todas o ninguna: una configuración de Webpay a medias detiene el arranque aquí (ST §15).

@@ -10,6 +10,7 @@ import { DISPUTE_STATUSES } from "../payment-accounts/checkout-refunds.service.j
 import { MERCADO_PAGO_CHECKOUT, type CheckoutConfig } from "../payment-accounts/checkout.tokens.js";
 import { PaymentAccountsService } from "../payment-accounts/payment-accounts.service.js";
 import { BookingNotifier, bookingManageUrl } from "./booking-notifier.js";
+import { FeatureFlagsService } from "../feature-flags/feature-flags.service.js";
 import { GoogleCalendarService } from "./google-calendar.service.js";
 
 /** Plazo para pagar la seña. La hora queda tomada mientras tanto (nunca más allá del inicio). */
@@ -45,6 +46,7 @@ export class BookingDepositService {
     private readonly notifier: BookingNotifier,
     private readonly audit: AuditService,
     private readonly googleCalendar: GoogleCalendarService,
+    private readonly flags: FeatureFlagsService,
   ) {}
 
   /**
@@ -53,6 +55,8 @@ export class BookingDepositService {
    */
   async depositsEnabled(organizationId: string): Promise<boolean> {
     if (!this.config || !env.API_PUBLIC_URL || !env.PUBLIC_SITE_BASE_URL || !env.BOOKING_LINK_SECRET) return false;
+    // Bandera `pagos_en_linea` apagada: no se cobran señas (la reserva se confirma sin ellas).
+    if (!(await this.flags.isEnabled("pagos_en_linea", organizationId))) return false;
     return (await this.accounts.chargingAccountFor(organizationId)) !== null;
   }
 

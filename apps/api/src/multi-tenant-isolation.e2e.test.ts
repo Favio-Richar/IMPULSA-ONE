@@ -22,7 +22,7 @@ import { REDIS } from "./redis/redis.module.js";
 import { BROWSER_USER_AGENT, startAnalyticsTestWorker } from "./test-support/analytics-pipeline.js";
 import { assignRoomyPlan } from "./test-support/plans.js";
 import { listenForTests } from "./test-support/http.js";
-import { AdminOperationsService } from "./modules/admin/admin-operations.service.js";
+import { FeatureFlagsService } from "./modules/feature-flags/feature-flags.service.js";
 
 // F1.9 — prueba transversal de aislamiento multi-tenant (ADR-002). Dos organizaciones reales,
 // exactamente lo que exige el backlog: "verificar que ningún endpoint de Fase 1 permite leer o
@@ -2168,7 +2168,7 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
 
     it("las reglas de feature flags por organización aíslan a A de B", async () => {
-      const operationsService = app.get(AdminOperationsService);
+      const flags = app.get(FeatureFlagsService);
       const flagKey = `iso_flag_${Date.now().toString(36)}`;
 
       await prisma.featureFlag.create({
@@ -2184,8 +2184,8 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       });
 
       try {
-        const enabledForA = await operationsService.isFeatureEnabled(flagKey, orgA.id);
-        const enabledForB = await operationsService.isFeatureEnabled(flagKey, orgB.id);
+        const enabledForA = await flags.isEnabled(flagKey, orgA.id);
+        const enabledForB = await flags.isEnabled(flagKey, orgB.id);
 
         expect(enabledForA).toBe(true);
         expect(enabledForB).toBe(false);

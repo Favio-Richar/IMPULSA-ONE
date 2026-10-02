@@ -18,7 +18,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.8 — Tienda: variantes, cupones y carrito | Lista para tu revisión (ADR-023): F7.8a variantes, F7.8b cupones y F7.8c carrito (capturas en `docs/design/capturas/f78a/`, `f78b/` y `f78c/`) |
 | F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Lista para tu revisión (ADR-024): F7.9a profesionales y sucursales, F7.9b horarios y bloqueos, F7.9c feed iCal y Google Calendar (capturas en `docs/design/capturas/f79/`). Google Calendar real queda pendiente de tus credenciales OAuth; probado con Google simulado |
 | F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Lista para tu revisión, contenido corregido (ADR-025; capturas en `docs/design/capturas/f710/`). La política de privacidad es un borrador: faltan datos del responsable, correo de privacidad y revisión legal |
-| F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Lista para tu revisión (ADR-026; capturas en `docs/design/capturas/f711/`) |
+| F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Lista para tu revisión, corregida (ADR-026; capturas en `docs/design/capturas/f711/`) |
 | F7.12 — Aislamiento y seguridad de Fase 7 | Pendiente |
 
 ## Historias
@@ -659,7 +659,7 @@ Criterios de aceptación:
   - Acceso restringido exclusivamente a superadministradores autenticados mediante `AdminSessionGuard` y protección anti-CSRF (`CsrfGuard`).
   - La inspección del estado queda registrada en la auditoría (`admin.system_health_inspected`).
 - **Colas BullMQ y control de tareas en segundo plano (`/admin/operacion`)**:
-  - Monitoreo en tiempo real de las 13 colas reales del sistema (`analytics-events`, `automation-events`, `media-process`, `media-video-process`, `webhook-deliveries`, `billing-renewals`, `booking-deposits`, `booking-reminders`, `campaign-dispatch`, `newsletter-confirmation`, `page-campaign-boundary`, `payment-accounts-reconciliation`, `sequence-dispatch`).
+  - Monitoreo en tiempo real de las 14 colas reales del sistema (`analytics-events`, `analytics-maintenance`, `automation-events`, `media-process`, `media-video`, `webhook-deliveries`, `billing-renewals`, `booking-deposits`, `booking-reminders`, `campaign-dispatch`, `newsletter-maintenance`, `page-campaign-boundaries`, `payment-accounts-refresh`, `sequence-dispatch`).
   - Métricas por cola: trabajos en espera (`waiting`), activos (`active`), completados (`completed`), fallidos (`failed`), demorados (`delayed`) y estado de pausa (`paused`).
   - Acciones de operación para el superadministrador: pausar cola, reanudar cola, reintentar trabajos fallidos y purgar trabajos completados o fallidos antiguos.
   - Cada acción de control de cola queda auditada obligatoriamente con el identificador del superadministrador (`admin.queue_paused`, `admin.queue_resumed`, `admin.queue_retried`, `admin.queue_cleaned`).
@@ -697,7 +697,7 @@ Criterios de aceptación:
 > - **Esquemas y Contratos:** esquemas en `@impulza/validation/src/admin` (`BULLMQ_QUEUES`, `SYSTEM_FEATURE_FLAGS`, `updateFeatureFlagSchema`, `updateTemplateAdminSchema`, `queueActionSchema`) con pruebas unitarias (620/620 passing en validation); contratos de respuesta en `@impulza/contracts/src/admin.ts`.
 > - **API y Backend:** controlador `AdminOperationsController` y servicio `AdminOperationsService` registrados en `AdminModule`:
 >   - `GET /api/v1/admin/operations/health`: ping y latencia de PostgreSQL con conteos agregados reales, ping y memoria de Redis, chequeo HTTP del worker (:4100), estado de pasarelas y métricas del proceso Node (`heapUsed`, `heapTotal`, `rss`, uptime), auditado con `admin.system_health_inspected`.
->   - `GET /api/v1/admin/operations/queues`: métricas de las 13 colas BullMQ del sistema (`waiting`, `active`, `completed`, `failed`, `delayed`, `paused`).
+>   - `GET /api/v1/admin/operations/queues`: métricas de las 14 colas BullMQ del sistema (`waiting`, `active`, `completed`, `failed`, `delayed`, `paused`).
 >   - `POST /api/v1/admin/operations/queues/:name/{pause,resume,retry-failed,clean}`: control de colas, auditado con `admin.queue_*`.
 >   - `GET /api/v1/admin/feature-flags` y `PUT /api/v1/admin/feature-flags/:key`: gestión de flags con caché Redis e invalidación inmediata, auditado con `admin.feature_flag_updated`.
 >   - `GET /api/v1/admin/templates` y `PATCH /api/v1/admin/templates/:id`: administración CMS de plantillas públicas, auditado con `admin.template_updated`.
@@ -706,6 +706,16 @@ Criterios de aceptación:
 > - **Documentación OpenAPI:** regenerada con 214 rutas y 289 operaciones (`pnpm --filter @impulza/api run openapi:generate`).
 > - **Frontend en `apps/admin`:** pantalla `/operacion` con subsecciones para Estado Técnico, Colas BullMQ y Feature Flags; pantalla `/plantillas` para CMS de catálogo; `AdminNav` actualizado con accesos directos `Activity` y `Layers`. `next build` exitoso con 13 rutas compiladas.
 > - **Playwright E2E:** 4/4 pruebas pasadas (`movil` y `escritorio`) en `packages/e2e/tests/admin-operacion.spec.ts` con capturas copiadas en `docs/design/capturas/f711/` (`operacion-escritorio.png`, `operacion-movil.png`, `plantillas-escritorio.png`, `plantillas-movil.png`).
+
+Revisión de F7.11 (2026-10-02, Claude) — defectos encontrados y corregidos:
+- **Las banderas no gobernaban nada:** `isFeatureEnabled` no se llamaba desde ningún sitio. Apagar «Registros abiertos» no cerraba el alta de cuentas. Ahora hay un `FeatureFlagsService` global y un `FeatureFlagGuard` conectados a las 6 funciones (ver ADR-026 §3), con prueba e2e de efecto real (registro bloqueado con 503, pedidos bloqueados, vuelve al encender). Además una bandera sin fila se evaluaba como **apagada**: al activar el sistema habría bloqueado registros y pagos; ahora vale su `defaultEnabled`, y una caída de Redis/base deja la función disponible.
+- **El CMS de plantillas no tenía efecto:** la galería pública y «aplicar plantilla» ignoraban `isActive`/`isFeatured`. Ahora una plantilla oculta no se lista ni se puede aplicar (404) y las destacadas van primero; test e2e que lo comprueba. Los sitios ya creados no cambian.
+- **4 de las 13 colas tenían nombres inventados** (`media-video-process`, `newsletter-confirmation`, `page-campaign-boundary`, `payment-accounts-reconciliation`) y faltaba `analytics-maintenance`: pausar o purgar «esas colas» actuaba sobre colas vacías creadas al vuelo. Corregido a las 14 reales; `queue-names.test.ts` compara la lista con las constantes `*_QUEUE` del código. El test anterior comprobaba los mismos nombres inventados (circular).
+- **Estado técnico engañoso:** la URL del worker estaba fija en `localhost:4100` (ahora `WORKER_HEALTH_URL`); almacenamiento y Mercado Pago se leían de variables que no existen (`STORAGE_PROVIDER`, `S3_BUCKET`, `MERCADO_PAGO_ACCESS_TOKEN`, la real es `MERCADOPAGO_ACCESS_TOKEN`), así que mostraba «Mercado Pago deshabilitado» aunque estuviera configurado; ahora usa `parseStorageConfig`, `webpayConfig` y `mercadoPagoConfig`.
+- **Ruido en la auditoría:** cada consulta de salud (cada 10 s por pestaña abierta) escribía una fila; ya no se audita una lectura.
+- **Panel:** purgar una cola (borra también los trabajos fallidos) y apagar una bandera ahora piden confirmación; las acciones que fallan muestran un aviso (antes se ignoraban); botones solo con ícono tienen nombre accesible; se quitó el «13» y el «:4100» escritos a mano.
+- **Pruebas:** `feature-flags.service.test.ts`, `queue-names.test.ts`, 3 e2e de efecto real y las de Google Calendar con la bandera apagada. Verificadas contra el código roto (quitar el filtro `isActive`, evaluar «sin fila» como apagada y quitar la bandera del registro hacen fallar las pruebas).
+- **Limitaciones conocidas:** la purga y el reintento actúan sobre hasta 1000 trabajos por llamada; las 14 colas se consultan abriendo una conexión por cola en cada actualización del panel (cada 10 s); `GET /admin/feature-flags` crea las filas por defecto la primera vez; una campaña ya puesta en envío no se detiene al apagar `campanas_correo` (solo se bloquean envíos nuevos).
 
 ## Fases siguientes
 

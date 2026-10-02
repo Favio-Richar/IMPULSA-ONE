@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  ServiceUnavailableException,
   UnprocessableEntityException,
 } from "@nestjs/common";
 import { PrismaClient, type Booking, type GoogleCalendarConnection } from "@impulza/database";
@@ -19,6 +20,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { env, googleCalendarConfig } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
+import { FEATURE_DISABLED_MESSAGES, FeatureFlagsService } from "../feature-flags/feature-flags.service.js";
 import { createGoogleOAuthState, verifyGoogleOAuthState } from "./google-oauth-state.js";
 
 export const GOOGLE_CALENDAR_NOT_CONFIGURED =
@@ -58,6 +60,7 @@ export class GoogleCalendarService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
+    private readonly flags: FeatureFlagsService,
   ) {}
 
   /**
@@ -81,6 +84,13 @@ export class GoogleCalendarService {
       lastSyncAt: conn.lastSyncAt ? conn.lastSyncAt.toISOString() : null,
       lastError: conn.lastError,
     };
+  }
+
+  /** Si el superadministrador apagó la sincronización de calendarios, no se conecta ni se sincroniza. */
+  private async assertSyncEnabled(organizationId: string): Promise<void> {
+    if (!(await this.flags.isEnabled("sincronizacion_calendarios", organizationId))) {
+      throw new ServiceUnavailableException(FEATURE_DISABLED_MESSAGES.sincronizacion_calendarios);
+    }
   }
 
   /** La dirección de retorno solo puede ser del panel (APP_BASE_URL): nunca una URL elegida por el cliente. */
@@ -145,6 +155,7 @@ export class GoogleCalendarService {
     if (!this.isConfigured()) {
       throw new UnprocessableEntityException(GOOGLE_CALENDAR_NOT_CONFIGURED);
     }
+    await this.assertSyncEnabled(organizationId);
     this.assertRedirectUriAllowed(query.redirectUri);
     if (query.staffId) {
       await this.assertStaffInSite(organizationId, siteId, query.staffId);
@@ -180,6 +191,7 @@ export class GoogleCalendarService {
     if (!this.isConfigured()) {
       throw new UnprocessableEntityException(GOOGLE_CALENDAR_NOT_CONFIGURED);
     }
+    await this.assertSyncEnabled(organizationId);
 
     const state = verifyGoogleOAuthState(input.state, env.AUTH_ENCRYPTION_KEY);
     if (
@@ -490,7 +502,7 @@ export class GoogleCalendarService {
     }
     void (async () => {
       const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
-      if (booking) {
+      if (booking && (await this.flags.isEnabled("sincronizacion_calendarios", booking.organizationId))) {
         await this.syncBooking(booking, eventType);
       }
     })().catch((err: unknown) => {

@@ -79,11 +79,12 @@ function setup(existing: GoogleCalendarConnection | null) {
       create: vi.fn(async ({ data }: { data: Partial<GoogleCalendarConnection> }) => (store.conn = connection(data))),
       update: vi.fn(async ({ data }: { data: Partial<GoogleCalendarConnection> }) => (store.conn = { ...store.conn!, ...data })),
     },
-    booking: { update: vi.fn().mockResolvedValue({}) },
+    booking: { update: vi.fn().mockResolvedValue({}), findUnique: vi.fn().mockResolvedValue(null) },
   };
   const audit = { record: vi.fn().mockResolvedValue(undefined) };
-  const service = new GoogleCalendarService(prisma as unknown as PrismaClient, audit as never);
-  return { service, prisma, store };
+  const flags = { isEnabled: vi.fn().mockResolvedValue(true) };
+  const service = new GoogleCalendarService(prisma as unknown as PrismaClient, audit as never, flags as never);
+  return { service, prisma, store, flags };
 }
 
 const fetchMock = vi.fn();
@@ -149,6 +150,34 @@ describe("OAuth de Google Calendar", () => {
       /uso continuo/,
     );
     expect(fresh.prisma.googleCalendarConnection.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("bandera `sincronizacion_calendarios` apagada por el superadministrador", () => {
+  it("no genera URL de autorización ni conecta, y responde con un mensaje claro", async () => {
+    const { service, flags } = setup(null);
+    flags.isEnabled.mockResolvedValue(false);
+    await expect(service.getAuthUrl(ORG, USER, SITE, { redirectUri: REDIRECT })).rejects.toThrow(/pausada/);
+    const state = createGoogleOAuthState(
+      { userId: USER, organizationId: ORG, siteId: SITE, staffId: null, redirectUri: REDIRECT },
+      KEY,
+    );
+    await expect(service.connect(ORG, USER, SITE, { code: "c", state, redirectUri: REDIRECT })).rejects.toThrow(/pausada/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("no copia reservas a Google mientras está apagada, y vuelve a copiarlas al encenderse", async () => {
+    const { service, prisma, flags } = setup(connection());
+    prisma.booking.findUnique.mockResolvedValue(booking({ organizationId: ORG } as Partial<Booking>));
+    flags.isEnabled.mockResolvedValue(false);
+    service.syncBookingById("booking-1", "CREATED");
+    await vi.waitFor(() => expect(flags.isEnabled).toHaveBeenCalledWith("sincronizacion_calendarios", ORG));
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    flags.isEnabled.mockResolvedValue(true);
+    fetchMock.mockResolvedValueOnce(json({ id: "evento-9" }));
+    service.syncBookingById("booking-1", "CREATED");
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
   });
 });
 

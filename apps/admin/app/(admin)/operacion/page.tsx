@@ -91,7 +91,7 @@ export default function AdminOperacionPage(): React.JSX.Element {
           )}
         >
           <Layers className="size-4" aria-hidden="true" />
-          Colas BullMQ (13)
+          Colas BullMQ
         </button>
         <button
           type="button"
@@ -218,7 +218,7 @@ function HealthSection(): React.JSX.Element {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
-                <Activity className="size-4" /> Worker HTTP (:4100)
+                <Activity className="size-4" /> Worker HTTP
               </CardTitle>
               <span
                 className={cn(
@@ -293,6 +293,10 @@ function HealthSection(): React.JSX.Element {
 function QueuesSection(): React.JSX.Element {
   const queryClient = useQueryClient();
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  // La purga borra también los trabajos fallidos (la evidencia de qué falló): pide confirmar.
+  const [confirmClean, setConfirmClean] = useState<string | null>(null);
+  const onActionError = (): void => setActionError("No se pudo ejecutar la acción sobre la cola. Revisa el estado técnico e intenta de nuevo.");
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "queues"],
@@ -302,7 +306,9 @@ function QueuesSection(): React.JSX.Element {
 
   const pauseMutation = useMutation({
     mutationFn: (name: string) => adminApi.pauseQueue(name),
+    onError: onActionError,
     onSuccess: (res) => {
+      setActionError(null);
       setFeedback(res.message ?? "Cola pausada.");
       void queryClient.invalidateQueries({ queryKey: ["admin", "queues"] });
     },
@@ -310,7 +316,9 @@ function QueuesSection(): React.JSX.Element {
 
   const resumeMutation = useMutation({
     mutationFn: (name: string) => adminApi.resumeQueue(name),
+    onError: onActionError,
     onSuccess: (res) => {
+      setActionError(null);
       setFeedback(res.message ?? "Cola reanudada.");
       void queryClient.invalidateQueries({ queryKey: ["admin", "queues"] });
     },
@@ -318,7 +326,9 @@ function QueuesSection(): React.JSX.Element {
 
   const retryMutation = useMutation({
     mutationFn: (name: string) => adminApi.retryFailedJobs(name),
+    onError: onActionError,
     onSuccess: (res) => {
+      setActionError(null);
       setFeedback(res.message ?? "Trabajos fallidos reenviados.");
       void queryClient.invalidateQueries({ queryKey: ["admin", "queues"] });
     },
@@ -326,7 +336,9 @@ function QueuesSection(): React.JSX.Element {
 
   const cleanMutation = useMutation({
     mutationFn: (name: string) => adminApi.cleanQueue(name),
+    onError: onActionError,
     onSuccess: (res) => {
+      setActionError(null);
       setFeedback(res.message ?? "Cola purgada.");
       void queryClient.invalidateQueries({ queryKey: ["admin", "queues"] });
     },
@@ -339,7 +351,7 @@ function QueuesSection(): React.JSX.Element {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Control y métricas de las 13 colas de procesamiento asíncrono.
+          Control y métricas de las colas de procesamiento asíncrono.
         </p>
         <Button
           variant="secondary"
@@ -352,6 +364,15 @@ function QueuesSection(): React.JSX.Element {
           Actualizar
         </Button>
       </div>
+
+      {actionError && (
+        <div role="alert" className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+          <span>{actionError}</span>
+          <button type="button" onClick={() => setActionError(null)} className="font-semibold underline">
+            Cerrar
+          </button>
+        </div>
+      )}
 
       {feedback && (
         <div className="flex items-center justify-between rounded-md bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
@@ -409,6 +430,7 @@ function QueuesSection(): React.JSX.Element {
                         onClick={() => resumeMutation.mutate(q.name)}
                         disabled={resumeMutation.isPending}
                         title="Reanudar cola"
+                        aria-label={`Reanudar la cola ${q.displayName}`}
                       >
                         <Play className="size-3" />
                       </Button>
@@ -419,6 +441,7 @@ function QueuesSection(): React.JSX.Element {
                         onClick={() => pauseMutation.mutate(q.name)}
                         disabled={pauseMutation.isPending}
                         title="Pausar cola"
+                        aria-label={`Pausar la cola ${q.displayName}`}
                       >
                         <Pause className="size-3" />
                       </Button>
@@ -429,18 +452,41 @@ function QueuesSection(): React.JSX.Element {
                       onClick={() => retryMutation.mutate(q.name)}
                       disabled={retryMutation.isPending || q.failed === 0}
                       title="Reintentar fallidos"
+                      aria-label={`Reintentar los trabajos fallidos de ${q.displayName}`}
                     >
                       <RotateCcw className="size-3" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => cleanMutation.mutate(q.name)}
-                      disabled={cleanMutation.isPending}
-                      title="Purgar completados y fallidos"
-                    >
-                      <Trash2 className="size-3" />
-                    </Button>
+                    {confirmClean === q.name ? (
+                      <span className="flex items-center gap-1 text-xs">
+                        <span className="text-rose-700">¿Borrar completados y fallidos?</span>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            cleanMutation.mutate(q.name);
+                            setConfirmClean(null);
+                          }}
+                          disabled={cleanMutation.isPending}
+                          aria-label={`Confirmar la purga de ${q.displayName}`}
+                        >
+                          Sí
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => setConfirmClean(null)} aria-label="Cancelar la purga">
+                          No
+                        </Button>
+                      </span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setConfirmClean(q.name)}
+                        disabled={cleanMutation.isPending}
+                        title="Purgar completados y fallidos"
+                        aria-label={`Purgar los trabajos completados y fallidos de ${q.displayName}`}
+                      >
+                        <Trash2 className="size-3" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -455,6 +501,9 @@ function QueuesSection(): React.JSX.Element {
 function FeatureFlagsSection(): React.JSX.Element {
   const queryClient = useQueryClient();
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  // Apagar una bandera corta una función de toda la plataforma (registros, pagos…): pide confirmar.
+  const [confirmOff, setConfirmOff] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin", "featureFlags"],
@@ -464,7 +513,9 @@ function FeatureFlagsSection(): React.JSX.Element {
   const toggleMutation = useMutation({
     mutationFn: ({ key, enabled }: { key: string; enabled: boolean }) =>
       adminApi.updateFeatureFlag(key, { enabled }),
+    onError: () => setActionError("No se pudo cambiar la bandera. Intenta de nuevo."),
     onSuccess: (updated) => {
+      setActionError(null);
       setFeedback(`Bandera "${updated.name}" actualizada a: ${updated.enabled ? "ACTIVADA" : "DESACTIVADA"}.`);
       void queryClient.invalidateQueries({ queryKey: ["admin", "featureFlags"] });
     },
@@ -476,8 +527,17 @@ function FeatureFlagsSection(): React.JSX.Element {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        Conmutadores globales de funcionalidad. Cada cambio invalida la caché en Redis y surte efecto de inmediato.
+        Interruptores de emergencia de la plataforma: al desactivar uno, esa función deja de responder a todas las organizaciones (los usuarios ven un aviso de que está pausada). El cambio rige de inmediato.
       </p>
+
+      {actionError && (
+        <div role="alert" className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+          <span>{actionError}</span>
+          <button type="button" onClick={() => setActionError(null)} className="font-semibold underline">
+            Cerrar
+          </button>
+        </div>
+      )}
 
       {feedback && (
         <div className="flex items-center justify-between rounded-md bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
@@ -496,7 +556,7 @@ function FeatureFlagsSection(): React.JSX.Element {
                 <CardTitle className="text-base">{flag.name}</CardTitle>
                 <button
                   type="button"
-                  onClick={() => toggleMutation.mutate({ key: flag.key, enabled: !flag.enabled })}
+                  onClick={() => (flag.enabled ? setConfirmOff(flag.key) : toggleMutation.mutate({ key: flag.key, enabled: true }))}
                   disabled={toggleMutation.isPending}
                   className="flex items-center gap-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring rounded"
                   aria-label={`${flag.enabled ? "Desactivar" : "Activar"} ${flag.name}`}
@@ -513,6 +573,25 @@ function FeatureFlagsSection(): React.JSX.Element {
                 </button>
               </div>
               <div className="font-mono text-xs text-muted-foreground">{flag.key}</div>
+              {confirmOff === flag.key ? (
+                <div role="alert" className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-rose-200 bg-rose-50 p-2 text-xs text-rose-800">
+                  <span>¿Desactivar «{flag.name}» para toda la plataforma?</span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      toggleMutation.mutate({ key: flag.key, enabled: false });
+                      setConfirmOff(null);
+                    }}
+                    aria-label={`Confirmar la desactivación de ${flag.name}`}
+                  >
+                    Sí, desactivar
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setConfirmOff(null)} aria-label="Cancelar">
+                    Cancelar
+                  </Button>
+                </div>
+              ) : null}
             </CardHeader>
             <CardContent className="text-xs text-muted-foreground">
               <p>{flag.description}</p>

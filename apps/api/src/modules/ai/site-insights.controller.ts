@@ -1,3 +1,4 @@
+import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flag.guard.js";
 import { Body, Controller, HttpCode, HttpStatus, Param, Post, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { aiInsightsResponse } from "@impulza/contracts";
@@ -20,7 +21,8 @@ import { SiteInsightsService } from "./site-insights.service.js";
 @ApiOrganizationIdParam()
 @ApiOrganizationScopedErrors()
 @Controller("organizations/:organizationId/sites/:siteId/ai")
-@UseGuards(CsrfGuard, SessionAuthGuard, OrganizationMembershipGuard)
+@UseGuards(CsrfGuard, SessionAuthGuard, OrganizationMembershipGuard, FeatureFlagGuard)
+@RequireFeature("ia_generativa")
 export class SiteInsightsController {
   constructor(private readonly insights: SiteInsightsService) {}
 

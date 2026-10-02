@@ -34,6 +34,7 @@ import { CsrfGuard } from "../../common/csrf.guard.js";
 import { RateLimit } from "../../common/rate-limit.decorator.js";
 import { RateLimitGuard } from "../../common/rate-limit.guard.js";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
+import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flag.guard.js";
 import { AuthService } from "./auth.service.js";
 import { CurrentUser } from "./current-user.decorator.js";
 import { forgotPasswordSchema, type ForgotPasswordDto } from "./dto/forgot-password.dto.js";
@@ -54,7 +55,8 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("register")
-  @UseGuards(RateLimitGuard)
+  @UseGuards(RateLimitGuard, FeatureFlagGuard)
+  @RequireFeature("registros_abiertos")
   @RateLimit({ limit: 5, windowSeconds: 60, keyPrefix: "auth-register" })
   @UsePipes(new ZodValidationPipe(registerSchema))
   @ApiOperation({

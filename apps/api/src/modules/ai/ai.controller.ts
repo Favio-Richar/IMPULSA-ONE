@@ -1,3 +1,4 @@
+import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flag.guard.js";
 import { Controller, Get, Param, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { aiStatusResponse } from "@impulza/contracts";
@@ -13,7 +14,8 @@ import { AiService } from "./ai.service.js";
 @ApiOrganizationIdParam()
 @ApiOrganizationScopedErrors()
 @Controller("organizations/:organizationId/ai")
-@UseGuards(CsrfGuard, SessionAuthGuard, OrganizationMembershipGuard)
+@UseGuards(CsrfGuard, SessionAuthGuard, OrganizationMembershipGuard, FeatureFlagGuard)
+@RequireFeature("ia_generativa")
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 

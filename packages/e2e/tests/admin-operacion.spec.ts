@@ -5,7 +5,7 @@ import { ADMIN_SESSION_PATH } from "../global-setup.js";
 import { ADMIN_URL } from "../playwright.config.js";
 
 // F7.11 (ADR-026) — Superadministración: estado técnico, colas BullMQ, feature flags y plantillas (CMS)
-// Se verifica la pantalla /operacion (salud de infra, 13 colas y banderas globales)
+// Se verifica la pantalla /operacion (salud de infra, colas y banderas globales)
 // y la pantalla /plantillas (catálogo CMS con orden y visibilidad).
 // Se comprueba responsive y ausencia de desborde horizontal en móvil y escritorio.
 
@@ -45,17 +45,30 @@ test("Operación técnica (/operacion): visualiza estado de infraestructura, col
     fullPage: false,
   });
 
-  // Tab 2: Colas BullMQ (13)
+  // Tab 2: Colas BullMQ. Los nombres son los reales del sistema (la primera versión tenía 4 inventados).
   await page.getByRole("button", { name: /Colas BullMQ/ }).click();
-  await expect(page.getByText("analytics-events")).toBeVisible();
-  await expect(page.getByText("campaign-dispatch")).toBeVisible();
-  await expect(page.getByText("webhook-deliveries")).toBeVisible();
+  for (const name of ["analytics-events", "campaign-dispatch", "webhook-deliveries", "media-video", "newsletter-maintenance", "page-campaign-boundaries", "payment-accounts-refresh"]) {
+    await expect(page.getByText(name, { exact: true })).toBeVisible();
+  }
+  await expect(page.getByText("13 colas")).toHaveCount(0);
+
+  // Purgar borra también los trabajos fallidos: pide confirmación y se puede cancelar sin efecto.
+  await page.getByRole("button", { name: /Purgar los trabajos completados y fallidos de Eventos de analítica/ }).click();
+  await expect(page.getByText("¿Borrar completados y fallidos?")).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar la purga" }).click();
+  await expect(page.getByText("¿Borrar completados y fallidos?")).toHaveCount(0);
 
   // Tab 3: Feature Flags
   await page.getByRole("button", { name: /Feature Flags/ }).click();
   await expect(page.getByText("Registros abiertos")).toBeVisible();
   await expect(page.getByText("Pagos en línea")).toBeVisible();
   await expect(page.getByText("IA generativa")).toBeVisible();
+
+  // Apagar una bandera corta una función de toda la plataforma: pide confirmación (aquí se cancela).
+  await page.getByRole("button", { name: "Desactivar Registros abiertos" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "para toda la plataforma" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "para toda la plataforma" })).toHaveCount(0);
 
   await expectNoHorizontalScroll(page);
 });

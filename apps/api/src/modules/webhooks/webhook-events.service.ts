@@ -5,6 +5,7 @@ import { buildWebhookData, createDeliveries, type WebhookDeliveryJob, type Webho
 import type { Queue } from "bullmq";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
+import { FeatureFlagsService } from "../feature-flags/feature-flags.service.js";
 
 export const WEBHOOK_QUEUE = Symbol("WEBHOOK_QUEUE");
 
@@ -19,10 +20,13 @@ export class WebhookEventsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(WEBHOOK_QUEUE) private readonly queue: Queue<WebhookDeliveryJob>,
+    private readonly flags: FeatureFlagsService,
   ) {}
 
   async emit(input: { organizationId: string; type: WebhookEventType; subjectId: string }): Promise<void> {
     try {
+      // Apagado por el superadministrador (bandera `webhooks_salientes`): no se emite ni se encola nada.
+      if (!(await this.flags.isEnabled("webhooks_salientes", input.organizationId))) return;
       const endpoints = await this.prisma.webhookEndpoint.findMany({
         where: { organizationId: input.organizationId, active: true, events: { has: input.type } },
         select: { id: true },

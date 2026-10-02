@@ -53,16 +53,16 @@ export class AdminOperationsController {
   @ApiZodResponse(200, adminSystemHealthResponse, "Estado técnico de los servicios de la plataforma.")
   @ApiResponse({ status: 401, description: "Sin sesión de superadministración válida." })
   @ApiResponse({ status: 403, description: "Sin permiso de superadministración o falta token CSRF." })
-  async getHealth(@Req() req: RequestWithUser) {
-    return this.operationsService.getSystemHealth(req.user.id);
+  async getHealth() {
+    return this.operationsService.getSystemHealth();
   }
 
   @Get("operations/queues")
   @ApiOperation({
     summary: "Métricas de colas BullMQ",
-    description: "Retorna el conteo de trabajos y estado de las 13 colas BullMQ del sistema.",
+    description: "Retorna el conteo de trabajos y estado de las colas BullMQ del sistema.",
   })
-  @ApiZodResponse(200, adminQueueMetricsResponse, "Métricas y estado de las 13 colas BullMQ.")
+  @ApiZodResponse(200, adminQueueMetricsResponse, "Métricas y estado de las colas BullMQ.")
   @ApiResponse({ status: 401, description: "Sin sesión de superadministración válida." })
   @ApiResponse({ status: 403, description: "Sin permiso de superadministración o falta token CSRF." })
   async getQueues() {

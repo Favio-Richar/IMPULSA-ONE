@@ -1,6 +1,7 @@
-import { Controller, Get, Param, Res } from "@nestjs/common";
+import { Controller, Get, Param, Res, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
+import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flag.guard.js";
 import { RateLimit } from "../../common/rate-limit.decorator.js";
 import { CalendarFeedService } from "./calendar-feed.service.js";
 
@@ -11,6 +12,8 @@ import { CalendarFeedService } from "./calendar-feed.service.js";
  */
 @ApiTags("public-bookings")
 @Controller("public/bookings/calendar-feed")
+@UseGuards(FeatureFlagGuard)
+@RequireFeature("sincronizacion_calendarios")
 export class CalendarFeedController {
   constructor(private readonly calendarFeedService: CalendarFeedService) {}
 

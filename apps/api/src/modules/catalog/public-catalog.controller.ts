@@ -6,6 +6,7 @@ import type { Request } from "express";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { RateLimit } from "../../common/rate-limit.decorator.js";
 import { RateLimitGuard } from "../../common/rate-limit.guard.js";
+import { FeatureFlagGuard, RequireFeature } from "../feature-flags/feature-flag.guard.js";
 import { ApiZodBody, ApiZodResponse } from "../../openapi/zod-openapi.js";
 import { CART_DIGITAL_ALONE, CART_MIXED_CURRENCY, OUT_OF_STOCK, PRODUCT_UNAVAILABLE, PublicCatalogService } from "./public-catalog.service.js";
 
@@ -50,6 +51,8 @@ export class PublicCatalogController {
 
   @Post("orders")
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(FeatureFlagGuard)
+  @RequireFeature("pagos_en_linea")
   @RateLimit({ limit: 10, windowSeconds: 600, keyPrefix: "public-order-create" })
   @ApiOperation({
     summary: "Hacer un pedido",
@@ -87,6 +90,8 @@ export class PublicCatalogController {
 
   @Post("cart/orders")
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(FeatureFlagGuard)
+  @RequireFeature("pagos_en_linea")
   // Comparte el cupo con el pedido suelto: un carrito no abre una vía más rápida para pedir.
   @RateLimit({ limit: 10, windowSeconds: 600, keyPrefix: "public-order-create" })
   @ApiOperation({

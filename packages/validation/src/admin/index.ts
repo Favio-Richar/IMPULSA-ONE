@@ -6,17 +6,18 @@ import { z } from "zod";
  */
 export const BULLMQ_QUEUES = [
   "analytics-events",
+  "analytics-maintenance",
   "automation-events",
   "media-process",
-  "media-video-process",
+  "media-video",
   "webhook-deliveries",
   "billing-renewals",
   "booking-deposits",
   "booking-reminders",
   "campaign-dispatch",
-  "newsletter-confirmation",
-  "page-campaign-boundary",
-  "payment-accounts-reconciliation",
+  "newsletter-maintenance",
+  "page-campaign-boundaries",
+  "payment-accounts-refresh",
   "sequence-dispatch",
 ] as const;
 

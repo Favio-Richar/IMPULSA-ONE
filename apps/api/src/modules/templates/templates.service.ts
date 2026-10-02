@@ -74,11 +74,14 @@ export class TemplatesService {
   async listTemplates(filters: ListTemplatesQueryDto): Promise<TemplateResponse[]> {
     const rows = await this.prisma.template.findMany({
       where: {
+        // Una plantilla que el superadministrador oculta (F7.11) deja de verse en la galería pública.
+        isActive: true,
         ...(filters.industry ? { industryTags: { has: filters.industry } } : {}),
         ...(filters.objective ? { objectiveTags: { has: filters.objective } } : {}),
         ...(filters.family ? { family: filters.family } : {}),
       },
-      orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
+      // Las destacadas primero; dentro de cada grupo, el orden que fijó el superadministrador.
+      orderBy: [{ isFeatured: "desc" }, { sortOrder: "asc" }, { code: "asc" }],
     });
 
     // Una plantilla rota se omite en vez de tumbar toda la galería (degradación controlada, F2.4).
@@ -93,7 +96,9 @@ export class TemplatesService {
    * lo que se copia a la página es siempre lo que acaba de pasar por el esquema.
    */
   async getTemplate(code: string): Promise<TemplateResponse> {
-    const row = await this.prisma.template.findUnique({ where: { code } });
+    const found = await this.prisma.template.findUnique({ where: { code } });
+    // Oculta = no disponible, tampoco para aplicarla a un sitio nuevo (los sitios ya creados no cambian).
+    const row = found?.isActive ? found : null;
     const template = row ? this.parseRow(row) : null;
 
     if (!row || !template) {

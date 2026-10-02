@@ -104,13 +104,16 @@ export function TemplateGallery({
         />
       ) : (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Plantillas">
-          {templatesQuery.data.map((template) => {
+          {templatesQuery.data.map((template, index) => {
             const selected = selectedCode === template.code;
             return (
               <li
                 key={template.code}
                 data-template-code={template.code}
-                className={`flex flex-col gap-3 rounded-lg border bg-background p-3 ${selected ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
+                style={{
+                  animationDelay: `${Math.min(index, 8) * 60}ms`,
+                }}
+                className={`motion-rise flex flex-col gap-3 rounded-lg border bg-background p-3 ${selected ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
               >
                 <TemplateThumbnail template={template} />
                 <div className="flex flex-col gap-1">

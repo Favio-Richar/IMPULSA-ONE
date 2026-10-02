@@ -107,7 +107,7 @@ export default function OnboardingPage(): React.JSX.Element | null {
         <p className="mt-1 text-sm text-muted-foreground">{STEP_INTROS[step.key]}</p>
       </div>
 
-      <section aria-label={step.title}>
+      <section aria-label={step.title} key={step.key} className="motion-fade">
         {step.key === "account" ? <AccountStep onNext={next} onBack={back} /> : null}
         {step.key === "objective" ? <ObjectiveStep onNext={next} onBack={back} /> : null}
         {step.key === "industry" ? <IndustryStep onNext={next} onBack={back} /> : null}

@@ -189,7 +189,7 @@ export function PublishStep({ onNext, onBack, onSlugConflict }: StepProps & { on
           return (
             <li key={task} className="flex items-center gap-3 rounded-md border border-border p-3 text-sm">
               {status === "done" ? (
-                <Check className="size-4 text-success" aria-hidden="true" />
+                <Check className="size-4 text-success motion-pop" aria-hidden="true" />
               ) : status === "running" ? (
                 <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />
               ) : status === "error" ? (

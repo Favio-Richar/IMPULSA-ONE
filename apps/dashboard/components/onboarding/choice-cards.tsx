@@ -42,7 +42,7 @@ export function ChoiceCards<T extends string>({
               key={choice.value}
               htmlFor={inputId}
               className={cn(
-                "flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-4 transition-colors",
+                "flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-sm motion-reduce:transform-none motion-reduce:transition-none",
                 "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-focus-ring)] has-[:focus-visible]:ring-offset-2",
                 checked ? "border-primary bg-surface" : "border-border hover:bg-surface",
               )}

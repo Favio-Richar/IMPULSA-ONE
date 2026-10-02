@@ -47,6 +47,7 @@ reglas de trabajo del repositorio.
 | 6 — Diferenciación | F6.1–F6.10 | En progreso (F6.1–F6.7 listas para revisión; F6.8–F6.9 bloqueadas por decisión #8) |
 | 7 — Crecimiento | F7.1–F7.12 | Lista para revisión (F7.1–F7.12 completas, ADR-016 a ADR-026) |
 | 8 — Experiencia | F8.1–F8.4 | Completa con reservas documentadas (Playwright 22/22; ver docs/BACKLOG_FASE_8.md, ADR-027) |
+| 9 — Marca y agencias | F9.1–F9.10 | Definida (ADR-028, `docs/BACKLOG_FASE_9.md`); la desarrolla Antigravity y la revisa Claude. Sin empezar |
 
 **Para retomar el desarrollo** (también desde Claude Code en la nube): `docs/CONTINUIDAD.md`.
 

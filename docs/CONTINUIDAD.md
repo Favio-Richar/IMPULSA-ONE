@@ -14,7 +14,7 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
   - **F7.9a y F7.9b:** con sus pruebas de Playwright (móvil y escritorio) y capturas en
     `docs/design/capturas/f79/`; el servidor fue revisado y corregido (borrado de profesionales con reservas vivas).
   - **F7.9c (sincronización con calendarios):** feed iCal con token por sitio y por profesional, y Google Calendar de un solo sentido con `state` firmado, renovación de token y sincronización en reservas. Probado con Google simulado (pendiente OAuth real de Google del propietario).
-  - **F7.10 (Sitio comercial institucional, ADR-025):** Soluciones por rubro (`/soluciones`, 6 rubros detallados), Integraciones (`/integraciones`, directorio con buscador reactivo y filtros de categoría), Recursos y guías (`/recursos`, guías prácticas y herramientas) y Política de privacidad (`/privacidad`, redactada conforme a Ley 19.628 y 21.719 chilena, con derechos ARCO y detalle de cifrado AES-256-GCM / Argon2id / HMAC). Fondo claro sobrio (`#ffffff` / `#f8fafc`), navegación integrada en header y footer, pruebas unitarias y pruebas de Playwright móvil y escritorio sin desborde horizontal (`expectNoHorizontalScroll`), con capturas en `docs/design/capturas/f710/`.
+  - **F7.10 (Sitio comercial institucional, ADR-025):** Soluciones por rubro (`/soluciones`, 6 rubros detallados), Integraciones (`/integraciones`, directorio con buscador reactivo y filtros de categoría), Recursos y guías (`/recursos`, guías prácticas y herramientas) y Política de privacidad (`/privacidad`, redactada conforme a Ley 19.628 y 21.719 chilena, con derechos ARCO y detalle de cifrado AES-256-GCM / Argon2id / HMAC). Fondo claro sobrio (`#ffffff` / `#f8fafc`), navegación integrada en header y footer, pruebas unitarias y pruebas de Playwright móvil y escritorio sin desborde horizontal (`expectNoHorizontalScroll`), con capturas en `docs/design/capturas/f710/`. **Revisada y corregida por Claude:** el contenido prometía cosas que no existen (cabecera `X-Impulza-Signature` y evento `booking.confirmed` falsos, plantillas inventadas, "emisión automática de comprobantes", cupos con aforo, TLS 1.3 / "nivel bancario", Google Calendar como "Disponible"); se corrigió y `marketing-pages.test.ts` ahora cruza el texto con el producto real. La política de privacidad **no está lista para publicar**: falta el responsable legal (razón social, RUT, domicilio) y un correo de privacidad, y debe revisarla un abogado.
   - **Siguiente paso: F7.11 — Superadministración** (estado técnico, colas, feature flags, CMS de plantillas). Después F7.12 (aislamiento y seguridad de la Fase 7).
 - ADR más reciente: ADR-025 (sitio comercial institucional: soluciones, integraciones, recursos y privacidad).
 - Fases 0–6 cerradas o en revisión; el detalle de cada historia está en su backlog
@@ -28,6 +28,10 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 - Crear el bucket privado de R2 en producción (descargas pagadas, F5.11b).
 - App propia de Zapier (requiere la cuenta de desarrollador de Favio).
 - Producción completa (hosting, correo real, backups): bloqueada por hosting.
+- Política de privacidad pública (`/privacidad`): datos del responsable (razón social, RUT, domicilio), correo
+  de privacidad real y revisión legal antes de publicar. El texto actual es un borrador técnico.
+- Aplicación OAuth de Google (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`): hasta tenerla, Google Calendar
+  figura como "Próximamente" en `/integraciones`; al conseguirla, probar de punta a punta y pasarlo a "Disponible".
 
 ## 2. Preparar el entorno
 
@@ -179,6 +183,12 @@ desarrollo los correos no se envían: se imprimen en la consola de la API (`emai
   nuevo se llame de verdad (una función sin llamadas es código muerto).
 - **Mutaciones sobre archivos nuevos**: para probar una prueba contra el código roto en un archivo sin
   commitear no sirve `git checkout`; copiar el archivo antes y restaurarlo desde la copia.
+- **Contenido comercial = promesa**: todo texto público (`apps/web/lib/marketing/*`) debe poder señalarse
+  en el producto. Verificar nombres de plantillas contra `TEMPLATE_CATALOG`, eventos y cabecera de webhooks
+  contra `@impulza/validation` / `@impulza/webhooks`, y bloques contra `BLOCK_TYPES`. Un test que solo
+  comprueba "no vacío" no atrapa nada: cruzar con la fuente real (ver `marketing-pages.test.ts`).
+- **No cortar `pnpm turbo` con `Select-Object -First N`**: cierra el pipe y mata el proceso (exit 255).
+  Redirigir toda la salida a un archivo y leerlo después.
 - **Lint de la API ≠ el archivo que crees**: el error `no-unused-vars` apunta a una línea concreta;
   buscar el símbolo con grep antes de borrar un import (un `type` importado en dos archivos).
 

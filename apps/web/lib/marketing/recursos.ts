@@ -50,8 +50,8 @@ export const RECURSOS_GUIAS: RecursoGuia[] = [
     puntosClave: [
       "Conexión segura mediante OAuth sin compartir contraseñas ni claves API sensibles.",
       "Recepción directa de los fondos en tu cuenta bancaria sin comisiones sobre ventas de Impulza.",
-      "Emisión automática de comprobantes y notificaciones de pago confirmado.",
-      "Cumplimiento con las normativas del Servicio de Impuestos Internos (SII).",
+      "Aviso por correo cuando un pago queda confirmado.",
+      "Estado de cada pago y devoluciones desde tu panel de cobros.",
     ],
   },
   {

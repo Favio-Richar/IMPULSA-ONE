@@ -9,7 +9,8 @@ export interface Integracion {
   descripcion: string;
   beneficios: string[];
   comoFunciona: string;
-  estado: "Disponible" | "Procesamiento nativo";
+  /** "Próximamente": construida y probada, pero se activa cuando Impulza tenga sus credenciales con el proveedor. */
+  estado: "Disponible" | "Procesamiento nativo" | "Próximamente";
   icono: string;
   badge?: string;
 }
@@ -33,7 +34,7 @@ export const INTEGRACIONES: Integracion[] = [
       "Permite cobrar suscripciones recurrentes y pagos puntuales en pesos chilenos cumpliendo todas las exigencias de seguridad y normativas de Transbank.",
     beneficios: [
       "Inscripción de tarjeta en 1 clic para pagos rápidos sin volver a ingresar datos.",
-      "Procesamiento directo en pesos chilenos (CLP) con boleta o factura.",
+      "Procesamiento directo en pesos chilenos (CLP) con tarjetas de débito y crédito.",
       "Reintentos automáticos en caso de fondos insuficientes.",
     ],
     comoFunciona: "Conexión transparente administrada desde el módulo de Facturación en el panel.",
@@ -66,14 +67,14 @@ export const INTEGRACIONES: Integracion[] = [
     categoriaLabel: "Calendarios",
     tagline: "Copia tus citas y reservas confirmadas automáticamente a tu calendario personal",
     descripcion:
-      "Sincroniza tus reservas con tu cuenta de Google. Cada cita creada, reprogramada o cancelada se actualiza de inmediato en tu calendario principal.",
+      "Copia tus reservas confirmadas a tu cuenta de Google. Cada cita creada, reprogramada o cancelada en Impulza One se actualiza en tu calendario principal (de Impulza hacia Google; lo que crees en Google no vuelve a Impulza).",
     beneficios: [
       "Eventos con el nombre del cliente, servicio, sucursal y datos de contacto.",
-      "Cifrado de tokens OAuth con estándar simétrico AES-256-GCM en reposo.",
-      "Modo desacoplado seguro para operar sin interrupciones.",
+      "Tus credenciales de Google se guardan cifradas.",
+      "Mientras tanto, la suscripción iCal funciona con cualquier calendario, sin conectar tu cuenta.",
     ],
     comoFunciona: "Autoriza tu cuenta de Google desde la configuración de reservas de tu sitio con un clic.",
-    estado: "Disponible",
+    estado: "Próximamente",
     icono: "calendar",
   },
   {
@@ -120,7 +121,7 @@ export const INTEGRACIONES: Integracion[] = [
     descripcion:
       "Integra tus eventos de conversión en escenarios visuales avanzados de Make con soporte nativo para payload JSON firmado con HMAC-SHA256.",
     beneficios: [
-      "Generación automática de boletas o facturas en sistemas contables chilenos.",
+      "Envío de cada venta a tu sistema contable para que prepares tus documentos tributarios.",
       "Enrutamiento de prospectos según el rubro o servicio solicitado.",
       "Trazabilidad de entregas con reintentos automáticos exponenciales.",
     ],
@@ -135,10 +136,10 @@ export const INTEGRACIONES: Integracion[] = [
     categoriaLabel: "Automatización",
     tagline: "Eventos HTTP seguros para desarrolladores y sistemas propios",
     descripcion:
-      "Transmite eventos en tiempo real hacia tus propios servidores con firma criptográfica en la cabecera `X-Impulza-Signature` y protección estricta contra SSRF.",
+      "Transmite eventos en tiempo real hacia tus propios servidores con firma criptográfica en la cabecera `Impulza-Signature` y protección estricta contra SSRF.",
     beneficios: [
-      "Firma HMAC-SHA256 para verificar la autenticidad de cada evento.",
-      "Eventos: `contact.created`, `booking.confirmed`, `booking.cancelled`, `order.paid`.",
+      "Firma HMAC-SHA256 con marca de tiempo (`t=…,v1=…`) para verificar la autenticidad de cada evento.",
+      "Eventos: `contact.created`, `booking.created`, `booking.cancelled`, `order.created`, `order.paid`.",
       "Historial de entregas, tiempo de respuesta y botón para reintentar entregas fallidas.",
     ],
     comoFunciona: "Configura tu endpoint HTTPS y clave secreta en el panel bajo 'Webhooks'.",

@@ -94,7 +94,13 @@ export function IntegracionesDirectory({ bienvenidaHref }: { bienvenidaHref: str
                         {item.badge}
                       </span>
                     ) : null}
-                    <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                    <span
+                      className={
+                        item.estado === "Próximamente"
+                          ? "rounded bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800"
+                          : "rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700"
+                      }
+                    >
                       {item.estado}
                     </span>
                   </div>

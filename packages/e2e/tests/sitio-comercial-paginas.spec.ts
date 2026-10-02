@@ -37,7 +37,7 @@ test("Soluciones por rubro (/soluciones): renderiza industrias, navegación por 
 
   const gastronomia = page.locator("#gastronomia-local");
   await expect(gastronomia).toBeVisible();
-  await expect(gastronomia.getByText("Menú digital, reservas de mesa y presencia en tu barrio")).toBeVisible();
+  await expect(gastronomia.getByText("Carta digital, reservas y presencia en tu barrio")).toBeVisible();
 
   const tiendas = page.locator("#tiendas-comercio");
   await expect(tiendas).toBeVisible();

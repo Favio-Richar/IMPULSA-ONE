@@ -35,7 +35,7 @@ export const SECCIONES_PRIVACIDAD: SeccionPrivacidad[] = [
     parrafos: [
       "Utilizamos tus datos personales exclusivamente para los siguientes fines legítimos:",
       "a) Proveer, operar, mantener y asegurar la plataforma Impulza One y tus sitios web publicados.",
-      "b) Gestionar tu suscripción, cobros recurrentes y emisión de los documentos tributarios correspondientes ante el SII.",
+      "b) Gestionar tu suscripción, cobros recurrentes y emisión de los documentos tributarios correspondientes.",
       "c) Enviarte comunicaciones operativas indispensables: confirmación de cuenta, recuperación de contraseña, alertas de seguridad y recordatorios de renovación.",
       "d) Proporcionar asistencia técnica oportuna cuando abras una solicitud de soporte.",
       "e) Prevenir fraudes, abusos o accesos no autorizados a la infraestructura.",
@@ -55,11 +55,11 @@ export const SECCIONES_PRIVACIDAD: SeccionPrivacidad[] = [
     id: "seguridad",
     titulo: "5. Seguridad y cifrado de la información",
     parrafos: [
-      "Implementamos medidas técnicas y organizativas de nivel bancario e industrial para salvaguardar la confidencialidad, integridad y disponibilidad de la información:",
+      "Implementamos medidas técnicas y organizativas para salvaguardar la confidencialidad, integridad y disponibilidad de la información:",
     ],
     destacados: [
       "Aislamiento multi-tenant estricto: separación lógica garantizada en base de datos para que ninguna organización pueda acceder o modificar datos de otra.",
-      "Cifrado en tránsito y en reposo: todas las conexiones operan bajo HTTPS con TLS 1.3. Las credenciales sensibles y tokens OAuth (como Google Calendar o Mercado Pago) se cifran en reposo con el algoritmo simétrico AES-256-GCM.",
+      "Cifrado en tránsito y en reposo: las conexiones con la plataforma operan bajo HTTPS. Las credenciales sensibles y tokens OAuth (como Google Calendar o Mercado Pago) se cifran en reposo con el algoritmo simétrico AES-256-GCM.",
       "Contraseñas seguras: uso de la función de derivación de claves Argon2id, el estándar criptográfico moderno más resistente contra ataques de fuerza bruta.",
       "Enlaces firmados HMAC-SHA256: las gestiones públicas de reservas, pedidos y bajas de correo se autorizan con tokens criptográficos efímeros sin exponer identificadores internos.",
     ],
@@ -68,7 +68,7 @@ export const SECCIONES_PRIVACIDAD: SeccionPrivacidad[] = [
     id: "cookies-analitica",
     titulo: "6. Cookies y tecnologías de medición",
     parrafos: [
-      "Nuestra analítica nativa está diseñada desde el origen bajo el principio de privacidad por diseño (ADR-004):",
+      "Nuestra analítica nativa está diseñada desde el origen bajo el principio de privacidad por diseño:",
       "No utilizamos cookies invasivas de seguimiento ni rastreo entre sitios para las estadísticas de visitas y clics de la plataforma.",
       "Para herramientas de terceros como Google Analytics 4 o el Píxel de Meta que agregues a tu sitio, exigimos el consentimiento previo e informado del visitante mediante un banner accesible con opciones de Aceptar y Rechazar con el mismo peso visual, conforme a las directrices de la Ley 21.719.",
     ],

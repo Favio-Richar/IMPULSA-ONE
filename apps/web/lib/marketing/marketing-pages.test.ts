@@ -1,8 +1,50 @@
 import { describe, expect, it } from "vitest";
+import { TEMPLATE_CATALOG, WEBHOOK_EVENT_TYPES } from "@impulza/validation";
 import { CATEGORIAS_INTEGRACIONES, INTEGRACIONES } from "./integraciones";
 import { FECHA_VIGENCIA_PRIVACIDAD, SECCIONES_PRIVACIDAD } from "./privacidad";
 import { HERRAMIENTAS_UTILES, RECURSOS_GUIAS } from "./recursos";
 import { SOLUCIONES_RUBROS } from "./soluciones";
+
+// Lo que el sitio comercial promete tiene que existir: estas pruebas lo cruzan con el producto real
+// (la primera versión de F7.10 inventaba plantillas, eventos de webhook y una cabecera de firma).
+describe("El contenido comercial coincide con el producto (F7.10)", () => {
+  const webhooks = INTEGRACIONES.find((i) => i.id === "webhooks-propios")!;
+  const webhookText = [webhooks.descripcion, ...webhooks.beneficios].join(" ");
+
+  it("las plantillas recomendadas existen en el catálogo oficial", () => {
+    const reales = new Set(TEMPLATE_CATALOG.map((t) => t.name));
+    for (const rubro of SOLUCIONES_RUBROS) {
+      expect(reales.has(rubro.plantillaRecomendada.nombre), `${rubro.slug}: ${rubro.plantillaRecomendada.nombre}`).toBe(true);
+    }
+  });
+
+  it("los eventos de webhook citados son exactamente los que el sistema envía", () => {
+    const citados = [...webhookText.matchAll(/`((?:contact|booking|order)\.[a-z_]+)`/g)].map((m) => m[1]);
+    expect(citados.sort()).toEqual([...WEBHOOK_EVENT_TYPES].sort());
+  });
+
+  it("la cabecera de firma es `Impulza-Signature` (la que envía @impulza/webhooks)", () => {
+    expect(webhookText).toContain("`Impulza-Signature`");
+    expect(webhookText).not.toContain("X-Impulza-Signature");
+  });
+
+  it("no promete emitir boletas o facturas ni cumplimiento del SII: la boleta se emite fuera del sistema", () => {
+    const todo = JSON.stringify([INTEGRACIONES, RECURSOS_GUIAS, SOLUCIONES_RUBROS, SECCIONES_PRIVACIDAD]);
+    expect(todo).not.toMatch(/emisi[oó]n autom[aá]tica/i);
+    expect(todo).not.toMatch(/\bSII\b/);
+    expect(todo).not.toMatch(/con boleta o factura/i);
+  });
+
+  it("no cita códigos internos (ADR-xxx) ni afirma 'nivel bancario' en textos públicos", () => {
+    const todo = JSON.stringify([INTEGRACIONES, RECURSOS_GUIAS, SOLUCIONES_RUBROS, SECCIONES_PRIVACIDAD]);
+    expect(todo).not.toMatch(/ADR-\d+/);
+    expect(todo).not.toMatch(/nivel bancario/i);
+  });
+
+  it("Google Calendar figura como 'Próximamente' hasta que Impulza tenga sus credenciales con Google", () => {
+    expect(INTEGRACIONES.find((i) => i.id === "google-calendar")?.estado).toBe("Próximamente");
+  });
+});
 
 describe("Sitio comercial - Catálogos y datos institucionales (F7.10, ADR-025)", () => {
   describe("Soluciones por rubro (SOLUCIONES_RUBROS)", () => {
@@ -49,7 +91,7 @@ describe("Sitio comercial - Catálogos y datos institucionales (F7.10, ADR-025)"
         expect(categoriasValidas.has(integ.categoria)).toBe(true);
         expect(integ.descripcion).toBeTruthy();
         expect(integ.beneficios.length).toBeGreaterThanOrEqual(2);
-        expect(["Disponible", "Procesamiento nativo"]).toContain(integ.estado);
+        expect(["Disponible", "Procesamiento nativo", "Próximamente"]).toContain(integ.estado);
 
         expect(ids.has(integ.id)).toBe(false);
         ids.add(integ.id);

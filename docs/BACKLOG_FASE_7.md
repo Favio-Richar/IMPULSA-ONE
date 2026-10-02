@@ -17,7 +17,7 @@ maestro con lo construido. Cada historia usa la Definición de Terminado de `CLA
 | F7.7 — Modo campaña: página temporal con fecha de inicio/fin y vuelta automática | Lista para tu revisión (ADR-022; capturas en `docs/design/capturas/f77/`) |
 | F7.8 — Tienda: variantes, cupones y carrito | Lista para tu revisión (ADR-023): F7.8a variantes, F7.8b cupones y F7.8c carrito (capturas en `docs/design/capturas/f78a/`, `f78b/` y `f78c/`) |
 | F7.9 — Reservas: varios profesionales y sucursales; Google Calendar | Lista para tu revisión (ADR-024): F7.9a profesionales y sucursales, F7.9b horarios y bloqueos, F7.9c feed iCal y Google Calendar (capturas en `docs/design/capturas/f79/`). Google Calendar real queda pendiente de tus credenciales OAuth; probado con Google simulado |
-| F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Lista para tu revisión (ADR-025; capturas en `docs/design/capturas/f710/`) |
+| F7.10 — Sitio comercial: Soluciones por rubro, Integraciones, Recursos, Política de privacidad | Lista para tu revisión, contenido corregido (ADR-025; capturas en `docs/design/capturas/f710/`). La política de privacidad es un borrador: faltan datos del responsable, correo de privacidad y revisión legal |
 | F7.11 — Superadministración: estado técnico, colas, feature flags, CMS de plantillas | Pendiente |
 | F7.12 — Aislamiento y seguridad de Fase 7 | Pendiente |
 
@@ -622,6 +622,33 @@ Implementación (2026-10-01):
   - Verificación contra código roto: comprobado en unitario (vaciando problemas de soluciones) y en E2E (alterando el h1 de soluciones); ambas pruebas fallaron según lo previsto y volvieron a verde tras la restauración.
   - Capturas registradas en `docs/design/capturas/f710/`: `soluciones-escritorio.png`, `soluciones-movil.png`, `integraciones-escritorio.png`, `integraciones-movil.png`, `recursos-escritorio.png`, `recursos-movil.png`, `privacidad-escritorio.png`, `privacidad-movil.png`.
   - Chequeo de tipos (`tsc --noEmit`) y linter (`eslint .`) limpios con código de salida 0 en `@impulza/web` y `@impulza/e2e`.
+
+Revisión de F7.10 (2026-10-02, Claude) — el contenido prometía cosas que el sistema no hace:
+- **Integraciones:** la cabecera de firma de los webhooks es `Impulza-Signature` (formato `t=…,v1=…`), no
+  `X-Impulza-Signature`; el evento `booking.confirmed` no existe (los reales: `contact.created`,
+  `booking.created`, `booking.cancelled`, `order.created`, `order.paid`). Un desarrollador que siguiera la
+  página no habría podido verificar ninguna firma. Se quitó "con boleta o factura" de Webpay y la
+  "generación automática de boletas" de Make (la boleta se emite fuera del sistema).
+- **Google Calendar** pasó de "Disponible" a **"Próximamente"** (chip ámbar): está construido y probado con
+  Google simulado, pero Impulza aún no tiene su aplicación OAuth con Google. Se dejó explícito que la copia
+  va de Impulza hacia Google y se quitó "se actualiza de inmediato".
+- **Soluciones:** las plantillas recomendadas tenían nombres y códigos inventados ("Consulta Médica &
+  Terapia", `tienda-boutique`…); ahora son las reales del catálogo (Salud y bienestar, Café y gastronomía,
+  Creador y marca personal, Tienda y comercio, Profesional de servicios, Eventos y turismo). Se quitaron
+  funciones que no existen: venta de cupos con aforo máximo, reservas por cantidad de comensales, bloque
+  "Formulario clínico", "Cupones" y "Secuencias" como bloques, "ausentismo a cero", "pagos con Webpay en la
+  tienda". Los bloques citados son ahora de `BLOCK_TYPES`.
+- **Recursos:** se quitó "emisión automática de comprobantes" y "cumplimiento con las normativas del SII".
+- **Privacidad:** se quitó "(ADR-004)" (código interno en un texto público), "nivel bancario e industrial" y
+  "TLS 1.3" (sin hosting de producción no hay nada que lo respalde). Verificado y se mantiene: Argon2id,
+  AES-256-GCM, HMAC-SHA256 y la IP no guardada con sal por sitio y día (ADR-004). **Pendiente del
+  propietario:** razón social, RUT y domicilio del responsable, un correo de privacidad real y revisión de un
+  abogado; hoy es un borrador técnico, no un documento legal listo para publicar.
+- **Pruebas:** `marketing-pages.test.ts` solo comprobaba "no vacío" (no atrapaba nada). Se agregaron 6 pruebas
+  que cruzan el texto con `TEMPLATE_CATALOG`, `WEBHOOK_EVENT_TYPES` y la cabecera real, y que prohíben
+  promesas de boletas/SII, códigos ADR y "nivel bancario". Verificadas contra el contenido original: las 6
+  fallan; con el corregido pasan (15/15).
+- Enlaces internos de las 4 páginas y de la portada comprobados en vivo: ninguno roto.
 
 ## Fases siguientes
 

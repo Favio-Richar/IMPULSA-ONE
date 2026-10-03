@@ -1,10 +1,12 @@
 import type {
   AcceptOwnerInvitationResponse,
   AgencyClientResponse,
+  AgencyDashboardResponse,
   AgencyLinkResponse,
+  AgencyOverviewResponse,
   AgencyStatusResponse,
 } from "@impulza/contracts";
-import type { AgencyClientAction, CreateAgencyClientDto, LinkAgencyClientDto } from "@impulza/validation";
+import type { AgencyClientAction, AgencyClientStatusValue, AgencyOverviewQuery, CreateAgencyClientDto, LinkAgencyClientDto } from "@impulza/validation";
 import { apiFetch } from "../api-client";
 
 // Modo agencia (F9.3, ADR-028 §2). Todo se resuelve en el servidor por la membresía real del usuario.
@@ -65,4 +67,23 @@ export function revokeAgencyLink(organizationId: string): Promise<void> {
 
 export function acceptOwnerInvitation(token: string): Promise<AcceptOwnerInvitationResponse> {
   return apiFetch<AcceptOwnerInvitationResponse>("/agency-invitations/accept", { method: "POST", body: { token } });
+}
+
+// ---- panel (F9.4) ------------------------------------------------------------------------------------------------------
+
+export type AgencyOverviewParams = Partial<Pick<AgencyOverviewQuery, "days" | "sort" | "order" | "page" | "pageSize">> & {
+  search?: string;
+  status?: AgencyClientStatusValue;
+};
+
+export function getAgencyDashboard(organizationId: string, days: number): Promise<AgencyDashboardResponse> {
+  return apiFetch<AgencyDashboardResponse>(`${agencyPath(organizationId)}/dashboard?days=${days}`);
+}
+
+export function getAgencyOverview(organizationId: string, params: AgencyOverviewParams): Promise<AgencyOverviewResponse> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") query.set(key, String(value));
+  }
+  return apiFetch<AgencyOverviewResponse>(`${agencyPath(organizationId)}/overview?${query.toString()}`);
 }

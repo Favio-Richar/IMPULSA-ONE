@@ -5,9 +5,14 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-03, noche) — F9.3 HECHA en la rama `fase-9/f9-3-modelo-agencia` (aún no fusionada a master); siguiente: F9.4
+## 0. RETOMAR AQUÍ (2026-10-03, noche) — F9.4 HECHA con reservas en la rama `fase-9/f9-4-panel-agencia` (sobre F9.3); siguiente: F9.5
 
-**Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia.
+**Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia y **push de la rama al cerrar cada una** (autorizado por Favio; ver memoria «Subir cada fase a GitHub»). Fusionar a `master` sigue pidiendo confirmación.
+
+**F9.4 — panel de agencia (cerrada con reservas; detalle en `docs/BACKLOG_FASE_9.md`):** resumen y tabla de clientes con rendimiento, plan, dominios, última
+publicación y alertas; solo suma clientes `ACTIVE`; búsqueda/filtro/orden/paginación en el servidor; 200 clientes en ~55 ms. **Reservas:** «tareas del equipo»
+no existe en el modelo (falta decidir si se construye); las alertas de suscripción/pago no se muestran por el límite duro del ADR-028 (llegan con F9.5 para
+`AGENCY_PAYS`); no se ordena por métricas. **Siguiente: F9.5** (importar, duplicar, transferir, facturación).
 
 **F9.3 — cerrada** (detalle, mutaciones y reservas en `docs/BACKLOG_FASE_9.md`): modelo de agencia, acceso delegado (membresía `AGENCY` evaluada
 en cada petición por `OrganizationMembershipGuard` + `delegatedAccessVerdict`), alta de clientes por dos caminos, pausa/archivo/soltar/revocar,

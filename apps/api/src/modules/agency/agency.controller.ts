@@ -1,12 +1,16 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, UseGuards } from "@nestjs/common";
-import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { agencyClientResponse, agencyStatusResponse } from "@impulza/contracts";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
+import { ApiCookieAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { agencyClientResponse, agencyDashboardResponse, agencyOverviewResponse, agencyStatusResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import {
   agencyClientActionSchema,
+  agencyDashboardQuerySchema,
+  agencyOverviewQuerySchema,
   createAgencyClientSchema,
   linkAgencyClientSchema,
   type AgencyClientActionDto,
+  type AgencyDashboardQuery,
+  type AgencyOverviewQuery,
   type CreateAgencyClientDto,
   type LinkAgencyClientDto,
 } from "@impulza/validation";
@@ -30,6 +34,7 @@ import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
 import { OrganizationMembershipGuard } from "../organizations/guards/organization-membership.guard.js";
 import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
+import { AgencyDashboardService } from "./agency-dashboard.service.js";
 import { AgencyService } from "./agency.service.js";
 
 /**
@@ -43,7 +48,10 @@ import { AgencyService } from "./agency.service.js";
 @Controller("organizations/:organizationId/agency")
 @UseGuards(CsrfGuard, SessionAuthGuard, OrganizationMembershipGuard)
 export class AgencyController {
-  constructor(private readonly agencyService: AgencyService) {}
+  constructor(
+    private readonly agencyService: AgencyService,
+    private readonly dashboardService: AgencyDashboardService,
+  ) {}
 
   @Get()
   @ApiOperation({
@@ -70,6 +78,44 @@ export class AgencyController {
   @ApiResponse({ status: 409, description: "Este negocio es cliente de una agencia." })
   async enable(@Param("organizationId") organizationId: string, @CurrentUser() user: User) {
     return this.agencyService.enable(organizationId, user.id);
+  }
+
+  @Get("dashboard")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @ApiOperation({
+    summary: "Panel de la agencia: totales de sus clientes",
+    description:
+      "Clientes por estado y, **solo de los clientes `ACTIVE`**, visitas, clics, contactos nuevos, reservas y pedidos del período, más las alertas (dominios, cupo del plan, sitio oculto). Un cliente en pausa, archivado o sin aceptar no suma. Nunca incluye la suscripción ni los pagos del cliente. Requiere `agency.manage`.",
+  })
+  @ApiQuery({ name: "days", required: false, description: "Período que termina hoy: 7, 30 (por defecto) o 90 días." })
+  @ApiZodResponse(200, agencyDashboardResponse, "Consolidado de la agencia.")
+  @ApiResponse({ status: 400, description: "`days` distinto de 7, 30 o 90." })
+  @ApiResponse({ status: 403, description: "La organización no es una agencia (`NOT_AN_AGENCY`) o falta el permiso." })
+  async dashboard(@Param("organizationId") organizationId: string, @Query(new ZodValidationPipe(agencyDashboardQuerySchema)) query: AgencyDashboardQuery) {
+    return this.dashboardService.dashboard(organizationId, query);
+  }
+
+  @Get("overview")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @ApiOperation({
+    summary: "Tabla de clientes con su rendimiento, plan, dominios y alertas",
+    description:
+      "Búsqueda por nombre o identificador, filtro por estado, orden (`name`, `status`, `createdAt`) y paginación en el servidor (máximo 50 por página). El rendimiento, plan, dominios y alertas solo se calculan para los clientes `ACTIVE`; el resto viene en `null`. Requiere `agency.manage`.",
+  })
+  @ApiQuery({ name: "days", required: false, description: "Período: 7, 30 (por defecto) o 90 días." })
+  @ApiQuery({ name: "search", required: false, description: "Texto en el nombre o el identificador del cliente." })
+  @ApiQuery({ name: "status", required: false, description: "Estado de la relación." })
+  @ApiQuery({ name: "sort", required: false, description: "`name`, `status` o `createdAt` (por defecto)." })
+  @ApiQuery({ name: "order", required: false, description: "`asc` o `desc` (por defecto)." })
+  @ApiQuery({ name: "page", required: false, description: "Página, desde 1." })
+  @ApiQuery({ name: "pageSize", required: false, description: "Tamaño de página, 1 a 50 (20 por defecto)." })
+  @ApiZodResponse(200, agencyOverviewResponse, "Una página de clientes.")
+  @ApiResponse({ status: 400, description: "Algún parámetro fuera de rango." })
+  @ApiResponse({ status: 403, description: "La organización no es una agencia (`NOT_AN_AGENCY`) o falta el permiso." })
+  async overview(@Param("organizationId") organizationId: string, @Query(new ZodValidationPipe(agencyOverviewQuerySchema)) query: AgencyOverviewQuery) {
+    return this.dashboardService.overview(organizationId, query);
   }
 
   @Get("clients")

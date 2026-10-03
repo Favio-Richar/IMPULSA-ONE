@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AgencyClientAction, CreateAgencyClientDto, LinkAgencyClientDto } from "@impulza/validation";
 import {
   acceptAgencyLink,
@@ -6,8 +6,11 @@ import {
   actOnAgencyClient,
   createAgencyClient,
   enableAgency,
+  getAgencyDashboard,
   getAgencyLink,
+  getAgencyOverview,
   getAgencyStatus,
+  type AgencyOverviewParams,
   listAgencyClients,
   rejectAgencyLink,
   requestAgencyLink,
@@ -89,5 +92,20 @@ export function useAcceptOwnerInvitation() {
   return useMutation({
     mutationFn: (token: string) => acceptOwnerInvitation(token),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations"] }),
+  });
+}
+
+/** Totales y alertas de la agencia en un período (solo clientes activos). */
+export function useAgencyDashboard(organizationId: string, days: number, enabled: boolean) {
+  return useQuery({ queryKey: ["agency", organizationId, "dashboard", days], queryFn: () => getAgencyDashboard(organizationId, days), enabled });
+}
+
+/** Una página de la tabla de clientes; conserva la página anterior en pantalla mientras llega la siguiente. */
+export function useAgencyOverview(organizationId: string, params: AgencyOverviewParams, enabled: boolean) {
+  return useQuery({
+    queryKey: ["agency", organizationId, "overview", params],
+    queryFn: () => getAgencyOverview(organizationId, params),
+    enabled,
+    placeholderData: keepPreviousData,
   });
 }

@@ -20,7 +20,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.1 | Marca de la plataforma (el dueño del sistema configura todo) | Hecho (2026-10-02, revisada y corregida por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.2 | Marca de cada organización (logo, colores, datos) | Hecho (2026-10-03, revisada y corregida por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Hecho (2026-10-03, desarrollada y verificada por Claude; reservas en `CONTINUIDAD.md` §0) |
-| F9.4 | Panel de agencia | Pendiente |
+| F9.4 | Panel de agencia | Hecho con reservas (2026-10-03, desarrollada y verificada por Claude; reservas en el detalle de la historia y en `CONTINUIDAD.md` §0) |
 | F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | Pendiente |
 | F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | Pendiente |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | Pendiente |
@@ -183,7 +183,7 @@ staging; (f) el plan `agencia` con 25 clientes es un valor provisorio (decisión
 
 ---
 
-### F9.4 — Panel de agencia
+### F9.4 — Panel de agencia — Hecho con reservas
 
 **Objetivo:** la vista consolidada de la agencia (PM §11.1).
 
@@ -202,6 +202,26 @@ staging; (f) el plan `agencia` con 25 clientes es un valor provisorio (decisión
 5. **Estados** de carga, vacío (agencia sin clientes, con guía para el primero), error y éxito.
 6. **Pruebas:** e2e de la API (los totales cuadran con los datos; un cliente de otra agencia no
    aparece), unitarias de agregación, Playwright móvil/escritorio, capturas en `f94/`.
+
+**Resultado (2026-10-03):** `GET /agency/dashboard` y `GET /agency/overview` (búsqueda, filtro por estado, orden por nombre/estado/fecha y paginación de
+hasta 50 filas, todo en el servidor); reglas puras en `@impulza/validation` (`agency/dashboard.ts`, 13 pruebas); consultas agrupadas (el número de
+consultas no crece con los clientes: 5 para el rendimiento y 6 para plan/dominios/publicación); pantalla `/agencia` con resumen, alertas, tabla y alta
+plegada. Verificado: e2e de la API `agency-dashboard.e2e.test.ts` 15/15; Playwright `panel-agencia.spec.ts` 6/6 y `agencia.spec.ts` 4/4 (móvil y
+escritorio, capturas en `f94/`); `next build` del panel; OpenAPI regenerado (232 rutas); `typecheck` y `lint` sin errores. Mutaciones que hacen
+fallar las pruebas: consolidado que suma a todos los estados (2 pruebas) y tabla sin filtro de agencia (6 pruebas).
+**Medición con 200 clientes (150 activos):** panel ~55 ms y tabla de 50 filas ~40 ms (3 corridas, base local; criterio 4).
+**Decisiones y límites (honestidad):**
+- **Tareas del equipo (criterio 1): NO implementado.** No existe ningún modelo de tareas en el sistema; hacerlo es una función nueva, no un dato que
+  mostrar. Queda como pendiente a decidir con el propietario.
+- **Suscripción vencida y pago rechazado (criterio 1): NO se muestran** para los clientes que pagan por su cuenta, porque el ADR-028 §2 prohíbe a la agencia
+  ver su suscripción y sus pagos (hay una prueba que verifica que nada de eso sale en la respuesta). Para los clientes `AGENCY_PAYS` llegan con F9.5
+  (facturación), que es donde la agencia sí gestiona el cobro.
+- **Uso del plan:** se muestran sitios y contactos (los dos cupos que más se agotan); el resto de los límites los ve cada negocio en su pantalla de plan.
+- **«TanStack Table existente» (criterio 3):** no hay TanStack Table en el panel; se usó una lista de filas con el mismo diseño del resto, porque
+  búsqueda, filtro, orden y paginación son del servidor. Ordenar por una métrica (visitas, etc.) no está: solo por nombre, estado y fecha.
+- «Módulo permitido» (criterio 2): el consolidado cuenta analítica, contactos, reservas y pedidos de los clientes `ACTIVE`; los módulos que el rol
+  delegado no tiene no se suman (nada de cobros).
+- Un tiempo de espera de `domains.e2e` apareció una vez en la corrida completa (593 s) y pasa aislado 8/8: el flaky por carga ya conocido.
 
 ---
 

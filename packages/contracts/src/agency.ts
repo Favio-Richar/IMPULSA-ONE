@@ -81,3 +81,87 @@ export const organizationAccessResponse = z.object({
   readOnly: z.boolean(),
 });
 export type OrganizationAccessResponse = z.infer<typeof organizationAccessResponse>;
+
+// ---- panel de agencia (F9.4) --------------------------------------------------------------------------------------
+// Solo cuentan los clientes ACTIVE; nada de la suscripción ni de los pagos del cliente viaja acá (límite duro del ADR-028 §2).
+
+const agencyAlert = z.object({
+  code: z.enum(["DOMAIN_FAILED", "DOMAIN_PENDING", "NEAR_PLAN_LIMIT", "SITE_HIDDEN", "NEVER_PUBLISHED"]),
+  severity: z.enum(["critical", "warning", "info"]),
+  message: z.string(),
+});
+
+const agencyRange = z.object({ from: z.string(), to: z.string(), days: z.number().int() });
+
+const agencyPerformance = z.object({
+  pageViews: z.number().int(),
+  /** Clics en bloques y en WhatsApp. */
+  clicks: z.number().int(),
+  newContacts: z.number().int(),
+  /** Reservas creadas en el período, sin las canceladas. */
+  bookings: z.number().int(),
+  /** Pedidos creados en el período, sin los cancelados. */
+  orders: z.number().int(),
+});
+
+export const agencyDashboardResponse = z.object({
+  range: agencyRange,
+  clients: z.object({
+    /** Relaciones abiertas (las terminadas no cuentan). */
+    total: z.number().int(),
+    byStatus: z.object({
+      INVITED: z.number().int(),
+      ACTIVE: z.number().int(),
+      PAUSED: z.number().int(),
+      ARCHIVED: z.number().int(),
+      TRANSFERRING: z.number().int(),
+      ENDED: z.number().int(),
+    }),
+  }),
+  /** Suma de los clientes ACTIVE. */
+  totals: agencyPerformance,
+  alerts: z.object({
+    clientsWithAlerts: z.number().int(),
+    domainsFailed: z.number().int(),
+    domainsPending: z.number().int(),
+    clientsNearPlanLimit: z.number().int(),
+  }),
+});
+export type AgencyDashboardResponse = z.infer<typeof agencyDashboardResponse>;
+
+export const agencyOverviewItem = z.object({
+  id: uuid,
+  clientOrganizationId: uuid,
+  clientName: z.string(),
+  clientSlug: z.string(),
+  status: agencyClientStatus,
+  billingMode: agencyBillingMode,
+  agencyCreated: z.boolean(),
+  /** Correo al que se invitó al propietario (solo en altas nuevas, mientras no acepte). */
+  ownerInviteEmail: z.string().nullable(),
+  readOnly: z.boolean(),
+  publicHidden: z.boolean(),
+  /** `null` si el cliente no está ACTIVE: no suma ni se mide. */
+  performance: agencyPerformance.nullable(),
+  plan: z
+    .object({
+      code: z.string(),
+      name: z.string(),
+      usage: z.array(z.object({ key: z.enum(["sites", "contacts"]), label: z.string(), used: z.number().int(), limit: z.number().int().nullable() })),
+    })
+    .nullable(),
+  domains: z.object({ verified: z.number().int(), pending: z.number().int(), failed: z.number().int() }).nullable(),
+  lastPublishedAt: isoDateTime.nullable(),
+  alerts: z.array(agencyAlert),
+});
+export type AgencyOverviewItem = z.infer<typeof agencyOverviewItem>;
+
+export const agencyOverviewResponse = z.object({
+  range: agencyRange,
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  /** Relaciones que cumplen la búsqueda y el filtro (no solo las de esta página). */
+  total: z.number().int(),
+  items: z.array(agencyOverviewItem),
+});
+export type AgencyOverviewResponse = z.infer<typeof agencyOverviewResponse>;

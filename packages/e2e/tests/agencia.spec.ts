@@ -141,6 +141,8 @@ test("un propietario real acepta; la agencia pausa y reanuda (solo lectura en el
   try {
     // 1. La agencia pide acceso a un negocio que ya existe: queda pendiente y sin acceso.
     await page.goto("/agencia");
+    // Con clientes, el alta está plegada: se abre para pedir acceso a un negocio existente.
+    await page.getByText("Dar de alta o vincular un cliente").click();
     await page.getByLabel("Identificador del negocio", { exact: true }).fill(slug);
     await page.getByLabel("Correo de su propietario", { exact: true }).fill(ownerEmail);
     await page.getByRole("button", { name: "Pedir acceso" }).click();

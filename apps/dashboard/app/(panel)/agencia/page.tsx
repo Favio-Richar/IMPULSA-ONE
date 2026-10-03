@@ -1,47 +1,21 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { AgencyClientResponse } from "@impulza/contracts";
-import { AGENCY_BILLING_MODES, slugSchema, type AgencyClientAction } from "@impulza/validation";
+import { AGENCY_BILLING_MODES, DEFAULT_AGENCY_DASHBOARD_DAYS, slugSchema } from "@impulza/validation";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, ErrorState, Input, LoadingState } from "@impulza/ui";
-import { CheckCircle2, EyeOff } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { ConfirmButton } from "../../../components/confirm-button";
+import { AgencySummary, PeriodSelect } from "../../../components/agency/agency-summary";
+import { BILLING_TEXT, errorText } from "../../../components/agency/client-row";
+import { ClientsTable } from "../../../components/agency/clients-table";
 import { PlanLimitNotice } from "../../../components/plan-limit-notice";
 import { useActiveOrgStore } from "../../../lib/active-org-store";
-import { ApiError } from "../../../lib/api-client";
-import { useAgencyClientAction, useAgencyClients, useAgencyStatus, useCreateAgencyClient, useRequestAgencyLink } from "../../../lib/hooks/use-agency";
+import { useAgencyStatus, useCreateAgencyClient, useRequestAgencyLink } from "../../../lib/hooks/use-agency";
 import { getPlanLimitInfo } from "../../../lib/plan-limit";
 import { slugify } from "../../../lib/slugify";
-
-/** Texto de un error de la API: el mensaje del servidor si lo trae, o uno genérico. */
-function errorText(error: unknown, fallback: string): string {
-  if (error instanceof ApiError) {
-    const body = error.body as { message?: unknown } | undefined;
-    if (typeof body?.message === "string") return body.message;
-  }
-  return fallback;
-}
-
-const STATUS_TEXT: Record<AgencyClientResponse["status"], string> = {
-  INVITED: "Invitado",
-  ACTIVE: "Activo",
-  PAUSED: "En pausa (solo lectura)",
-  ARCHIVED: "Archivado",
-  TRANSFERRING: "En traspaso",
-  ENDED: "Terminado",
-};
-
-function statusLabel(client: AgencyClientResponse): string {
-  if (client.status === "INVITED") return client.agencyCreated ? "Esperando al propietario" : "Solicitud pendiente del propietario";
-  return STATUS_TEXT[client.status];
-}
-
-const BILLING_TEXT = { CLIENT_PAYS: "Paga el cliente", AGENCY_PAYS: "Paga la agencia" } as const;
 
 export default function AgenciaPage(): React.JSX.Element {
   const organizationId = useActiveOrgStore((state) => state.activeOrganizationId);
@@ -54,7 +28,8 @@ export default function AgenciaPage(): React.JSX.Element {
 function AgencyView({ organizationId }: { organizationId: string }): React.JSX.Element {
   const status = useAgencyStatus(organizationId);
   const isAgency = status.data?.kind === "AGENCY";
-  const clients = useAgencyClients(organizationId, isAgency);
+  // El período lo comparten el resumen y la tabla de clientes.
+  const [days, setDays] = useState<number>(DEFAULT_AGENCY_DASHBOARD_DAYS);
 
   if (status.isPending) return <LoadingState label="Cargando la agencia…" />;
   if (status.isError || !status.data) return <ErrorState onRetry={() => void status.refetch()} />;
@@ -87,30 +62,35 @@ function AgencyView({ organizationId }: { organizationId: string }): React.JSX.E
         </p>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Las cifras suman solo a tus clientes activos.</p>
+        <PeriodSelect days={days} onChange={setDays} />
+      </div>
+      <AgencySummary organizationId={organizationId} days={days} />
+
+      <ClientsTable organizationId={organizationId} days={days} />
+
+      <AddClientSection organizationId={organizationId} initiallyOpen={clientsUsed === 0} />
+    </div>
+  );
+}
+
+/**
+ * Alta y vinculación. Con clientes, el alta es secundaria: queda plegada para que la tabla sea lo primero; sin clientes, abierta.
+ * El estado inicial se fija una vez: si siguiera al número de clientes, crear el primero plegaría el bloque y taparía su propio aviso.
+ */
+function AddClientSection({ organizationId, initiallyOpen }: { organizationId: string; initiallyOpen: boolean }): React.JSX.Element {
+  const [open, setOpen] = useState(initiallyOpen);
+  return (
+    <details className="rounded-lg border border-border" open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="cursor-pointer select-none rounded-lg px-4 py-3 text-sm font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+        Dar de alta o vincular un cliente
+      </summary>
+      <div className="grid gap-4 p-4 pt-1 lg:grid-cols-2">
         <NewClientForm organizationId={organizationId} />
         <LinkClientForm organizationId={organizationId} />
       </div>
-
-      <section aria-labelledby="clients-heading" className="flex flex-col gap-3">
-        <h2 id="clients-heading" className="text-base font-semibold text-foreground">
-          Tus clientes
-        </h2>
-        {clients.isPending ? (
-          <LoadingState label="Cargando clientes…" />
-        ) : clients.isError ? (
-          <ErrorState onRetry={() => void clients.refetch()} />
-        ) : clients.data.length === 0 ? (
-          <EmptyState title="Todavía no tienes clientes" description="Da de alta tu primer cliente o pide acceso a un negocio que ya existe." />
-        ) : (
-          <ul className="grid gap-3" data-testid="agency-clients">
-            {clients.data.map((client) => (
-              <ClientRow key={client.id} organizationId={organizationId} client={client} />
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
+    </details>
   );
 }
 
@@ -263,123 +243,5 @@ function LinkClientForm({ organizationId }: { organizationId: string }): React.J
         </form>
       </CardContent>
     </Card>
-  );
-}
-
-// ---- un cliente ----------------------------------------------------------------------------------------------------
-
-function ClientRow({ organizationId, client }: { organizationId: string; client: AgencyClientResponse }): React.JSX.Element {
-  const router = useRouter();
-  const setActiveOrganizationId = useActiveOrgStore((state) => state.setActiveOrganizationId);
-  const act = useAgencyClientAction(organizationId);
-  const run = (action: AgencyClientAction, hidePublicSite?: boolean) => act.mutate({ clientId: client.id, action, hidePublicSite });
-  // Pausar y archivar piden una confirmación con una elección: ocultar o no el sitio público del cliente mientras dure.
-  const [choosing, setChoosing] = useState<"pause" | "archive" | null>(null);
-  const [hideSite, setHideSite] = useState(false);
-  const startChoosing = (action: "pause" | "archive") => {
-    setHideSite(client.publicHidden);
-    setChoosing(action);
-  };
-
-  // «Entrar» solo donde el servidor da acceso: activo, en pausa (lectura) o recién creado por la agencia.
-  const canEnter = client.status === "ACTIVE" || client.status === "PAUSED" || (client.status === "INVITED" && client.agencyCreated);
-
-  return (
-    <li className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between" data-client-slug={client.clientSlug}>
-      <div className="flex min-w-0 flex-col gap-1">
-        <p className="truncate text-sm font-semibold text-foreground">{client.clientName}</p>
-        <p className="truncate text-xs text-muted-foreground">{client.clientSlug}</p>
-        <p className="text-sm text-foreground">
-          <span data-testid="client-status">{statusLabel(client)}</span>
-          <span className="text-muted-foreground"> · {BILLING_TEXT[client.billingMode]}</span>
-        </p>
-        {client.publicHidden ? (
-          <p className="flex items-center gap-1.5 text-xs font-medium text-foreground" data-testid="client-public-hidden">
-            <EyeOff className="size-3.5 text-warning" aria-hidden="true" /> Sitio público oculto (se muestra de nuevo al reanudar o soltar)
-          </p>
-        ) : null}
-        {client.ownerInviteEmail ? <p className="text-xs text-muted-foreground">Invitación enviada a {client.ownerInviteEmail}</p> : null}
-        {act.isError ? (
-          <p role="alert" className="text-sm text-danger">
-            {errorText(act.error, "No pudimos hacer ese cambio.")}
-          </p>
-        ) : null}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {canEnter ? (
-          <Button
-            size="sm"
-            onClick={() => {
-              setActiveOrganizationId(client.clientOrganizationId);
-              router.push("/");
-            }}
-          >
-            Entrar
-          </Button>
-        ) : null}
-        {client.status === "ACTIVE" ? (
-          <Button size="sm" variant="secondary" loading={act.isPending} onClick={() => startChoosing("pause")}>
-            Pausar
-          </Button>
-        ) : null}
-        {client.status === "PAUSED" ? (
-          <Button size="sm" variant="secondary" loading={act.isPending} onClick={() => run("resume")}>
-            Reanudar
-          </Button>
-        ) : null}
-        {client.status === "ACTIVE" || client.status === "PAUSED" || (client.status === "INVITED" && client.agencyCreated) ? (
-          <Button size="sm" variant="ghost" loading={act.isPending} onClick={() => startChoosing("archive")}>
-            Archivar
-          </Button>
-        ) : null}
-        {client.status === "ARCHIVED" ? (
-          <Button size="sm" variant="secondary" loading={act.isPending} onClick={() => run("unarchive")}>
-            Desarchivar
-          </Button>
-        ) : null}
-        <ConfirmButton
-          size="sm"
-          variant="ghost"
-          confirmLabel="¿Soltar a este cliente? Perderás el acceso."
-          loading={act.isPending}
-          onConfirm={() => run("release")}
-        >
-          Soltar
-        </ConfirmButton>
-      </div>
-      {choosing ? (
-        <div className="flex w-full flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:basis-full" role="group" aria-label={choosing === "pause" ? "Confirmar pausa" : "Confirmar archivo"}>
-          <p className="text-sm text-foreground">
-            {choosing === "pause"
-              ? "En pausa, tu equipo puede ver este negocio pero no hacer cambios."
-              : "Archivado, tu equipo pierde el acceso a este negocio. Sus datos y sitios no se borran."}
-          </p>
-          <label className="flex items-start gap-2 text-sm text-foreground">
-            <input type="checkbox" className="mt-0.5 size-4" checked={hideSite} onChange={(event) => setHideSite(event.target.checked)} />
-            <span>
-              También ocultar su sitio público mientras dure
-              <span className="block text-xs text-muted-foreground">
-                Sus visitantes verán que el sitio no existe. No se borra nada: se muestra de nuevo al reanudar, desarchivar o soltar, y su propietario lo ve en su panel.
-              </span>
-            </span>
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              loading={act.isPending}
-              onClick={() => {
-                run(choosing, hideSite);
-                setChoosing(null);
-              }}
-            >
-              {choosing === "pause" ? "Confirmar pausa" : "Confirmar archivo"}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setChoosing(null)}>
-              Cancelar
-            </Button>
-          </div>
-        </div>
-      ) : null}
-    </li>
   );
 }

@@ -107,7 +107,7 @@ export class AgencyService {
     return this.getStatus(organizationId);
   }
 
-  private async assertAgency(organizationId: string): Promise<Organization> {
+  async assertAgency(organizationId: string): Promise<Organization> {
     const organization = await this.prisma.organization.findUniqueOrThrow({ where: { id: organizationId } });
     if (organization.kind !== OrganizationKind.AGENCY) {
       throw new ForbiddenException({

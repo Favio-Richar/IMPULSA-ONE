@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MarketingFooter } from "../../components/marketing/footer";
-import { MarketingHeader } from "../../components/marketing/header";
+import { BrandedMarketingHeader } from "../../components/marketing/branded-header";
 import { MarketingHeroBackground, MarketingCtaBackground } from "../../components/marketing/hero-background";
 import { Reveal } from "../../components/marketing/reveal";
 import { getDashboardLinks } from "../../lib/dashboard-links";
@@ -17,7 +17,7 @@ export default function RecursosPage(): React.JSX.Element {
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-20">

@@ -71,6 +71,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       <aside className="hidden w-56 shrink-0 border-r border-border md:block">
         <div className="flex h-14 items-center border-b border-border px-4 text-sm font-semibold text-foreground">
           {brandingQuery.data?.logoLightUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={brandingQuery.data.logoLightUrl} alt={brandName} className="h-6 max-w-[140px] object-contain" />
           ) : (
             brandName
@@ -91,6 +92,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             <div className="flex h-14 items-center justify-between border-b border-border px-4">
               <span className="text-sm font-semibold text-foreground">
                 {brandingQuery.data?.logoLightUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={brandingQuery.data.logoLightUrl} alt={brandName} className="h-6 max-w-[140px] object-contain" />
                 ) : (
                   brandName

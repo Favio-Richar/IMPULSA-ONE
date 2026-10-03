@@ -12,6 +12,12 @@ export interface EmailMessage {
   html?: string;
   /** Cabeceras extra, p. ej. `List-Unsubscribe` en campañas (RFC 8058). */
   headers?: Record<string, string>;
+  /**
+   * Remitente deseado (F9.1, marca de la plataforma). `name` siempre se puede mostrar; `email` solo lo
+   * usa un adaptador real si su dominio está verificado en el proveedor (ADR-028 §5): si falta o no está
+   * verificado, el adaptador usa su remitente propio y conserva `name`.
+   */
+  from?: { name: string; email?: string | null };
 }
 
 export interface EmailAdapter {

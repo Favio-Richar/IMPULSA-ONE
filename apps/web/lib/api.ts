@@ -104,13 +104,9 @@ export async function getBookingAvailable(siteSlug: string): Promise<boolean | n
  * Usados por la home comercial (`app/page.tsx`) para mostrar datos reales, no maquetados.
  */
 async function fetchCatalog<T>(path: string, schema: { parse: (value: unknown) => T }): Promise<T | null> {
-  try {
-    const response = await fetch(`${env.API_BASE_URL}${path}`, { next: { revalidate: 300 } });
-    if (!response.ok) return null;
-    return schema.parse(await response.json());
-  } catch {
-    return null;
-  }
+  const response = await fetch(`${env.API_BASE_URL}${path}`, { next: { revalidate: 300 } });
+  if (!response.ok) return null;
+  return schema.parse(await response.json());
 }
 
 export async function getTemplateCatalog(): Promise<TemplateResponse[]> {
@@ -120,6 +116,19 @@ export async function getTemplateCatalog(): Promise<TemplateResponse[]> {
 export async function getPlanCatalog(): Promise<PlanResponse[]> {
   return (await fetchCatalog("/plans", z.array(planResponse))) ?? [];
 }
+
+const DEFAULT_PUBLIC_BRANDING: PublicPlatformBrandingResponse = {
+  name: DEFAULT_PLATFORM_BRANDING.name,
+  logoLightUrl: DEFAULT_PLATFORM_BRANDING.logoLightUrl,
+  logoDarkUrl: DEFAULT_PLATFORM_BRANDING.logoDarkUrl,
+  faviconUrl: DEFAULT_PLATFORM_BRANDING.faviconUrl,
+  primaryColor: DEFAULT_PLATFORM_BRANDING.primaryColor,
+  secondaryColor: DEFAULT_PLATFORM_BRANDING.secondaryColor,
+  supportUrl: DEFAULT_PLATFORM_BRANDING.supportUrl,
+  privacyUrl: DEFAULT_PLATFORM_BRANDING.privacyUrl,
+  termsUrl: DEFAULT_PLATFORM_BRANDING.termsUrl,
+  footerText: DEFAULT_PLATFORM_BRANDING.footerText,
+};
 
 /**
  * Marca pública de la plataforma (F9.1, ADR-028 §4): nombre, logos, colores y enlaces legales.
@@ -131,12 +140,12 @@ export async function getPlatformBranding(): Promise<PublicPlatformBrandingRespo
       next: { revalidate: 60, tags: ["platform-branding"] },
     });
     if (!response.ok) {
-      return DEFAULT_PLATFORM_BRANDING as PublicPlatformBrandingResponse;
+      return DEFAULT_PUBLIC_BRANDING;
     }
-    const data = await response.json();
-    return publicPlatformBrandingResponse.parse(data);
+    return publicPlatformBrandingResponse.parse(await response.json());
   } catch {
-    return DEFAULT_PLATFORM_BRANDING as PublicPlatformBrandingResponse;
+    // La marca nunca debe tumbar una página: ante cualquier fallo se usa la marca por defecto.
+    return DEFAULT_PUBLIC_BRANDING;
   }
 }
 

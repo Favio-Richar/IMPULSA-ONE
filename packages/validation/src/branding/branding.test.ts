@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  brandCssVariables,
   DEFAULT_PLATFORM_BRANDING,
+  isSafeAssetUrl,
+  isSafeLinkUrl,
   updatePlatformBrandingSchema,
   validateAndSanitizeSvg,
   uploadBrandingAssetSchema,
@@ -115,7 +118,7 @@ describe("Validación de marca de la plataforma (F9.1, ADR-028)", () => {
     });
 
     it("rechaza SVG con pseudoprotocolos javascript:", () => {
-      const malicious = `<svg xmlns="http://www.w3.org/2000/svg"><a href="javascript:alert(1)"><text>Clic</text></a></svg>`;
+      const malicious = `<svg xmlns="http://www.w3.org/2000/svg"><use href="javascript:alert(1)"/></svg>`;
       const res = validateAndSanitizeSvg(malicious);
       expect(res.ok).toBe(false);
       if (!res.ok) {
@@ -124,12 +127,14 @@ describe("Validación de marca de la plataforma (F9.1, ADR-028)", () => {
     });
 
     it("rechaza SVG con referencias externas en <image> o <use>", () => {
-      const malicious = `<svg xmlns="http://www.w3.org/2000/svg"><image href="https://externo.com/tracking.png"/></svg>`;
+      const malicious = `<svg xmlns="http://www.w3.org/2000/svg"><use href="https://externo.com/tracking.svg#a"/></svg>`;
       const res = validateAndSanitizeSvg(malicious);
       expect(res.ok).toBe(false);
       if (!res.ok) {
         expect(res.error).toContain("recursos externos");
       }
+      // <image> ni siquiera es un elemento permitido en un logo.
+      expect(validateAndSanitizeSvg(`<svg xmlns="http://www.w3.org/2000/svg"><image href="https://externo.com/t.png"/></svg>`).ok).toBe(false);
     });
 
     it("rechaza SVG con foreignObject", () => {
@@ -148,6 +153,105 @@ describe("Validación de marca de la plataforma (F9.1, ADR-028)", () => {
       if (!res.ok) {
         expect(res.error).toContain("entidades");
       }
+    });
+
+    // F9.1 (revisión): estos payloads se saltaban el saneador anterior (lista de prohibidos).
+    it.each([
+      ["entidad numérica que forma javascript:", `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><use xlink:href="&#106;avascript:alert(1)"/></svg>`],
+      ["<animate> que cambia el href a javascript:", `<svg xmlns="http://www.w3.org/2000/svg"><a><animate attributeName="href" values="javascript:alert(1)" begin="0s"/><rect width="10" height="10"/></a></svg>`],
+      ["<set> que cambia el href a javascript:", `<svg xmlns="http://www.w3.org/2000/svg"><a><set attributeName="href" to="javascript:alert(1)"/><rect width="10" height="10"/></a></svg>`],
+      ["<iframe> con src javascript:", `<svg xmlns="http://www.w3.org/2000/svg"><iframe src="javascript:alert(1)"></iframe></svg>`],
+      ["<style> con url() externo", `<svg xmlns="http://www.w3.org/2000/svg"><style>rect{fill:url(https://x.test/a)}</style><rect width="1" height="1"/></svg>`],
+      ["atributo style", `<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1" style="fill:red"/></svg>`],
+      ["fill con url() externo", `<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1" fill="url(https://x.test/a)"/></svg>`],
+      ["texto con entidad", `<svg xmlns="http://www.w3.org/2000/svg"><text>&lt;img&gt;</text></svg>`],
+      ["dos elementos raíz", `<svg xmlns="http://www.w3.org/2000/svg"></svg><svg xmlns="http://www.w3.org/2000/svg"></svg>`],
+      ["etiqueta sin cerrar", `<svg xmlns="http://www.w3.org/2000/svg"><g><rect width="1" height="1"/></svg>`],
+      ["espacio de nombres ajeno", `<svg xmlns="http://evil.test/ns"><rect width="1" height="1"/></svg>`],
+    ])("rechaza %s", (_label, malicious) => {
+      expect(validateAndSanitizeSvg(malicious).ok).toBe(false);
+    });
+
+    it("reconstruye el SVG: descarta comentarios y conserva solo lo permitido", () => {
+      const source = `<?xml version="1.0"?><!-- x --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><defs><linearGradient id="g"><stop offset="0" stop-color="#0f6f6b"/></linearGradient></defs><rect width="10" height="10" fill="url(#g)"/></svg>`;
+      const res = validateAndSanitizeSvg(source);
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.sanitized).not.toContain("<!--");
+        expect(res.sanitized).not.toContain("<?xml");
+        expect(res.sanitized).toContain('fill="url(#g)"');
+      }
+    });
+
+    it("escapa los valores de los atributos al reconstruir", () => {
+      const res = validateAndSanitizeSvg(`<svg xmlns="http://www.w3.org/2000/svg" aria-label='Mi "marca"'><rect width="1" height="1"/></svg>`);
+      expect(res.ok).toBe(true);
+      if (res.ok) expect(res.sanitized).toContain('aria-label="Mi &quot;marca&quot;"');
+    });
+  });
+
+  describe("Enlaces y recursos (F9.1, revisión)", () => {
+    afterEach(() => vi.unstubAllEnvs());
+
+    it("compara el hostname exacto: localhost.evil.com no es localhost", () => {
+      vi.stubEnv("NODE_ENV", "development");
+      expect(isSafeAssetUrl("http://localhost/logo.png")).toBe(true);
+      expect(isSafeAssetUrl("http://127.0.0.1:9010/logo.png")).toBe(true);
+      expect(isSafeAssetUrl("http://localhost.evil.com/logo.png")).toBe(false);
+      expect(isSafeAssetUrl("http://127.0.0.1.evil.com/logo.png")).toBe(false);
+      expect(isSafeAssetUrl("http://localhost@evil.com/logo.png")).toBe(false);
+    });
+
+    it("en producción nunca acepta http, ni siquiera localhost", () => {
+      vi.stubEnv("NODE_ENV", "production");
+      expect(isSafeAssetUrl("http://localhost/logo.png")).toBe(false);
+      expect(isSafeAssetUrl("https://cdn.ejemplo.com/logo.png")).toBe(true);
+    });
+
+    it("rechaza esquemas ejecutables y credenciales embebidas", () => {
+      expect(isSafeAssetUrl("javascript:alert(1)")).toBe(false);
+      expect(isSafeAssetUrl("data:image/png;base64,AAAA")).toBe(false);
+      expect(isSafeAssetUrl("https://user:pass@ejemplo.com/a.png")).toBe(false);
+    });
+
+    it("los enlaces del pie aceptan rutas internas pero no `//host` ni barras invertidas", () => {
+      expect(isSafeLinkUrl("/privacidad")).toBe(true);
+      expect(isSafeLinkUrl("https://ejemplo.com/soporte")).toBe(true);
+      expect(isSafeLinkUrl("//evil.com")).toBe(false);
+      expect(isSafeLinkUrl("/\\evil.com")).toBe(false);
+      expect(isSafeLinkUrl("javascript:alert(1)")).toBe(false);
+    });
+
+    it("la marca por defecto no inventa dominios ni remitente", () => {
+      expect(DEFAULT_PLATFORM_BRANDING.senderEmail).toBeNull();
+      expect(DEFAULT_PLATFORM_BRANDING.supportUrl).toBeNull();
+      expect(DEFAULT_PLATFORM_BRANDING.privacyUrl).toBe("/privacidad");
+      expect(DEFAULT_PLATFORM_BRANDING.termsUrl).toBe("/terminos");
+      expect(JSON.stringify(DEFAULT_PLATFORM_BRANDING)).not.toContain("impulza.app");
+    });
+
+    it("un campo vacío se normaliza a null y el remitente es opcional", () => {
+      const result = updatePlatformBrandingSchema.safeParse({ ...DEFAULT_PLATFORM_BRANDING, logoLightUrl: "", senderEmail: "" });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.logoLightUrl).toBeNull();
+        expect(result.data.senderEmail).toBeNull();
+      }
+    });
+  });
+
+  describe("Color de marca en la interfaz", () => {
+    it("no sobrescribe nada si coincide con los valores por defecto", () => {
+      expect(brandCssVariables("#0f6f6b", "#0b5450")).toBeNull();
+    });
+
+    it("genera variables CSS con colores válidos", () => {
+      expect(brandCssVariables("#1d4ed8", "#1e3a8a")).toBe(":root{--color-primary:#1d4ed8;--color-primary-hover:#1e3a8a;}");
+    });
+
+    it("nunca interpola un valor que no sea hexadecimal (inyección de CSS)", () => {
+      expect(brandCssVariables("red;}body{display:none", "#1e3a8a")).toBeNull();
+      expect(brandCssVariables("#1d4ed8", "#fff</style><script>")).toBeNull();
     });
   });
 

@@ -12,6 +12,7 @@ import { env } from "./env.js";
 import { NestJsonLogger } from "./observability/nest-logger.js";
 import { DOCS_PATH, setupSwaggerUi } from "./openapi/document.js";
 import { applyApiPrefix } from "./openapi/openapi-file.js";
+import { brandingUploadBody } from "./common/branding-upload-body.js";
 
 async function bootstrap(): Promise<void> {
   // Antes que cualquier otra cosa: si algo revienta durante el bootstrap mismo, ya queremos
@@ -51,6 +52,9 @@ async function bootstrap(): Promise<void> {
     origin: env.CORS_ORIGINS,
     credentials: true,
   });
+
+  // Antes del lector de JSON de Nest: amplía el límite solo para la subida de logos (F9.1).
+  app.use(brandingUploadBody());
 
   app.use(cookieParser());
 

@@ -2,8 +2,10 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import type { Redis } from "ioredis";
+import sharp from "sharp";
 import type { PrismaClient, PlatformBranding } from "@impulza/database";
 import type {
   PublicPlatformBrandingResponse,
@@ -12,8 +14,11 @@ import type {
 } from "@impulza/contracts";
 import {
   DEFAULT_PLATFORM_BRANDING,
+  MAX_BRANDING_DIMENSION,
   MAX_BRANDING_FAVICON_BYTES,
   MAX_BRANDING_LOGO_BYTES,
+  MIN_BRANDING_FAVICON_DIMENSION,
+  MIN_BRANDING_LOGO_DIMENSION,
   validateAndSanitizeSvg,
   type UpdatePlatformBrandingDto,
   type UploadBrandingAssetDto,
@@ -169,7 +174,7 @@ export class PlatformBrandingService {
         primaryColor: input.primaryColor,
         secondaryColor: input.secondaryColor,
         senderName: input.senderName,
-        senderEmail: input.senderEmail,
+        senderEmail: input.senderEmail ?? null,
         supportUrl: input.supportUrl ?? null,
         privacyUrl: input.privacyUrl ?? null,
         termsUrl: input.termsUrl ?? null,
@@ -186,7 +191,7 @@ export class PlatformBrandingService {
         primaryColor: input.primaryColor,
         secondaryColor: input.secondaryColor,
         senderName: input.senderName,
-        senderEmail: input.senderEmail,
+        senderEmail: input.senderEmail ?? null,
         supportUrl: input.supportUrl ?? null,
         privacyUrl: input.privacyUrl ?? null,
         termsUrl: input.termsUrl ?? null,
@@ -335,6 +340,24 @@ export class PlatformBrandingService {
       if (!detected || detected !== input.contentType) {
         throw new BadRequestException("El contenido del archivo no coincide con el formato de imagen declarado.");
       }
+      // Los bytes mágicos solo prueban el encabezado: `sharp` decodifica de verdad (un archivo
+      // truncado o corrupto falla acá) y entrega las dimensiones reales para exigir un mínimo.
+      let width: number | undefined;
+      let height: number | undefined;
+      try {
+        const metadata = await sharp(buffer, { limitInputPixels: MAX_BRANDING_DIMENSION * MAX_BRANDING_DIMENSION }).metadata();
+        width = metadata.width;
+        height = metadata.height;
+      } catch {
+        throw new BadRequestException("No se pudo leer la imagen: el archivo está dañado o no es válido.");
+      }
+      const minimum = input.target === "favicon" ? MIN_BRANDING_FAVICON_DIMENSION : MIN_BRANDING_LOGO_DIMENSION;
+      if (!width || !height || width < minimum || height < minimum) {
+        throw new BadRequestException(`La imagen es demasiado pequeña: debe medir al menos ${minimum} × ${minimum} px.`);
+      }
+      if (width > MAX_BRANDING_DIMENSION || height > MAX_BRANDING_DIMENSION) {
+        throw new BadRequestException(`La imagen es demasiado grande: el máximo es ${MAX_BRANDING_DIMENSION} × ${MAX_BRANDING_DIMENSION} px.`);
+      }
       bodyBuffer = buffer;
       if (input.contentType === "image/jpeg") extension = "jpg";
       else if (input.contentType === "image/webp") extension = "webp";
@@ -352,7 +375,8 @@ export class PlatformBrandingService {
       return { url: this.storage.publicUrl(key) };
     }
 
-    // Si el almacenamiento no está configurado (ej. entorno de prueba o local sin MinIO), retorna un data URI seguro
-    return { url: `data:${input.contentType};base64,${bodyBuffer.toString("base64")}` };
+    // Sin almacenamiento no hay URL pública que guardar: un `data:` URI no pasaría la validación de la
+    // marca (solo `https://`), así que se avisa con claridad en vez de devolver algo inservible.
+    throw new ServiceUnavailableException("El almacenamiento de archivos no está configurado. Configúralo para subir logotipos.");
   }
 }

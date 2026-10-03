@@ -53,6 +53,7 @@ export function AuthMosaic({
         className="relative flex w-fit items-center gap-2 text-white transition-opacity hover:opacity-80"
       >
         {branding?.logoDarkUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img src={branding.logoDarkUrl} alt={brandName} className="h-8 max-w-[160px] object-contain" />
         ) : (
           <>

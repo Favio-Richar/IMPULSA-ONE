@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, ErrorState, LoadingState } from "@impulza/ui";
+import { brandCssVariables, DEFAULT_PLATFORM_BRANDING } from "@impulza/validation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu, ShieldCheck, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -9,13 +10,29 @@ import { AdminNav } from "../../components/admin-nav";
 import { ApiError } from "../../lib/api-client";
 import { adminApi } from "../../lib/api";
 
+/** Marca de la plataforma (F9.1): la administración también muestra el nombre y el logo configurados. */
+function usePlatformBrand() {
+  const query = useQuery({ queryKey: ["admin", "platform-branding"], queryFn: adminApi.getPlatformBranding });
+  return {
+    name: query.data?.name ?? DEFAULT_PLATFORM_BRANDING.name,
+    logoUrl: query.data?.logoLightUrl ?? null,
+    css: query.data ? brandCssVariables(query.data.primaryColor, query.data.secondaryColor) : null,
+  };
+}
+
 function Brand(): React.JSX.Element {
+  const brand = usePlatformBrand();
   return (
     <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-      <span className="flex size-7 items-center justify-center rounded-sm bg-foreground text-background">
-        <ShieldCheck className="size-4" aria-hidden="true" />
-      </span>
-      Administración
+      {brand.logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={brand.logoUrl} alt={brand.name} className="h-6 max-w-[120px] object-contain" />
+      ) : (
+        <span className="flex size-7 items-center justify-center rounded-sm bg-foreground text-background">
+          <ShieldCheck className="size-4" aria-hidden="true" />
+        </span>
+      )}
+      {brand.logoUrl ? "Administración" : `${brand.name} · Administración`}
     </span>
   );
 }
@@ -25,6 +42,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const queryClient = useQueryClient();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const meQuery = useQuery({ queryKey: ["admin", "me"], queryFn: adminApi.me });
+  const brand = usePlatformBrand();
 
   const unauthenticated = meQuery.error instanceof ApiError && meQuery.error.status === 401;
   useEffect(() => {
@@ -64,6 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen bg-background">
+      {brand.css ? <style>{brand.css}</style> : null}
       <aside className="hidden w-60 shrink-0 border-r border-border bg-background md:block">
         <div className="flex h-14 items-center border-b border-border px-4">
           <Brand />
@@ -92,7 +111,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Abrir menú">
             <Menu className="size-4" />
           </Button>
-          <p className="hidden text-sm text-muted-foreground md:block">Plataforma Impulza One · acceso auditado</p>
+          <p className="hidden text-sm text-muted-foreground md:block">Plataforma {brand.name} · acceso auditado</p>
           <div className="flex min-w-0 items-center gap-3">
             <span className="hidden truncate text-sm text-muted-foreground sm:inline">{meQuery.data.email}</span>
             <Button variant="secondary" size="sm" onClick={handleLogout}>

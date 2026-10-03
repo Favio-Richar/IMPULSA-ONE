@@ -411,16 +411,19 @@ model PlatformBranding {
   primaryColor     String   @default("#0f6f6b") @map("primary_color")
   secondaryColor   String   @default("#0b5450") @map("secondary_color")
   senderName       String   @default("Impulza One") @map("sender_name")
-  senderEmail      String   @default("notificaciones@impulza.app") @map("sender_email")
+  // Sin definir (null) hasta que el propietario configure un remitente propio (ADR-028 §5).
+  senderEmail      String?  @map("sender_email")
   supportUrl       String?  @map("support_url")
   privacyUrl       String?  @map("privacy_url")
   termsUrl         String?  @map("terms_url")
   footerText       String?  @map("footer_text")
   updatedByAdminId String?  @map("updated_by_admin_id") @db.Uuid
+  // Siempre `true`, con restricción única y CHECK en la migración: la tabla admite una sola fila.
+  singleton        Boolean  @unique @default(true)
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  updatedByAdmin   User?    @relation("PlatformBrandingAdmin", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  updatedByAdmin  User?    @relation("PlatformBrandingAdmin", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
 
   @@map("platform_branding")
 }

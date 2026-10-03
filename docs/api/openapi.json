@@ -50284,6 +50284,7 @@
                       "type": "string"
                     },
                     "senderEmail": {
+                      "nullable": true,
                       "type": "string"
                     },
                     "updatedByAdminId": {
@@ -50374,15 +50375,18 @@
                   },
                   "logoLightUrl": {
                     "nullable": true,
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048
                   },
                   "logoDarkUrl": {
                     "nullable": true,
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048
                   },
                   "faviconUrl": {
                     "nullable": true,
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048
                   },
                   "primaryColor": {
                     "type": "string",
@@ -50398,21 +50402,25 @@
                     "maxLength": 100
                   },
                   "senderEmail": {
+                    "nullable": true,
                     "type": "string",
                     "format": "email",
                     "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
                   },
                   "supportUrl": {
                     "nullable": true,
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048
                   },
                   "privacyUrl": {
                     "nullable": true,
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048
                   },
                   "termsUrl": {
                     "nullable": true,
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048
                   },
                   "footerText": {
                     "nullable": true,
@@ -50424,8 +50432,7 @@
                   "name",
                   "primaryColor",
                   "secondaryColor",
-                  "senderName",
-                  "senderEmail"
+                  "senderName"
                 ]
               }
             }
@@ -50485,6 +50492,7 @@
                       "type": "string"
                     },
                     "senderEmail": {
+                      "nullable": true,
                       "type": "string"
                     },
                     "updatedByAdminId": {
@@ -50623,6 +50631,7 @@
                       "type": "string"
                     },
                     "senderEmail": {
+                      "nullable": true,
                       "type": "string"
                     },
                     "updatedByAdminId": {

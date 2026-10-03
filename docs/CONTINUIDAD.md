@@ -20,7 +20,28 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 - Pruebas Playwright en `packages/e2e/tests/platform-branding.spec.ts`: móvil (412px Pixel 7) y escritorio (1440px Desktop Chrome) 2/2 en verde. 8 capturas guardadas en `docs/design/capturas/f91/`.
 - `next build` en producción de `apps/web`, `apps/dashboard` y `apps/admin`: los tres pasan con código 0.
 - `lint` y `typecheck` limpios en todos los paquetes tocados.
-- Siguiente paso: Revisión de Claude de F9.1 antes de fusionar a `master` y comenzar F9.2.
+- **Revisión de Claude (2026-10-02): F9.1 NO se aprobó tal cual y Claude corrigió los defectos en la misma rama.**
+  Encontrados con pruebas contra la API real: (1) la subida de logos daba 413 con archivos > ~75 KB; (2) el
+  «saneador» de SVG (lista de prohibidos) se saltaba con 4 payloads (entidad `&#106;avascript:`, `<animate>`,
+  `<set>`, `<iframe>`); (3) `http://localhost.evil.com` pasaba como localhost; (4) cambió `fetchCatalog` de la
+  portada para tragarse errores (fuera de alcance); (5) los enlaces legales, el color y el remitente no se usaban,
+  y la marca solo llegaba a la portada (las otras 8 páginas comerciales seguían fijas); (6) dominio y remitente
+  inventados (`impulza.app`); (7) tabla sin garantía de fila única y 4 advertencias de lint nuevas.
+  **Correcciones:** subida con límite propio solo para esa ruta y solo con cookie de administración
+  (`apps/api/src/common/branding-upload-body.ts`); `sharp` decodifica y valida dimensiones; saneador de SVG por
+  **lista de permitidos que reconstruye el SVG** (`packages/validation/src/branding/svg.ts`); URLs por hostname exacto
+  (`isSafeAssetUrl`/`isSafeLinkUrl`), enlaces internos permitidos; remitente opcional y usado en los correos de
+  verificación/recuperación (`EmailMessage.from`); `fetchCatalog` revertido; encabezado y pie comerciales piden la
+  marca en todas las páginas; color de marca aplicado a la interfaz del panel y de administración
+  (`brandCssVariables`, valida el hexadecimal antes de interpolar); migración `20261002200000` (fila única, sin datos
+  inventados). Pruebas nuevas: validación (36), e2e de la API (27) con los ataques y la subida de 1 MB.
+- **Límites que siguen vigentes (honestidad):** el color de marca no cambia las páginas comerciales de `apps/web`
+  (usan colores fijos); los correos de campañas, reservas y demás no usan aún `from` (no hay proveedor real de correo
+  todavía: solo `ConsoleEmailAdapter`); el SVG no se sirve con `Content-Security-Policy: sandbox` porque el adaptador de
+  almacenamiento no permite cabeceras por objeto (la defensa es el saneador); el logo oscuro no se usa en ninguna
+  pantalla todavía.
+- Siguiente paso: **segunda revisión de Claude de F9.1** (suite completa y Playwright) y, si pasa, fusionar a `master`
+  y comenzar F9.2.
 
 **Fase 8: commiteada y subida** (`b418cb5`…`2df931d`, rama `master`). Queda con las reservas descritas abajo.
 

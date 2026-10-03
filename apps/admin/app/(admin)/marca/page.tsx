@@ -70,7 +70,7 @@ function PlatformBrandingForm({
     primaryColor: initialBranding.primaryColor,
     secondaryColor: initialBranding.secondaryColor,
     senderName: initialBranding.senderName,
-    senderEmail: initialBranding.senderEmail,
+    senderEmail: initialBranding.senderEmail ?? "",
     supportUrl: initialBranding.supportUrl ?? "",
     privacyUrl: initialBranding.privacyUrl ?? "",
     termsUrl: initialBranding.termsUrl ?? "",
@@ -109,7 +109,7 @@ function PlatformBrandingForm({
         primaryColor: data.primaryColor,
         secondaryColor: data.secondaryColor,
         senderName: data.senderName,
-        senderEmail: data.senderEmail,
+        senderEmail: data.senderEmail ?? "",
         supportUrl: data.supportUrl ?? "",
         privacyUrl: data.privacyUrl ?? "",
         termsUrl: data.termsUrl ?? "",
@@ -179,7 +179,7 @@ function PlatformBrandingForm({
       primaryColor: form.primaryColor.trim(),
       secondaryColor: form.secondaryColor.trim(),
       senderName: form.senderName.trim(),
-      senderEmail: form.senderEmail.trim(),
+      senderEmail: form.senderEmail?.trim() || null,
       supportUrl: form.supportUrl?.trim() || null,
       privacyUrl: form.privacyUrl?.trim() || null,
       termsUrl: form.termsUrl?.trim() || null,
@@ -466,13 +466,13 @@ function PlatformBrandingForm({
                 required
               />
               <Input
-                label="Dirección de correo remitente"
+                label="Dirección de correo remitente (opcional)"
                 id="branding-sender-email"
                 type="email"
-                value={form.senderEmail}
+                value={form.senderEmail ?? ""}
                 onChange={(e) => setForm({ ...form, senderEmail: e.target.value })}
-                placeholder="notificaciones@impulza.app"
-                required
+                placeholder="avisos@tu-dominio.com"
+                helperText="Solo se usa si su dominio está verificado en el proveedor de correo; si no, se envía con el remitente del proveedor y este nombre."
               />
             </CardContent>
           </Card>
@@ -480,7 +480,7 @@ function PlatformBrandingForm({
           <Card>
             <CardHeader>
               <CardTitle className="text-base">5. Enlaces de soporte y legales</CardTitle>
-              <CardDescription>Deben ser enlaces seguros con https://.</CardDescription>
+              <CardDescription>Usa un enlace https:// o una ruta interna que empiece con / (por ejemplo /privacidad).</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <Input
@@ -488,7 +488,7 @@ function PlatformBrandingForm({
                 id="branding-support-url"
                 value={form.supportUrl ?? ""}
                 onChange={(e) => setForm({ ...form, supportUrl: e.target.value })}
-                placeholder="https://impulza.app/soporte"
+                placeholder="https://tu-dominio.com/soporte"
               />
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -497,14 +497,14 @@ function PlatformBrandingForm({
                   id="branding-terms-url"
                   value={form.termsUrl ?? ""}
                   onChange={(e) => setForm({ ...form, termsUrl: e.target.value })}
-                  placeholder="https://impulza.app/terminos"
+                  placeholder="/terminos"
                 />
                 <Input
                   label="Política de privacidad"
                   id="branding-privacy-url"
                   value={form.privacyUrl ?? ""}
                   onChange={(e) => setForm({ ...form, privacyUrl: e.target.value })}
-                  placeholder="https://impulza.app/privacidad"
+                  placeholder="/privacidad"
                 />
               </div>
             </CardContent>
@@ -598,7 +598,7 @@ function PlatformBrandingForm({
                       <Mail className="size-3" />
                       <span>De: </span>
                       <strong className="text-foreground">{form.senderName}</strong>
-                      <span className="text-[11px]">(&lt;{form.senderEmail}&gt;)</span>
+                      {form.senderEmail ? <span className="text-[11px]">(&lt;{form.senderEmail}&gt;)</span> : null}
                     </div>
                     <p className="mt-1 font-medium text-foreground">Asunto: Verifica tu correo — {form.name}</p>
                   </div>

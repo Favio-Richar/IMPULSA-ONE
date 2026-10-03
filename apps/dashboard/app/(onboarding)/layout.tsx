@@ -48,6 +48,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
       <header className="flex h-14 items-center justify-between gap-3 border-b border-border px-4">
         <span className="text-sm font-semibold text-foreground">
           {brandingQuery.data?.logoLightUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={brandingQuery.data.logoLightUrl} alt={brandName} className="h-6 max-w-[140px] object-contain" />
           ) : (
             brandName

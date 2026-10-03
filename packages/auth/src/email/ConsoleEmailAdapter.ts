@@ -11,6 +11,7 @@ export class ConsoleEmailAdapter implements EmailAdapter {
         event: "email.dev_send",
         to: message.to,
         subject: message.subject,
+        ...(message.from ? { from: message.from } : {}),
         text: message.text,
         ...(message.headers ? { headers: message.headers } : {}),
       }),

@@ -488,5 +488,8 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - **PlatformBranding** (`platform_branding`, singleton): identidad de la plataforma configurable por superadministración.
   Campos: `name`, `logo_light_url`, `logo_dark_url`, `favicon_url`, `primary_color`, `secondary_color`, `sender_name`,
   `sender_email`, `support_url`, `privacy_url`, `terms_url`, `footer_text`, `updated_by_admin_id` (`SET NULL`).
-  Valores por defecto reproducen exactamente la identidad "Impulza One".
+  Valores por defecto reproducen la identidad "Impulza One" sin inventar dominios: `privacy_url=/privacidad`,
+  `terms_url=/terminos`, `support_url` y `sender_email` en `NULL` hasta que el propietario los configure.
+  **Fila única** garantizada en la base: columna `singleton` (siempre `true`) con `UNIQUE` y `CHECK`
+  (migración `20261002200000_f91_platform_branding_fixes`, reversible con su `down.sql`).
 

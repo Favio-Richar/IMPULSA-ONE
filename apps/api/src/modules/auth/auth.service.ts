@@ -64,13 +64,22 @@ export class AuthService {
     return { userId: user.id };
   }
 
-  private async getBrandName(): Promise<string> {
+  /** Identidad con la que la plataforma habla en sus correos (F9.1); cae a la marca por defecto. */
+  private async getBrand(): Promise<{ name: string; from: { name: string; email: string | null } }> {
     try {
-      const branding = await this.prisma.platformBranding.findFirst({ select: { name: true } });
-      return branding?.name ?? DEFAULT_PLATFORM_BRANDING.name;
+      const branding = await this.prisma.platformBranding.findFirst({
+        select: { name: true, senderName: true, senderEmail: true },
+      });
+      if (branding) {
+        return { name: branding.name, from: { name: branding.senderName, email: branding.senderEmail } };
+      }
     } catch {
-      return DEFAULT_PLATFORM_BRANDING.name;
+      // La marca nunca debe impedir que salga un correo de verificación o de recuperación.
     }
+    return {
+      name: DEFAULT_PLATFORM_BRANDING.name,
+      from: { name: DEFAULT_PLATFORM_BRANDING.senderName, email: DEFAULT_PLATFORM_BRANDING.senderEmail },
+    };
   }
 
   private async sendVerificationEmail(user: User): Promise<void> {
@@ -84,11 +93,12 @@ export class AuthService {
       },
     });
 
-    const brandName = await this.getBrandName();
+    const brand = await this.getBrand();
     const verifyUrl = `${env.APP_BASE_URL}/verificar-correo?token=${raw}`;
     await this.emailAdapter.send({
       to: user.email,
-      subject: `Verifica tu correo — ${brandName}`,
+      subject: `Verifica tu correo — ${brand.name}`,
+      from: brand.from,
       text: `Confirma tu correo entrando a este enlace: ${verifyUrl}\n\nExpira en 24 horas.`,
     });
   }
@@ -200,11 +210,12 @@ export class AuthService {
       },
     });
 
-    const brandName = await this.getBrandName();
+    const brand = await this.getBrand();
     const resetUrl = `${env.APP_BASE_URL}/restablecer-contrasena?token=${raw}`;
     await this.emailAdapter.send({
       to: user.email,
-      subject: `Recupera tu contraseña — ${brandName}`,
+      subject: `Recupera tu contraseña — ${brand.name}`,
+      from: brand.from,
       text: `Restablece tu contraseña entrando a este enlace: ${resetUrl}\n\nExpira en 1 hora. Si no fuiste tú, ignora este correo.`,
     });
   }

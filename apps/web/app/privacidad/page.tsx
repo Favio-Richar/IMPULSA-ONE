@@ -1,5 +1,5 @@
 import { MarketingFooter } from "../../components/marketing/footer";
-import { MarketingHeader } from "../../components/marketing/header";
+import { BrandedMarketingHeader } from "../../components/marketing/branded-header";
 import { getDashboardLinks } from "../../lib/dashboard-links";
 import { FECHA_VIGENCIA_PRIVACIDAD, SECCIONES_PRIVACIDAD } from "../../lib/marketing/privacidad";
 
@@ -14,7 +14,7 @@ export default function PrivacidadPage(): React.JSX.Element {
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
       <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl text-[#0f172a]">
           Política de Privacidad

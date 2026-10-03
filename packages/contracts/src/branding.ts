@@ -21,7 +21,9 @@ export type PublicPlatformBrandingResponse = z.infer<typeof publicPlatformBrandi
 export const platformBrandingResponse = publicPlatformBrandingResponse.extend({
   id: uuid,
   senderName: z.string(),
-  senderEmail: z.string(),
+  // Sin definir (null) hasta que el propietario configure un remitente propio: el proveedor de correo
+  // usa entonces el suyo (ADR-028 §5, un remitente solo se usa si su dominio está verificado).
+  senderEmail: z.string().nullable(),
   updatedByAdminId: uuid.nullable(),
   createdAt: isoDateTime,
   updatedAt: isoDateTime,

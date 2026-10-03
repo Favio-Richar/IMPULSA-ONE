@@ -1,4 +1,4 @@
-import { MarketingHeader } from "../../components/marketing/header";
+import { BrandedMarketingHeader } from "../../components/marketing/branded-header";
 import { MarketingHeroBackground, MarketingCtaBackground } from "../../components/marketing/hero-background";
 import { MarketingFooter } from "../../components/marketing/footer";
 import { Reveal } from "../../components/marketing/reveal";
@@ -18,7 +18,7 @@ export default async function PlantillasPage() {
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
 
       {/* Portada: un rubro por diapositiva, cada uno con su plantilla real. */}
       <RubrosCarousel bienvenidaHref={bienvenidaHref} />

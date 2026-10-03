@@ -69,7 +69,8 @@ Uptime Kuma (disponibilidad).
 
 - **apps/web**: sitio comercial de Impulza One + render público de los sitios de los usuarios
   (páginas, bloques, SEO). Sin lógica de negocio; consume la API.
-- **apps/dashboard**: panel del propietario/colaborador y modo agencia. Constructor visual, CRM,
+- **apps/dashboard**: panel del propietario/colaborador y modo agencia (F9.3: la agencia entra a sus clientes con **acceso delegado**, una
+  membresía `AGENCY` evaluada en cada petición por `OrganizationMembershipGuard` + `delegatedAccessVerdict`; ADR-028 §2). Constructor visual, CRM,
   formularios, analítica, configuración.
 - **apps/admin**: superadministración (usuarios, planes, moderación, operación).
 - **apps/api** (NestJS): toda la lógica de negocio, permisos, validación y orquestación. Organizada

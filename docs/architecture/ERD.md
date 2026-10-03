@@ -493,3 +493,23 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   **Fila única** garantizada en la base: columna `singleton` (siempre `true`) con `UNIQUE` y `CHECK`
   (migración `20261002200000_f91_platform_branding_fixes`, reversible con su `down.sql`).
 
+## 9t. Modo agencia y acceso delegado (F9.3, BACKLOG_FASE_9.md, ADR-028 §2)
+
+- **Organization**: `kind` (`BUSINESS` por defecto | `AGENCY`) y `public_hidden_at` (`NULL` = visible; con valor, la agencia ocultó
+  el sitio público del cliente al pausarlo o archivarlo — reversible, no toca páginas ni versiones; ver `ACTIVE_ORGANIZATION`
+  en `apps/api/src/common/active-organization.ts`, único filtro de las superficies públicas).
+- **AgencyClient** (`agency_clients`): la relación agencia ↔ cliente. `agency_organization_id` y `client_organization_id`
+  (ambas `CASCADE`; `CHECK` de que no sean la misma), `status` (`INVITED | ACTIVE | PAUSED | ARCHIVED | TRANSFERRING | ENDED`),
+  `billing_mode` (`CLIENT_PAYS | AGENCY_PAYS`), `agency_created` (la agencia creó al cliente = trabaja desde el primer día;
+  falso = solicitud sobre un negocio existente, **sin acceso hasta que el propietario acepte**), invitación al propietario
+  (`owner_invite_email`, `owner_invite_token_hash` único —nunca el token—, `owner_invite_expires_at`, `owner_accepted_at`),
+  fechas de estado y `ended_reason` (`revoked_by_client | released_by_agency | rejected_by_client`).
+  **Una relación no terminada por cliente**: índice único parcial `agency_clients_one_open_per_client` (`WHERE status <> 'ENDED'`).
+- **Membership**: `source` (`DIRECT` | `AGENCY`) y `agency_client_id`. `CHECK`: una membresía es delegada si y solo si apunta a
+  su relación. Las delegadas usan el rol `AGENCY_DELEGATE` y nacen y mueren con la relación (`CASCADE`; archivar/soltar/revocar
+  las pasan a `REMOVED`).
+- **Planes**: nuevo límite `clients` (cupo de clientes de una agencia; `0` = el plan no incluye modo agencia). El plan `agencia`
+  trae 25 (valor provisorio, decisión #4 del propietario; se ajusta desde superadministración).
+- Migraciones reversibles (`down.sql`): `20261003100000_f93_agency`, `20261003100100_f93_agency_plan_clients_limit`,
+  `20261003110000_f93_hide_public_site`.
+

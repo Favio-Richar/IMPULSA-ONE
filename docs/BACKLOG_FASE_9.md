@@ -19,7 +19,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 |---|---|---|
 | F9.1 | Marca de la plataforma (el dueño del sistema configura todo) | Hecho (2026-10-02, revisada y corregida por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.2 | Marca de cada organización (logo, colores, datos) | Hecho (2026-10-03, revisada y corregida por Claude; reservas en `CONTINUIDAD.md` §0) |
-| F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Pendiente |
+| F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Hecho (2026-10-03, desarrollada y verificada por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.4 | Panel de agencia | Pendiente |
 | F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | Pendiente |
 | F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | Pendiente |
@@ -130,7 +130,7 @@ tocar código, y que **todas** las aplicaciones y correos la lean de ahí.
 
 ---
 
-### F9.3 — Modelo de agencia: clientes, acceso delegado y aislamiento
+### F9.3 — Modelo de agencia: clientes, acceso delegado y aislamiento — Hecho
 
 **Objetivo:** el núcleo del modo agencia, con el menor riesgo posible para ADR-002.
 
@@ -165,6 +165,21 @@ tocar código, y que **todas** las aplicaciones y correos la lean de ahí.
     inmediato; los 4 límites duros; cupo de clientes del plan respetado (el cliente nº N+1 falla con
     mensaje claro). Playwright móvil/escritorio: crear agencia, dar de alta un cliente, cambiar de cuenta,
     pausar. Capturas en `f93/`.
+
+**Resultado (2026-10-03):** `turbo typecheck lint test` 70/70 (API 795 pruebas, validación 731); `next build` de dashboard, admin y web; OpenAPI
+regenerado (230 rutas); Playwright `agencia.spec.ts` 4/4 en móvil y escritorio (capturas en `f93/`); casos en `multi-tenant-isolation.e2e.test.ts`
+(84/84); prueba de paridad `contracts`↔`validation` de los límites del plan. Mutaciones que hacen fallar las pruebas: pausa que deja escribir
+(unitaria y e2e), revocación que no retira membresías (e2e), filtro público sin `publicHiddenAt` (e2e), `clients` fuera del contrato (paridad).
+**Defectos hallados al probar con la interfaz real y corregidos:** el vínculo sin agencia respondía cuerpo vacío (la pantalla de
+Configuración › Agencia mostraba error) y el inicio de un cliente delegado pedía el equipo —que el servidor niega a la agencia— y terminaba en
+«Sin acceso». **Criterio 7:** `Organization.public_hidden_at` (reversible; decisión del propietario, 2026-10-03).
+**Cómo se cumplen los criterios que difieren de la letra:** 8 → la puerta única es `OrganizationMembershipGuard` + `delegatedAccessVerdict` (no hay un
+`AgencyAccessGuard` aparte; ver ADR-028, notas de F9.3); 6 → no hay sesión de agencia que invalidar: el acceso se evalúa en cada petición.
+**Reservas (honestidad):** (a) que el sitio público oculto devuelve 404 se prueba por API (e2e), no con el navegador; (b) la aceptación de la
+invitación al propietario por el enlace del correo se prueba por API (el token solo viaja por correo); Playwright cubre la vía «solicitud sobre un
+negocio existente»; (c) la mutación «solicitud sin aceptar da acceso» no la detecta la e2e (hay una segunda capa: sin membresía activa ya responde 403)
+sino la prueba unitaria; (d) no se corrió la suite completa de Playwright, solo la de agencia; (e) sin proveedor real de correo (solo consola) ni
+staging; (f) el plan `agencia` con 25 clientes es un valor provisorio (decisión #4).
 
 ---
 

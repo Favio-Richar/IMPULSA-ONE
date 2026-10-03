@@ -5,28 +5,24 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-03, noche) — F9.3 EN PROGRESO en la rama `fase-9/f9-3-modelo-agencia` (no está en master)
+## 0. RETOMAR AQUÍ (2026-10-03, noche) — F9.3 HECHA en la rama `fase-9/f9-3-modelo-agencia` (aún no fusionada a master); siguiente: F9.4
 
 **Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia.
 
-**F9.3 — hecho hasta ahora (sin commit en master):** migraciones `20261003100000_f93_agency` y `20261003100100_f93_agency_plan_clients_limit`
-(reversibles); permisos `agency.manage`/`agency.link.manage` y rol delegado `AGENCY_DELEGATE`; límite de plan `clients`; módulo
-`apps/api/src/modules/agency` (relación, membresías delegadas, lado agencia, lado negocio, invitación al propietario); la puerta única
-`OrganizationMembershipGuard` aplica `delegatedAccessVerdict` (reglas puras en `packages/validation/src/agency`); auditoría con `delegatedBy`;
-lista de organizaciones con `access`; panel: `/agencia`, `/configuracion/agencia`, `/invitaciones/agencia`, selector con grupo de clientes y aviso
-permanente. **Pruebas:** validación 23, e2e de la API `agency.e2e.test.ts` 38/38; typecheck de todo el monorepo y lint del panel en verde.
+**F9.3 — cerrada** (detalle, mutaciones y reservas en `docs/BACKLOG_FASE_9.md`): modelo de agencia, acceso delegado (membresía `AGENCY` evaluada
+en cada petición por `OrganizationMembershipGuard` + `delegatedAccessVerdict`), alta de clientes por dos caminos, pausa/archivo/soltar/revocar,
+**ocultar el sitio público al pausar/archivar (`public_hidden_at`, reversible)**, panel (`/agencia`, `/configuracion/agencia`,
+`/invitaciones/agencia`), selector con grupo de clientes y aviso permanente, inicio propio para quien entra a un cliente. Verificada: suite
+completa 70/70, builds, OpenAPI, Playwright 4/4, aislamiento 84/84.
+**Pendiente de Favio:** fusionar la rama a `master` y subirla (no se hizo sin tu confirmación). Luego F9.4 (panel de agencia: vista consolidada).
 
-**Falta para cerrar F9.3 (en este orden):**
-1. Playwright `packages/e2e/tests/agencia.spec.ts` (móvil y escritorio, capturas `docs/design/capturas/f93/`): crear cliente, entrar, pausar, revocar. El plan de la
-   organización de prueba se cambia con `PrismaClient` como hacen `campanas.spec.ts` y `cobros.spec.ts`.
-2. Suite completa (`pnpm turbo run typecheck lint test --continue` a un log), `next build` de dashboard, admin y web, y OpenAPI (`openapi:generate`).
-3. Prueba de paridad contracts↔validation de los límites del plan (se agregó `clients` en los dos).
-4. Casos en `multi-tenant-isolation.e2e.test.ts`; prueba contra código roto (romper `delegatedAccessVerdict` y el sync de membresías).
-5. Docs: ERD, ARCHITECTURE, trazabilidad, BACKLOG_FASE_9 (F9.3 Hecho), ADR-028 (nota: estado `ENDED` y `agencyCreated` agregados).
-Después: F9.4 (panel de agencia) en adelante.
-
-**Trampas de esta sesión:** tras cambiar permisos/planes hay que correr `db:migrate:deploy`, `db:generate`, `db:seed` y `db:test:prepare`, y reconstruir
-`validation`, `contracts`, `database` y `auth`. Las pruebas lentas de la API fallan por tiempo solo cuando se corren muchas a la vez.
+**Trampas nuevas de esta sesión:** (1) un controlador de Nest que devuelve `null` responde **cuerpo vacío**: si el contrato dice `null`, usar
+`@Res()` y `res.json(valor)`; (2) la lista de miembros se niega a la agencia a propósito: ninguna pantalla que cargue un cliente delegado debe
+pedirla; (3) cualquier filtro nuevo de «superficie pública» va en `ACTIVE_ORGANIZATION`, nunca suelto; (4) la mutación de una capa redundante
+(p. ej. el veredicto con la membresía ya ausente) no la detecta la e2e: poner también prueba unitaria; (5) Playwright registra 2 cuentas por
+corrida: limpiar `ratelimit:*` del Redis local entre corridas (`docker exec impulza-one-redis-1 redis-cli --scan --pattern "ratelimit:*"`);
+(6) tras cambiar permisos/planes: `db:migrate:deploy`, `db:generate`, `db:seed`, `db:test:prepare` y reconstruir `validation`, `contracts`,
+`database`, `auth`; (7) con Docker apagado hay que abrir Docker Desktop (`C:\Program Files\Docker\Docker\Docker Desktop.exe`) y esperar a `docker info`.
 
 ### (anterior) F9.2 hecha y fusionada a master; siguiente era F9.3
 

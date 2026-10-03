@@ -115,3 +115,18 @@ con motivo y vía de apelación. Nada se borra; todo es reversible y queda audit
   verificación de dominio.
 - Seguimiento: cada historia de la Fase 9 suma sus casos a `multi-tenant-isolation.e2e.test.ts` y, para
   el acceso delegado, un conjunto propio «agencia no sale de su cupo».
+
+## Notas de implementación de F9.3 (2026-10-03)
+
+- **Estado `ENDED`** agregado a `AgencyClientStatus`: soltar, rechazar o revocar terminan la relación sin borrarla (queda la
+  historia y la auditoría); el índice único parcial solo cuenta las relaciones no terminadas.
+- **`agencyCreated`** distingue al cliente creado por la agencia (trabaja desde ya, mientras el propietario acepta su invitación)
+  del negocio vinculado (sin acceso hasta que su propietario acepte).
+- **«Un único guard»**: se cumple con la puerta que ya existía, `OrganizationMembershipGuard`, que aplica
+  `delegatedAccessVerdict` (reglas puras en `@impulza/validation`). No se creó un `AgencyAccessGuard` aparte: duplicaría la puerta.
+- **«Sesiones invalidadas» al revocar**: no hay una sesión propia de la agencia; el acceso se evalúa **en cada petición** contra la
+  membresía y el estado de la relación, así que la revocación es efectiva desde la siguiente petición.
+- **Despublicar al pausar/archivar** (criterio 7): `Organization.public_hidden_at`, reversible y visible para el propietario. Es una
+  decisión del propietario de la plataforma (2026-10-03): reversible, en lugar de retirar páginas publicadas una a una.
+  Reanudar, desarchivar, soltar y la revocación del propietario siempre vuelven a mostrar el sitio.
+

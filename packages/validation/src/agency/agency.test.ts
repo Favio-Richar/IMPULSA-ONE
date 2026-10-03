@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AGENCY_CLIENT_ACTIONS,
   AGENCY_CLIENT_STATUSES,
+  agencyClientActionSchema,
   createAgencyClientSchema,
   delegatedAccessVerdict,
   linkAgencyClientSchema,
@@ -123,5 +124,18 @@ describe("esquemas de entrada", () => {
   it("vincular pide el identificador Y el correo del propietario", () => {
     expect(linkAgencyClientSchema.safeParse({ clientSlug: "cafe-sol" }).success).toBe(false);
     expect(linkAgencyClientSchema.safeParse({ clientSlug: "cafe-sol", ownerEmail: "a@b.cl" }).success).toBe(true);
+  });
+
+  it("`hidePublicSite` solo se acepta al pausar o archivar, y debe ser booleano", () => {
+    for (const action of ["pause", "archive"]) {
+      expect(agencyClientActionSchema.safeParse({ action, hidePublicSite: true }).success).toBe(true);
+      expect(agencyClientActionSchema.safeParse({ action, hidePublicSite: false }).success).toBe(true);
+      expect(agencyClientActionSchema.safeParse({ action }).success).toBe(true);
+    }
+    for (const action of ["resume", "unarchive", "release"]) {
+      expect(agencyClientActionSchema.safeParse({ action }).success).toBe(true);
+      expect(agencyClientActionSchema.safeParse({ action, hidePublicSite: true }).success).toBe(false);
+    }
+    expect(agencyClientActionSchema.safeParse({ action: "pause", hidePublicSite: "si" }).success).toBe(false);
   });
 });

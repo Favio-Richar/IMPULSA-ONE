@@ -92,7 +92,7 @@ describe("Planes y plan efectivo (e2e) — F4.1", () => {
     const body = organizationPlanResponse.parse((await agent.get(`/api/v1/organizations/${organizationId}/plan`).expect(200)).body);
     expect(body.plan.code).toBe("free");
     expect(body.source).toBe("default");
-    expect(body.usage).toEqual({ sites: 1, forms: 0, contacts: 0, shortLinks: 0, qrCodes: 0, members: 1, storageMb: 0 });
+    expect(body.usage).toEqual({ sites: 1, forms: 0, contacts: 0, shortLinks: 0, qrCodes: 0, members: 1, clients: 0, storageMb: 0 });
   });
 
   it("un plan asignado por superadministración reemplaza al por defecto", async () => {

@@ -93,6 +93,13 @@ function LinkCard({ organizationId }: { organizationId: string }): React.JSX.Ele
               </div>
             ) : null}
 
+            {link.data.publicHidden ? (
+              <p role="status" data-testid="agency-hid-site" className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground">
+                La agencia ocultó tu sitio público mientras el acceso está {link.data.status === "ARCHIVED" ? "archivado" : "en pausa"}. No se borró nada: vuelve a verse cuando
+                reanude, cuando te suelte o si revocas su acceso.
+              </p>
+            ) : null}
+
             <p className="text-xs text-muted-foreground">
               La agencia nunca ve tu cuenta de cobro ni tu suscripción, no gestiona tu equipo y no puede exportar tus contactos. Cada cosa que hace queda
               registrada a nombre de la persona y de la agencia.

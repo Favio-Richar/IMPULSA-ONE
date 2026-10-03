@@ -137,7 +137,7 @@ export class AgencyController {
   @ApiOperation({
     summary: "Pausar, reanudar, archivar, desarchivar o soltar a un cliente",
     description:
-      "Pausa = la agencia solo ve. Archivo = sin acceso, reversible. Soltar termina la relación. Ninguna acción borra datos del cliente.",
+      "Pausa = la agencia solo ve. Archivo = sin acceso, reversible. Soltar termina la relación. Ninguna acción borra datos del cliente. Al pausar o archivar, `hidePublicSite: true` oculta además el sitio público del cliente (reversible: reanudar, desarchivar o soltar lo muestran de nuevo).",
   })
   @ApiUuidParam("clientId", "Identificador de la relación con el cliente (no el de su organización).")
   @ApiZodBody(agencyClientActionSchema)
@@ -151,6 +151,6 @@ export class AgencyController {
     @CurrentUser() user: User,
     @Body(new ZodValidationPipe(agencyClientActionSchema)) body: AgencyClientActionDto,
   ) {
-    return this.agencyService.actOnClient(organizationId, user.id, clientId, body.action);
+    return this.agencyService.actOnClient(organizationId, user.id, clientId, body.action, body.hidePublicSite);
   }
 }

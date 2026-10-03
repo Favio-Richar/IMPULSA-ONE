@@ -23,6 +23,8 @@ export const agencyClientResponse = z.object({
   ownerAccepted: z.boolean(),
   /** La agencia puede ver pero no cambiar (cliente en pausa o agencia bloqueada). */
   readOnly: z.boolean(),
+  /** La agencia ocultó el sitio público de este cliente (pausa/archivo); se muestra de nuevo al reanudar o soltar. */
+  publicHidden: z.boolean(),
   createdAt: isoDateTime,
   acceptedAt: isoDateTime.nullable(),
   pausedAt: isoDateTime.nullable(),
@@ -56,6 +58,8 @@ export const agencyLinkResponse = z
     awaitingOwnerDecision: z.boolean(),
     requestedAt: isoDateTime,
     acceptedAt: isoDateTime.nullable(),
+    /** La agencia ocultó el sitio público de este negocio; vuelve a verse si reanuda, suelta o el propietario revoca. */
+    publicHidden: z.boolean(),
     /** Personas de la agencia con acceso delegado hoy (correo y rol delegado). */
     delegatedMembers: z.array(z.object({ email: z.string(), role: z.string() })),
   })

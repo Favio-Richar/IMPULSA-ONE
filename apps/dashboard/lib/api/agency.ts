@@ -32,8 +32,17 @@ export function requestAgencyLink(organizationId: string, body: LinkAgencyClient
   return apiFetch<AgencyClientResponse>(`${agencyPath(organizationId)}/clients/link`, { method: "POST", body });
 }
 
-export function actOnAgencyClient(organizationId: string, clientId: string, action: AgencyClientAction): Promise<AgencyClientResponse> {
-  return apiFetch<AgencyClientResponse>(`${agencyPath(organizationId)}/clients/${clientId}/actions`, { method: "POST", body: { action } });
+/** `hidePublicSite` solo vale al pausar o archivar: `true` oculta el sitio público del cliente (reversible), `false` lo deja visible. */
+export function actOnAgencyClient(
+  organizationId: string,
+  clientId: string,
+  action: AgencyClientAction,
+  hidePublicSite?: boolean,
+): Promise<AgencyClientResponse> {
+  return apiFetch<AgencyClientResponse>(`${agencyPath(organizationId)}/clients/${clientId}/actions`, {
+    method: "POST",
+    body: hidePublicSite === undefined ? { action } : { action, hidePublicSite },
+  });
 }
 
 // ---- lado del negocio ------------------------------------------------------------------------------------

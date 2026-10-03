@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { AgencyClientResponse } from "@impulza/contracts";
 import { AGENCY_BILLING_MODES, slugSchema, type AgencyClientAction } from "@impulza/validation";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, ErrorState, Input, LoadingState } from "@impulza/ui";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -272,7 +272,14 @@ function ClientRow({ organizationId, client }: { organizationId: string; client:
   const router = useRouter();
   const setActiveOrganizationId = useActiveOrgStore((state) => state.setActiveOrganizationId);
   const act = useAgencyClientAction(organizationId);
-  const run = (action: AgencyClientAction) => act.mutate({ clientId: client.id, action });
+  const run = (action: AgencyClientAction, hidePublicSite?: boolean) => act.mutate({ clientId: client.id, action, hidePublicSite });
+  // Pausar y archivar piden una confirmación con una elección: ocultar o no el sitio público del cliente mientras dure.
+  const [choosing, setChoosing] = useState<"pause" | "archive" | null>(null);
+  const [hideSite, setHideSite] = useState(false);
+  const startChoosing = (action: "pause" | "archive") => {
+    setHideSite(client.publicHidden);
+    setChoosing(action);
+  };
 
   // «Entrar» solo donde el servidor da acceso: activo, en pausa (lectura) o recién creado por la agencia.
   const canEnter = client.status === "ACTIVE" || client.status === "PAUSED" || (client.status === "INVITED" && client.agencyCreated);
@@ -286,6 +293,11 @@ function ClientRow({ organizationId, client }: { organizationId: string; client:
           <span data-testid="client-status">{statusLabel(client)}</span>
           <span className="text-muted-foreground"> · {BILLING_TEXT[client.billingMode]}</span>
         </p>
+        {client.publicHidden ? (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-foreground" data-testid="client-public-hidden">
+            <EyeOff className="size-3.5 text-warning" aria-hidden="true" /> Sitio público oculto (se muestra de nuevo al reanudar o soltar)
+          </p>
+        ) : null}
         {client.ownerInviteEmail ? <p className="text-xs text-muted-foreground">Invitación enviada a {client.ownerInviteEmail}</p> : null}
         {act.isError ? (
           <p role="alert" className="text-sm text-danger">
@@ -306,7 +318,7 @@ function ClientRow({ organizationId, client }: { organizationId: string; client:
           </Button>
         ) : null}
         {client.status === "ACTIVE" ? (
-          <Button size="sm" variant="secondary" loading={act.isPending} onClick={() => run("pause")}>
+          <Button size="sm" variant="secondary" loading={act.isPending} onClick={() => startChoosing("pause")}>
             Pausar
           </Button>
         ) : null}
@@ -316,7 +328,7 @@ function ClientRow({ organizationId, client }: { organizationId: string; client:
           </Button>
         ) : null}
         {client.status === "ACTIVE" || client.status === "PAUSED" || (client.status === "INVITED" && client.agencyCreated) ? (
-          <Button size="sm" variant="ghost" loading={act.isPending} onClick={() => run("archive")}>
+          <Button size="sm" variant="ghost" loading={act.isPending} onClick={() => startChoosing("archive")}>
             Archivar
           </Button>
         ) : null}
@@ -335,6 +347,39 @@ function ClientRow({ organizationId, client }: { organizationId: string; client:
           Soltar
         </ConfirmButton>
       </div>
+      {choosing ? (
+        <div className="flex w-full flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:basis-full" role="group" aria-label={choosing === "pause" ? "Confirmar pausa" : "Confirmar archivo"}>
+          <p className="text-sm text-foreground">
+            {choosing === "pause"
+              ? "En pausa, tu equipo puede ver este negocio pero no hacer cambios."
+              : "Archivado, tu equipo pierde el acceso a este negocio. Sus datos y sitios no se borran."}
+          </p>
+          <label className="flex items-start gap-2 text-sm text-foreground">
+            <input type="checkbox" className="mt-0.5 size-4" checked={hideSite} onChange={(event) => setHideSite(event.target.checked)} />
+            <span>
+              También ocultar su sitio público mientras dure
+              <span className="block text-xs text-muted-foreground">
+                Sus visitantes verán que el sitio no existe. No se borra nada: se muestra de nuevo al reanudar, desarchivar o soltar, y su propietario lo ve en su panel.
+              </span>
+            </span>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              loading={act.isPending}
+              onClick={() => {
+                run(choosing, hideSite);
+                setChoosing(null);
+              }}
+            >
+              {choosing === "pause" ? "Confirmar pausa" : "Confirmar archivo"}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setChoosing(null)}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </li>
   );
 }

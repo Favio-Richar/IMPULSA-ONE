@@ -57,7 +57,8 @@ export function useRequestAgencyLink(organizationId: string) {
 export function useAgencyClientAction(organizationId: string) {
   const refresh = useRefresh(organizationId);
   return useMutation({
-    mutationFn: (input: { clientId: string; action: AgencyClientAction }) => actOnAgencyClient(organizationId, input.clientId, input.action),
+    mutationFn: (input: { clientId: string; action: AgencyClientAction; hidePublicSite?: boolean }) =>
+      actOnAgencyClient(organizationId, input.clientId, input.action, input.hidePublicSite),
     onSuccess: refresh,
   });
 }

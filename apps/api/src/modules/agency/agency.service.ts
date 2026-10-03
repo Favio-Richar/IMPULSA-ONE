@@ -37,11 +37,14 @@ import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { PlansService } from "../plans/plans.service.js";
+import { RevalidateWebService } from "../public-sites/revalidate-web.service.js";
 import { AgencyAccessService, relationGrantsAccess } from "./agency-access.service.js";
 
 const DAY_MS = 24 * 3_600_000;
 
-type RelationWithClient = AgencyClient & { clientOrganization: Pick<Organization, "id" | "name" | "slug"> };
+/** Lo que se lee de la organización del cliente junto a la relación (`publicHiddenAt`: la agencia ocultó su sitio público). */
+const CLIENT_ORG_SELECT = { id: true, name: true, slug: true, publicHiddenAt: true } as const;
+type RelationWithClient = AgencyClient & { clientOrganization: Pick<Organization, "id" | "name" | "slug" | "publicHiddenAt"> };
 
 /** Códigos estables que el panel interpreta sin leer el mensaje. */
 export const AGENCY_CODES = {
@@ -62,6 +65,7 @@ export class AgencyService {
     private readonly audit: AuditService,
     private readonly plans: PlansService,
     private readonly access: AgencyAccessService,
+    private readonly revalidateWeb: RevalidateWebService,
   ) {}
 
   // ---- estado y activación ---------------------------------------------------------------------------------
@@ -132,6 +136,7 @@ export class AgencyService {
       ownerInviteExpiresAt: ownerAccepted || !relation.ownerInviteExpiresAt ? null : relation.ownerInviteExpiresAt.toISOString(),
       ownerAccepted,
       readOnly: relation.status === AgencyClientStatus.PAUSED,
+      publicHidden: relation.clientOrganization.publicHiddenAt !== null,
       createdAt: relation.createdAt.toISOString(),
       acceptedAt: relation.acceptedAt?.toISOString() ?? null,
       pausedAt: relation.pausedAt?.toISOString() ?? null,
@@ -143,7 +148,7 @@ export class AgencyService {
     await this.assertAgency(agencyOrganizationId);
     const relations = await this.prisma.agencyClient.findMany({
       where: { agencyOrganizationId, status: { not: AgencyClientStatus.ENDED } },
-      include: { clientOrganization: { select: { id: true, name: true, slug: true } } },
+      include: { clientOrganization: { select: CLIENT_ORG_SELECT } },
       orderBy: { createdAt: "desc" },
     });
     return relations.map((relation) => this.toClientResponse(relation));
@@ -174,7 +179,7 @@ export class AgencyService {
           ownerInviteTokenHash: hash,
           ownerInviteExpiresAt: new Date(now.getTime() + AGENCY_OWNER_INVITE_TTL_DAYS * DAY_MS),
         },
-        include: { clientOrganization: { select: { id: true, name: true, slug: true } } },
+        include: { clientOrganization: { select: CLIENT_ORG_SELECT } },
       });
       await this.access.grantForClient(tx, created);
       return created;
@@ -240,7 +245,7 @@ export class AgencyService {
           agencyCreated: false,
           requestedById: actor.id,
         },
-        include: { clientOrganization: { select: { id: true, name: true, slug: true } } },
+        include: { clientOrganization: { select: CLIENT_ORG_SELECT } },
       });
     });
 
@@ -280,14 +285,38 @@ export class AgencyService {
   private async getRelation(agencyOrganizationId: string, relationId: string): Promise<RelationWithClient> {
     const relation = await this.prisma.agencyClient.findFirst({
       where: { id: relationId, agencyOrganizationId },
-      include: { clientOrganization: { select: { id: true, name: true, slug: true } } },
+      include: { clientOrganization: { select: CLIENT_ORG_SELECT } },
     });
     if (!relation) throw new NotFoundException("Ese cliente no existe en tu agencia.");
     return relation;
   }
 
+  /**
+   * Qué valor debe quedar en `publicHiddenAt` tras una transición: `undefined` = no tocar. Pausar/archivar obedecen a la
+   * elección de la agencia (`true` oculta, `false` muestra, ausente conserva); cualquier otro destino muestra el sitio.
+   */
+  private nextPublicHiddenAt(next: AgencyClientStatus, hide: boolean | undefined, current: Date | null, now: Date): Date | null | undefined {
+    if (next === AgencyClientStatus.PAUSED || next === AgencyClientStatus.ARCHIVED) {
+      if (hide === undefined) return undefined;
+      return hide ? (current ?? now) : null;
+    }
+    return null;
+  }
+
+  /** Avisa a apps/web para que la caché pública refleje que el sitio se ocultó o se mostró (no-op sin configurar). */
+  private async revalidateClientSites(clientOrganizationId: string): Promise<void> {
+    const sites = await this.prisma.site.findMany({ where: { organizationId: clientOrganizationId }, select: { id: true } });
+    await Promise.all(sites.map((site) => this.revalidateWeb.revalidateSite(site.id)));
+  }
+
   /** Pausar, reanudar, archivar, desarchivar o soltar a un cliente. Nada borra datos del cliente. */
-  async actOnClient(agencyOrganizationId: string, actorId: string, relationId: string, action: AgencyClientAction): Promise<AgencyClientResponse> {
+  async actOnClient(
+    agencyOrganizationId: string,
+    actorId: string,
+    relationId: string,
+    action: AgencyClientAction,
+    hidePublicSite?: boolean,
+  ): Promise<AgencyClientResponse> {
     await this.assertAgency(agencyOrganizationId);
     const relation = await this.getRelation(agencyOrganizationId, relationId);
     const next = nextAgencyClientStatus(action, relation.status);
@@ -296,6 +325,7 @@ export class AgencyService {
     }
 
     const now = new Date();
+    let visibilityChanged = false;
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.agencyClient.update({
         where: { id: relation.id },
@@ -306,7 +336,7 @@ export class AgencyService {
           ...(next === AgencyClientStatus.ARCHIVED ? { archivedAt: now } : {}),
           ...(next === AgencyClientStatus.ENDED ? { endedAt: now, endedReason: "released_by_agency", ownerInviteTokenHash: null } : {}),
         },
-        include: { clientOrganization: { select: { id: true, name: true, slug: true } } },
+        include: { clientOrganization: { select: CLIENT_ORG_SELECT } },
       });
       // Archivar y soltar quitan el acceso delegado de inmediato; reanudar desde archivo lo devuelve.
       if (next === AgencyClientStatus.ARCHIVED || next === AgencyClientStatus.ENDED) {
@@ -314,8 +344,17 @@ export class AgencyService {
       } else if (relationGrantsAccess(row)) {
         await this.access.grantForClient(tx, row);
       }
+      // Sitio público: solo pausar/archivar lo pueden ocultar (y solo si la agencia lo pide); volver a ACTIVE o terminar
+      // la relación siempre lo muestran de nuevo, para que nadie quede con su sitio apagado sin una relación que lo explique.
+      const hiddenAt = this.nextPublicHiddenAt(next, hidePublicSite, row.clientOrganization.publicHiddenAt, now);
+      if (hiddenAt !== undefined && hiddenAt?.getTime() !== row.clientOrganization.publicHiddenAt?.getTime()) {
+        const org = await tx.organization.update({ where: { id: row.clientOrganizationId }, data: { publicHiddenAt: hiddenAt }, select: CLIENT_ORG_SELECT });
+        visibilityChanged = true;
+        return { ...row, clientOrganization: org };
+      }
       return row;
     });
+    if (visibilityChanged) await this.revalidateClientSites(relation.clientOrganizationId);
 
     await this.audit.record({
       organizationId: agencyOrganizationId,
@@ -323,7 +362,7 @@ export class AgencyService {
       action: `agency.client.${action}`,
       targetType: "AgencyClient",
       targetId: relation.id,
-      metadata: { clientOrganizationId: relation.clientOrganizationId, from: relation.status, to: next },
+      metadata: { clientOrganizationId: relation.clientOrganizationId, from: relation.status, to: next, publicHidden: updated.clientOrganization.publicHiddenAt !== null },
     });
     await this.audit.record({
       organizationId: relation.clientOrganizationId,
@@ -341,7 +380,7 @@ export class AgencyService {
   private async openRelationOf(clientOrganizationId: string) {
     return this.prisma.agencyClient.findFirst({
       where: { clientOrganizationId, status: { not: AgencyClientStatus.ENDED } },
-      include: { agencyOrganization: { select: { id: true, name: true } } },
+      include: { agencyOrganization: { select: { id: true, name: true } }, clientOrganization: { select: { publicHiddenAt: true } } },
     });
   }
 
@@ -363,6 +402,7 @@ export class AgencyService {
       awaitingOwnerDecision: relation.status === AgencyClientStatus.INVITED && !relation.agencyCreated,
       requestedAt: relation.createdAt.toISOString(),
       acceptedAt: relation.acceptedAt?.toISOString() ?? null,
+      publicHidden: relation.clientOrganization.publicHiddenAt !== null,
       delegatedMembers: delegated.map((member) => ({ email: member.user.email, role: member.role.name })),
     };
   }
@@ -406,7 +446,10 @@ export class AgencyService {
         data: { status: AgencyClientStatus.ENDED, endedAt: new Date(), endedReason: "revoked_by_client", ownerInviteTokenHash: null },
       });
       await this.access.revokeForClient(tx, relation.id);
+      // Si la agencia había ocultado el sitio, al revocar vuelve a verse: el propietario nunca queda con el sitio apagado.
+      await tx.organization.update({ where: { id: clientOrganizationId }, data: { publicHiddenAt: null } });
     });
+    if (relation.clientOrganization.publicHiddenAt !== null) await this.revalidateClientSites(clientOrganizationId);
     await this.recordBoth(relation, actorId, "agency.link.revoked");
   }
 

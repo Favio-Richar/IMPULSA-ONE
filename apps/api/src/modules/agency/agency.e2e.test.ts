@@ -366,6 +366,83 @@ describe("Modo agencia (e2e) — F9.3 / ADR-028 §2", () => {
       await site("ag-e2e-r").expect(201);
     });
 
+    /** Un sitio del cliente con la home publicada, creado por la agencia: devuelve el slug público. */
+    async function publishedSite(agency: Awaited<ReturnType<typeof newAgency>>, clientId: string): Promise<string> {
+      const slug = unique("ag-e2e-pub");
+      const created = await agency.agent.post(`/api/v1/organizations/${clientId}/sites`).set(CSRF).send({ name: "Sitio público", slug }).expect(201);
+      const pagesPath = `/api/v1/organizations/${clientId}/sites/${created.body.id}/pages`;
+      const home = (await agency.agent.get(pagesPath).expect(200)).body[0];
+      await agency.agent.post(`${pagesPath}/${home.id}/blocks`).set(CSRF).send({ type: "text", config: { html: "<p>hola</p>" } }).expect(201);
+      await agency.agent.post(`${pagesPath}/${home.id}/publish`).set(CSRF).expect(201);
+      await request(httpServer).get(`/api/v1/public/sites/${slug}`).expect(200);
+      return slug;
+    }
+    const publicStatus = async (slug: string) => (await request(httpServer).get(`/api/v1/public/sites/${slug}`)).status;
+    const linkOf = async (owner: { agent: Agent }, clientId: string) =>
+      agencyLinkResponse.parse((await owner.agent.get(`/api/v1/organizations/${clientId}/agency-link`).expect(200)).body)!;
+
+    it("pausar sin pedirlo no toca el sitio público; con `hidePublicSite` lo oculta y reanudar lo muestra de nuevo", async () => {
+      const agency = await newAgency();
+      const { relationId, clientId, owner } = await activeClient(agency);
+      const slug = await publishedSite(agency, clientId);
+
+      const plain = agencyClientResponse.parse((await act(agency, relationId, "pause").expect(200)).body);
+      expect(plain.publicHidden).toBe(false);
+      expect(await publicStatus(slug)).toBe(200);
+      await act(agency, relationId, "resume").expect(200);
+
+      const hidden = agencyClientResponse.parse(
+        (await agency.agent.post(`${agency.base}/clients/${relationId}/actions`).set(CSRF).send({ action: "pause", hidePublicSite: true }).expect(200)).body,
+      );
+      expect(hidden).toMatchObject({ status: "PAUSED", publicHidden: true });
+      expect(await publicStatus(slug)).toBe(404);
+      // El propietario lo ve en su pantalla: nunca se apaga su sitio sin que lo pueda saber.
+      expect((await linkOf(owner, clientId)).publicHidden).toBe(true);
+      // Los datos siguen intactos: solo se dejó de servir.
+      expect(await prisma.page.count({ where: { site: { slug }, status: "PUBLISHED" } })).toBe(1);
+
+      const resumed = agencyClientResponse.parse((await act(agency, relationId, "resume").expect(200)).body);
+      expect(resumed.publicHidden).toBe(false);
+      expect(await publicStatus(slug)).toBe(200);
+    });
+
+    it("archivar conserva lo elegido; desarchivar, soltar y la revocación del propietario muestran el sitio de nuevo", async () => {
+      const agency = await newAgency();
+      const { relationId, clientId } = await activeClient(agency);
+      const slug = await publishedSite(agency, clientId);
+      const send = (body: Record<string, unknown>) => agency.agent.post(`${agency.base}/clients/${relationId}/actions`).set(CSRF).send(body);
+
+      expect(agencyClientResponse.parse((await send({ action: "archive", hidePublicSite: true }).expect(200)).body).publicHidden).toBe(true);
+      expect(await publicStatus(slug)).toBe(404);
+      // Desarchivar siempre vuelve a mostrar.
+      expect(agencyClientResponse.parse((await send({ action: "unarchive" }).expect(200)).body).publicHidden).toBe(false);
+      expect(await publicStatus(slug)).toBe(200);
+
+      // Pausa oculta → archivar SIN indicar nada conserva lo que ya había (oculto) → soltar lo muestra.
+      await send({ action: "pause", hidePublicSite: true }).expect(200);
+      expect(agencyClientResponse.parse((await send({ action: "archive" }).expect(200)).body).publicHidden).toBe(true);
+      expect(await publicStatus(slug)).toBe(404);
+      await send({ action: "release" }).expect(200);
+      expect(await publicStatus(slug)).toBe(200);
+
+      // Y si el propietario revoca a una agencia que había ocultado su sitio, vuelve a verse.
+      const second = await activeClient(agency);
+      const slug2 = await publishedSite(agency, second.clientId);
+      await agency.agent.post(`${agency.base}/clients/${second.relationId}/actions`).set(CSRF).send({ action: "pause", hidePublicSite: true }).expect(200);
+      expect(await publicStatus(slug2)).toBe(404);
+      await second.owner.agent.delete(`/api/v1/organizations/${second.clientId}/agency-link`).set(CSRF).expect(204);
+      expect(await publicStatus(slug2)).toBe(200);
+    });
+
+    it("`hidePublicSite` solo se acepta al pausar o archivar", async () => {
+      const agency = await newAgency();
+      const { relationId } = await activeClient(agency);
+      for (const action of ["resume", "unarchive", "release"]) {
+        await agency.agent.post(`${agency.base}/clients/${relationId}/actions`).set(CSRF).send({ action, hidePublicSite: true }).expect(400);
+      }
+      await agency.agent.post(`${agency.base}/clients/${relationId}/actions`).set(CSRF).send({ action: "pause", hidePublicSite: "si" }).expect(400);
+    });
+
     it("archivado: sin acceso ni de lectura; las membresías delegadas se retiran; desarchivar las devuelve", async () => {
       const agency = await newAgency();
       const { relationId, clientId } = await activeClient(agency);

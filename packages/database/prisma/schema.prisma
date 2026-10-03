@@ -216,6 +216,8 @@ model Organization {
   kind          OrganizationKind   @default(BUSINESS)
   blockedAt     DateTime?          @map("blocked_at") @db.Timestamptz(6)
   blockedReason String?            @map("blocked_reason")
+  // F9.3: la agencia ocultó el sitio público del cliente (pausa/archivo). Reversible; NULL = visible. Ver `ACTIVE_ORGANIZATION`.
+  publicHiddenAt DateTime?         @map("public_hidden_at") @db.Timestamptz(6)
   createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 

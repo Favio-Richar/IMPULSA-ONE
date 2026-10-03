@@ -169,8 +169,19 @@ test("un propietario real acepta; la agencia pausa y reanuda (solo lectura en el
     // 4. Pausar: solo lectura, y el servidor lo aplica (no basta con ocultar botones).
     const sitesUrl = `${API_BASE_URL}/organizations/${clientId}/sites`;
     await row.getByRole("button", { name: "Pausar" }).click();
+    await expect(page.getByRole("group", { name: "Confirmar pausa" })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+    await capture(page, `04a-eleccion-de-pausa-${project}.png`);
+    await page.getByLabel(/También ocultar su sitio público/).check();
+    await page.getByRole("button", { name: "Confirmar pausa" }).click();
     await expect(row.getByTestId("client-status")).toHaveText("En pausa (solo lectura)");
+    await expect(row.getByTestId("client-public-hidden")).toBeVisible();
     await capture(page, `04-cliente-en-pausa-${project}.png`);
+    // El propietario lo ve en su panel: su sitio nunca se apaga sin que lo pueda saber.
+    await ownerPage.reload();
+    await expect(ownerPage.getByTestId("agency-hid-site")).toContainText("La agencia ocultó tu sitio público");
+    await expectNoHorizontalScroll(ownerPage);
+    await capture(ownerPage, `04b-propietario-ve-sitio-oculto-${project}.png`);
     expect((await page.request.get(sitesUrl)).status()).toBe(200);
     const blocked = await page.request.post(sitesUrl, { headers: CSRF, data: { name: "Sitio en pausa", slug: `e2e-pausa-${project}-${suffix}` } });
     expect(blocked.status()).toBe(403);
@@ -183,6 +194,7 @@ test("un propietario real acepta; la agencia pausa y reanuda (solo lectura en el
     await page.goto("/agencia");
     await row.getByRole("button", { name: "Reanudar" }).click();
     await expect(row.getByTestId("client-status")).toHaveText("Activo");
+    await expect(row.getByTestId("client-public-hidden")).toHaveCount(0);
     const allowed = await page.request.post(sitesUrl, { headers: CSRF, data: { name: "Sitio reanudado", slug: `e2e-reanuda-${project}-${suffix}` } });
     expect(allowed.status()).toBe(201);
 

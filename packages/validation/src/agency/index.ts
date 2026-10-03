@@ -45,7 +45,17 @@ export type LinkAgencyClientDto = z.infer<typeof linkAgencyClientSchema>;
 
 export const AGENCY_CLIENT_ACTIONS = ["pause", "resume", "archive", "unarchive", "release"] as const;
 export type AgencyClientAction = (typeof AGENCY_CLIENT_ACTIONS)[number];
-export const agencyClientActionSchema = z.object({ action: z.enum(AGENCY_CLIENT_ACTIONS) });
+export const agencyClientActionSchema = z
+  .object({
+    action: z.enum(AGENCY_CLIENT_ACTIONS),
+    // Solo al pausar o archivar: `true` oculta el sitio público del cliente (reversible), `false` lo deja visible,
+    // ausente no cambia lo que ya había. Reanudar, desarchivar y soltar siempre lo vuelven a mostrar.
+    hidePublicSite: z.boolean().optional(),
+  })
+  .refine((value) => value.hidePublicSite === undefined || value.action === "pause" || value.action === "archive", {
+    message: "Ocultar el sitio público solo se elige al pausar o archivar.",
+    path: ["hidePublicSite"],
+  });
 export type AgencyClientActionDto = z.infer<typeof agencyClientActionSchema>;
 
 export const acceptOwnerInvitationSchema = z.object({ token: z.string().trim().min(20).max(200) });

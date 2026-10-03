@@ -1,5 +1,6 @@
 import { Global, Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module.js";
+import { PublicSitesModule } from "../public-sites/public-sites.module.js";
 import { AgencyAccessService } from "./agency-access.service.js";
 import { AgencyInvitationsController, AgencyLinkController } from "./agency-link.controller.js";
 import { AgencyController } from "./agency.controller.js";
@@ -9,8 +10,8 @@ import { AgencyService } from "./agency.service.js";
 // importar este módulo (y arrastrar sus controladores) en cada lugar donde se usa.
 @Global()
 @Module({
-  // `AuthModule` aporta el adaptador de correo (invitaciones y avisos).
-  imports: [AuthModule],
+  // `AuthModule` aporta el adaptador de correo (invitaciones y avisos); `PublicSitesModule`, el aviso a apps/web al ocultar o mostrar un sitio.
+  imports: [AuthModule, PublicSitesModule],
   controllers: [AgencyController, AgencyLinkController, AgencyInvitationsController],
   providers: [AgencyService, AgencyAccessService],
   exports: [AgencyService, AgencyAccessService],

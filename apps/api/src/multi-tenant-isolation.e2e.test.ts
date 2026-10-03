@@ -2286,4 +2286,59 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("F9.3 Agencia y acceso delegado: aislamiento estricto (ADR-002, ADR-028 §2)", () => {
+    it("ni la agencia ni un tercero cruzan a otra organización; la solicitud sin aceptar no da acceso", async () => {
+      const before = await prisma.organization.findUniqueOrThrow({ where: { id: orgA.id }, select: { planId: true, kind: true } });
+      await assignRoomyPlan(prisma, orgA.id);
+      const base = `/api/v1/organizations/${orgA.id}/agency`;
+      const slugB = (await prisma.organization.findUniqueOrThrow({ where: { id: orgB.id }, select: { slug: true } })).slug;
+      let clientOrgId: string | undefined;
+      try {
+        await orgA.ownerAgent.post(`${base}/enable`).set(CSRF_HEADERS).expect(200);
+        const created = await orgA.ownerAgent
+          .post(`${base}/clients`)
+          .set(CSRF_HEADERS)
+          .send({ name: "Cliente aislado", slug: `iso-f93-${randomUUID().slice(0, 8)}`, ownerEmail: uniqueEmail() })
+          .expect(201);
+        clientOrgId = created.body.clientOrganizationId as string;
+        const relationId = created.body.id as string;
+
+        // 1. El propietario de B (otra organización) no ve ni toca la agencia de A ni a sus clientes.
+        await orgB.ownerAgent.get(base).expect(403);
+        await orgB.ownerAgent.get(`${base}/clients`).expect(403);
+        await orgB.ownerAgent.post(`${base}/enable`).set(CSRF_HEADERS).expect(403);
+        await orgB.ownerAgent.post(`${base}/clients/${relationId}/actions`).set(CSRF_HEADERS).send({ action: "release" }).expect(403);
+        await orgB.ownerAgent.get(`/api/v1/organizations/${clientOrgId}`).expect(403);
+        await orgB.ownerAgent.get(`/api/v1/organizations/${clientOrgId}/agency-link`).expect(403);
+        await orgB.ownerAgent.post(`/api/v1/organizations/${clientOrgId}/agency-link/accept`).set(CSRF_HEADERS).expect(403);
+        await orgB.ownerAgent.delete(`/api/v1/organizations/${clientOrgId}/agency-link`).set(CSRF_HEADERS).expect(403);
+
+        // 2. La agencia A no entra a B por ser agencia: B no es su cliente.
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}`).expect(403);
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites`).expect(403);
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/agency-link`).expect(403);
+
+        // 3. Pedir acceso a B: con un correo que no es el de su propietario responde igual que un negocio inexistente.
+        const wrong = await orgA.ownerAgent.post(`${base}/clients/link`).set(CSRF_HEADERS).send({ clientSlug: slugB, ownerEmail: uniqueEmail() }).expect(404);
+        const missing = await orgA.ownerAgent
+          .post(`${base}/clients/link`)
+          .set(CSRF_HEADERS)
+          .send({ clientSlug: "no-existe-f93-iso", ownerEmail: orgB.ownerEmail })
+          .expect(404);
+        expect(wrong.body.message).toBe(missing.body.message);
+
+        // 4. Con el correo correcto la solicitud queda pendiente: sin aceptar no hay acceso (ni lectura).
+        await orgA.ownerAgent.post(`${base}/clients/link`).set(CSRF_HEADERS).send({ clientSlug: slugB, ownerEmail: orgB.ownerEmail }).expect(201);
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}`).expect(403);
+        await orgA.ownerAgent.get(`/api/v1/organizations/${orgB.id}/sites`).expect(403);
+        const myOrgs = (await orgA.ownerAgent.get("/api/v1/organizations").expect(200)).body as Array<{ id: string }>;
+        expect(myOrgs.map((org) => org.id)).not.toContain(orgB.id);
+      } finally {
+        await prisma.agencyClient.deleteMany({ where: { agencyOrganizationId: orgA.id } });
+        if (clientOrgId) await prisma.organization.deleteMany({ where: { id: clientOrgId } });
+        await prisma.organization.update({ where: { id: orgA.id }, data: { planId: before.planId, kind: before.kind } });
+      }
+    });
+  });
+
 });

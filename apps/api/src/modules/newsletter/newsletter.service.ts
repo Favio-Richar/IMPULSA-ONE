@@ -199,7 +199,7 @@ export class NewsletterService {
   private async rowOrThrow(token: string) {
     if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) throw new NotFoundException(CONFIRMATION_NOT_FOUND);
     const row = await this.prisma.newsletterConfirmation.findFirst({
-      where: { tokenHash: hashToken(token), organization: { status: "ACTIVE" } },
+      where: { tokenHash: hashToken(token), ...ACTIVE_ORGANIZATION },
       include: { site: { select: { name: true } }, organization: { select: { name: true } } },
     });
     if (!row) throw new NotFoundException(CONFIRMATION_NOT_FOUND);

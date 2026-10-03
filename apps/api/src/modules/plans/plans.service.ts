@@ -1,6 +1,6 @@
 import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
 import type { OrganizationPlanResponse, PlanResponse, PlanUsageResponse } from "@impulza/contracts";
-import { MediaStatus, MembershipStatus, type Plan, type Prisma, type PrismaClient, ProductFileStatus, SiteStatus, SubscriptionStatus } from "@impulza/database";
+import { AgencyClientStatus, MediaStatus, MembershipSource, MembershipStatus, type Plan, type Prisma, type PrismaClient, ProductFileStatus, SiteStatus, SubscriptionStatus } from "@impulza/database";
 import { DEFAULT_PLAN_CODE, type EnforcedLimitKey, planLimitsSchema } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
@@ -149,18 +149,20 @@ export class PlansService {
    * aceptan o se revocan).
    */
   async usage(organizationId: string, db: Db = this.prisma): Promise<PlanUsageResponse> {
-    const [sites, forms, contacts, shortLinks, qrCodes, members] = await Promise.all([
+    const [sites, forms, contacts, shortLinks, qrCodes, members, clients] = await Promise.all([
       db.site.count({ where: { organizationId, status: { not: SiteStatus.ARCHIVED } } }),
       db.form.count({ where: { site: { organizationId } } }),
       db.contact.count({ where: { organizationId } }),
       db.shortLink.count({ where: { organizationId } }),
       db.qrCode.count({ where: { organizationId } }),
       db.membership.count({
-        where: { organizationId, status: { in: [MembershipStatus.ACTIVE, MembershipStatus.INVITED] } },
+        // Las membresías delegadas de una agencia (F9.3) no ocupan lugares del equipo del cliente.
+        where: { organizationId, source: MembershipSource.DIRECT, status: { in: [MembershipStatus.ACTIVE, MembershipStatus.INVITED] } },
       }),
+      db.agencyClient.count({ where: { agencyOrganizationId: organizationId, status: { not: AgencyClientStatus.ENDED } } }),
     ]);
     const storageBytes = await this.storageBytesUsed(organizationId, db);
-    return { sites, forms, contacts, shortLinks, qrCodes, members, storageMb: Math.ceil(storageBytes / BYTES_PER_MB) };
+    return { sites, forms, contacts, shortLinks, qrCodes, members, clients, storageMb: Math.ceil(storageBytes / BYTES_PER_MB) };
   }
 
   /**
@@ -230,8 +232,10 @@ export class PlansService {
         return db.qrCode.count({ where: { organizationId } });
       case "members":
         return db.membership.count({
-          where: { organizationId, status: { in: [MembershipStatus.ACTIVE, MembershipStatus.INVITED] } },
+          where: { organizationId, source: MembershipSource.DIRECT, status: { in: [MembershipStatus.ACTIVE, MembershipStatus.INVITED] } },
         });
+      case "clients":
+        return db.agencyClient.count({ where: { agencyOrganizationId: organizationId, status: { not: AgencyClientStatus.ENDED } } });
     }
   }
 

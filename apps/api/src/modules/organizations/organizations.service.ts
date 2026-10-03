@@ -6,11 +6,16 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import {
+  AgencyClientStatus,
+  MembershipSource,
   MembershipStatus,
+  OrganizationKind,
   type Organization,
   type PrismaClient,
   type User,
 } from "@impulza/database";
+import type { MyOrganizationResponse } from "@impulza/contracts";
+import { delegatedAccessVerdict } from "@impulza/validation";
 import type { EmailAdapter } from "@impulza/auth";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
@@ -19,6 +24,22 @@ import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import type { AssignableRole } from "./assignable-roles.js";
 import type { MembershipWithRole } from "./request-with-membership.js";
 import { PlansService } from "../plans/plans.service.js";
+import { AgencyAccessService } from "../agency/agency-access.service.js";
+
+function toOrganizationResponse(organization: Organization): Omit<MyOrganizationResponse, "access"> {
+  return {
+    id: organization.id,
+    name: organization.name,
+    slug: organization.slug,
+    planId: organization.planId,
+    status: organization.status,
+    kind: organization.kind,
+    blockedAt: organization.blockedAt?.toISOString() ?? null,
+    blockedReason: organization.blockedReason,
+    createdAt: organization.createdAt.toISOString(),
+    updatedAt: organization.updatedAt.toISOString(),
+  };
+}
 
 @Injectable()
 export class OrganizationsService {
@@ -27,6 +48,7 @@ export class OrganizationsService {
     @Inject(EMAIL_ADAPTER) private readonly emailAdapter: EmailAdapter,
     private readonly auditService: AuditService,
     private readonly plansService: PlansService,
+    private readonly agencyAccess: AgencyAccessService,
   ) {}
 
   async createOrganization(owner: User, name: string, slug: string): Promise<Organization> {
@@ -64,14 +86,39 @@ export class OrganizationsService {
     return organization;
   }
 
-  async listMyOrganizations(userId: string): Promise<Organization[]> {
+  /**
+   * Mis organizaciones, con cómo llegué a cada una (F9.3): propia, o delegada por una agencia (con su nombre y si
+   * está en solo lectura). Una delegada que el guard negaría (archivada, sin aceptar) no se ofrece.
+   */
+  async listMyOrganizations(userId: string): Promise<MyOrganizationResponse[]> {
     const memberships = await this.prisma.membership.findMany({
       where: { userId, status: MembershipStatus.ACTIVE },
-      include: { organization: true },
+      include: { organization: true, agencyClient: { include: { agencyOrganization: { select: { id: true, name: true } } } } },
       orderBy: { acceptedAt: "asc" },
     });
 
-    return memberships.map((membership) => membership.organization);
+    const result: MyOrganizationResponse[] = [];
+    for (const membership of memberships) {
+      const relation = membership.agencyClient;
+      if (membership.source === MembershipSource.AGENCY) {
+        if (!relation) continue;
+        const read = delegatedAccessVerdict({ status: relation.status, agencyCreated: relation.agencyCreated, method: "GET", path: "/organizations/x" });
+        if (!read.allowed) continue;
+      }
+      result.push({
+        ...toOrganizationResponse(membership.organization),
+        access:
+          membership.source === MembershipSource.AGENCY && relation
+            ? {
+                delegated: true,
+                agencyOrganizationId: relation.agencyOrganization.id,
+                agencyName: relation.agencyOrganization.name,
+                readOnly: relation.status === AgencyClientStatus.PAUSED,
+              }
+            : { delegated: false, agencyOrganizationId: null, agencyName: null, readOnly: false },
+      });
+    }
+    return result;
   }
 
   async getOrganization(organizationId: string): Promise<Organization> {
@@ -79,7 +126,7 @@ export class OrganizationsService {
   }
 
   async listMembers(organizationId: string): Promise<
-    Array<{ membershipId: string; userId: string; email: string; role: string; status: MembershipStatus }>
+    Array<{ membershipId: string; userId: string; email: string; role: string; status: MembershipStatus; source: MembershipSource }>
   > {
     const memberships = await this.prisma.membership.findMany({
       where: { organizationId, status: { not: MembershipStatus.REMOVED } },
@@ -93,6 +140,7 @@ export class OrganizationsService {
       email: membership.user.email,
       role: membership.role.name,
       status: membership.status,
+      source: membership.source,
     }));
   }
 
@@ -125,7 +173,7 @@ export class OrganizationsService {
       return existingMembership
         ? tx.membership.update({
             where: { id: existingMembership.id },
-            data: { status: MembershipStatus.INVITED, roleId: role.id, invitedAt: new Date(), acceptedAt: null },
+            data: { status: MembershipStatus.INVITED, roleId: role.id, invitedAt: new Date(), acceptedAt: null, source: MembershipSource.DIRECT, agencyClientId: null },
           })
         : tx.membership.create({
             data: { userId: invitee.id, organizationId, roleId: role.id, status: MembershipStatus.INVITED },
@@ -168,6 +216,22 @@ export class OrganizationsService {
       where: { id: membershipId },
       data: { status: MembershipStatus.ACTIVE, acceptedAt: new Date() },
     });
+    await this.syncIfAgency(membership.organizationId, userId);
+  }
+
+  /** Si la organización es una agencia, el acceso de esa persona a los clientes se recalcula al instante (F9.3). */
+  private async syncIfAgency(organizationId: string, userId: string): Promise<void> {
+    const organization = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { kind: true } });
+    if (organization?.kind === OrganizationKind.AGENCY) {
+      await this.agencyAccess.syncAgencyMember(organizationId, userId);
+    }
+  }
+
+  /** El acceso de alguien que viene de una agencia lo gestiona la relación con la agencia, no el equipo del negocio. */
+  private assertNotDelegated(target: MembershipWithRole): void {
+    if (target.source === MembershipSource.AGENCY) {
+      throw new ConflictException("Esta persona tiene acceso a través de una agencia: su acceso se gestiona en Configuración › Agencia.");
+    }
   }
 
   async changeRole(
@@ -180,9 +244,11 @@ export class OrganizationsService {
     if (target.role.name === "OWNER") {
       throw new ForbiddenException("El rol de OWNER no se cambia por esta vía.");
     }
+    this.assertNotDelegated(target);
 
     const role = await this.prisma.role.findUniqueOrThrow({ where: { name: roleName } });
     await this.prisma.membership.update({ where: { id: target.id }, data: { roleId: role.id } });
+    await this.syncIfAgency(organizationId, target.userId);
 
     await this.auditService.record({
       organizationId,
@@ -199,11 +265,13 @@ export class OrganizationsService {
     if (target.role.name === "OWNER") {
       throw new ForbiddenException("No se puede remover al OWNER de la organización.");
     }
+    this.assertNotDelegated(target);
 
     await this.prisma.membership.update({
       where: { id: target.id },
       data: { status: MembershipStatus.REMOVED },
     });
+    await this.syncIfAgency(organizationId, target.userId);
 
     await this.auditService.record({
       organizationId,

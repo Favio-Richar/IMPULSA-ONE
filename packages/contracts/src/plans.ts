@@ -20,6 +20,7 @@ export const planLimitsResponse = z.object({
   emailsPerHour: limitValue,
   aiRequestsPerMonth: limitValue,
   abTestsRunning: limitValue,
+  clients: limitValue,
 });
 
 export const planResponse = z.object({
@@ -42,6 +43,8 @@ export const planUsageResponse = z.object({
   shortLinks: z.number().int(),
   qrCodes: z.number().int(),
   members: z.number().int(),
+  /** Clientes de una agencia con relación no terminada (F9.3). */
+  clients: z.number().int(),
   /** Almacenamiento de medios usado, en MB redondeados hacia arriba (PP1, ADR-006 §6). */
   storageMb: z.number().int(),
 });

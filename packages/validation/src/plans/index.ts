@@ -31,6 +31,9 @@ export const planLimitsSchema = z.object({
   /** Pruebas A/B en curso a la vez en toda la organización (F6.5). Un plan guardado antes de F6.5
    *  no lo tiene: vale el mínimo (`DEFAULT_AB_TESTS_RUNNING`) hasta que el equipo lo ajuste. */
   abTestsRunning: limitValue.default(1),
+  /** Clientes que una agencia puede administrar a la vez (F9.3, ADR-028). `0` = el plan no incluye modo agencia
+   *  (también el valor de un plan guardado antes de F9.3); `null` = sin límite. */
+  clients: limitValue.default(0),
 });
 
 export const DEFAULT_AB_TESTS_RUNNING = 1;
@@ -51,6 +54,7 @@ export const ENFORCED_LIMIT_KEYS = [
   "shortLinks",
   "qrCodes",
   "members",
+  "clients",
 ] as const satisfies readonly PlanLimitKey[];
 export type EnforcedLimitKey = (typeof ENFORCED_LIMIT_KEYS)[number];
 
@@ -95,6 +99,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       emailsPerHour: 50,
       aiRequestsPerMonth: 20,
       abTestsRunning: 1,
+      clients: 0,
     },
   },
   {
@@ -117,6 +122,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       emailsPerHour: 300,
       aiRequestsPerMonth: 300,
       abTestsRunning: 3,
+      clients: 0,
     },
   },
   {
@@ -139,6 +145,7 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       emailsPerHour: 1_000,
       aiRequestsPerMonth: 1_500,
       abTestsRunning: 10,
+      clients: 0,
     },
   },
   {
@@ -159,8 +166,11 @@ export const PLAN_CATALOG: readonly PlanCatalogEntry[] = [
       analyticsHistoryDays: 730,
       storageMb: 50_000,
       emailsPerHour: 5_000,
+      // PROVISORIO (decisión #4): el cupo de clientes del plan de agencia lo ajusta el propietario desde la
+      // superadministración sin desplegar.
       aiRequestsPerMonth: 5_000,
       abTestsRunning: 30,
+      clients: 25,
     },
   },
 ];

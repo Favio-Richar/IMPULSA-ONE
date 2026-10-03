@@ -8,6 +8,7 @@ const KNOWN_ROLE_NAMES = [
   "ANALYST",
   "SUPPORT",
   "AGENCY_MANAGER",
+  "AGENCY_DELEGATE",
   "SUPER_ADMIN",
 ];
 
@@ -46,5 +47,32 @@ describe("catálogo de permisos (F1.6)", () => {
     // Sin esto, un permiso declarado pero no catalogado nunca se sembraría y el guard siempre
     // denegaría — un fallo silencioso difícil de rastrear desde el 403.
     expect(new Set(PERMISSION_CATALOG.map((p) => p.key))).toEqual(new Set(Object.values(PERMISSIONS)));
+  });
+
+  // F9.3 (ADR-028 §2): lo que un cliente nunca delega a su agencia.
+  it("AGENCY_DELEGATE no puede gestionar el equipo del cliente, ni cobros, ni su cuenta de Mercado Pago, ni borrar contactos, ni webhooks", () => {
+    const delegate = ROLE_PERMISSIONS.AGENCY_DELEGATE!;
+    for (const forbidden of [
+      PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
+      PERMISSIONS.ORGANIZATION_MEMBERS_UPDATE_ROLE,
+      PERMISSIONS.ORGANIZATION_MEMBERS_REMOVE,
+      PERMISSIONS.BILLING_MANAGE,
+      PERMISSIONS.PAYMENTS_CONNECT,
+      PERMISSIONS.PAYMENTS_REFUND,
+      PERMISSIONS.CONTACT_DELETE,
+      PERMISSIONS.WEBHOOKS_MANAGE,
+      PERMISSIONS.AGENCY_MANAGE,
+      PERMISSIONS.AGENCY_LINK_MANAGE,
+    ]) {
+      expect(delegate).not.toContain(forbidden);
+    }
+    expect(delegate).toContain(PERMISSIONS.PAGE_MANAGE); // sí hace el trabajo de contenido
+  });
+
+  it("solo el propietario puede aceptar, rechazar o revocar a una agencia", () => {
+    const withLink = Object.entries(ROLE_PERMISSIONS)
+      .filter(([, keys]) => keys.includes(PERMISSIONS.AGENCY_LINK_MANAGE))
+      .map(([role]) => role);
+    expect(withLink).toEqual(["OWNER"]);
   });
 });

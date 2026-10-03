@@ -13,6 +13,34 @@ datasource db {
 
 // Sesión del panel (`USER`) o de superadministración (`ADMIN`, ADR-005): cada guard acepta solo la
 // suya, así una cookie no vale en la otra puerta aunque alguien copie el identificador.
+// F9.3 (ADR-028): una organización es un negocio o una agencia que administra a otras.
+enum OrganizationKind {
+  BUSINESS
+  AGENCY
+}
+
+// F9.3 (ADR-028 §2): estado de la relación entre una agencia y la organización de un cliente.
+// ENDED es terminal (revocada, soltada o rechazada): la historia se conserva, el acceso no.
+enum AgencyClientStatus {
+  INVITED
+  ACTIVE
+  PAUSED
+  ARCHIVED
+  TRANSFERRING
+  ENDED
+}
+
+enum AgencyBillingMode {
+  CLIENT_PAYS
+  AGENCY_PAYS
+}
+
+// Una membresía es directa (la persona es del negocio) o delegada (viene de una agencia, F9.3).
+enum MembershipSource {
+  DIRECT
+  AGENCY
+}
+
 enum SessionScope {
   USER
   ADMIN
@@ -142,6 +170,7 @@ model User {
   billingCheckouts     BillingCheckout[]
   legalAcceptances     LegalAcceptance[]
   platformBrandingsUpdated PlatformBranding[] @relation("PlatformBrandingAdmin")
+  agencyClientRequests AgencyClient[] @relation("AgencyClientRequestedBy")
 
   @@map("users")
 }
@@ -183,6 +212,8 @@ model Organization {
   planId        String?            @map("plan_id") @db.Uuid
   // Bloqueo manual desde superadministración (ADR-005 §6). Motivo obligatorio y auditado.
   status        OrganizationStatus @default(ACTIVE)
+  // F9.3 (ADR-028): BUSINESS por defecto; AGENCY exige un plan con cupo de clientes.
+  kind          OrganizationKind   @default(BUSINESS)
   blockedAt     DateTime?          @map("blocked_at") @db.Timestamptz(6)
   blockedReason String?            @map("blocked_reason")
   createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -235,6 +266,9 @@ model Organization {
   emailSequenceSends  EmailSequenceSend[]
   googleCalendarConnections GoogleCalendarConnection[]
   brandProfile              BrandProfile?
+  // F9.3: como agencia, sus clientes; como cliente, la agencia que tiene (o tuvo) acceso.
+  agencyClients             AgencyClient[]     @relation("AgencyOfClients")
+  agencyLinks               AgencyClient[]     @relation("ClientOfAgency")
 
   @@map("organizations")
 }
@@ -247,14 +281,19 @@ model Membership {
   status         MembershipStatus @default(INVITED)
   invitedAt      DateTime         @default(now()) @map("invited_at") @db.Timestamptz(6)
   acceptedAt     DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  // F9.3 (ADR-028 §2): una membresía delegada nace de una relación de agencia y desaparece con ella.
+  source         MembershipSource @default(DIRECT)
+  agencyClientId String?          @map("agency_client_id") @db.Uuid
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   role         Role         @relation(fields: [roleId], references: [id])
+  agencyClient AgencyClient? @relation(fields: [agencyClientId], references: [id], onDelete: Cascade)
 
   // Un usuario tiene una sola membresía (y por lo tanto un solo rol) por organización.
   @@unique([userId, organizationId])
   @@index([organizationId])
+  @@index([agencyClientId])
   @@map("memberships")
 }
 
@@ -400,6 +439,46 @@ model FeatureFlag {
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("feature_flags")
+}
+
+// F9.3 (ADR-028 §2): relación entre una agencia y la organización de un cliente. La organización del
+// cliente sigue siendo la unidad de aislamiento (ADR-002): la agencia NO contiene sus datos, accede a ellos
+// con membresías delegadas (`Membership.source = AGENCY`) que nacen y mueren con esta fila.
+// Una organización cliente tiene como máximo UNA relación no terminada a la vez (índice parcial en la
+// migración: Prisma no sabe expresarlo).
+model AgencyClient {
+  id                   String             @id @default(uuid()) @db.Uuid
+  agencyOrganizationId String             @map("agency_organization_id") @db.Uuid
+  clientOrganizationId String             @map("client_organization_id") @db.Uuid
+  status               AgencyClientStatus @default(INVITED)
+  billingMode          AgencyBillingMode  @default(CLIENT_PAYS) @map("billing_mode")
+  // true = la agencia creó la organización del cliente (trabaja desde el primer día, mientras el propietario
+  // acepta su invitación). false = solicitud sobre una organización que ya existía: sin acceso hasta que el
+  // propietario acepte (consentimiento del cliente).
+  agencyCreated        Boolean            @map("agency_created")
+  requestedById        String?            @map("requested_by_id") @db.Uuid
+  // Invitación al propietario del cliente (solo en altas nuevas): hash del token, nunca el token.
+  ownerInviteEmail     String?            @map("owner_invite_email")
+  ownerInviteTokenHash String?            @unique @map("owner_invite_token_hash")
+  ownerInviteExpiresAt DateTime?          @map("owner_invite_expires_at") @db.Timestamptz(6)
+  ownerAcceptedAt      DateTime?          @map("owner_accepted_at") @db.Timestamptz(6)
+  acceptedAt           DateTime?          @map("accepted_at") @db.Timestamptz(6)
+  pausedAt             DateTime?          @map("paused_at") @db.Timestamptz(6)
+  archivedAt           DateTime?          @map("archived_at") @db.Timestamptz(6)
+  endedAt              DateTime?          @map("ended_at") @db.Timestamptz(6)
+  // Por qué terminó: `revoked_by_client`, `released_by_agency` o `rejected_by_client`.
+  endedReason          String?            @map("ended_reason")
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  agencyOrganization Organization @relation("AgencyOfClients", fields: [agencyOrganizationId], references: [id], onDelete: Cascade)
+  clientOrganization Organization @relation("ClientOfAgency", fields: [clientOrganizationId], references: [id], onDelete: Cascade)
+  requestedBy        User?        @relation("AgencyClientRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  memberships        Membership[]
+
+  @@index([agencyOrganizationId, status])
+  @@index([clientOrganizationId])
+  @@map("agency_clients")
 }
 
 // F9.1 (ADR-028 §4): Marca de la plataforma configurable por superadministración (singleton).

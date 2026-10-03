@@ -24,6 +24,7 @@ const LIMIT_FIELDS: Array<{ key: keyof PlanLimitsResponse; label: string; unit?:
   { key: "emailsPerHour", label: "Correos de campañas por hora" },
   { key: "aiRequestsPerMonth", label: "Solicitudes al asistente de IA por mes" },
   { key: "abTestsRunning", label: "Pruebas A/B en curso a la vez" },
+  { key: "clients", label: "Clientes del modo agencia (0 = no incluye modo agencia)" },
 ];
 
 export default function PlansPage(): React.JSX.Element {

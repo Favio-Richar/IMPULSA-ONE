@@ -5,7 +5,30 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-03) — F9.2 hecha y fusionada a master; siguiente: F9.3 (Antigravity)
+## 0. RETOMAR AQUÍ (2026-10-03, noche) — F9.3 EN PROGRESO en la rama `fase-9/f9-3-modelo-agencia` (no está en master)
+
+**Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia.
+
+**F9.3 — hecho hasta ahora (sin commit en master):** migraciones `20261003100000_f93_agency` y `20261003100100_f93_agency_plan_clients_limit`
+(reversibles); permisos `agency.manage`/`agency.link.manage` y rol delegado `AGENCY_DELEGATE`; límite de plan `clients`; módulo
+`apps/api/src/modules/agency` (relación, membresías delegadas, lado agencia, lado negocio, invitación al propietario); la puerta única
+`OrganizationMembershipGuard` aplica `delegatedAccessVerdict` (reglas puras en `packages/validation/src/agency`); auditoría con `delegatedBy`;
+lista de organizaciones con `access`; panel: `/agencia`, `/configuracion/agencia`, `/invitaciones/agencia`, selector con grupo de clientes y aviso
+permanente. **Pruebas:** validación 23, e2e de la API `agency.e2e.test.ts` 38/38; typecheck de todo el monorepo y lint del panel en verde.
+
+**Falta para cerrar F9.3 (en este orden):**
+1. Playwright `packages/e2e/tests/agencia.spec.ts` (móvil y escritorio, capturas `docs/design/capturas/f93/`): crear cliente, entrar, pausar, revocar. El plan de la
+   organización de prueba se cambia con `PrismaClient` como hacen `campanas.spec.ts` y `cobros.spec.ts`.
+2. Suite completa (`pnpm turbo run typecheck lint test --continue` a un log), `next build` de dashboard, admin y web, y OpenAPI (`openapi:generate`).
+3. Prueba de paridad contracts↔validation de los límites del plan (se agregó `clients` en los dos).
+4. Casos en `multi-tenant-isolation.e2e.test.ts`; prueba contra código roto (romper `delegatedAccessVerdict` y el sync de membresías).
+5. Docs: ERD, ARCHITECTURE, trazabilidad, BACKLOG_FASE_9 (F9.3 Hecho), ADR-028 (nota: estado `ENDED` y `agencyCreated` agregados).
+Después: F9.4 (panel de agencia) en adelante.
+
+**Trampas de esta sesión:** tras cambiar permisos/planes hay que correr `db:migrate:deploy`, `db:generate`, `db:seed` y `db:test:prepare`, y reconstruir
+`validation`, `contracts`, `database` y `auth`. Las pruebas lentas de la API fallan por tiempo solo cuando se corren muchas a la vez.
+
+### (anterior) F9.2 hecha y fusionada a master; siguiente era F9.3
 
 **Revisión de Claude de F9.2 (2026-10-03): NO se aprobó tal cual; Claude corrigió los defectos en la misma rama.**
 Encontrados contra la API real: (1) **`resolveBrand` no se usaba en ninguna parte** (el criterio 4a/4b exige páginas nuevas y correos de la

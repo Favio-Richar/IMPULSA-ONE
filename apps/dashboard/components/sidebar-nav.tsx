@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { CalendarCheck, ChartColumn, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Palette, Settings, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
+import { Building2, CalendarCheck, ChartColumn, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Palette, Settings, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -37,15 +37,43 @@ const NAV_ITEMS = [
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }): React.JSX.Element {
+/**
+ * Lo que un negocio nunca delega a su agencia (ADR-028 §2): su cuenta de cobro, su suscripción y su equipo. El servidor
+ * ya lo niega (`AGENCY_LIMIT`); esto evita ofrecer pantallas que siempre fallarían.
+ */
+const HIDDEN_WHEN_DELEGATED = new Set(["/cobros", "/plan", "/configuracion", "/configuracion/agencia"]);
+
+export function SidebarNav({
+  onNavigate,
+  kind,
+  delegated = false,
+}: {
+  onNavigate?: () => void;
+  /** Tipo de la organización activa: una agencia administra clientes en `/agencia`; un negocio ve su agencia en Configuración. */
+  kind?: "BUSINESS" | "AGENCY";
+  /** Se está dentro del negocio de un cliente a través de una agencia. */
+  delegated?: boolean;
+}): React.JSX.Element {
   const pathname = usePathname();
+  const items = [
+    ...NAV_ITEMS,
+    kind === "AGENCY"
+      ? { href: "/agencia", label: "Agencia", icon: Building2 }
+      : { href: "/configuracion/agencia", label: "Agencia", icon: Building2 },
+  ].filter((item) => !(delegated && HIDDEN_WHEN_DELEGATED.has(item.href)));
 
   return (
     <nav className="flex flex-col gap-1 p-3" aria-label="Navegación principal">
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         // "/" solo coincide exacto (si no, "Inicio" quedaría activo en cualquier ruta); el resto
         // usa prefijo para que una ruta anidada (p. ej. /sitios/:siteId) siga marcando su sección.
-        const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+        // `/configuracion` no debe quedar activo dentro de `/configuracion/marca` ni `/configuracion/agencia`.
+        const isActive =
+          item.href === "/"
+            ? pathname === "/"
+            : item.href === "/configuracion"
+              ? pathname === "/configuracion"
+              : pathname.startsWith(item.href);
         const Icon = item.icon;
         return (
           <Link

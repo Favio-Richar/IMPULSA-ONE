@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { organizationAccessResponse, organizationKind } from "./agency.js";
 import { isoDateTime, uuid } from "./primitives.js";
 
 export const membershipStatus = z.enum(["INVITED", "ACTIVE", "SUSPENDED", "REMOVED"]);
@@ -12,6 +13,8 @@ export const organizationResponse = z.object({
   slug: z.string(),
   planId: uuid.nullable(),
   status: organizationStatus,
+  /** BUSINESS o AGENCY (F9.3, ADR-028). */
+  kind: organizationKind,
   blockedAt: isoDateTime.nullable(),
   /** Se muestra a la propia organización en el aviso del panel: sabe por qué está bloqueada. */
   blockedReason: z.string().nullable(),
@@ -30,11 +33,17 @@ export const memberResponse = z.object({
   email: z.email(),
   role: z.string(),
   status: membershipStatus,
+  /** DIRECT = del equipo del negocio; AGENCY = acceso delegado por una agencia (F9.3). */
+  source: z.enum(["DIRECT", "AGENCY"]),
 });
 
 export const invitationResponse = z.object({
   membershipId: uuid,
 });
+
+/** Una organización de mi lista, con cómo llegué a ella (F9.3): propia o delegada por una agencia. */
+export const myOrganizationResponse = organizationResponse.extend({ access: organizationAccessResponse });
+export type MyOrganizationResponse = z.infer<typeof myOrganizationResponse>;
 
 export type OrganizationResponse = z.infer<typeof organizationResponse>;
 export type MemberResponse = z.infer<typeof memberResponse>;

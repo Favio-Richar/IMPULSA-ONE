@@ -39,6 +39,7 @@ const COMPARATOR_ROWS: Array<{ key: keyof PlanLimitsResponse; label: string; uni
   { key: "emailsPerHour", label: "Correos de campañas por hora" },
   { key: "aiRequestsPerMonth", label: "Solicitudes al asistente de IA por mes" },
   { key: "abTestsRunning", label: "Pruebas A/B en curso a la vez" },
+  { key: "clients", label: "Clientes del modo agencia (0 = no incluido)" },
 ];
 
 const SOURCE_LABELS: Record<OrganizationPlanResponse["source"], string> = {

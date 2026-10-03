@@ -26,6 +26,9 @@ export const PERMISSIONS = {
   PAYMENTS_CONNECT: "payments.connect",
   PAYMENTS_REFUND: "payments.refund",
   WEBHOOKS_MANAGE: "webhooks.manage",
+  // F9.3 (ADR-028): modo agencia.
+  AGENCY_MANAGE: "agency.manage",
+  AGENCY_LINK_MANAGE: "agency.link.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -127,6 +130,14 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.WEBHOOKS_MANAGE,
     description: "Ver y administrar los webhooks salientes (destinos, secretos, pruebas y entregas) de la organización (F7.2).",
   },
+  {
+    key: PERMISSIONS.AGENCY_MANAGE,
+    description: "En una agencia: dar de alta, vincular, pausar, archivar y soltar clientes, y ver su estado (F9.3, ADR-028).",
+  },
+  {
+    key: PERMISSIONS.AGENCY_LINK_MANAGE,
+    description: "En un negocio: aceptar o rechazar la solicitud de una agencia y revocar su acceso en cualquier momento (F9.3, ADR-028 §2). Solo el propietario.",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -166,6 +177,9 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.PAYMENTS_REFUND,
     // Los webhooks sacan datos de clientes hacia otros sistemas (F7.2, ADR-017): OWNER y ADMIN.
     PERMISSIONS.WEBHOOKS_MANAGE,
+    // El propietario decide qué agencia entra a su negocio y puede revocarla (F9.3, ADR-028 §2).
+    PERMISSIONS.AGENCY_LINK_MANAGE,
+    PERMISSIONS.AGENCY_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -189,6 +203,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     // Un envío masivo sale a nombre del negocio y no se puede deshacer (F5.6): solo OWNER/ADMIN.
     PERMISSIONS.CAMPAIGN_MANAGE,
     PERMISSIONS.WEBHOOKS_MANAGE,
+    PERMISSIONS.AGENCY_MANAGE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y
@@ -216,6 +231,29 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
   // Atender la agenda (marcar asistencia, cancelar, anotar una reserva) también es atención al
   // cliente (F5.3).
   SUPPORT: [PERMISSIONS.CONTACT_MANAGE, PERMISSIONS.BOOKING_MANAGE, PERMISSIONS.ORDER_MANAGE],
-  AGENCY_MANAGER: [],
+  // En la agencia: gestiona su cartera de clientes (F9.3).
+  AGENCY_MANAGER: [PERMISSIONS.AGENCY_MANAGE],
+  // Rol DELEGADO que una agencia tiene dentro de la organización de un cliente (F9.3, ADR-028 §2). Parte del
+  // de ADMIN, **sin** lo que el cliente nunca delega: gestionar su equipo (invitar, cambiar roles, remover),
+  // borrar contactos (derecho de cancelación, ADR-004) y los webhooks que sacan sus datos. Tampoco tiene cobros,
+  // plan ni cuenta de Mercado Pago (permisos que ADMIN ya no tiene). Los límites duros que no son un permiso
+  // (exportar contactos, cuentas de cobro, equipo) los aplica `AgencyAccessPolicy` en la puerta de entrada.
+  AGENCY_DELEGATE: [
+    PERMISSIONS.SITE_CREATE,
+    PERMISSIONS.SITE_UPDATE,
+    PERMISSIONS.SITE_ARCHIVE,
+    PERMISSIONS.PAGE_MANAGE,
+    PERMISSIONS.PAGE_DELETE,
+    PERMISSIONS.THEME_MANAGE,
+    PERMISSIONS.FORM_MANAGE,
+    PERMISSIONS.CONTACT_MANAGE,
+    PERMISSIONS.SHORTLINK_MANAGE,
+    PERMISSIONS.SUPPORT_VIEW_ALL,
+    PERMISSIONS.MEDIA_MANAGE,
+    PERMISSIONS.BOOKING_MANAGE,
+    PERMISSIONS.CATALOG_MANAGE,
+    PERMISSIONS.ORDER_MANAGE,
+    PERMISSIONS.CAMPAIGN_MANAGE,
+  ],
   SUPER_ADMIN: [],
 };

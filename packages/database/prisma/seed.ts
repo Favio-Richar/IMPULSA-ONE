@@ -19,6 +19,7 @@ const ROLES = [
   { name: "ANALYST", description: "Solo lectura de analítica y reportes." },
   { name: "SUPPORT", description: "Soporte al cliente con acceso limitado y auditado." },
   { name: "AGENCY_MANAGER", description: "Gestiona múltiples cuentas de cliente en modo agencia." },
+  { name: "AGENCY_DELEGATE", description: "Rol delegado de una agencia dentro de la organización de un cliente (F9.3, ADR-028 §2)." },
   { name: "SUPER_ADMIN", description: "Superadministración de la plataforma — rutas y guards aparte (ADR-002)." },
 ];
 

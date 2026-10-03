@@ -6,11 +6,13 @@ import { Menu, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BlockedOrganizationBanner } from "../../components/blocked-organization-banner";
+import { DelegatedAccessBanner } from "../../components/delegated-access-banner";
 import { OrgSwitcher } from "../../components/org-switcher";
 import { SidebarNav } from "../../components/sidebar-nav";
 import { ApiError } from "../../lib/api-client";
 import { logout } from "../../lib/api/auth";
 import { listMyOrganizations } from "../../lib/api/organizations";
+import { useActiveOrgStore } from "../../lib/active-org-store";
 import { useMe } from "../../lib/hooks/use-me";
 import { usePlatformBranding } from "../../lib/hooks/use-platform-branding";
 
@@ -19,6 +21,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const queryClient = useQueryClient();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  const activeOrganizationId = useActiveOrgStore((state) => state.activeOrganizationId);
   const meQuery = useMe();
   const brandingQuery = usePlatformBranding();
   const brandName = brandingQuery.data?.name ?? "Impulza One";
@@ -59,6 +62,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }
 
   const user = meQuery.data;
+  const activeOrganization = orgsQuery.data?.find((org) => org.id === activeOrganizationId);
 
   async function handleLogout(): Promise<void> {
     await logout();
@@ -77,7 +81,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             brandName
           )}
         </div>
-        <SidebarNav />
+        <SidebarNav kind={activeOrganization?.kind} delegated={activeOrganization?.access?.delegated ?? false} />
       </aside>
 
       {mobileNavOpen ? (
@@ -107,7 +111,11 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 <X className="size-4" />
               </Button>
             </div>
-            <SidebarNav onNavigate={() => setMobileNavOpen(false)} />
+            <SidebarNav
+              onNavigate={() => setMobileNavOpen(false)}
+              kind={activeOrganization?.kind}
+              delegated={activeOrganization?.access?.delegated ?? false}
+            />
           </aside>
         </div>
       ) : null}
@@ -139,6 +147,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         </header>
 
         {orgsQuery.data ? <BlockedOrganizationBanner organizations={orgsQuery.data} /> : null}
+        {orgsQuery.data ? <DelegatedAccessBanner organizations={orgsQuery.data} /> : null}
 
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>

@@ -4,6 +4,11 @@ import { useEffect } from "react";
 import { useActiveOrgStore } from "../lib/active-org-store";
 import type { Organization } from "../lib/api/organizations";
 
+/**
+ * Selector de organización activa. Las organizaciones a las que se entra a través de una agencia (F9.3,
+ * ADR-028 §2) van en su propio grupo, con el nombre de la agencia, para que nadie confunda «mi negocio» con
+ * «el negocio de un cliente».
+ */
 export function OrgSwitcher({ organizations }: { organizations: Organization[] }): React.JSX.Element | null {
   const activeOrganizationId = useActiveOrgStore((state) => state.activeOrganizationId);
   const setActiveOrganizationId = useActiveOrgStore((state) => state.setActiveOrganizationId);
@@ -20,6 +25,15 @@ export function OrgSwitcher({ organizations }: { organizations: Organization[] }
     return null;
   }
 
+  const own = organizations.filter((org) => !org.access?.delegated);
+  const delegated = organizations.filter((org) => org.access?.delegated);
+  const option = (org: Organization) => (
+    <option key={org.id} value={org.id}>
+      {org.name}
+      {org.access?.delegated ? ` — vía ${org.access.agencyName ?? "agencia"}${org.access.readOnly ? " (solo lectura)" : ""}` : ""}
+    </option>
+  );
+
   return (
     <label className="flex min-w-0 items-center gap-2 text-sm">
       <span className="sr-only">Organización activa</span>
@@ -28,11 +42,14 @@ export function OrgSwitcher({ organizations }: { organizations: Organization[] }
         value={activeOrganizationId ?? ""}
         onChange={(event) => setActiveOrganizationId(event.target.value)}
       >
-        {organizations.map((org) => (
-          <option key={org.id} value={org.id}>
-            {org.name}
-          </option>
-        ))}
+        {delegated.length > 0 ? (
+          <>
+            <optgroup label="Mis organizaciones">{own.map(option)}</optgroup>
+            <optgroup label="Clientes de agencias">{delegated.map(option)}</optgroup>
+          </>
+        ) : (
+          own.map(option)
+        )}
       </select>
     </label>
   );

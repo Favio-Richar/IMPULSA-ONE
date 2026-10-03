@@ -16,6 +16,7 @@ const LIMIT_MESSAGES: Record<PlanLimitKey, string> = {
   emailsPerHour: "Llegaste al máximo de correos por hora de tu plan.",
   aiRequestsPerMonth: "Llegaste al máximo de solicitudes al asistente de IA de este mes en tu plan.",
   abTestsRunning: "Llegaste al máximo de pruebas A/B en curso de tu plan. Termina una para empezar otra.",
+  clients: "Llegaste al máximo de clientes de tu plan de agencia. Suelta o archiva uno, o sube de plan, para sumar otro.",
 };
 
 /**

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { Prisma, PrismaClient } from "@impulza/database";
+import { MembershipSource, type Prisma, type PrismaClient } from "@impulza/database";
 import { PRISMA } from "../../database/prisma.module.js";
 
 export interface AuditEntry {
@@ -19,7 +19,30 @@ export interface AuditEntry {
 export class AuditService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
+  /**
+   * F9.3 (ADR-028 §2): si quien actúa entra a esta organización a través de una agencia, el registro lleva también
+   * la agencia y la relación — «toda acción delegada registra al actor real, la agencia y el cliente». Se hace acá,
+   * en el único lugar por donde pasa toda la auditoría, y no en cada servicio: ninguno puede olvidarlo.
+   * Nunca hace fallar el registro: sin el dato extra, la entrada igual se guarda.
+   */
+  private async withDelegation(entry: AuditEntry): Promise<Record<string, unknown> | undefined> {
+    if (!entry.organizationId || !entry.actorId) return entry.metadata;
+    try {
+      const membership = await this.prisma.membership.findUnique({
+        where: { userId_organizationId: { userId: entry.actorId, organizationId: entry.organizationId } },
+        select: { source: true, agencyClient: { select: { id: true, agencyOrganizationId: true } } },
+      });
+      if (membership?.source === MembershipSource.AGENCY && membership.agencyClient) {
+        return { ...entry.metadata, delegatedBy: { agencyOrganizationId: membership.agencyClient.agencyOrganizationId, agencyClientId: membership.agencyClient.id } };
+      }
+    } catch {
+      // se registra sin el dato de delegación
+    }
+    return entry.metadata;
+  }
+
   async record(entry: AuditEntry): Promise<void> {
+    const metadata = await this.withDelegation(entry);
     await this.prisma.auditLog.create({
       data: {
         organizationId: entry.organizationId ?? null,
@@ -27,7 +50,7 @@ export class AuditService {
         action: entry.action,
         targetType: entry.targetType,
         targetId: entry.targetId ?? null,
-        metadata: (entry.metadata as Prisma.InputJsonValue | undefined) ?? undefined,
+        metadata: (metadata as Prisma.InputJsonValue | undefined) ?? undefined,
       },
     });
   }

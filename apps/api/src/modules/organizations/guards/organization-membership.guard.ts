@@ -1,5 +1,6 @@
 import { type CanActivate, type ExecutionContext, ForbiddenException, Inject, Injectable } from "@nestjs/common";
-import { MembershipStatus, OrganizationStatus, type PrismaClient } from "@impulza/database";
+import { MembershipSource, MembershipStatus, OrganizationStatus, type PrismaClient } from "@impulza/database";
+import { AGENCY_DELEGATING_ROLES, delegatedAccessVerdict } from "@impulza/validation";
 import type { Request } from "express";
 import { Reflector } from "@nestjs/core";
 import { PRISMA } from "../../../database/prisma.module.js";
@@ -39,7 +40,12 @@ export class OrganizationMembershipGuard implements CanActivate {
           organizationId,
         },
       },
-      include: { role: true, organization: { select: { status: true } } },
+      include: {
+        role: true,
+        organization: { select: { status: true } },
+        // Solo trae algo si la membresía es delegada por una agencia (F9.3).
+        agencyClient: { include: { agencyOrganization: { select: { status: true } } } },
+      },
     });
 
     if (!membership || membership.status !== MembershipStatus.ACTIVE) {
@@ -61,8 +67,72 @@ export class OrganizationMembershipGuard implements CanActivate {
       });
     }
 
+    if (membership.source === MembershipSource.AGENCY) {
+      await this.assertDelegatedAccess(membership, organizationId, request);
+    }
+
     requestWithUser.membership = membership;
 
     return true;
+  }
+
+  /**
+   * Acceso DELEGADO de una agencia (F9.3, ADR-028 §2) — el único lugar donde se decide, para todas las rutas de
+   * organización, qué puede hacer una persona que entra a un cliente a través de su agencia. La regla en sí
+   * (`delegatedAccessVerdict`) es una función pura probada aparte; acá se aplica en cada petición, así que revocar,
+   * pausar o archivar surte efecto en la siguiente, sin sesiones que invalidar.
+   */
+  private async assertDelegatedAccess(
+    membership: {
+      userId: string;
+      agencyClient: {
+        clientOrganizationId: string;
+        agencyOrganizationId: string;
+        status: Parameters<typeof delegatedAccessVerdict>[0]["status"];
+        agencyCreated: boolean;
+        agencyOrganization: { status: OrganizationStatus };
+      } | null;
+    },
+    organizationId: string,
+    request: Request,
+  ): Promise<void> {
+    const deny = (code: string, message: string): never => {
+      throw new ForbiddenException({ statusCode: 403, error: "Forbidden", code, message });
+    };
+
+    const relation = membership.agencyClient;
+    if (!relation || relation.clientOrganizationId !== organizationId) {
+      return deny("AGENCY_ACCESS_REVOKED", "La agencia ya no tiene acceso a este negocio.");
+    }
+
+    const verdict = delegatedAccessVerdict({
+      status: relation.status,
+      agencyCreated: relation.agencyCreated,
+      method: request.method,
+      path: request.originalUrl,
+    });
+    if (!verdict.allowed) {
+      return deny(verdict.code, verdict.message);
+    }
+
+    // Una agencia bloqueada por superadministración también queda en solo lectura frente a sus clientes.
+    if (relation.agencyOrganization.status === OrganizationStatus.BLOCKED && !READ_ONLY_METHODS.has(request.method.toUpperCase())) {
+      return deny(ORGANIZATION_BLOCKED, "Tu agencia está bloqueada: puedes ver pero no hacer cambios en este cliente.");
+    }
+
+    // Defensa en profundidad: aunque la sincronización de membresías fallara, la persona debe seguir siendo un miembro
+    // activo de la agencia con un rol que delega. Sacar a alguien de la agencia le quita el acceso a sus clientes.
+    const agencyMembership = await this.prisma.membership.findUnique({
+      where: { userId_organizationId: { userId: membership.userId, organizationId: relation.agencyOrganizationId } },
+      include: { role: true },
+    });
+    if (
+      !agencyMembership ||
+      agencyMembership.status !== MembershipStatus.ACTIVE ||
+      agencyMembership.source !== MembershipSource.DIRECT ||
+      !(AGENCY_DELEGATING_ROLES as readonly string[]).includes(agencyMembership.role.name)
+    ) {
+      deny("AGENCY_ACCESS_REVOKED", "Ya no formas parte de la agencia que tiene acceso a este negocio.");
+    }
   }
 }

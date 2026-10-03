@@ -5,7 +5,7 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-02, tarde/noche) — F9.1 en revisión por Claude; Fase 8 commiteada en master
+## 0. RETOMAR AQUÍ (2026-10-02, noche) — F9.1 hecha y fusionada a master; siguiente: F9.2 (Antigravity)
 
 **F9.1 (Marca de la plataforma) — Implementada y en revisión:**
 - Desarrollada en rama dedicada `fase-9/f9-1-marca-plataforma`.
@@ -40,8 +40,11 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
   todavía: solo `ConsoleEmailAdapter`); el SVG no se sirve con `Content-Security-Policy: sandbox` porque el adaptador de
   almacenamiento no permite cabeceras por objeto (la defensa es el saneador); el logo oscuro no se usa en ninguna
   pantalla todavía.
-- Siguiente paso: **segunda revisión de Claude de F9.1** (suite completa y Playwright) y, si pasa, fusionar a `master`
-  y comenzar F9.2.
+- **Estado final de F9.1:** aprobada por Claude tras las correcciones (turbo typecheck/lint/test en verde, builds de
+  dashboard y admin, Playwright 2/2 y 3 mutaciones que hacen fallar las pruebas). Fusionada a `master`.
+- **Siguiente paso:** Antigravity desarrolla **F9.2** (marca de cada organización) en una rama nueva
+  `fase-9/f9-2-marca-organizacion` creada desde `master`; Claude la revisa. Reutilizar `resolveBrand`, `brandCssVariables`,
+  `sanitizeSvg`, `isSafeAssetUrl` y `brandingUploadBody` de F9.1 en vez de duplicarlos.
 
 **Fase 8: commiteada y subida** (`b418cb5`…`2df931d`, rama `master`). Queda con las reservas descritas abajo.
 

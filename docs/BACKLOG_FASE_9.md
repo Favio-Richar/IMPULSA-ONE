@@ -17,7 +17,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 
 | Historia | Título | Estado |
 |---|---|---|
-| F9.1 | Marca de la plataforma (el dueño del sistema configura todo) | En revisión |
+| F9.1 | Marca de la plataforma (el dueño del sistema configura todo) | Hecho (2026-10-02, revisada y corregida por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.2 | Marca de cada organización (logo, colores, datos) | Pendiente |
 | F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Pendiente |
 | F9.4 | Panel de agencia | Pendiente |

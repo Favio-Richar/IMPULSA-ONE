@@ -102,7 +102,7 @@ tocar código, y que **todas** las aplicaciones y correos la lean de ahí.
 
 ---
 
-### F9.2 — Marca de cada organización (logo, colores, datos)
+### F9.2 — Marca de cada organización (logo, colores, datos) — En revisión
 
 **Objetivo:** que **cada usuario configure la identidad de su negocio** desde `Configuración › Marca`.
 

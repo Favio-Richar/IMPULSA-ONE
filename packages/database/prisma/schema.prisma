@@ -234,6 +234,7 @@ model Organization {
   emailSequenceEnrollments EmailSequenceEnrollment[]
   emailSequenceSends  EmailSequenceSend[]
   googleCalendarConnections GoogleCalendarConnection[]
+  brandProfile              BrandProfile?
 
   @@map("organizations")
 }
@@ -2272,4 +2273,29 @@ model EmailSequenceSend {
   @@unique([enrollmentId, stepPosition])
   @@index([organizationId, sentAt])
   @@map("email_sequence_sends")
+}
+
+// F9.2: Perfil de marca por organización (ADR-028 §4 nivel 2). No es singleton: una fila por org.
+// Una org sin fila cae a la marca de plataforma (ver resolveBrand en brand-profile.service.ts).
+model BrandProfile {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @unique @map("organization_id") @db.Uuid
+  // Nombre visible del negocio (puede diferir del nombre de la organización)
+  displayName    String?  @map("display_name")
+  logoLightUrl   String?  @map("logo_light_url")
+  logoDarkUrl    String?  @map("logo_dark_url")
+  faviconUrl     String?  @map("favicon_url")
+  primaryColor   String?  @map("primary_color")
+  secondaryColor String?  @map("secondary_color")
+  // Datos de contacto y legales opcionales
+  contactEmail   String?  @map("contact_email")
+  contactPhone   String?  @map("contact_phone")
+  legalName      String?  @map("legal_name")
+  taxId          String?  @map("tax_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("brand_profiles")
 }

@@ -2255,4 +2255,35 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       }
     });
   });
+  describe("F9.2 Marca de la Organización: aislamiento estricto (ADR-002)", () => {
+    it("el propietario de B no puede leer ni modificar la marca de la organización A", async () => {
+      // 1. Lectura cruzada: B no puede leer la marca de A
+      await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgA.id}/brand-profile`)
+        .expect(403);
+
+      // 2. Modificación cruzada: B no puede modificar la marca de A
+      await orgB.ownerAgent
+        .put(`/api/v1/organizations/${orgA.id}/brand-profile`)
+        .set(CSRF_HEADERS)
+        .send({ displayName: "Intento de suplantación" })
+        .expect(403);
+
+      // 3. A configura su propia marca legítimamente
+      await orgA.ownerAgent
+        .put(`/api/v1/organizations/${orgA.id}/brand-profile`)
+        .set(CSRF_HEADERS)
+        .send({ displayName: "Marca Propia de A", primaryColor: "#0f6f6b" })
+        .expect(200);
+
+      // 4. B lee su propia marca: no ha sido alterada ni contaminada
+      const resB = await orgB.ownerAgent
+        .get(`/api/v1/organizations/${orgB.id}/brand-profile`)
+        .expect(200);
+
+      expect(resB.body.displayName).not.toBe("Marca Propia de A");
+      expect(resB.body.displayName).not.toBe("Intento de suplantación");
+    });
+  });
+
 });

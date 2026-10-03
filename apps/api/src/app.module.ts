@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AppController } from "./app.controller.js";
 import { AdminModule } from "./modules/admin/admin.module.js";
 import { PlatformBrandingModule } from "./modules/platform-branding/platform-branding.module.js";
+import { BrandProfileModule } from "./modules/brand-profile/brand-profile.module.js";
 import { FeatureFlagsModule } from "./modules/feature-flags/feature-flags.module.js";
 import { PrismaModule } from "./database/prisma.module.js";
 import { AnalyticsModule } from "./modules/analytics/analytics.module.js";
@@ -88,6 +89,7 @@ import { PageCampaignsModule } from "./modules/page-campaigns/page-campaigns.mod
     PaymentAccountsModule,
     AdminModule,
     PlatformBrandingModule,
+    BrandProfileModule,
     HealthModule,
   ],
   controllers: [AppController],

@@ -5,9 +5,25 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-02, noche) — F9.1 hecha y fusionada a master; siguiente: F9.2 (Antigravity)
+## 0. RETOMAR AQUÍ (2026-10-03) — F9.2 implementada en rama fase-9/f9-2-marca-organizacion (En revisión por Claude); siguiente: F9.3
 
-**F9.1 (Marca de la plataforma) — Implementada y en revisión:**
+**F9.2 (Marca de cada organización) — Implementada y en revisión:**
+- Desarrollada en rama dedicada `fase-9/f9-2-marca-organizacion`.
+- Modelo `BrandProfile` en PostgreSQL (`packages/database`), migración `20261002230000_f92_brand_profile` desplegada en `impulza` e `impulza_test` con script de reversa `down.sql`. Crea un registro vacío por organización existente para no romper datos previos.
+- Validación Zod en `@impulza/validation`: `brandProfileSchema`, `updateBrandProfileSchema` con contraste WCAG 2.2 AA (>= 4.5:1 sobre fondo claro #ffffff), saneamiento SVG y URLs seguras HTTPS. `resolvedBrandSchema` para la cascada.
+- Utilidades compartidas en `packages/validation/src/branding/common.ts` para evitar dependencias circulares.
+- Contratos en `@impulza/contracts` con prueba de paridad de claves y tipos (`src/brand-profile.test.ts`, 2 pruebas en verde).
+- API en `apps/api`: `BrandProfileModule`, `BrandProfileService` y `BrandProfileController`. Endpoints bajo `/api/v1/organizations/:organizationId/brand-profile` protegidos con `CsrfGuard`, `SessionAuthGuard`, `OrganizationMembershipGuard`, `PermissionGuard` (`PERMISSIONS.THEME_MANAGE`) y `RateLimitGuard` (`GET`, `PUT`, `POST upload`).
+- Cascada de marca `resolveBrand(organizationId)` implementada como única fuente de verdad (ADR-028 §4) con suite unitaria completa (`brand-profile.service.test.ts`, 5/5 pruebas en verde cubriendo todas las combinaciones presente/ausente).
+- Aislamiento multi-tenant estricto (ADR-002): el servidor rechaza cualquier acceso cruzado (403 Forbidden por membresía inactiva o inexistente). Suite e2e en `brand-profile.e2e.test.ts` (11/11 en verde) y caso transversal añadido en `multi-tenant-isolation.e2e.test.ts` (83/83 en verde).
+- OpenAPI regenerado (`docs/api/openapi.json`: 220 rutas, 297 operaciones) con `openapi.test.ts` pasando 4/4.
+- UI en `apps/dashboard/app/(panel)/configuracion/marca/page.tsx`: formulario reactivo con estados de carga (`LoadingState`), error (`ErrorState`) y vacío (`EmptyState`) de `@impulza/ui`, vista previa interactiva en vivo, cálculo en tiempo real de contraste AA, subida de logos y favicon, persistencia con TanStack Query y guardado con validación.
+- Enlace en navegación lateral del panel (`SidebarNav`) con icono de paleta hacia `/configuracion/marca`.
+- Pruebas Playwright en `packages/e2e/tests/brand-profile.spec.ts`: móvil (Pixel 7) y escritorio (1440px) 2/2 en verde. 8 capturas guardadas en `docs/design/capturas/f92/`.
+- `next build` en producción de `apps/dashboard`: compila en verde con código 0.
+- `typecheck` y `lint` limpios en todos los paquetes afectados.
+
+**F9.1 (Marca de la plataforma) — Aprobada y fusionada a master:**
 - Desarrollada en rama dedicada `fase-9/f9-1-marca-plataforma`.
 - Modelo `PlatformBranding` singleton en PostgreSQL (`packages/database`), migración `20261002120000_f91_platform_branding` desplegada y documentada en `docs/architecture/ERD.md` (§9s). Con seed oficial de Impulza One.
 - Validación Zod en `@impulza/validation` con verificación estricta de contraste WCAG 2.2 AA (>= 4.5:1 sobre fondo claro #ffffff), saneamiento exhaustivo de SVG (bloqueo de scripts, eventos inline, entidades externas/XXE, foreignObject y URLs no seguras), y validación de tipos MIME y URLs HTTPS.

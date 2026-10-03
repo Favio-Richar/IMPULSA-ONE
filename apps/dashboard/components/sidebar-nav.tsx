@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { CalendarCheck, ChartColumn, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Settings, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
+import { CalendarCheck, ChartColumn, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Palette, Settings, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -32,6 +32,8 @@ const NAV_ITEMS = [
   { href: "/medios", label: "Medios", icon: ImageIcon },
   { href: "/plan", label: "Plan y pagos", icon: Gauge },
   { href: "/soporte", label: "Soporte", icon: LifeBuoy },
+  // F9.2: Marca de la organización (ADR-028 §4 nivel 2)
+  { href: "/configuracion/marca", label: "Marca", icon: Palette },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];
 

@@ -191,3 +191,12 @@ export const uploadBrandingAssetSchema = z.object({
 });
 
 export type UploadBrandingAssetDto = z.infer<typeof uploadBrandingAssetSchema>;
+
+export {
+  brandProfileSchema,
+  updateBrandProfileSchema,
+  resolvedBrandSchema,
+  type BrandProfileDto,
+  type UpdateBrandProfileDto,
+  type ResolvedBrandDto,
+} from "./brand-profile.js";

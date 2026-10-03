@@ -13,6 +13,7 @@ import { NestJsonLogger } from "./observability/nest-logger.js";
 import { DOCS_PATH, setupSwaggerUi } from "./openapi/document.js";
 import { applyApiPrefix } from "./openapi/openapi-file.js";
 import { brandingUploadBody } from "./common/branding-upload-body.js";
+import { PRISMA } from "./database/prisma.module.js";
 
 async function bootstrap(): Promise<void> {
   // Antes que cualquier otra cosa: si algo revienta durante el bootstrap mismo, ya queremos
@@ -53,10 +54,11 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
 
-  // Antes del lector de JSON de Nest: amplía el límite solo para la subida de logos (F9.1).
-  app.use(brandingUploadBody());
-
   app.use(cookieParser());
+
+  // Después de cookie-parser y antes del lector de JSON de Nest: amplía el límite solo para la subida de logos
+  // (F9.1/F9.2) y solo a quien tiene una sesión real (consulta la base de datos).
+  app.use(brandingUploadBody(app.get(PRISMA)));
 
   // Contrato de API oficial: REST versionada /api/v1 (ver 02_STACK §4.3). El prefijo se aplica
   // desde un único lugar compartido con el generador de OpenAPI: si se escribiera dos veces, un

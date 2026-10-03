@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from "@impulza/database";
 import { automationEventKey, DEFAULT_EMAILS_PER_HOUR, SEQUENCE_CLAIM_LEASE_MS, sequenceEmail, type AutomationEventJob, type SequenceStopReason } from "@impulza/validation";
 import { type ConnectionOptions, Queue, Worker } from "bullmq";
 import { logger } from "./observability/logger.js";
+import { brandOrganizationEmail } from "./brand.js";
 
 export const SEQUENCE_DISPATCH_QUEUE = "sequence-dispatch";
 const HOUR_MS = 3_600_000;
@@ -171,13 +172,13 @@ export async function dispatchSequences(prisma: PrismaClient, email: EmailAdapte
         unsubscribeUrl: `${baseUrl}/baja/${token}`,
       });
       try {
-        await email.send({
+        await email.send(await brandOrganizationEmail(prisma, enrollment.organizationId, {
           to: contact.email!,
           subject: content.subject,
           text: content.text,
           html: content.html,
           headers: { "List-Unsubscribe": `<${baseUrl}/api/unsubscribe/${token}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
-        });
+        }));
         result.sent += 1;
         remaining.set(enrollment.organizationId, (remaining.get(enrollment.organizationId) ?? 0) - 1);
       } catch (error) {

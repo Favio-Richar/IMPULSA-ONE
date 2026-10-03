@@ -218,4 +218,33 @@ describe("Campañas de email (e2e) — F5.6", () => {
     expect(withConsent.marketingConsentTextVersion).toBe("marketing-v1");
     expect((await prisma.contact.findFirstOrThrow({ where: { organizationId, email: no } })).marketingConsentAt).toBeNull();
   });
+
+  it("F9.2: el correo de la campaña sale con el nombre, el logo y el color de la marca de la organización", async () => {
+    const { owner, base, organizationId } = await setup();
+    const logo = `https://media.test/branding/org/${organizationId}/logo_light-1.png`;
+    await prisma.brandProfile.upsert({
+      where: { organizationId },
+      update: { displayName: "Velas Lumen", logoLightUrl: logo, primaryColor: "#1d4ed8", contactEmail: "hola@velaslumen.cl" },
+      create: { organizationId, displayName: "Velas Lumen", logoLightUrl: logo, primaryColor: "#1d4ed8", contactEmail: "hola@velaslumen.cl" },
+    });
+    const created = campaignResponse.parse((await owner.post(base).set(CSRF).send(draft).expect(201)).body);
+
+    await owner.post(`${base}/${created.id}/test`).set(CSRF).expect(204);
+    const test = emailAdapter.messages.at(-1)!;
+    expect(test.from).toEqual({ name: "Velas Lumen", email: null }); // sin dominio verificado: remitente de la plataforma
+    expect(test.html).toContain(`<img src="${logo}"`);
+    expect(test.html).toContain("Velas Lumen");
+    expect(test.html).toContain("#1d4ed8");
+    expect(test.html).toContain("hola@velaslumen.cl");
+    expect(test.text).not.toContain("<img"); // la parte de texto no cambia
+  });
+
+  it("F9.2: una organización sin marca propia envía con el nombre de la plataforma, nunca con el logo de otra organización", async () => {
+    const { owner, base } = await setup();
+    const created = campaignResponse.parse((await owner.post(base).set(CSRF).send(draft).expect(201)).body);
+    await owner.post(`${base}/${created.id}/test`).set(CSRF).expect(204);
+    const test = emailAdapter.messages.at(-1)!;
+    expect(test.from?.name).toBeTruthy();
+    expect(test.html).not.toContain("branding/org/");
+  });
 });

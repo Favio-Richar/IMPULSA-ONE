@@ -3,6 +3,7 @@ import type { PrismaClient } from "@impulza/database";
 import { bookingReminderEmail } from "@impulza/validation";
 import { type ConnectionOptions, Queue, Worker } from "bullmq";
 import { logger } from "./observability/logger.js";
+import { brandOrganizationEmail } from "./brand.js";
 
 export const BOOKING_REMINDERS_QUEUE = "booking-reminders";
 const HOUR = 3_600_000;
@@ -66,7 +67,7 @@ export async function sendDueBookingReminders(prisma: PrismaClient, email: Email
       manageUrl,
     });
     try {
-      await email.send({ to: booking.customerEmail, subject: content.subject, text: content.text });
+      await email.send(await brandOrganizationEmail(prisma, booking.organizationId, { to: booking.customerEmail, subject: content.subject, text: content.text }));
       sent += 1;
     } catch (error) {
       await prisma.booking.updateMany({ where: { id: booking.id, reminderSentAt: now }, data: { reminderSentAt: null } });

@@ -1,11 +1,9 @@
 import {
-  BadRequestException,
   Inject,
   Injectable,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import type { Redis } from "ioredis";
-import sharp from "sharp";
 import type { PrismaClient, PlatformBranding } from "@impulza/database";
 import type {
   PublicPlatformBrandingResponse,
@@ -14,20 +12,15 @@ import type {
 } from "@impulza/contracts";
 import {
   DEFAULT_PLATFORM_BRANDING,
-  MAX_BRANDING_DIMENSION,
-  MAX_BRANDING_FAVICON_BYTES,
-  MAX_BRANDING_LOGO_BYTES,
-  MIN_BRANDING_FAVICON_DIMENSION,
-  MIN_BRANDING_LOGO_DIMENSION,
-  validateAndSanitizeSvg,
   type UpdatePlatformBrandingDto,
   type UploadBrandingAssetDto,
 } from "@impulza/validation";
-import { detectImageType, MAGIC_BYTES_LENGTH, type StorageAdapter } from "@impulza/storage";
+import type { StorageAdapter } from "@impulza/storage";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { STORAGE } from "../../storage/storage.module.js";
 import { AuditService } from "../audit/audit.service.js";
+import { prepareBrandingAsset } from "./branding-asset.js";
 import { logger } from "../../observability/logger.js";
 import {
   PLATFORM_BRANDING_CACHE_KEY,
@@ -298,85 +291,23 @@ export class PlatformBrandingService {
 
   /**
    * Sube un archivo de logotipo o favicon para la marca de la plataforma (PNG, JPG, WebP o SVG saneado).
+   * La validación vive en `prepareBrandingAsset`, compartida con la marca de cada organización.
    */
-  async uploadAsset(
-    _adminId: string,
-    input: UploadBrandingAssetDto,
-  ): Promise<UploadBrandingAssetResponse> {
-    const maxBytes = input.target === "favicon" ? MAX_BRANDING_FAVICON_BYTES : MAX_BRANDING_LOGO_BYTES;
-    if (input.sizeBytes > maxBytes) {
-      throw new BadRequestException(
-        `El archivo excede el tamaño máximo permitido de ${Math.round(maxBytes / 1024)} KB.`,
-      );
+  async uploadAsset(_adminId: string, input: UploadBrandingAssetDto): Promise<UploadBrandingAssetResponse> {
+    const prepared = await prepareBrandingAsset(input);
+
+    if (!this.storage) {
+      // Sin almacenamiento no hay URL pública que guardar: un `data:` URI no pasaría la validación de la
+      // marca (solo `https://`), así que se avisa con claridad en vez de devolver algo inservible.
+      throw new ServiceUnavailableException("El almacenamiento de archivos no está configurado. Configúralo para subir logotipos.");
     }
-
-    let base64 = input.base64Data;
-    const dataUrlMatch = base64.match(/^data:([^;]+);base64,(.+)$/);
-    if (dataUrlMatch) {
-      base64 = dataUrlMatch[2]!;
-    }
-    const buffer = Buffer.from(base64, "base64");
-
-    if (buffer.length > maxBytes) {
-      throw new BadRequestException(
-        `El contenido decodificado excede el tamaño máximo de ${Math.round(maxBytes / 1024)} KB.`,
-      );
-    }
-
-    let bodyBuffer: Buffer;
-    let extension = "png";
-
-    if (input.contentType === "image/svg+xml") {
-      const svgText = buffer.toString("utf8");
-      const validation = validateAndSanitizeSvg(svgText);
-      if (!validation.ok) {
-        throw new BadRequestException(validation.error);
-      }
-      bodyBuffer = Buffer.from(validation.sanitized, "utf8");
-      extension = "svg";
-    } else {
-      const magicBytes = new Uint8Array(buffer.subarray(0, MAGIC_BYTES_LENGTH));
-      const detected = detectImageType(magicBytes);
-      if (!detected || detected !== input.contentType) {
-        throw new BadRequestException("El contenido del archivo no coincide con el formato de imagen declarado.");
-      }
-      // Los bytes mágicos solo prueban el encabezado: `sharp` decodifica de verdad (un archivo
-      // truncado o corrupto falla acá) y entrega las dimensiones reales para exigir un mínimo.
-      let width: number | undefined;
-      let height: number | undefined;
-      try {
-        const metadata = await sharp(buffer, { limitInputPixels: MAX_BRANDING_DIMENSION * MAX_BRANDING_DIMENSION }).metadata();
-        width = metadata.width;
-        height = metadata.height;
-      } catch {
-        throw new BadRequestException("No se pudo leer la imagen: el archivo está dañado o no es válido.");
-      }
-      const minimum = input.target === "favicon" ? MIN_BRANDING_FAVICON_DIMENSION : MIN_BRANDING_LOGO_DIMENSION;
-      if (!width || !height || width < minimum || height < minimum) {
-        throw new BadRequestException(`La imagen es demasiado pequeña: debe medir al menos ${minimum} × ${minimum} px.`);
-      }
-      if (width > MAX_BRANDING_DIMENSION || height > MAX_BRANDING_DIMENSION) {
-        throw new BadRequestException(`La imagen es demasiado grande: el máximo es ${MAX_BRANDING_DIMENSION} × ${MAX_BRANDING_DIMENSION} px.`);
-      }
-      bodyBuffer = buffer;
-      if (input.contentType === "image/jpeg") extension = "jpg";
-      else if (input.contentType === "image/webp") extension = "webp";
-      else extension = "png";
-    }
-
-    if (this.storage) {
-      const key = `branding/platform/${input.target}-${Date.now()}.${extension}`;
-      await this.storage.putObject({
-        key,
-        body: new Uint8Array(bodyBuffer),
-        contentType: input.contentType,
-        cacheControl: "public, max-age=31536000, immutable",
-      });
-      return { url: this.storage.publicUrl(key) };
-    }
-
-    // Sin almacenamiento no hay URL pública que guardar: un `data:` URI no pasaría la validación de la
-    // marca (solo `https://`), así que se avisa con claridad en vez de devolver algo inservible.
-    throw new ServiceUnavailableException("El almacenamiento de archivos no está configurado. Configúralo para subir logotipos.");
+    const key = `branding/platform/${input.target}-${Date.now()}.${prepared.extension}`;
+    await this.storage.putObject({
+      key,
+      body: new Uint8Array(prepared.body),
+      contentType: input.contentType,
+      cacheControl: "public, max-age=31536000, immutable",
+    });
+    return { url: this.storage.publicUrl(key) };
   }
 }

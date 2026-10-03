@@ -15,6 +15,7 @@ import {
   type OwnerNoticeKind,
 } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
+import { BrandProfileService } from "../brand-profile/brand-profile.service.js";
 import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
@@ -39,11 +40,15 @@ export class BookingNotifier {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(EMAIL_ADAPTER) private readonly email: EmailAdapter,
+    private readonly brandProfileService: BrandProfileService,
   ) {}
 
   private async send(to: string, content: EmailContent, context: Record<string, unknown>): Promise<void> {
     try {
-      await this.email.send({ to, subject: content.subject, text: content.text });
+      const message = { to, subject: content.subject, text: content.text };
+      // F9.2: lo que el negocio envía a SUS clientes lleva la marca del negocio; los avisos a los dueños no.
+      const organizationId = context.to === "customer" ? context.organizationId : undefined;
+      await this.email.send(typeof organizationId === "string" ? await this.brandProfileService.brandEmail(organizationId, message) : message);
     } catch (error) {
       logger.error("no se pudo enviar un correo de reserva", { ...context, error: error instanceof Error ? error.message : String(error) });
     }
@@ -70,24 +75,25 @@ export class BookingNotifier {
       bookingId: booking.id,
       kind: "deposit_pending",
       to: "customer",
+      organizationId: booking.organizationId,
     });
   }
 
   /** El negocio devolvió la seña (F5.11a): aviso al cliente. */
   async notifyDepositRefunded(booking: Booking, siteName: string, amount: number): Promise<void> {
-    await this.send(booking.customerEmail, bookingDepositRefundedEmail(this.messageData(booking, siteName), amount), { bookingId: booking.id, kind: "deposit_refunded", to: "customer" });
+    await this.send(booking.customerEmail, bookingDepositRefundedEmail(this.messageData(booking, siteName), amount), { bookingId: booking.id, kind: "deposit_refunded", to: "customer", organizationId: booking.organizationId });
   }
 
   /** Mercado Pago confirmó la seña: al cliente (reserva confirmada) y a los dueños (nueva reserva con seña). */
   async notifyDepositPaid(booking: Booking, siteName: string, paymentId: string): Promise<void> {
-    await this.send(booking.customerEmail, bookingDepositPaidEmail(this.messageData(booking, siteName)), { bookingId: booking.id, kind: "deposit_paid", to: "customer" });
+    await this.send(booking.customerEmail, bookingDepositPaidEmail(this.messageData(booking, siteName)), { bookingId: booking.id, kind: "deposit_paid", to: "customer", organizationId: booking.organizationId });
     await this.notifyOwners("deposit_paid", booking, siteName, paymentId);
   }
 
   async notifyCustomer(kind: CustomerNoticeKind, booking: Booking, siteName: string): Promise<void> {
     const data = this.messageData(booking, siteName);
     const content = kind === "confirmed" ? bookingConfirmationEmail(data) : kind === "rescheduled" ? bookingRescheduledEmail(data) : bookingCancelledEmail(data);
-    await this.send(booking.customerEmail, content, { bookingId: booking.id, kind, to: "customer" });
+    await this.send(booking.customerEmail, content, { bookingId: booking.id, kind, to: "customer", organizationId: booking.organizationId });
   }
 
   /** Aviso a los dueños activos de la organización. */

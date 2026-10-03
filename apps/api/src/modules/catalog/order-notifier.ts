@@ -15,6 +15,7 @@ import {
   type OrderStatusNotice,
 } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
+import { BrandProfileService } from "../brand-profile/brand-profile.service.js";
 import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
@@ -29,11 +30,15 @@ export class OrderNotifier {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(EMAIL_ADAPTER) private readonly email: EmailAdapter,
+    private readonly brandProfileService: BrandProfileService,
   ) {}
 
   private async send(to: string, content: OrderEmailContent, context: Record<string, unknown>): Promise<void> {
     try {
-      await this.email.send({ to, subject: content.subject, text: content.text });
+      const message = { to, subject: content.subject, text: content.text };
+      // F9.2: lo que el negocio envía a SUS clientes lleva la marca del negocio; los avisos a los dueños no.
+      const organizationId = context.to === "customer" ? context.organizationId : undefined;
+      await this.email.send(typeof organizationId === "string" ? await this.brandProfileService.brandEmail(organizationId, message) : message);
     } catch (error) {
       logger.error("no se pudo enviar un correo de pedido", { ...context, error: error instanceof Error ? error.message : String(error) });
     }
@@ -70,13 +75,13 @@ export class OrderNotifier {
 
   /** `statusUrl`: enlace "Tu pedido" cuando se cobra con Mercado Pago (F5.9); solo existe al crearlo. */
   async notifyReceived(order: Order, siteName: string, statusUrl?: string | null): Promise<void> {
-    await this.send(order.customerEmail, orderReceivedEmail(await this.messageData(order, siteName, statusUrl)), { orderId: order.id, kind: "received", to: "customer" });
+    await this.send(order.customerEmail, orderReceivedEmail(await this.messageData(order, siteName, statusUrl)), { orderId: order.id, kind: "received", to: "customer", organizationId: order.organizationId });
   }
 
   /** Mercado Pago confirmó el pago (F5.9): al comprador y a los dueños. */
   async notifyPaidOnline(order: Order, siteName: string, paymentId: string): Promise<void> {
     const data = { ...await this.messageData(order, siteName), downloadUrl: await this.downloadUrlFor(order) };
-    await this.send(order.customerEmail, orderPaidOnlineEmail(data), { orderId: order.id, kind: "paid_online", to: "customer" });
+    await this.send(order.customerEmail, orderPaidOnlineEmail(data), { orderId: order.id, kind: "paid_online", to: "customer", organizationId: order.organizationId });
     const content = ownerOrderPaidOnlineEmail({ ...await this.messageData(order, siteName), customerName: order.customerName, paymentId, ordersUrl: this.ordersUrl() });
     await this.sendToOwners(order, content, "paid_online");
   }
@@ -90,7 +95,7 @@ export class OrderNotifier {
   /** El negocio devolvió dinero (F5.11a): aviso al comprador. */
   async notifyRefunded(order: Order, siteName: string, amount: number): Promise<void> {
     const content = orderRefundedEmail(await this.messageData(order, siteName), amount, order.refundedAmount >= order.totalAmount);
-    await this.send(order.customerEmail, content, { orderId: order.id, kind: "refunded", to: "customer" });
+    await this.send(order.customerEmail, content, { orderId: order.id, kind: "refunded", to: "customer", organizationId: order.organizationId });
   }
 
   /** Contracargo o reclamo en Mercado Pago (F5.11a): aviso a los dueños. */
@@ -111,7 +116,7 @@ export class OrderNotifier {
 
   async notifyStatus(status: OrderStatusNotice, order: Order, siteName: string): Promise<void> {
     const data = { ...await this.messageData(order, siteName), downloadUrl: status === "CANCELLED" ? null : await this.downloadUrlFor(order) };
-    await this.send(order.customerEmail, orderStatusEmail(status, data), { orderId: order.id, kind: status, to: "customer" });
+    await this.send(order.customerEmail, orderStatusEmail(status, data), { orderId: order.id, kind: status, to: "customer", organizationId: order.organizationId });
   }
 
   /** Aviso de pedido nuevo a los dueños activos de la organización. */

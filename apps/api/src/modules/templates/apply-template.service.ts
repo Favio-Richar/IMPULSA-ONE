@@ -1,11 +1,12 @@
 import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ApplyTemplateResponse, BlockResponse } from "@impulza/contracts";
 import { PERMISSIONS, Prisma, type PrismaClient } from "@impulza/database";
-import { personalizeTemplateBlocks, type ApplyTemplateInput } from "@impulza/validation";
+import { applyOrganizationBrandDefaults, personalizeTemplateBlocks, type ApplyTemplateInput } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
+import { BrandProfileService } from "../brand-profile/brand-profile.service.js";
 import { PageVersionsService } from "../pages/page-versions.service.js";
 import { RevalidateWebService } from "../public-sites/revalidate-web.service.js";
 import { TemplatesService } from "./templates.service.js";
@@ -37,6 +38,7 @@ export class ApplyTemplateService {
     private readonly pageVersionsService: PageVersionsService,
     private readonly auditService: AuditService,
     private readonly revalidateWebService: RevalidateWebService,
+    private readonly brandProfileService: BrandProfileService,
   ) {}
 
   async applyTemplate(
@@ -79,9 +81,16 @@ export class ApplyTemplateService {
 
     // Cada bloque pasa por la misma puerta que crear un bloque a mano: esquema del tipo, texto
     // alternativo, saneo del texto enriquecido y medios propios.
-    const personalized = personalizeTemplateBlocks(
-      template.blocks.map((block) => ({ ...block })),
-      input.personalization,
+    // F9.2 (criterio 4a): una página nueva nace con la marca propia de la organización —nombre visible y logo
+    // como avatar— salvo lo que la persona ya escribió. Solo valores que la organización configuró, nunca los de
+    // la plataforma; la cascada completa se usa donde corresponde mostrar la marca efectiva.
+    const personalized = applyOrganizationBrandDefaults(
+      personalizeTemplateBlocks(
+        template.blocks.map((block) => ({ ...block })),
+        input.personalization,
+      ),
+      await this.brandProfileService.getOwnBrand(organizationId),
+      input.personalization?.name,
     );
     const prepared: Array<{ type: string; isPrimary: boolean; config: unknown; version: number }> = [];
     for (const block of personalized) {

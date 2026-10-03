@@ -1,14 +1,17 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
-import { brandProfileResponse, uploadBrandProfileAssetResponse } from "@impulza/contracts";
+import { brandProfileResponse, resolvedBrandResponse, uploadBrandProfileAssetResponse } from "@impulza/contracts";
 import type { PrismaClient } from "@impulza/database";
 import { MemoryStorageAdapter } from "@impulza/storage";
 import cookieParser from "cookie-parser";
+import sharp from "sharp";
+import { randomBytes } from "node:crypto";
 import type { Redis } from "ioredis";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "../../app.module.js";
+import { brandingUploadBody } from "../../common/branding-upload-body.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { STORAGE } from "../../storage/storage.module.js";
@@ -57,6 +60,7 @@ describe("BrandProfile API (e2e) — F9.2 / ADR-028 §4 nivel 2", () => {
 
     app = moduleRef.createNestApplication();
     app.use(cookieParser());
+    app.use(brandingUploadBody(moduleRef.get(PRISMA)));
     app.setGlobalPrefix("api/v1");
     await app.init();
 
@@ -343,4 +347,105 @@ describe("BrandProfile API (e2e) — F9.2 / ADR-028 §4 nivel 2", () => {
       expect(resB.body.primaryColor).toBe("#1e3a8a");
     });
   });
+
+  // ─── F9.2 (revisión de Claude): defectos comprobados contra la API real ───────────────────────────────
+
+  describe("Subida de logos de la organización", () => {
+    const uploadPath = (organizationId: string) => `/api/v1/organizations/${organizationId}/brand-profile/upload`;
+    const body = (buffer: Buffer, contentType = "image/png", target = "logo_light") => ({
+      target,
+      fileName: "logo",
+      contentType,
+      sizeBytes: buffer.length,
+      base64Data: buffer.toString("base64"),
+    });
+    async function noisePng(side: number): Promise<Buffer> {
+      // Ruido: incompresible, así el archivo pesa lo que pesaría un logo real de alta resolución.
+      return sharp(randomBytes(side * side * 3), { raw: { width: side, height: side, channels: 3 } }).png({ compressionLevel: 0 }).toBuffer();
+    }
+
+    it("acepta un logo realista de ~1 MB (antes respondía 413 con cualquier archivo mayor a ~75 KB)", async () => {
+      const org = await createOrgWithOwner();
+      const png = await noisePng(600);
+      expect(png.length).toBeGreaterThan(900_000);
+      const res = await org.agent.post(uploadPath(org.organizationId)).set(CSRF_HEADERS).send(body(png)).expect(200);
+      expect(res.body.url).toMatch(new RegExp(`^https://media\\.test/branding/org/${org.organizationId}/logo_light-\\d+\\.png$`));
+    });
+
+    it("rechaza un cuerpo mayor al límite aun con sesión", async () => {
+      const org = await createOrgWithOwner();
+      await org.agent.post(uploadPath(org.organizationId)).set(CSRF_HEADERS).send(body(Buffer.alloc(4 * 1024 * 1024, 1))).expect(413);
+    });
+
+    it("con una cookie de sesión inventada el límite sigue siendo el normal: nadie sin sesión real lee megabytes", async () => {
+      const org = await createOrgWithOwner();
+      await request(httpServer)
+        .post(uploadPath(org.organizationId))
+        .set(CSRF_HEADERS)
+        .set("Cookie", "impulza_session=00000000-0000-4000-8000-000000000000")
+        .send({ base64Data: "A".repeat(300_000) })
+        .expect(413);
+    });
+
+    it("rechaza una imagen más pequeña que el mínimo y un archivo dañado", async () => {
+      const org = await createOrgWithOwner();
+      const tiny = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#0f6f6b" } }).png().toBuffer();
+      const small = await org.agent.post(uploadPath(org.organizationId)).set(CSRF_HEADERS).send(body(tiny)).expect(400);
+      expect(JSON.stringify(small.body)).toContain("demasiado pequeña");
+      const fake = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), randomBytes(2000)]);
+      const broken = await org.agent.post(uploadPath(org.organizationId)).set(CSRF_HEADERS).send(body(fake)).expect(400);
+      expect(JSON.stringify(broken.body)).toContain("dañado");
+    });
+
+    it.each([
+      ["entidad numérica que forma javascript:", `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><use xlink:href="&#106;avascript:alert(1)"/></svg>`],
+      ["<animate> que cambia el href", `<svg xmlns="http://www.w3.org/2000/svg"><a><animate attributeName="href" values="javascript:alert(1)" begin="0s"/><rect width="10" height="10"/></a></svg>`],
+      ["<iframe> con src javascript:", `<svg xmlns="http://www.w3.org/2000/svg"><iframe src="javascript:alert(1)"></iframe></svg>`],
+    ])("el saneador de SVG compartido rechaza %s", async (_label, svg) => {
+      const org = await createOrgWithOwner();
+      await org.agent.post(uploadPath(org.organizationId)).set(CSRF_HEADERS).send(body(Buffer.from(svg, "utf8"), "image/svg+xml")).expect(400);
+    });
+  });
+
+  describe("El logo debe ser un archivo propio", () => {
+    const brandPath = (organizationId: string) => `/api/v1/organizations/${organizationId}/brand-profile`;
+    const svg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#0f6f6b"/></svg>`, "utf8");
+    const upload = async (org: { agent: ReturnType<typeof request.agent>; organizationId: string }) =>
+      (
+        await org.agent
+          .post(`${brandPath(org.organizationId)}/upload`)
+          .set(CSRF_HEADERS)
+          .send({ target: "logo_light", fileName: "logo.svg", contentType: "image/svg+xml", sizeBytes: svg.length, base64Data: svg.toString("base64") })
+          .expect(200)
+      ).body.url as string;
+
+    it("rechaza una URL externa (un píxel de rastreo en los correos) y la de otra organización", async () => {
+      const orgA = await createOrgWithOwner();
+      const orgB = await createOrgWithOwner();
+      const external = await orgA.agent.put(brandPath(orgA.organizationId)).set(CSRF_HEADERS).send({ logoLightUrl: "https://tracker.evil.test/pixel.png?u=1" }).expect(400);
+      expect(JSON.stringify(external.body)).toContain("enlaces externos");
+
+      const urlOfB = await upload(orgB);
+      await orgA.agent.put(brandPath(orgA.organizationId)).set(CSRF_HEADERS).send({ logoLightUrl: urlOfB }).expect(400);
+    });
+
+    it("acepta el archivo subido por la propia organización y la marca efectiva lo usa", async () => {
+      const org = await createOrgWithOwner();
+      const url = await upload(org);
+      await org.agent.put(brandPath(org.organizationId)).set(CSRF_HEADERS).send({ displayName: "Mi Negocio", logoLightUrl: url, primaryColor: "#1d4ed8" }).expect(200);
+
+      const resolved = await org.agent.get(`${brandPath(org.organizationId)}/resolved`).expect(200);
+      expect(resolvedBrandResponse.parse(resolved.body)).toMatchObject({ displayName: "Mi Negocio", logoLightUrl: url, primaryColor: "#1d4ed8", senderName: "Mi Negocio", senderEmail: null });
+    });
+
+    it("la marca efectiva cae a la de la plataforma donde la organización no configuró nada, y respeta el aislamiento", async () => {
+      const orgA = await createOrgWithOwner();
+      const orgB = await createOrgWithOwner();
+      const resolved = resolvedBrandResponse.parse((await orgA.agent.get(`${brandPath(orgA.organizationId)}/resolved`).expect(200)).body);
+      expect(resolved.displayName).toBeTruthy();
+      expect(resolved.contactEmail).toBeNull();
+      await orgB.agent.get(`${brandPath(orgA.organizationId)}/resolved`).expect(403); // sin membresía: ni siquiera se ve la marca efectiva
+    });
+  });
+
 });

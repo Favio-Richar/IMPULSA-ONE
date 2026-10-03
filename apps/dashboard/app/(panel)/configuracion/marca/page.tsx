@@ -162,6 +162,7 @@ function BrandProfileForm({ organizationId, initialData }: BrandProfileFormProps
                 style={{ borderColor: form.primaryColor || undefined }}
               >
                 {form.logoLightUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={form.logoLightUrl} alt="Logo" className="h-10 object-contain" />
                 ) : null}
                 <span
@@ -191,8 +192,9 @@ function BrandProfileForm({ organizationId, initialData }: BrandProfileFormProps
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Logo (fondo claro)</label>
+                <label htmlFor="brand-logo-light" className="text-sm font-medium text-foreground">Logo (fondo claro)</label>
                 <input
+                  id="brand-logo-light"
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/svg+xml"
                   disabled={uploadingTarget !== null}
@@ -200,6 +202,7 @@ function BrandProfileForm({ organizationId, initialData }: BrandProfileFormProps
                   className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary"
                 />
                 {form.logoLightUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={form.logoLightUrl}
                     alt="Logo claro"
@@ -209,8 +212,9 @@ function BrandProfileForm({ organizationId, initialData }: BrandProfileFormProps
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Logo (fondo oscuro)</label>
+                <label htmlFor="brand-logo-dark" className="text-sm font-medium text-foreground">Logo (fondo oscuro)</label>
                 <input
+                  id="brand-logo-dark"
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/svg+xml"
                   disabled={uploadingTarget !== null}
@@ -218,6 +222,7 @@ function BrandProfileForm({ organizationId, initialData }: BrandProfileFormProps
                   className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary"
                 />
                 {form.logoDarkUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={form.logoDarkUrl}
                     alt="Logo oscuro"
@@ -228,8 +233,9 @@ function BrandProfileForm({ organizationId, initialData }: BrandProfileFormProps
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Favicon</label>
+              <label htmlFor="brand-favicon" className="text-sm font-medium text-foreground">Favicon</label>
               <input
+                id="brand-favicon"
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/svg+xml"
                 disabled={uploadingTarget !== null}
@@ -237,6 +243,7 @@ function BrandProfileForm({ organizationId, initialData }: BrandProfileFormProps
                 className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary"
               />
               {form.faviconUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={form.faviconUrl}
                   alt="Favicon"

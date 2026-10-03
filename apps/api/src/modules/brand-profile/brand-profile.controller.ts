@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { brandProfileResponse, uploadBrandProfileAssetResponse } from "@impulza/contracts";
+import { brandProfileResponse, resolvedBrandResponse, uploadBrandProfileAssetResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import {
   updateBrandProfileSchema,
@@ -57,6 +57,19 @@ export class BrandProfileController {
   @ApiResponse({ status: 404, description: "Organización no encontrada o sin membresía activa." })
   async getBrandProfile(@Param("organizationId") organizationId: string) {
     return this.brandProfileService.getByOrg(organizationId);
+  }
+
+  @Get("resolved")
+  @ApiOperation({
+    summary: "Marca efectiva de la organización (con la cascada aplicada)",
+    description:
+      "Lo que realmente se muestra: la marca de la organización y, donde no configuró algo, la de la plataforma (ADR-028 §4). Solo para miembros activos (ADR-002).",
+  })
+  @ApiZodResponse(200, resolvedBrandResponse, "Marca efectiva de la organización.")
+  @ApiResponse({ status: 401, description: "No autenticado." })
+  @ApiResponse({ status: 404, description: "Organización no encontrada o sin membresía activa." })
+  async getResolvedBrand(@Param("organizationId") organizationId: string) {
+    return this.brandProfileService.resolveBrand(organizationId);
   }
 
   @Put()

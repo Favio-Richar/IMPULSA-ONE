@@ -3,6 +3,7 @@ import type { PrismaClient } from "@impulza/database";
 import { bookingDepositExpiredEmail } from "@impulza/validation";
 import { type ConnectionOptions, Queue, Worker } from "bullmq";
 import { logger } from "./observability/logger.js";
+import { brandOrganizationEmail } from "./brand.js";
 
 export const BOOKING_DEPOSITS_QUEUE = "booking-deposits";
 /**
@@ -59,7 +60,7 @@ export async function releaseExpiredDeposits(
       manageUrl: null,
     });
     try {
-      await email.send({ to: booking.customerEmail, subject: content.subject, text: content.text });
+      await email.send(await brandOrganizationEmail(prisma, booking.organizationId, { to: booking.customerEmail, subject: content.subject, text: content.text }));
     } catch (error) {
       // La hora ya se liberó; el correo no se reintenta (no hay nada que el cliente deba hacer).
       logger.error("booking.deposit.expired_email_failed", { bookingId: booking.id, err: error });

@@ -8,6 +8,7 @@ import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { sanitizeRichText } from "../blocks/sanitize.js";
+import { BrandProfileService } from "../brand-profile/brand-profile.service.js";
 import { PlansService } from "../plans/plans.service.js";
 
 export const SEQUENCE_LIMIT_REACHED = "SEQUENCE_LIMIT_REACHED";
@@ -30,6 +31,7 @@ export class SequencesService {
     @Inject(EMAIL_ADAPTER) private readonly email: EmailAdapter,
     private readonly plans: PlansService,
     private readonly audit: AuditService,
+    private readonly brandProfileService: BrandProfileService,
   ) {}
 
   async list(organizationId: string): Promise<EmailSequenceResponse[]> {
@@ -138,7 +140,9 @@ export class SequencesService {
     if (!step) throw new NotFoundException("Ese correo no existe en la secuencia.");
     const organization = await this.prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { name: true } });
     const content = sequenceEmail({ organizationName: organization.name, subject: step.subject, bodyHtml: step.bodyHtml, name: actor.name ?? null, unsubscribeUrl: null, test: true });
-    await this.email.send({ to: actor.email, subject: content.subject, text: content.text, html: content.html });
+    await this.email.send(
+      await this.brandProfileService.brandEmail(organizationId, { to: actor.email, subject: content.subject, text: content.text, html: content.html }),
+    );
     await this.audit.record({ organizationId, actorId: actor.id, action: "email_sequence.test_sent", targetType: "EmailSequence", targetId: sequenceId, metadata: { position } });
   }
 

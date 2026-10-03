@@ -79,7 +79,8 @@ describe("BrandProfileService — Cascada de marca (resolveBrand ADR-028 §4)", 
     expect(resolved.primaryColor).toBe("#8b5a2b");
     expect(resolved.secondaryColor).toBe("#5c3a1e");
     expect(resolved.contactEmail).toBe("contacto@cafearoma.cl");
-    expect(resolved.senderName).toBe("Plataforma Custom");
+    expect(resolved.senderName).toBe("Café Aroma Gourmet"); // ADR-028 §5: la organización firma con su nombre
+    expect(resolved.senderEmail).toBeNull(); // sin dominio verificado (F9.7) el correo sale con el remitente de la plataforma
   });
 
   it("Combinación 2: Organización tiene perfil parcial (solo displayName y color) → logos y colores secundarios caen a plataforma", async () => {

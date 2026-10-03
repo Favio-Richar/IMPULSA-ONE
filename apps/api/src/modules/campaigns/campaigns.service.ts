@@ -24,6 +24,7 @@ import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { sanitizeRichText } from "../blocks/sanitize.js";
+import { BrandProfileService } from "../brand-profile/brand-profile.service.js";
 import { PlansService } from "../plans/plans.service.js";
 
 export const CAMPAIGN_NOT_FOUND = "Campaña no encontrada: no existe, o pertenece a otra organización (ADR-002).";
@@ -62,6 +63,7 @@ export class CampaignsService {
     @Inject(EMAIL_ADAPTER) private readonly email: EmailAdapter,
     private readonly auditService: AuditService,
     private readonly plansService: PlansService,
+    private readonly brandProfileService: BrandProfileService,
   ) {}
 
   private segmentOf(campaign: Campaign): CampaignSegment {
@@ -188,7 +190,9 @@ export class CampaignsService {
     const organization = await this.prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { name: true } });
     const content = campaignEmail({ organizationName: organization.name, subject: campaign.subject, bodyHtml: campaign.bodyHtml, unsubscribeUrl: null, test: true });
     try {
-      await this.email.send({ to: actor.email, subject: content.subject, text: content.text, html: content.html });
+      await this.email.send(
+        await this.brandProfileService.brandEmail(organizationId, { to: actor.email, subject: content.subject, text: content.text, html: content.html }),
+      );
     } catch (error) {
       logger.error("no se pudo enviar la prueba de una campaña", { campaignId, error: error instanceof Error ? error.message : String(error) });
       throw new ServiceUnavailableException("No pudimos enviar la prueba. Intenta de nuevo en un momento.");

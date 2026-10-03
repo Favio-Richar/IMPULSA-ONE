@@ -51156,6 +51156,115 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/brand-profile/resolved": {
+      "get": {
+        "description": "Lo que realmente se muestra: la marca de la organización y, donde no configuró algo, la de la plataforma (ADR-028 §4). Solo para miembros activos (ADR-002).",
+        "operationId": "BrandProfileController_getResolvedBrand",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Marca efectiva de la organización.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "logoLightUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "logoDarkUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "faviconUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "primaryColor": {
+                      "type": "string"
+                    },
+                    "secondaryColor": {
+                      "type": "string"
+                    },
+                    "contactEmail": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "senderName": {
+                      "type": "string"
+                    },
+                    "senderEmail": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "logoLightUrl",
+                    "logoDarkUrl",
+                    "faviconUrl",
+                    "primaryColor",
+                    "secondaryColor",
+                    "contactEmail",
+                    "senderName",
+                    "senderEmail"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "No autenticado."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Organización no encontrada o sin membresía activa."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Marca efectiva de la organización (con la cascada aplicada)",
+        "tags": [
+          "brand-profile"
+        ]
+      }
+    },
     "/api/v1/organizations/{organizationId}/brand-profile/upload": {
       "post": {
         "description": "Permite PNG, JPG, WebP o SVG saneado. Requiere el permiso theme.manage (OWNER o ADMIN).",

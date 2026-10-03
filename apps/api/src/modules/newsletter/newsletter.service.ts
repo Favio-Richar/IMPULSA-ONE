@@ -16,6 +16,7 @@ import {
 } from "@impulza/validation";
 import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
 import { PRISMA } from "../../database/prisma.module.js";
+import { BrandProfileService } from "../brand-profile/brand-profile.service.js";
 import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
@@ -45,6 +46,7 @@ export class NewsletterService {
     private readonly contacts: ContactsService,
     private readonly audit: AuditService,
     private readonly automationEvents: AutomationEventsService,
+    private readonly brandProfileService: BrandProfileService,
   ) {}
 
   async request(siteSlug: string, raw: unknown, now = new Date()): Promise<PublicNewsletterSignupResponse> {
@@ -104,7 +106,7 @@ export class NewsletterService {
           contactId: existing.id,
         },
       });
-      await this.send(email, newsletterAlreadySubscribedEmail({ siteName: site.name }));
+      await this.send(site.organizationId, email, newsletterAlreadySubscribedEmail({ siteName: site.name }));
       return PENDING;
     }
 
@@ -126,7 +128,7 @@ export class NewsletterService {
       },
     });
     const confirmUrl = `${env.PUBLIC_SITE_BASE_URL.replace(/\/+$/, "")}/suscripcion/${token}`;
-    await this.send(email, newsletterConfirmationEmail({ siteName: site.name, confirmUrl, name }));
+    await this.send(site.organizationId, email, newsletterConfirmationEmail({ siteName: site.name, confirmUrl, name }));
     logger.info("newsletter: confirmación enviada", { organizationId: site.organizationId, siteId: site.id });
     return PENDING;
   }
@@ -217,9 +219,10 @@ export class NewsletterService {
   }
 
   /** El correo nunca hace fallar la respuesta (sería una pista de qué direcciones existen). */
-  private async send(to: string, content: { subject: string; text: string }): Promise<void> {
+  private async send(organizationId: string, to: string, content: { subject: string; text: string }): Promise<void> {
     try {
-      await this.email.send({ to, subject: content.subject, text: content.text });
+      // F9.2: el correo lo envía el negocio a su suscriptor: lleva la marca del negocio.
+      await this.email.send(await this.brandProfileService.brandEmail(organizationId, { to, subject: content.subject, text: content.text }));
     } catch (error) {
       logger.error("newsletter: no se pudo enviar el correo", { err: error });
     }

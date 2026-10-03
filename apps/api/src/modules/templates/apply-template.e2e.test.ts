@@ -304,4 +304,38 @@ describe("Aplicar plantilla (e2e) — PL4", () => {
     const { agent, base: ownBase } = await createOrgWithSite();
     await agent.post(`${ownBase}/apply-template`).send({ templateCode: CAFE.code }).expect(403);
   });
+
+  it("F9.2: una página nueva nace con el nombre y el logo de la marca de la organización, sin pisar lo que la persona escribió", async () => {
+    const { agent, organizationId, base } = await createOrgWithSite();
+    const logo = `https://media.test/branding/org/${organizationId}/logo_light-1.png`;
+    await prisma.brandProfile.upsert({
+      where: { organizationId },
+      update: { displayName: "Café de la Marca", logoLightUrl: logo },
+      create: { organizationId, displayName: "Café de la Marca", logoLightUrl: logo },
+    });
+
+    const profileOf = (body: unknown) =>
+      applyTemplateResponse.parse(body).blocks.find((block) => block.type === "profile")!.config as { name: string; avatar?: { url: string; alt: string } };
+
+    // Sin nombre propio: toma el de la marca, y el logo como avatar.
+    const sinNombre = profileOf((await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: CAFE.code, discardUnpublishedChanges: true }).expect(200)).body);
+    expect(sinNombre.name).toBe("Café de la Marca");
+    expect(sinNombre.avatar?.url).toBe(logo);
+    expect(sinNombre.avatar?.alt).toContain("Café de la Marca");
+
+    // Con nombre propio: se respeta; el logo sigue siendo el avatar por defecto.
+    const conNombre = profileOf(
+      (await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: CAFE.code, discardUnpublishedChanges: true, personalization: { name: "Mi nombre" } }).expect(200)).body,
+    );
+    expect(conNombre.name).toBe("Mi nombre");
+    expect(conNombre.avatar?.url).toBe(logo);
+  });
+
+  it("F9.2: sin marca propia no se inventa un avatar ni se usa el logo de la plataforma", async () => {
+    const { agent, base } = await createOrgWithSite();
+    const response = await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: CAFE.code }).expect(200);
+    const profile = applyTemplateResponse.parse(response.body).blocks.find((block) => block.type === "profile")!.config as { name: string; avatar?: unknown };
+    expect(profile.avatar).toBeUndefined();
+    expect(profile.name).toBe("Tu Café de Barrio");
+  });
 });

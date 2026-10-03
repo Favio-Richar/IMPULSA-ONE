@@ -5,9 +5,32 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-03) — F9.2 implementada en rama fase-9/f9-2-marca-organizacion (En revisión por Claude); siguiente: F9.3
+## 0. RETOMAR AQUÍ (2026-10-03) — F9.2 hecha y fusionada a master; siguiente: F9.3 (Antigravity)
 
-**F9.2 (Marca de cada organización) — Implementada y en revisión:**
+**Revisión de Claude de F9.2 (2026-10-03): NO se aprobó tal cual; Claude corrigió los defectos en la misma rama.**
+Encontrados contra la API real: (1) **`resolveBrand` no se usaba en ninguna parte** (el criterio 4a/4b exige páginas nuevas y correos de la
+organización con su marca); (2) la subida de logos de la organización volvía a dar **413 con archivos > ~75 KB** (la corrección de F9.1 solo cubría la
+ruta de la plataforma); (3) un usuario podía guardar como logo **cualquier URL externa** (píxel de rastreo) o la de otra organización; (4) ~60 líneas
+de validación de subida **copiadas** de F9.1, y dos copias de las funciones de seguridad de URLs (`index.ts` y `common.ts`); (5) 4 advertencias de lint
+nuevas y etiquetas de los campos de archivo sin asociar (accesibilidad).
+**Correcciones:** la cascada vive en UN lugar (`cascadeBrand`/`resolveOrganizationBrand` en `@impulza/validation`) y la usan API y worker;
+`applyOrganizationBrandDefaults` (nombre visible + logo como avatar en las páginas nuevas, solo con valores propios de la organización);
+`brandEmail` (nombre, logo, color y contacto de la marca en lo que la organización envía a SUS clientes: reservas, pedidos, newsletter,
+campañas y secuencias —API y worker—; el remitente real no se toca hasta F9.7); `prepareBrandingAsset` compartido entre la plataforma y las
+organizaciones; límite de subida para ambas rutas **solo con sesión real** (consulta a la base de datos, no basta una cookie inventada);
+logos **solo de su propio espacio** de almacenamiento (`branding/org/<id>/`); lectura del perfil con `upsert` (sin carrera); `GET
+/organizations/:id/brand-profile/resolved`; funciones de URLs consolidadas en `common.ts`.
+**Pruebas:** validación 707, e2e de la API (brand-profile 27), Playwright 6/6 (incluye subir un logo real de ~190 KB), y 5 mutaciones que hacen fallar
+sus pruebas (valores por defecto, correo con marca, logos externos, límite de la ruta de la organización, límite sin sesión real).
+**Límites que siguen vigentes (honestidad):** la aplicación de la marca a páginas se prueba por API y unidad (no por Playwright del onboarding); los
+correos de plataforma a la organización (cobros, soporte, acceso) conservan la marca de la plataforma a propósito; los avisos a los dueños tampoco
+llevan la marca; el remitente sigue siendo el de la plataforma hasta F9.7 (dominio verificado); no hay proveedor de correo real (solo consola). Las
+pruebas lentas de la API (newsletter, auth, dominios, calendario, marca de plataforma) fallan por tiempo **solo cuando se corren muchas a la vez** y
+pasan solas (ver «Tests flaky bajo carga»).
+**Siguiente paso:** Antigravity desarrolla **F9.3** (modelo de agencia y acceso delegado: la historia más delicada, ADR-028 §2) en una rama nueva
+`fase-9/f9-3-modelo-agencia` creada desde `master`; Claude la revisa antes de fusionar.
+
+**F9.2 (Marca de cada organización) — lo que entregó Antigravity (antes de la revisión):**
 - Desarrollada en rama dedicada `fase-9/f9-2-marca-organizacion`.
 - Modelo `BrandProfile` en PostgreSQL (`packages/database`), migración `20261002230000_f92_brand_profile` desplegada en `impulza` e `impulza_test` con script de reversa `down.sql`. Crea un registro vacío por organización existente para no romper datos previos.
 - Validación Zod en `@impulza/validation`: `brandProfileSchema`, `updateBrandProfileSchema` con contraste WCAG 2.2 AA (>= 4.5:1 sobre fondo claro #ffffff), saneamiento SVG y URLs seguras HTTPS. `resolvedBrandSchema` para la cascada.

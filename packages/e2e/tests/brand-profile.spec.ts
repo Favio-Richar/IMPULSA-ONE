@@ -1,4 +1,6 @@
 import path from "node:path";
+import { randomBytes } from "node:crypto";
+import { deflateSync, crc32 } from "node:zlib";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { FIXTURE_PATH, type SeededFixture } from "../global-setup.js";
@@ -27,6 +29,30 @@ const CAPTURES_DIR = (() => {
   }
   return candidates[0]!;
 })();
+
+/** PNG real (decodificable) con ruido incompresible: pesa lo que pesaría un logo de verdad. */
+function makeNoisePng(side: number): Buffer {
+  const chunk = (type: string, data: Buffer): Buffer => {
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const checksum = Buffer.alloc(4);
+    checksum.writeUInt32BE(crc32(body));
+    return Buffer.concat([length, body, checksum]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(side, 0);
+  header.writeUInt32BE(side, 4);
+  header[8] = 8; // profundidad
+  header[9] = 6; // RGBA
+  const rows = Buffer.concat(Array.from({ length: side }, () => Buffer.concat([Buffer.from([0]), randomBytes(side * 4)])));
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", header),
+    chunk("IDAT", deflateSync(rows)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
 
 async function expectNoHorizontalScroll(page: Page): Promise<void> {
   const overflow = await page.evaluate(
@@ -113,4 +139,30 @@ test("Marca de la organización (/configuracion/marca): contraste AA, vista prev
   });
 
   await expectNoHorizontalScroll(page);
+});
+
+test("F9.2: sube un logo de ~200 KB, se ve en la vista previa y sigue ahí tras recargar", async ({ page }, testInfo) => {
+  await page.addInitScript((orgId) => {
+    window.localStorage.setItem("impulza-active-org", JSON.stringify({ state: { activeOrganizationId: orgId }, version: 0 }));
+  }, fixture.organizationId);
+  await page.goto("/configuracion/marca");
+  await page.waitForSelector("[data-testid='brand-form']", { timeout: 20_000 });
+
+  const png = makeNoisePng(220); // ~190 KB: antes de la corrección la subida daba 413 desde ~75 KB
+  expect(png.length).toBeGreaterThan(150_000);
+  await page.getByLabel("Logo (fondo claro)").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: png });
+
+  const logo = page.getByAltText("Logo claro");
+  await expect(logo).toBeVisible({ timeout: 20_000 });
+  await expect(logo).toHaveAttribute("src", new RegExp(`/branding/org/${fixture.organizationId}/logo_light-\\d+\\.png$`));
+
+  await page.getByRole("button", { name: "Guardar cambios de marca" }).click();
+  await expect(page.getByText("Configuración de marca guardada correctamente.")).toBeVisible({ timeout: 10_000 });
+
+  await page.reload();
+  await page.waitForSelector("[data-testid='brand-form']", { timeout: 20_000 });
+  await expect(page.getByAltText("Logo claro")).toBeVisible();
+  await expect.poll(() => page.getByAltText("Logo claro").evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  await expectNoHorizontalScroll(page);
+  await page.screenshot({ path: path.join(CAPTURES_DIR, `05-logo-subido-${testInfo.project.name}.png`), fullPage: false });
 });

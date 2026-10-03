@@ -59,8 +59,8 @@ describe("Marca de la plataforma (e2e) — F9.1 / ADR-028 §4", () => {
       .compile();
 
     app = moduleRef.createNestApplication();
-    app.use(brandingUploadBody());
     app.use(cookieParser());
+    app.use(brandingUploadBody(moduleRef.get(PRISMA)));
     app.setGlobalPrefix("api/v1");
     await app.init();
     httpServer = await listenForTests(app);

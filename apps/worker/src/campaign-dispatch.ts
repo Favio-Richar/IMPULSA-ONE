@@ -3,6 +3,7 @@ import type { PrismaClient } from "@impulza/database";
 import { campaignEmail } from "@impulza/validation";
 import { type ConnectionOptions, Queue, Worker } from "bullmq";
 import { logger } from "./observability/logger.js";
+import { brandOrganizationEmail } from "./brand.js";
 
 export const CAMPAIGN_DISPATCH_QUEUE = "campaign-dispatch";
 const HOUR = 3_600_000;
@@ -69,14 +70,14 @@ export async function dispatchCampaigns(prisma: PrismaClient, email: EmailAdapte
         const unsubscribeUrl = `${baseUrl}/baja/${signUnsubscribeToken(recipient.id, options.linkSecret)}`;
         const content = campaignEmail({ organizationName: campaign.organization.name, subject: campaign.subject, bodyHtml: campaign.bodyHtml, unsubscribeUrl });
         try {
-          await email.send({
+          await email.send(await brandOrganizationEmail(prisma, campaign.organizationId, {
             to: recipient.email,
             subject: content.subject,
             text: content.text,
             html: content.html,
             // "Darse de baja" con un clic desde el cliente de correo (RFC 8058).
             headers: { "List-Unsubscribe": `<${baseUrl}/api/unsubscribe/${signUnsubscribeToken(recipient.id, options.linkSecret)}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
-          });
+          }));
           sent += 1;
         } catch (error) {
           await prisma.campaignRecipient.update({ where: { id: recipient.id }, data: { status: "FAILED", sentAt: null, error: error instanceof Error ? error.message.slice(0, 300) : "Error al enviar." } });

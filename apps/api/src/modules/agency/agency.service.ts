@@ -17,6 +17,7 @@ import {
   AgencyBillingChangeStatus,
   AgencyBillingMode,
   AgencyClientStatus,
+  AgencyTransferStatus,
   MembershipSource,
   MembershipStatus,
   OrganizationKind,
@@ -352,6 +353,8 @@ export class AgencyService {
       // Archivar y soltar quitan el acceso delegado de inmediato; reanudar desde archivo lo devuelve.
       if (next === AgencyClientStatus.ARCHIVED || next === AgencyClientStatus.ENDED) {
         await this.access.revokeForClient(tx, relation.id);
+        // Si había un traspaso en curso, ya no tiene a quién traspasar: se cancela.
+        await tx.agencyTransfer.updateMany({ where: { agencyClientId: relation.id, status: AgencyTransferStatus.PENDING }, data: { status: AgencyTransferStatus.CANCELED, decidedAt: now } });
       } else if (relationGrantsAccess(row)) {
         await this.access.grantForClient(tx, row);
       }
@@ -457,6 +460,8 @@ export class AgencyService {
         data: { status: AgencyClientStatus.ENDED, endedAt: new Date(), endedReason: "revoked_by_client", ownerInviteTokenHash: null },
       });
       await this.access.revokeForClient(tx, relation.id);
+      // Un traspaso en curso deja de tener sentido: el propietario ya cortó la relación.
+      await tx.agencyTransfer.updateMany({ where: { agencyClientId: relation.id, status: AgencyTransferStatus.PENDING }, data: { status: AgencyTransferStatus.CANCELED, decidedAt: new Date() } });
       // Si la agencia había ocultado el sitio, al revocar vuelve a verse: el propietario nunca queda con el sitio apagado.
       await tx.organization.update({ where: { id: clientOrganizationId }, data: { publicHiddenAt: null } });
     });

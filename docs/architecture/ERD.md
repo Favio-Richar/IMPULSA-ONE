@@ -525,3 +525,17 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   agencia) → plan por defecto. Fuente nueva `agency`. Nada se cobra ni se guarda de medios de pago.
 - Migración reversible `20261003120000_f95a_agency_billing` (`down.sql`).
 
+## 9v. Traspaso de un cliente (F9.5b, BACKLOG_FASE_9.md, ADR-028 §2)
+
+- **AgencyTransfer** (`agency_transfers`): un traspaso de la relación de un cliente a su propietario o a otra agencia. `agency_client_id`
+  (`CASCADE`), `to_kind` (`OWNER | AGENCY`) y `to_agency_organization_id` (`CASCADE`; `CHECK`: hay agencia receptora si y solo si el destino es
+  `AGENCY`), `status` (`PENDING | COMPLETED | REJECTED | CANCELED | EXPIRED`), los dos consentimientos (`owner_accepted_at` /
+  `owner_decided_by_id` y `receiver_accepted_at` / `receiver_decided_by_id`), `resulting_agency_client_id` (la relación nueva con la agencia receptora,
+  al completarse), `expires_at` (14 días) y `decided_at`. **Un traspaso pendiente por relación**: índice único parcial
+  `agency_transfers_one_pending` (`WHERE status = 'PENDING'`).
+- **Estado `TRANSFERRING` de `agency_clients`:** mientras hay un traspaso pendiente la relación está en `TRANSFERRING`, con **el mismo acceso** que `ACTIVE`
+  (antes de aceptar, nada cambia). Solo se inicia desde `ACTIVE`. Al vencer, rechazarse o cancelarse vuelve a `ACTIVE`; al completarse pasa a `ENDED`
+  (`ended_reason`: `transferred_to_owner` | `transferred_to_agency`) y, si el destino es otra agencia, nace una relación nueva `ACTIVE` con esa agencia.
+- **Nunca se mueven datos:** el traspaso solo cambia relaciones y membresías delegadas; las filas del negocio conservan su `organization_id`.
+- Migración reversible `20261003130000_f95b_agency_transfer` (`down.sql`).
+

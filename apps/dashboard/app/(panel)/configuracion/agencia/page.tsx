@@ -3,6 +3,7 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, EmptyState, ErrorState, LoadingState } from "@impulza/ui";
 import Link from "next/link";
 import { OwnerBillingCard } from "../../../../components/agency/owner-billing-card";
+import { OwnerTransferCard } from "../../../../components/agency/owner-transfer-card";
 import { ConfirmButton } from "../../../../components/confirm-button";
 import { useActiveOrgStore } from "../../../../lib/active-org-store";
 import { ApiError } from "../../../../lib/api-client";
@@ -40,6 +41,7 @@ export default function ConfiguracionAgenciaPage(): React.JSX.Element {
         </p>
       </header>
       <LinkCard organizationId={organizationId} />
+      <OwnerTransferCard organizationId={organizationId} />
       <OwnerBillingCard organizationId={organizationId} />
       <ModeCard organizationId={organizationId} />
     </div>

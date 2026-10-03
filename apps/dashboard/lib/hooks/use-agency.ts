@@ -1,10 +1,13 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AgencyClientAction, CreateAgencyClientDto, LinkAgencyClientDto } from "@impulza/validation";
+import type { AgencyClientAction, CreateAgencyClientDto, CreateTransferDto, LinkAgencyClientDto } from "@impulza/validation";
 import {
   acceptAgencyLink,
+  acceptIncomingTransfer,
+  acceptOwnerTransfer,
   acceptOwnerInvitation,
   actOnAgencyClient,
   cancelAgencyBilling,
+  cancelAgencyTransfer,
   changeOwnerBilling,
   confirmOwnerBilling,
   createAgencyClient,
@@ -15,8 +18,13 @@ import {
   getAgencyOverview,
   getAgencyStatus,
   getOwnerBilling,
+  getOwnerTransfer,
+  listIncomingTransfers,
   proposeAgencyBilling,
+  rejectIncomingTransfer,
   rejectOwnerBilling,
+  rejectOwnerTransfer,
+  startAgencyTransfer,
   type AgencyOverviewParams,
   listAgencyClients,
   rejectAgencyLink,
@@ -162,4 +170,47 @@ export function useRejectOwnerBilling(organizationId: string) {
 export function useChangeOwnerBilling(organizationId: string) {
   const refresh = useRefreshOwner(organizationId);
   return useMutation({ mutationFn: (mode: "CLIENT_PAYS" | "AGENCY_PAYS") => changeOwnerBilling(organizationId, mode), onSuccess: refresh });
+}
+
+// ---- traspaso de un cliente (F9.5b) -----------------------------------------------------------------------------------
+
+export function useStartAgencyTransfer(organizationId: string, relationId: string) {
+  const refresh = useRefresh(organizationId);
+  return useMutation({ mutationFn: (body: CreateTransferDto) => startAgencyTransfer(organizationId, relationId, body), onSuccess: refresh });
+}
+
+export function useCancelAgencyTransfer(organizationId: string, relationId: string) {
+  const refresh = useRefresh(organizationId);
+  return useMutation({ mutationFn: () => cancelAgencyTransfer(organizationId, relationId), onSuccess: refresh });
+}
+
+/** Traspasos que otra agencia le ofrece a esta (solo los pendientes de su decisión). */
+export function useIncomingTransfers(organizationId: string, enabled: boolean) {
+  return useQuery({ queryKey: ["agency", organizationId, "incoming-transfers"], queryFn: () => listIncomingTransfers(organizationId), enabled });
+}
+
+export function useAcceptIncomingTransfer(organizationId: string) {
+  const refresh = useRefresh(organizationId);
+  return useMutation({ mutationFn: (transferId: string) => acceptIncomingTransfer(organizationId, transferId), onSuccess: refresh });
+}
+
+export function useRejectIncomingTransfer(organizationId: string) {
+  const refresh = useRefresh(organizationId);
+  return useMutation({ mutationFn: (transferId: string) => rejectIncomingTransfer(organizationId, transferId), onSuccess: refresh });
+}
+
+/** El traspaso más reciente de un negocio, visto por su propietario. */
+export function useOwnerTransfer(organizationId: string, enabled: boolean) {
+  return useQuery({ queryKey: ["agency", organizationId, "owner-transfer"], queryFn: () => getOwnerTransfer(organizationId), enabled });
+}
+
+/** Al completarse un traspaso cambia la agencia del negocio y su plan: se refresca todo lo que dependa de ello. */
+export function useAcceptOwnerTransfer(organizationId: string) {
+  const refresh = useRefreshOwner(organizationId);
+  return useMutation({ mutationFn: () => acceptOwnerTransfer(organizationId), onSuccess: refresh });
+}
+
+export function useRejectOwnerTransfer(organizationId: string) {
+  const refresh = useRefreshOwner(organizationId);
+  return useMutation({ mutationFn: () => rejectOwnerTransfer(organizationId), onSuccess: refresh });
 }

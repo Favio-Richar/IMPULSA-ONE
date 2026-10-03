@@ -6,6 +6,8 @@ import { isoDateTime, uuid } from "./primitives.js";
 export const organizationKind = z.enum(["BUSINESS", "AGENCY"]);
 export const agencyClientStatus = z.enum(["INVITED", "ACTIVE", "PAUSED", "ARCHIVED", "TRANSFERRING", "ENDED"]);
 export const agencyBillingMode = z.enum(["CLIENT_PAYS", "AGENCY_PAYS"]);
+/** Las partes que consienten un traspaso: el propietario del negocio y la agencia receptora (F9.5b). */
+export const agencyTransferParty = z.enum(["OWNER", "RECEIVER"]);
 
 /** Un cliente de la agencia, visto por la agencia. Nunca lleva el token de invitación. */
 export const agencyClientResponse = z.object({
@@ -146,6 +148,10 @@ export const agencyOverviewItem = z.object({
   readOnly: z.boolean(),
   publicHidden: z.boolean(),
   pendingBillingMode: agencyBillingMode.nullable(),
+  /** Traspaso en curso de este cliente (F9.5b), con lo que falta decidir. */
+  pendingTransfer: z
+    .object({ toKind: z.enum(["OWNER", "AGENCY"]), toAgencyName: z.string().nullable(), waitingFor: z.array(agencyTransferParty), expiresAt: isoDateTime })
+    .nullable(),
   /** `null` si el cliente no está ACTIVE: no suma ni se mide. */
   performance: agencyPerformance.nullable(),
   plan: z
@@ -197,3 +203,37 @@ export const agencyBillingResponse = z.object({
   history: z.array(agencyBillingChange),
 });
 export type AgencyBillingResponse = z.infer<typeof agencyBillingResponse>;
+
+// ---- traspaso de un cliente (F9.5b) -------------------------------------------------------------------------------------
+// Doble consentimiento: el propietario siempre; la agencia receptora también si el destino es otra agencia. Nada de datos del
+// negocio viaja acá: solo quién traspasa a quién, qué falta y cuándo vence.
+
+export const agencyTransferStatus = z.enum(["PENDING", "COMPLETED", "REJECTED", "CANCELED", "EXPIRED"]);
+
+export const agencyTransfer = z.object({
+  id: uuid,
+  status: agencyTransferStatus,
+  /** A quién se traspasa: al propio propietario del negocio, o a otra agencia. */
+  toKind: z.enum(["OWNER", "AGENCY"]),
+  /** Nombre de la agencia receptora (solo si el destino es otra agencia). */
+  toAgencyName: z.string().nullable(),
+  fromAgencyName: z.string(),
+  clientName: z.string(),
+  ownerAccepted: z.boolean(),
+  receiverAccepted: z.boolean(),
+  /** Quién falta por decidir; vacío cuando está completo o ya no está pendiente. */
+  waitingFor: z.array(agencyTransferParty),
+  createdAt: isoDateTime,
+  expiresAt: isoDateTime,
+  decidedAt: isoDateTime.nullable(),
+});
+export type AgencyTransfer = z.infer<typeof agencyTransfer>;
+
+/** El traspaso más reciente de la relación (pendiente o ya decidido); `transfer: null` si nunca hubo. */
+export const agencyTransferResponse = z.object({ transfer: agencyTransfer.nullable() });
+export type AgencyTransferResponse = z.infer<typeof agencyTransferResponse>;
+
+/** Traspasos que otra agencia le ofrece a esta y esperan su decisión. */
+export const agencyIncomingTransfersResponse = z.object({ items: z.array(agencyTransfer) });
+export type AgencyIncomingTransfersResponse = z.infer<typeof agencyIncomingTransfersResponse>;
+

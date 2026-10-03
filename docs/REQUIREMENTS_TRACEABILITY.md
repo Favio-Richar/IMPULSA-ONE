@@ -115,7 +115,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 
 | Requisito | Fuente | Fase |
 |---|---|---|
-| Dashboard agencia, gestión de clientes (alta, cambio rápido, pausa/archivo, duplicación, transferencia, facturación) | PM §11.1–11.2 | Fase 9 (F9.3–F9.5, ADR-028) — **F9.3 hecha** (alta de clientes, acceso delegado, pausa/archivo con ocultar el sitio, revocación); **F9.4 hecha con reservas** (panel consolidado: faltan tareas del equipo y alertas de cobro); F9.5 en progreso (**F9.5a facturación hecha**; transferir, duplicar e importar pendientes) (antes F6.8, bloqueada por #8) |
+| Dashboard agencia, gestión de clientes (alta, cambio rápido, pausa/archivo, duplicación, transferencia, facturación) | PM §11.1–11.2 | Fase 9 (F9.3–F9.5, ADR-028) — **F9.3 hecha** (alta de clientes, acceso delegado, pausa/archivo con ocultar el sitio, revocación); **F9.4 hecha con reservas** (panel consolidado: faltan tareas del equipo y alertas de cobro); F9.5 en progreso (**F9.5a facturación y F9.5b transferir hechas**; duplicar e importar pendientes) (antes F6.8, bloqueada por #8) |
 | Equipo con roles personalizados, acceso por cliente/módulo, auditoría, aprobación antes de publicar | PM §11.3 | Fase 9 (F9.6, ADR-028) — Pendiente |
 | Marca blanca: logo/colores, dominio de agencia, portal cliente, correos con marca, plantillas privadas | PM §11.4 | Fase 9 (F9.7, ADR-028) — Pendiente (antes F6.9) |
 | Reportes por cliente: comparación de periodos, programación, comentarios, exportación, enlace compartido | PM §11.5 | Fase 9 (F9.8, ADR-028) — Pendiente |

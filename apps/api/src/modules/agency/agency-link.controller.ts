@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Res, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
-import { acceptOwnerInvitationResponse, agencyBillingResponse, agencyLinkResponse } from "@impulza/contracts";
+import { acceptOwnerInvitationResponse, agencyBillingResponse, agencyLinkResponse, agencyTransferResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import { acceptOwnerInvitationSchema, changeBillingSchema, type AcceptOwnerInvitationDto, type ChangeBillingDto } from "@impulza/validation";
 import { CsrfGuard } from "../../common/csrf.guard.js";
@@ -23,6 +23,7 @@ import { OrganizationMembershipGuard } from "../organizations/guards/organizatio
 import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
 import { AgencyBillingService } from "./agency-billing.service.js";
+import { AgencyTransferService } from "./agency-transfer.service.js";
 import { AgencyService } from "./agency.service.js";
 
 /**
@@ -40,6 +41,7 @@ export class AgencyLinkController {
   constructor(
     private readonly agencyService: AgencyService,
     private readonly billingService: AgencyBillingService,
+    private readonly transferService: AgencyTransferService,
   ) {}
 
   @Get()
@@ -135,6 +137,43 @@ export class AgencyLinkController {
     @Body(new ZodValidationPipe(changeBillingSchema)) body: ChangeBillingDto,
   ) {
     return this.billingService.ownerChange(organizationId, user.id, body.billingMode);
+  }
+
+  @Get("transfer")
+  @ApiOperation({ summary: "El traspaso más reciente de este negocio", description: "`transfer: null` si nunca hubo uno. Lo ve cualquier miembro del negocio. No incluye datos del negocio." })
+  @ApiZodResponse(200, agencyTransferResponse, "El traspaso más reciente (pendiente o decidido).")
+  @ApiResponse({ status: 404, description: "Este negocio no tiene una agencia vinculada." })
+  async transfer(@Param("organizationId") organizationId: string) {
+    return this.transferService.getForClient(organizationId);
+  }
+
+  @Post("transfer/accept")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_LINK_MANAGE)
+  @RateLimit({ limit: 20, windowSeconds: 60, keyPrefix: "agency-transfer-owner-accept" })
+  @ApiOperation({
+    summary: "Aceptar el traspaso de tu negocio",
+    description: "Si el destino es otra agencia, se completa cuando ella también acepta. Los datos de tu negocio no se mueven. Solo el propietario.",
+  })
+  @ApiZodResponse(200, agencyTransferResponse, "El traspaso, completado o aún esperando a la otra parte.")
+  @ApiRateLimited(20, 60)
+  @ApiResponse({ status: 409, description: "No hay un traspaso pendiente o la agencia receptora ya no tiene cupo." })
+  async acceptTransfer(@Param("organizationId") organizationId: string, @CurrentUser() user: User) {
+    return this.transferService.ownerAccept(organizationId, user.id);
+  }
+
+  @Post("transfer/reject")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_LINK_MANAGE)
+  @RateLimit({ limit: 20, windowSeconds: 60, keyPrefix: "agency-transfer-owner-reject" })
+  @ApiOperation({ summary: "Rechazar el traspaso de tu negocio", description: "Nada cambia: tu negocio sigue con su agencia. Solo el propietario." })
+  @ApiZodResponse(200, agencyTransferResponse, "El traspaso, ya rechazado.")
+  @ApiRateLimited(20, 60)
+  @ApiResponse({ status: 409, description: "No hay un traspaso pendiente." })
+  async rejectTransfer(@Param("organizationId") organizationId: string, @CurrentUser() user: User) {
+    return this.transferService.ownerReject(organizationId, user.id);
   }
 
   @Delete()

@@ -21,7 +21,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.2 | Marca de cada organización (logo, colores, datos) | Hecho (2026-10-03, revisada y corregida por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Hecho (2026-10-03, desarrollada y verificada por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.4 | Panel de agencia | Hecho con reservas (2026-10-03, desarrollada y verificada por Claude; reservas en el detalle de la historia y en `CONTINUIDAD.md` §0) |
-| F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | En progreso por sub-historias: **F9.5a facturación hecha** (2026-10-03); F9.5b transferir, F9.5c duplicar y F9.5d importar CSV pendientes |
+| F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | En progreso por sub-historias: **F9.5a facturación** y **F9.5b transferir hechas** (2026-10-03); F9.5c duplicar y F9.5d importar CSV pendientes |
 | F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | Pendiente |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | Pendiente |
 | F9.8 | Reportes por cliente | Pendiente |
@@ -268,6 +268,28 @@ pruebas:** plan individual sin la rama de agencia (4 fallan), plan masivo sin el
 **Límites (honestidad):** (a) no hay cobro real a la agencia por cliente (decisión de arriba); (b) con `AGENCY_PAYS` el negocio recibe los límites **completos**
 del plan de la agencia, no una fracción de un cupo compartido; (c) el cambio de plan se refleja al instante en los límites pero no genera aviso en pantalla
 para quien ya estaba usando el sistema; (d) el aviso al propietario sale por correo solo a la consola local (no hay proveedor de correo real todavía).
+
+#### F9.5b — Transferir un cliente — Hecha (2026-10-03)
+
+**Qué hay:** modelo `AgencyTransfer` (migración reversible); la agencia propone traspasar un cliente `ACTIVE` a su **propietario** o a **otra agencia**
+(identificada con su identificador y el correo de su propietario); el propietario **siempre** consiente y la agencia receptora también si el destino es otra
+agencia (decisión de diseño documentada en el ADR); en cualquier orden; vence a los 14 días; la receptora necesita cupo de clientes; antes de completarse
+**nada cambia** (`TRANSFERRING` da el mismo acceso que `ACTIVE`); al completarse cambia la relación y **no se mueve ningún dato**. Pantallas: traspaso en la
+fila de la agencia, «Te ofrecen un cliente» en la agencia receptora y la tarjeta del propietario en Configuración › Agencia; avisos por correo y auditoría
+en las tres organizaciones.
+**Verificado:** e2e de la API `agency-transfer.e2e.test.ts` 21/21 (ambos destinos, los dos órdenes de aceptación, rechazo, cancelación, vencimiento,
+recuperación de un `TRANSFERRING` huérfano, concurrencia —dos propuestas a la vez: una gana—, cupo de la receptora, aislamiento entre agencias y de
+propietarios ajenos, permisos del administrador no propietario, efectos laterales y auditoría); reglas puras 5 pruebas; Playwright `traspaso-agencia.spec.ts`
+4/4 en móvil y escritorio con tres actores reales, y los cuatro specs de agencia juntos; capturas en `f95/`. **Mutaciones que hacen fallar las pruebas:**
+completar sin esperar a la otra parte (4 fallan), iniciar desde cualquier estado (1), aceptar vencido (1), la agencia saliente conserva el acceso (2) y una
+agencia ajena aceptando el traspaso de otra (1). **Defecto hallado y corregido al probar:** cancelar el traspaso de un cliente que no es de la agencia
+respondía 409 en vez de 404.
+**Límites (honestidad):** (a) el vencimiento se aplica al leer o decidir, no hay una tarea programada que lo ejecute de madrugada (un traspaso vencido que nadie
+mira sigue «pendiente» en la base hasta que alguien de la agencia, del negocio o de la receptora consulta); (b) los avisos por correo salen solo a la consola
+local (no hay proveedor real todavía); (c) el cliente en traspaso no suma al consolidado del panel (solo suman los `ACTIVE`) aunque la agencia siga trabajando;
+(d) al pasar a otra agencia, quién paga vuelve a empezar en `CLIENT_PAYS` y debe volver a acordarse con ella; (e) las corridas completas de la API (850 pruebas, con la
+máquina cargada por Docker y otras aplicaciones) hacían expirar una prueba distinta cada vez por el límite por defecto de 5 s (analítica, soporte, webhooks), todas
+verdes aisladas: se subió `testTimeout` a 15 s en `apps/api/vitest.config.ts` (solo cambia cuánto se espera, no lo que se verifica) y la suite completa quedó 70/70.
 
 ---
 

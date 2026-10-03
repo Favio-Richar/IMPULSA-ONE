@@ -3,11 +3,13 @@ import type {
   AgencyBillingResponse,
   AgencyClientResponse,
   AgencyDashboardResponse,
+  AgencyIncomingTransfersResponse,
   AgencyLinkResponse,
   AgencyOverviewResponse,
+  AgencyTransferResponse,
   AgencyStatusResponse,
 } from "@impulza/contracts";
-import type { AgencyClientAction, AgencyClientStatusValue, AgencyOverviewQuery, CreateAgencyClientDto, LinkAgencyClientDto } from "@impulza/validation";
+import type { AgencyClientAction, AgencyClientStatusValue, AgencyOverviewQuery, CreateAgencyClientDto, CreateTransferDto, LinkAgencyClientDto } from "@impulza/validation";
 import { apiFetch } from "../api-client";
 
 // Modo agencia (F9.3, ADR-028 §2). Todo se resuelve en el servidor por la membresía real del usuario.
@@ -119,4 +121,38 @@ export function rejectOwnerBilling(organizationId: string): Promise<AgencyBillin
 
 export function changeOwnerBilling(organizationId: string, billingMode: BillingMode): Promise<AgencyBillingResponse> {
   return apiFetch<AgencyBillingResponse>(`${linkPath(organizationId)}/billing`, { method: "POST", body: { billingMode } });
+}
+
+// ---- traspaso de un cliente (F9.5b) -----------------------------------------------------------------------------------
+
+export function startAgencyTransfer(organizationId: string, relationId: string, body: CreateTransferDto): Promise<AgencyTransferResponse> {
+  return apiFetch<AgencyTransferResponse>(`${agencyPath(organizationId)}/clients/${relationId}/transfer`, { method: "POST", body });
+}
+
+export function cancelAgencyTransfer(organizationId: string, relationId: string): Promise<AgencyTransferResponse> {
+  return apiFetch<AgencyTransferResponse>(`${agencyPath(organizationId)}/clients/${relationId}/transfer/cancel`, { method: "POST" });
+}
+
+export function listIncomingTransfers(organizationId: string): Promise<AgencyIncomingTransfersResponse> {
+  return apiFetch<AgencyIncomingTransfersResponse>(`${agencyPath(organizationId)}/transfers`);
+}
+
+export function acceptIncomingTransfer(organizationId: string, transferId: string): Promise<AgencyIncomingTransfersResponse> {
+  return apiFetch<AgencyIncomingTransfersResponse>(`${agencyPath(organizationId)}/transfers/${transferId}/accept`, { method: "POST" });
+}
+
+export function rejectIncomingTransfer(organizationId: string, transferId: string): Promise<AgencyIncomingTransfersResponse> {
+  return apiFetch<AgencyIncomingTransfersResponse>(`${agencyPath(organizationId)}/transfers/${transferId}/reject`, { method: "POST" });
+}
+
+export function getOwnerTransfer(organizationId: string): Promise<AgencyTransferResponse> {
+  return apiFetch<AgencyTransferResponse>(`${linkPath(organizationId)}/transfer`);
+}
+
+export function acceptOwnerTransfer(organizationId: string): Promise<AgencyTransferResponse> {
+  return apiFetch<AgencyTransferResponse>(`${linkPath(organizationId)}/transfer/accept`, { method: "POST" });
+}
+
+export function rejectOwnerTransfer(organizationId: string): Promise<AgencyTransferResponse> {
+  return apiFetch<AgencyTransferResponse>(`${linkPath(organizationId)}/transfer/reject`, { method: "POST" });
 }

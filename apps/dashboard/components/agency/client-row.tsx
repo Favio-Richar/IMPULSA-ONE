@@ -11,6 +11,7 @@ import { useAgencyClientAction } from "../../lib/hooks/use-agency";
 import { ConfirmButton } from "../confirm-button";
 import { BILLING_TEXT, STATUS_TEXT, errorText } from "./agency-text";
 import { ClientBilling } from "./client-billing";
+import { ClientTransfer } from "./client-transfer";
 
 export { BILLING_TEXT, STATUS_TEXT, errorText };
 
@@ -54,7 +55,7 @@ export function ClientRow({ organizationId, item }: { organizationId: string; it
   };
 
   // «Entrar» solo donde el servidor da acceso: activo, en pausa (lectura) o recién creado por la agencia.
-  const canEnter = item.status === "ACTIVE" || item.status === "PAUSED" || (item.status === "INVITED" && item.agencyCreated);
+  const canEnter = item.status === "ACTIVE" || item.status === "PAUSED" || item.status === "TRANSFERRING" || (item.status === "INVITED" && item.agencyCreated);
   const performance = item.performance;
 
   return (
@@ -153,6 +154,7 @@ export function ClientRow({ organizationId, item }: { organizationId: string; it
       ) : null}
 
       <ClientBilling organizationId={organizationId} item={item} />
+      <ClientTransfer organizationId={organizationId} item={item} />
 
       {item.alerts.length > 0 ? (
         <ul className="flex flex-col gap-1" aria-label="Alertas de este cliente" data-testid="client-alerts">

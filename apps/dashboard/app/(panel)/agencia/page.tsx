@@ -11,6 +11,7 @@ import { z } from "zod";
 import { AgencySummary, PeriodSelect } from "../../../components/agency/agency-summary";
 import { BILLING_TEXT, errorText } from "../../../components/agency/client-row";
 import { ClientsTable } from "../../../components/agency/clients-table";
+import { IncomingTransfers } from "../../../components/agency/incoming-transfers";
 import { PlanLimitNotice } from "../../../components/plan-limit-notice";
 import { useActiveOrgStore } from "../../../lib/active-org-store";
 import { useAgencyStatus, useCreateAgencyClient, useRequestAgencyLink } from "../../../lib/hooks/use-agency";
@@ -67,6 +68,8 @@ function AgencyView({ organizationId }: { organizationId: string }): React.JSX.E
         <PeriodSelect days={days} onChange={setDays} />
       </div>
       <AgencySummary organizationId={organizationId} days={days} />
+
+      <IncomingTransfers organizationId={organizationId} />
 
       <ClientsTable organizationId={organizationId} days={days} />
 

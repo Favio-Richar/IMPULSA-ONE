@@ -1,11 +1,20 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { agencyBillingResponse, agencyClientResponse, agencyDashboardResponse, agencyOverviewResponse, agencyStatusResponse } from "@impulza/contracts";
+import {
+  agencyBillingResponse,
+  agencyClientResponse,
+  agencyDashboardResponse,
+  agencyIncomingTransfersResponse,
+  agencyOverviewResponse,
+  agencyStatusResponse,
+  agencyTransferResponse,
+} from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import {
   agencyClientActionSchema,
   agencyDashboardQuerySchema,
   changeBillingSchema,
+  createTransferSchema,
   agencyOverviewQuerySchema,
   createAgencyClientSchema,
   linkAgencyClientSchema,
@@ -13,6 +22,7 @@ import {
   type AgencyDashboardQuery,
   type AgencyOverviewQuery,
   type ChangeBillingDto,
+  type CreateTransferDto,
   type CreateAgencyClientDto,
   type LinkAgencyClientDto,
 } from "@impulza/validation";
@@ -38,6 +48,7 @@ import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
 import { AgencyBillingService } from "./agency-billing.service.js";
 import { AgencyDashboardService } from "./agency-dashboard.service.js";
+import { AgencyTransferService } from "./agency-transfer.service.js";
 import { AgencyService } from "./agency.service.js";
 
 /**
@@ -55,6 +66,7 @@ export class AgencyController {
     private readonly agencyService: AgencyService,
     private readonly dashboardService: AgencyDashboardService,
     private readonly billingService: AgencyBillingService,
+    private readonly transferService: AgencyTransferService,
   ) {}
 
   @Get()
@@ -255,5 +267,109 @@ export class AgencyController {
     @CurrentUser() user: User,
   ) {
     return this.billingService.cancelPending(organizationId, user.id, clientId);
+  }
+
+  @Get("clients/:clientId/transfer")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @ApiOperation({ summary: "El traspaso más reciente de un cliente", description: "`transfer: null` si nunca hubo uno. Requiere `agency.manage`." })
+  @ApiUuidParam("clientId", "Identificador de la relación con el cliente (no el de su organización).")
+  @ApiZodResponse(200, agencyTransferResponse, "El traspaso más reciente (pendiente o decidido).")
+  @ApiResponse({ status: 404, description: "Ese cliente no existe en tu agencia." })
+  async transfer(@Param("organizationId") organizationId: string, @Param("clientId", new ParseUUIDPipe()) clientId: string) {
+    return this.transferService.getForRelation(organizationId, clientId);
+  }
+
+  @Post("clients/:clientId/transfer")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @RateLimit({ limit: 10, windowSeconds: 60, keyPrefix: "agency-transfer-start" })
+  @ApiOperation({
+    summary: "Traspasar un cliente a su propietario o a otra agencia",
+    description:
+      "Doble consentimiento: el propietario del negocio **siempre** debe aceptar, y la agencia receptora también si el destino es otra agencia (se la identifica con su identificador y el correo de su propietario). Mientras está pendiente no cambia nada: el cliente queda `TRANSFERRING` con el mismo acceso. Vence en 14 días. Solo un cliente `ACTIVE`. Al completarse cambia la relación, nunca se mueven datos. Requiere `agency.manage`.",
+  })
+  @ApiUuidParam("clientId", "Identificador de la relación con el cliente (no el de su organización).")
+  @ApiZodBody(createTransferSchema)
+  @ApiZodResponse(200, agencyTransferResponse, "El traspaso creado, pendiente de las partes.")
+  @ApiRateLimited(10, 60)
+  @ApiResponse({ status: 404, description: "No encontramos una agencia con esos datos, o el cliente no existe en tu agencia." })
+  @ApiResponse({ status: 409, description: "El cliente no está activo, ya hay un traspaso en curso o el destino es tu propia agencia." })
+  async startTransfer(
+    @Param("organizationId") organizationId: string,
+    @Param("clientId", new ParseUUIDPipe()) clientId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(createTransferSchema)) body: CreateTransferDto,
+  ) {
+    return this.transferService.start(organizationId, user.id, clientId, body);
+  }
+
+  @Post("clients/:clientId/transfer/cancel")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @RateLimit({ limit: 20, windowSeconds: 60, keyPrefix: "agency-transfer-cancel" })
+  @ApiOperation({ summary: "Cancelar el traspaso pendiente", description: "El cliente sigue activo en tu agencia. Requiere `agency.manage`." })
+  @ApiUuidParam("clientId", "Identificador de la relación con el cliente (no el de su organización).")
+  @ApiZodResponse(200, agencyTransferResponse, "El traspaso, ya cancelado.")
+  @ApiRateLimited(20, 60)
+  @ApiResponse({ status: 409, description: "No hay un traspaso pendiente." })
+  async cancelTransfer(
+    @Param("organizationId") organizationId: string,
+    @Param("clientId", new ParseUUIDPipe()) clientId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.transferService.cancel(organizationId, user.id, clientId);
+  }
+
+  @Get("transfers")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @ApiOperation({ summary: "Traspasos que otra agencia te ofrece", description: "Solo los pendientes de tu decisión. No incluye ningún dato del negocio, solo su nombre. Requiere `agency.manage`." })
+  @ApiZodResponse(200, agencyIncomingTransfersResponse, "Traspasos pendientes dirigidos a esta agencia.")
+  async incomingTransfers(@Param("organizationId") organizationId: string) {
+    return this.transferService.incoming(organizationId);
+  }
+
+  @Post("transfers/:transferId/accept")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @RateLimit({ limit: 20, windowSeconds: 60, keyPrefix: "agency-transfer-accept" })
+  @ApiOperation({
+    summary: "Aceptar un cliente que otra agencia te traspasa",
+    description: "Solo se completa si el propietario del negocio también acepta; necesita cupo de clientes en tu plan. Requiere `agency.manage`.",
+  })
+  @ApiUuidParam("transferId", "Identificador del traspaso.")
+  @ApiZodResponse(200, agencyIncomingTransfersResponse, "Traspasos que siguen pendientes.")
+  @ApiRateLimited(20, 60)
+  @ApiResponse({ status: 404, description: "Ese traspaso no existe (o es de otra agencia)." })
+  @ApiResponse({ status: 409, description: "El traspaso ya no está pendiente o tu plan no tiene cupo de clientes." })
+  async acceptTransfer(
+    @Param("organizationId") organizationId: string,
+    @Param("transferId", new ParseUUIDPipe()) transferId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.transferService.receiverAccept(organizationId, user.id, transferId);
+  }
+
+  @Post("transfers/:transferId/reject")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @RateLimit({ limit: 20, windowSeconds: 60, keyPrefix: "agency-transfer-reject" })
+  @ApiOperation({ summary: "Rechazar un cliente que otra agencia te traspasa", description: "El cliente sigue en la agencia que lo ofrecía. Requiere `agency.manage`." })
+  @ApiUuidParam("transferId", "Identificador del traspaso.")
+  @ApiZodResponse(200, agencyIncomingTransfersResponse, "Traspasos que siguen pendientes.")
+  @ApiRateLimited(20, 60)
+  @ApiResponse({ status: 404, description: "Ese traspaso no existe (o es de otra agencia)." })
+  @ApiResponse({ status: 409, description: "El traspaso ya no está pendiente." })
+  async rejectTransfer(
+    @Param("organizationId") organizationId: string,
+    @Param("transferId", new ParseUUIDPipe()) transferId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.transferService.receiverReject(organizationId, user.id, transferId);
   }
 }

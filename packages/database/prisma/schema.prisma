@@ -223,6 +223,7 @@ model Organization {
 
   plan                Plan?                @relation(fields: [planId], references: [id])
   memberships         Membership[]
+  incomingTransfers   AgencyTransfer[]     @relation("AgencyTransferReceiver")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
   auditLogs           AuditLog[]
@@ -478,6 +479,7 @@ model AgencyClient {
   requestedBy        User?        @relation("AgencyClientRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
   memberships        Membership[]
   billingChanges     AgencyBillingChange[]
+  transfers          AgencyTransfer[]
 
   @@index([agencyOrganizationId, status])
   @@index([clientOrganizationId])
@@ -514,6 +516,47 @@ model AgencyBillingChange {
 
   @@index([agencyClientId, createdAt])
   @@map("agency_billing_changes")
+}
+
+// F9.5b (ADR-028 §2): traspaso de un cliente a su propietario o a otra agencia. Doble consentimiento: el propietario del negocio
+// SIEMPRE decide, y la agencia receptora también cuando el destino es otra agencia. Antes de completarse nada cambia (la relación
+// en TRANSFERRING da el mismo acceso que ACTIVE); al completarse cambia la relación, nunca se mueven datos.
+enum AgencyTransferTarget {
+  OWNER
+  AGENCY
+}
+
+enum AgencyTransferStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+  CANCELED
+  EXPIRED
+}
+
+model AgencyTransfer {
+  id                     String               @id @default(uuid()) @db.Uuid
+  agencyClientId         String               @map("agency_client_id") @db.Uuid
+  toKind                 AgencyTransferTarget @map("to_kind")
+  toAgencyOrganizationId String?              @map("to_agency_organization_id") @db.Uuid
+  status                 AgencyTransferStatus @default(PENDING)
+  requestedById          String?              @map("requested_by_id") @db.Uuid
+  ownerAcceptedAt        DateTime?            @map("owner_accepted_at") @db.Timestamptz(6)
+  ownerDecidedById       String?              @map("owner_decided_by_id") @db.Uuid
+  receiverAcceptedAt     DateTime?            @map("receiver_accepted_at") @db.Timestamptz(6)
+  receiverDecidedById    String?              @map("receiver_decided_by_id") @db.Uuid
+  // La relación nueva con la agencia receptora (solo cuando el destino es otra agencia y se completó).
+  resultingAgencyClientId String?             @map("resulting_agency_client_id") @db.Uuid
+  decidedAt              DateTime?            @map("decided_at") @db.Timestamptz(6)
+  expiresAt              DateTime             @map("expires_at") @db.Timestamptz(6)
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  agencyClient         AgencyClient  @relation(fields: [agencyClientId], references: [id], onDelete: Cascade)
+  toAgencyOrganization Organization? @relation("AgencyTransferReceiver", fields: [toAgencyOrganizationId], references: [id], onDelete: Cascade)
+
+  @@index([agencyClientId, createdAt])
+  @@index([toAgencyOrganizationId, status])
+  @@map("agency_transfers")
 }
 
 // F9.1 (ADR-028 §4): Marca de la plataforma configurable por superadministración (singleton).

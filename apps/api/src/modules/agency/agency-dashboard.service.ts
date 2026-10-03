@@ -1,12 +1,13 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { AgencyDashboardResponse, AgencyOverviewItem, AgencyOverviewResponse } from "@impulza/contracts";
-import { AgencyBillingChangeStatus, AgencyBillingMode, AgencyClientStatus, BookingStatus, DomainVerificationStatus, OrderStatus, SiteStatus, type Prisma, type PrismaClient } from "@impulza/database";
+import { AgencyBillingChangeStatus, AgencyBillingMode, AgencyClientStatus, AgencyTransferStatus, BookingStatus, DomainVerificationStatus, OrderStatus, SiteStatus, type Prisma, type PrismaClient } from "@impulza/database";
 import {
   buildClientAlerts,
   countByStatus,
   countsTowardsTotals,
   dashboardRange,
   isNearLimit,
+  missingConsents,
   type AgencyDashboardQuery,
   type AgencyOverviewQuery,
 } from "@impulza/validation";
@@ -123,6 +124,10 @@ export class AgencyDashboardService {
         include: {
           clientOrganization: { select: { id: true, name: true, slug: true, publicHiddenAt: true } },
           billingChanges: { where: { status: AgencyBillingChangeStatus.PENDING }, select: { toMode: true } },
+          transfers: {
+            where: { status: AgencyTransferStatus.PENDING },
+            select: { toKind: true, ownerAcceptedAt: true, receiverAcceptedAt: true, expiresAt: true, toAgencyOrganization: { select: { name: true } } },
+          },
         },
       }),
     ]);
@@ -147,6 +152,14 @@ export class AgencyDashboardService {
         readOnly: relation.status === AgencyClientStatus.PAUSED,
         publicHidden: relation.clientOrganization.publicHiddenAt !== null,
         pendingBillingMode: relation.billingChanges[0]?.toMode ?? null,
+        pendingTransfer: relation.transfers[0]
+          ? {
+              toKind: relation.transfers[0].toKind,
+              toAgencyName: relation.transfers[0].toAgencyOrganization?.name ?? null,
+              waitingFor: missingConsents(relation.transfers[0]),
+              expiresAt: relation.transfers[0].expiresAt.toISOString(),
+            }
+          : null,
         performance: measured ? (performance.get(clientId) ?? emptyPerformance()) : null,
         plan: measured ? (clientHealth?.plan ?? null) : null,
         domains: measured ? (clientHealth?.domains ?? null) : null,

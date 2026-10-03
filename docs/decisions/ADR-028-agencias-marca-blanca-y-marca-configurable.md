@@ -141,3 +141,16 @@ con motivo y vía de apelación. Nada se borra; todo es reversible y queda audit
 - **Precedencia del plan:** la suscripción propia vigente y el plan asignado a mano por Impulza One **mandan sobre** el plan de la agencia: nadie
   pierde lo que ya paga o lo que decidió la plataforma porque una agencia ofrezca pagar. Archivar, terminar o revocar devuelve al negocio a su plan.
 
+## Notas de implementación de F9.5b — traspaso (2026-10-03)
+
+- **Quién consiente (decisión de diseño, más estricta que el mínimo):** el ADR pedía «doble consentimiento». Se interpretó así: el **propietario del
+  negocio siempre** debe aceptar —si no, una agencia podría pasar a un cliente a otra sin que el dueño lo sepa— y, cuando el destino es otra agencia, **la
+  agencia receptora también** (con lo que son dos aceptaciones además de la propuesta). Hacia el propietario basta su aceptación.
+- **Antes de aceptar nada cambia:** `TRANSFERRING` da el mismo acceso que `ACTIVE`; solo se inicia desde `ACTIVE` (desde una pausa daría escritura antes
+  de tiempo); mientras dura no se puede pausar ni archivar. Soltar al cliente o que el propietario revoque cancelan el traspaso.
+- **Al completarse:** cambia la relación, nunca los datos. La agencia saliente pierde el acceso al instante, se cierra lo que había propuesto (facturación),
+  se vuelve a mostrar el sitio si lo había ocultado y quién paga vuelve a empezar (`CLIENT_PAYS`) con la nueva agencia o con el propietario.
+- **Vencimiento (14 días):** se aplica al leer o decidir, no con una tarea programada; una relación que quedó en `TRANSFERRING` sin un traspaso pendiente
+  vuelve sola a `ACTIVE`. La agencia receptora debe tener cupo de clientes: se comprueba al aceptar y de nuevo al completar.
+- **Sin sondeos:** a la agencia receptora se la identifica con su identificador **y** el correo de su propietario, como al vincular un negocio.
+

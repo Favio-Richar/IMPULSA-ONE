@@ -70,8 +70,8 @@ export function AgencySummary({ organizationId, days }: { organizationId: string
         <Kpi label="Pedidos" value={numberFormat.format(totals.orders)} testId="kpi-orders" />
       </div>
       <p className="text-sm text-muted-foreground" data-testid="agency-billing-summary">
-        Facturación: pagas tú el plan de <strong className="text-foreground">{billing.agencyPays}</strong> cliente{billing.agencyPays === 1 ? "" : "s"} y {billing.clientPays === 1 ? "paga" : "pagan"} su propio plan{" "}
-        <strong className="text-foreground">{billing.clientPays}</strong>
+        Facturación: pagas tú el plan de <strong className="text-foreground">{billing.agencyPays}</strong> cliente{billing.agencyPays === 1 ? "" : "s"} ·{" "}
+        <strong className="text-foreground">{billing.clientPays}</strong> cliente{billing.clientPays === 1 ? " paga" : "s pagan"} su propio plan
         {billing.pendingChanges > 0 ? ` · ${billing.pendingChanges} propuesta${billing.pendingChanges === 1 ? "" : "s"} esperando al propietario` : ""}.
       </p>
       {alerts.clientsWithAlerts > 0 ? (

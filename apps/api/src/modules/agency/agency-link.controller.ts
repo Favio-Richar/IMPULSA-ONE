@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Res, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import type { Response } from "express";
 import { acceptOwnerInvitationResponse, agencyLinkResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import { acceptOwnerInvitationSchema, type AcceptOwnerInvitationDto } from "@impulza/validation";
@@ -43,8 +44,10 @@ export class AgencyLinkController {
     description: "La relación abierta (solicitud pendiente, activa, en pausa o archivada) con las personas de la agencia que tienen acceso hoy, o `null`.",
   })
   @ApiZodResponse(200, agencyLinkResponse, "Relación con la agencia, o null.")
-  async get(@Param("organizationId") organizationId: string) {
-    return this.agencyService.getLink(organizationId);
+  async get(@Param("organizationId") organizationId: string, @Res() res: Response) {
+    // Nest responde con cuerpo vacío cuando un controlador devuelve `null`, y el panel no puede leer un cuerpo vacío
+    // como JSON: el contrato dice `null`, así que se serializa de forma explícita.
+    res.status(HttpStatus.OK).json(await this.agencyService.getLink(organizationId));
   }
 
   @Post("accept")

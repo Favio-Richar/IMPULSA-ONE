@@ -24,7 +24,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useActiveOrgStore } from "../../lib/active-org-store";
 import { ApiError } from "../../lib/api-client";
-import { createOrganization, listMembers, listMyOrganizations } from "../../lib/api/organizations";
+import { createOrganization, listMembers, listMyOrganizations, type Organization } from "../../lib/api/organizations";
 
 const createOrgSchema = z.object({
   name: z.string().min(2, "Mínimo 2 caracteres."),
@@ -118,7 +118,51 @@ export default function PanelHomePage(): React.JSX.Element {
     return <LoadingState />;
   }
 
+  // El equipo de un cliente lo decide su propietario: el servidor se lo niega a la agencia (AGENCY_LIMIT), así que ni se pide.
+  const active = orgsQuery.data.find((org) => org.id === activeOrganizationId);
+  if (active?.access?.delegated) {
+    return <DelegatedHome organization={active} />;
+  }
+
   return <OrganizationMembers organizationId={activeOrganizationId} />;
+}
+
+const DELEGATED_SHORTCUTS = [
+  { href: "/sitios", label: "Sitios", description: "Páginas, bloques y publicación." },
+  { href: "/contactos", label: "Contactos", description: "Personas que llegaron por formularios y pedidos." },
+  { href: "/analitica", label: "Analítica", description: "Visitas, clics y conversiones." },
+  { href: "/campanas", label: "Campañas", description: "Correos a sus contactos." },
+  { href: "/reservas", label: "Reservas", description: "Agenda y servicios." },
+  { href: "/catalogo", label: "Catálogo", description: "Productos y precios." },
+  { href: "/medios", label: "Medios", description: "Imágenes y archivos." },
+  { href: "/configuracion/marca", label: "Marca", description: "Colores y logo del negocio." },
+] as const;
+
+/** Inicio de quien entra a un cliente desde una agencia: sin tabla de equipo, con lo que sí puede trabajar. */
+function DelegatedHome({ organization }: { organization: Organization }): React.JSX.Element {
+  return (
+    <div className="flex flex-col gap-6" data-testid="delegated-home">
+      <header className="flex flex-col gap-1">
+        <h1 className="text-xl font-semibold text-foreground">{organization.name}</h1>
+        <p className="text-sm text-muted-foreground">
+          Trabajas en este negocio a través de {organization.access?.agencyName ?? "tu agencia"}. El equipo, los cobros y la suscripción los decide su propietario.
+        </p>
+      </header>
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {DELEGATED_SHORTCUTS.map((shortcut) => (
+          <li key={shortcut.href}>
+            <Link
+              href={shortcut.href}
+              className="flex h-full flex-col gap-1 rounded-lg border border-border bg-background p-4 transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <span className="text-sm font-semibold text-foreground">{shortcut.label}</span>
+              <span className="text-xs text-muted-foreground">{shortcut.description}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function OrganizationMembers({ organizationId }: { organizationId: string }): React.JSX.Element {

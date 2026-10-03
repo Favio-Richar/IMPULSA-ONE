@@ -243,6 +243,15 @@ describe("Modo agencia (e2e) — F9.3 / ADR-028 §2", () => {
   // ---- vincular un negocio que ya existe (consentimiento del cliente) ---------------------------------------------
 
   describe("vincular un negocio existente", () => {
+    it("sin agencia, el vínculo responde JSON `null` real (no un cuerpo vacío que el panel no puede leer)", async () => {
+      const owner = await newUser();
+      const orgId = await newOrg(owner.agent);
+      const res = await owner.agent.get(`/api/v1/organizations/${orgId}/agency-link`).expect(200);
+      expect(res.headers["content-type"]).toMatch(/application\/json/);
+      expect(res.text).toBe("null");
+      expect(agencyLinkResponse.parse(JSON.parse(res.text))).toBeNull();
+    });
+
     async function existingBusiness() {
       const owner = await newUser("biz-owner");
       const orgId = await newOrg(owner.agent, "Negocio Existente");

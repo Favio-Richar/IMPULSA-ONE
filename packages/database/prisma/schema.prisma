@@ -477,10 +477,43 @@ model AgencyClient {
   clientOrganization Organization @relation("ClientOfAgency", fields: [clientOrganizationId], references: [id], onDelete: Cascade)
   requestedBy        User?        @relation("AgencyClientRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
   memberships        Membership[]
+  billingChanges     AgencyBillingChange[]
 
   @@index([agencyOrganizationId, status])
   @@index([clientOrganizationId])
   @@map("agency_clients")
+}
+
+// F9.5a (ADR-028 §2): historial de cambios de «quién paga». El cambio que propone la agencia queda PENDING hasta que el
+// propietario del cliente lo decide; el que pide el propio propietario (volver a pagar él) se aplica al instante.
+enum AgencyBillingChangeStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  CANCELED
+}
+
+enum AgencyBillingRequester {
+  AGENCY
+  OWNER
+}
+
+model AgencyBillingChange {
+  id             String                    @id @default(uuid()) @db.Uuid
+  agencyClientId String                    @map("agency_client_id") @db.Uuid
+  fromMode       AgencyBillingMode         @map("from_mode")
+  toMode         AgencyBillingMode         @map("to_mode")
+  status         AgencyBillingChangeStatus @default(PENDING)
+  requestedBy    AgencyBillingRequester    @map("requested_by")
+  requestedById  String?                   @map("requested_by_id") @db.Uuid
+  decidedById    String?                   @map("decided_by_id") @db.Uuid
+  decidedAt      DateTime?                 @map("decided_at") @db.Timestamptz(6)
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  agencyClient AgencyClient @relation(fields: [agencyClientId], references: [id], onDelete: Cascade)
+
+  @@index([agencyClientId, createdAt])
+  @@map("agency_billing_changes")
 }
 
 // F9.1 (ADR-028 §4): Marca de la plataforma configurable por superadministración (singleton).

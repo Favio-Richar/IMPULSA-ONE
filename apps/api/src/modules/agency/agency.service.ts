@@ -14,6 +14,8 @@ import type {
   AgencyStatusResponse,
 } from "@impulza/contracts";
 import {
+  AgencyBillingChangeStatus,
+  AgencyBillingMode,
   AgencyClientStatus,
   MembershipSource,
   MembershipStatus,
@@ -44,7 +46,15 @@ const DAY_MS = 24 * 3_600_000;
 
 /** Lo que se lee de la organización del cliente junto a la relación (`publicHiddenAt`: la agencia ocultó su sitio público). */
 const CLIENT_ORG_SELECT = { id: true, name: true, slug: true, publicHiddenAt: true } as const;
-type RelationWithClient = AgencyClient & { clientOrganization: Pick<Organization, "id" | "name" | "slug" | "publicHiddenAt"> };
+/** Relación con su cliente y con el cambio de facturación pendiente, si lo hay (a lo sumo uno: índice único parcial). */
+const RELATION_INCLUDE = {
+  clientOrganization: { select: CLIENT_ORG_SELECT },
+  billingChanges: { where: { status: AgencyBillingChangeStatus.PENDING }, select: { toMode: true } },
+} as const;
+type RelationWithClient = AgencyClient & {
+  clientOrganization: Pick<Organization, "id" | "name" | "slug" | "publicHiddenAt">;
+  billingChanges: Array<{ toMode: AgencyBillingMode }>;
+};
 
 /** Códigos estables que el panel interpreta sin leer el mensaje. */
 export const AGENCY_CODES = {
@@ -137,6 +147,7 @@ export class AgencyService {
       ownerAccepted,
       readOnly: relation.status === AgencyClientStatus.PAUSED,
       publicHidden: relation.clientOrganization.publicHiddenAt !== null,
+      pendingBillingMode: relation.billingChanges[0]?.toMode ?? null,
       createdAt: relation.createdAt.toISOString(),
       acceptedAt: relation.acceptedAt?.toISOString() ?? null,
       pausedAt: relation.pausedAt?.toISOString() ?? null,
@@ -148,7 +159,7 @@ export class AgencyService {
     await this.assertAgency(agencyOrganizationId);
     const relations = await this.prisma.agencyClient.findMany({
       where: { agencyOrganizationId, status: { not: AgencyClientStatus.ENDED } },
-      include: { clientOrganization: { select: CLIENT_ORG_SELECT } },
+      include: RELATION_INCLUDE,
       orderBy: { createdAt: "desc" },
     });
     return relations.map((relation) => this.toClientResponse(relation));
@@ -179,7 +190,7 @@ export class AgencyService {
           ownerInviteTokenHash: hash,
           ownerInviteExpiresAt: new Date(now.getTime() + AGENCY_OWNER_INVITE_TTL_DAYS * DAY_MS),
         },
-        include: { clientOrganization: { select: CLIENT_ORG_SELECT } },
+        include: RELATION_INCLUDE,
       });
       await this.access.grantForClient(tx, created);
       return created;
@@ -245,7 +256,7 @@ export class AgencyService {
           agencyCreated: false,
           requestedById: actor.id,
         },
-        include: { clientOrganization: { select: CLIENT_ORG_SELECT } },
+        include: RELATION_INCLUDE,
       });
     });
 
@@ -285,7 +296,7 @@ export class AgencyService {
   private async getRelation(agencyOrganizationId: string, relationId: string): Promise<RelationWithClient> {
     const relation = await this.prisma.agencyClient.findFirst({
       where: { id: relationId, agencyOrganizationId },
-      include: { clientOrganization: { select: CLIENT_ORG_SELECT } },
+      include: RELATION_INCLUDE,
     });
     if (!relation) throw new NotFoundException("Ese cliente no existe en tu agencia.");
     return relation;
@@ -336,7 +347,7 @@ export class AgencyService {
           ...(next === AgencyClientStatus.ARCHIVED ? { archivedAt: now } : {}),
           ...(next === AgencyClientStatus.ENDED ? { endedAt: now, endedReason: "released_by_agency", ownerInviteTokenHash: null } : {}),
         },
-        include: { clientOrganization: { select: CLIENT_ORG_SELECT } },
+        include: RELATION_INCLUDE,
       });
       // Archivar y soltar quitan el acceso delegado de inmediato; reanudar desde archivo lo devuelve.
       if (next === AgencyClientStatus.ARCHIVED || next === AgencyClientStatus.ENDED) {

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { AgencyDashboardResponse, AgencyOverviewItem, AgencyOverviewResponse } from "@impulza/contracts";
-import { AgencyClientStatus, BookingStatus, DomainVerificationStatus, OrderStatus, SiteStatus, type Prisma, type PrismaClient } from "@impulza/database";
+import { AgencyBillingChangeStatus, AgencyBillingMode, AgencyClientStatus, BookingStatus, DomainVerificationStatus, OrderStatus, SiteStatus, type Prisma, type PrismaClient } from "@impulza/database";
 import {
   buildClientAlerts,
   countByStatus,
@@ -47,10 +47,15 @@ export class AgencyDashboardService {
     await this.agency.assertAgency(agencyOrganizationId);
     const range = { ...dashboardRange(query.days, new Date()), days: query.days };
 
-    const relations = await this.prisma.agencyClient.findMany({
-      where: { agencyOrganizationId, status: { not: AgencyClientStatus.ENDED } },
-      select: { status: true, clientOrganizationId: true },
-    });
+    const [relations, pendingChanges] = await Promise.all([
+      this.prisma.agencyClient.findMany({
+        where: { agencyOrganizationId, status: { not: AgencyClientStatus.ENDED } },
+        select: { status: true, clientOrganizationId: true, billingMode: true },
+      }),
+      this.prisma.agencyBillingChange.count({
+        where: { status: AgencyBillingChangeStatus.PENDING, agencyClient: { agencyOrganizationId, status: { not: AgencyClientStatus.ENDED } } },
+      }),
+    ]);
     const activeIds = relations.filter((relation) => countsTowardsTotals(relation.status)).map((relation) => relation.clientOrganizationId);
 
     const [performance, health] = await Promise.all([this.performanceFor(activeIds, range), this.healthFor(activeIds)]);
@@ -77,6 +82,11 @@ export class AgencyDashboardService {
     return {
       range,
       clients: { total: relations.length, byStatus: countByStatus(relations.map((relation) => relation.status)) },
+      billing: {
+        agencyPays: relations.filter((relation) => relation.billingMode === AgencyBillingMode.AGENCY_PAYS).length,
+        clientPays: relations.filter((relation) => relation.billingMode === AgencyBillingMode.CLIENT_PAYS).length,
+        pendingChanges,
+      },
       totals,
       alerts: { clientsWithAlerts, domainsFailed, domainsPending, clientsNearPlanLimit },
     };
@@ -110,7 +120,10 @@ export class AgencyDashboardService {
         orderBy,
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
-        include: { clientOrganization: { select: { id: true, name: true, slug: true, publicHiddenAt: true } } },
+        include: {
+          clientOrganization: { select: { id: true, name: true, slug: true, publicHiddenAt: true } },
+          billingChanges: { where: { status: AgencyBillingChangeStatus.PENDING }, select: { toMode: true } },
+        },
       }),
     ]);
 
@@ -133,6 +146,7 @@ export class AgencyDashboardService {
         ownerInviteEmail: relation.ownerInviteEmail,
         readOnly: relation.status === AgencyClientStatus.PAUSED,
         publicHidden: relation.clientOrganization.publicHiddenAt !== null,
+        pendingBillingMode: relation.billingChanges[0]?.toMode ?? null,
         performance: measured ? (performance.get(clientId) ?? emptyPerformance()) : null,
         plan: measured ? (clientHealth?.plan ?? null) : null,
         domains: measured ? (clientHealth?.domains ?? null) : null,

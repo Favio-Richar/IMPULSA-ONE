@@ -130,3 +130,14 @@ con motivo y vía de apelación. Nada se borra; todo es reversible y queda audit
   decisión del propietario de la plataforma (2026-10-03): reversible, en lugar de retirar páginas publicadas una a una.
   Reanudar, desarchivar, soltar y la revocación del propietario siempre vuelven a mostrar el sitio.
 
+## Notas de implementación de F9.5a — facturación (2026-10-03)
+
+- **Qué significa `AGENCY_PAYS` (decisión del propietario de la plataforma):** el negocio usa **los límites del plan de la agencia** (su
+  cupo) y no necesita suscripción propia; **no se cobra nada nuevo ni se toca Mercado Pago**. El cobro real a la agencia sigue siendo su
+  propia suscripción. Un cobro por cliente con el proveedor de pagos queda para cuando exista un proveedor real configurado.
+- **Quién decide:** la agencia propone y el propietario confirma (aviso por correo). El propietario puede volver a pagar él (`CLIENT_PAYS`)
+  y se aplica al instante; pedir que la agencia pague lo ofrece la agencia. Excepción: un cliente que la agencia creó y cuyo propietario aún
+  no acepta la invitación no tiene a quién pedir confirmación, así que se aplica.
+- **Precedencia del plan:** la suscripción propia vigente y el plan asignado a mano por Impulza One **mandan sobre** el plan de la agencia: nadie
+  pierde lo que ya paga o lo que decidió la plataforma porque una agencia ofrezca pagar. Archivar, terminar o revocar devuelve al negocio a su plan.
+

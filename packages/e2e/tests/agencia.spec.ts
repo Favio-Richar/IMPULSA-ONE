@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { PrismaClient } from "@impulza/database";
 import { expect, request as apiRequest, test, type BrowserContextOptions, type Page } from "@playwright/test";
 import { FIXTURE_PATH, type SeededFixture } from "../global-setup.js";
+import { registerUser } from "../register-user.js";
 import { API_BASE_URL } from "../playwright.config.js";
 
 // F9.3 — agencia y acceso delegado (ADR-028 §2), en teléfono y escritorio: la agencia activa su modo, da de alta un
@@ -116,6 +117,8 @@ test("la agencia activa su modo, da de alta un cliente y entra a su negocio con 
 });
 
 test("un propietario real acepta; la agencia pausa y reanuda (solo lectura en el servidor); el propietario revoca", async ({ page, browser }, testInfo) => {
+  // El registro del propietario puede esperar al límite de registros por minuto (ver register-user.ts).
+  test.setTimeout(150_000);
   const project = testInfo.project.name;
   const slug = `e2e-ag-propio-${project}-${suffix}`;
   const ownerEmail = `propio-${project}-${suffix}@e2e.test`;
@@ -124,7 +127,7 @@ test("un propietario real acepta; la agencia pausa y reanuda (solo lectura en el
 
   // El propietario del negocio existente: cuenta real con sesión real (el correo se marca verificado en la base, como global-setup).
   const ownerApi = await apiRequest.newContext({ extraHTTPHeaders: CSRF });
-  expect((await ownerApi.post(`${API_BASE_URL}/auth/register`, { data: { email: ownerEmail, password: PASSWORD } })).status()).toBe(201);
+  await registerUser(ownerApi, ownerEmail, PASSWORD);
   await prisma.user.update({ where: { email: ownerEmail }, data: { emailVerifiedAt: new Date() } });
   expect((await ownerApi.post(`${API_BASE_URL}/auth/login`, { data: { email: ownerEmail, password: PASSWORD } })).status()).toBe(201);
   const created = await ownerApi.post(`${API_BASE_URL}/organizations`, { data: { name: "Negocio con dueño", slug } });

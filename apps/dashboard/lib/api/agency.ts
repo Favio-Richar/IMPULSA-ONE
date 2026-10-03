@@ -1,5 +1,6 @@
 import type {
   AcceptOwnerInvitationResponse,
+  AgencyBillingResponse,
   AgencyClientResponse,
   AgencyDashboardResponse,
   AgencyLinkResponse,
@@ -86,4 +87,36 @@ export function getAgencyOverview(organizationId: string, params: AgencyOverview
     if (value !== undefined && value !== "") query.set(key, String(value));
   }
   return apiFetch<AgencyOverviewResponse>(`${agencyPath(organizationId)}/overview?${query.toString()}`);
+}
+
+// ---- quién paga el plan (F9.5a) ---------------------------------------------------------------------------------------
+
+type BillingMode = "CLIENT_PAYS" | "AGENCY_PAYS";
+
+export function getAgencyClientBilling(organizationId: string, relationId: string): Promise<AgencyBillingResponse> {
+  return apiFetch<AgencyBillingResponse>(`${agencyPath(organizationId)}/clients/${relationId}/billing`);
+}
+
+export function proposeAgencyBilling(organizationId: string, relationId: string, billingMode: BillingMode): Promise<AgencyBillingResponse> {
+  return apiFetch<AgencyBillingResponse>(`${agencyPath(organizationId)}/clients/${relationId}/billing`, { method: "POST", body: { billingMode } });
+}
+
+export function cancelAgencyBilling(organizationId: string, relationId: string): Promise<AgencyBillingResponse> {
+  return apiFetch<AgencyBillingResponse>(`${agencyPath(organizationId)}/clients/${relationId}/billing/cancel`, { method: "POST" });
+}
+
+export function getOwnerBilling(organizationId: string): Promise<AgencyBillingResponse> {
+  return apiFetch<AgencyBillingResponse>(`${linkPath(organizationId)}/billing`);
+}
+
+export function confirmOwnerBilling(organizationId: string): Promise<AgencyBillingResponse> {
+  return apiFetch<AgencyBillingResponse>(`${linkPath(organizationId)}/billing/confirm`, { method: "POST" });
+}
+
+export function rejectOwnerBilling(organizationId: string): Promise<AgencyBillingResponse> {
+  return apiFetch<AgencyBillingResponse>(`${linkPath(organizationId)}/billing/reject`, { method: "POST" });
+}
+
+export function changeOwnerBilling(organizationId: string, billingMode: BillingMode): Promise<AgencyBillingResponse> {
+  return apiFetch<AgencyBillingResponse>(`${linkPath(organizationId)}/billing`, { method: "POST", body: { billingMode } });
 }

@@ -4,12 +4,19 @@ import {
   acceptAgencyLink,
   acceptOwnerInvitation,
   actOnAgencyClient,
+  cancelAgencyBilling,
+  changeOwnerBilling,
+  confirmOwnerBilling,
   createAgencyClient,
   enableAgency,
+  getAgencyClientBilling,
   getAgencyDashboard,
   getAgencyLink,
   getAgencyOverview,
   getAgencyStatus,
+  getOwnerBilling,
+  proposeAgencyBilling,
+  rejectOwnerBilling,
   type AgencyOverviewParams,
   listAgencyClients,
   rejectAgencyLink,
@@ -108,4 +115,51 @@ export function useAgencyOverview(organizationId: string, params: AgencyOverview
     enabled,
     placeholderData: keepPreviousData,
   });
+}
+
+// ---- quién paga el plan (F9.5a) ---------------------------------------------------------------------------------------
+
+/** Historial y propuesta de facturación de un cliente, visto por la agencia (se pide al abrir el panel de la fila). */
+export function useAgencyClientBilling(organizationId: string, relationId: string, enabled: boolean) {
+  return useQuery({ queryKey: ["agency", organizationId, "billing", relationId], queryFn: () => getAgencyClientBilling(organizationId, relationId), enabled });
+}
+
+export function useProposeAgencyBilling(organizationId: string, relationId: string) {
+  const refresh = useRefresh(organizationId);
+  return useMutation({ mutationFn: (mode: "CLIENT_PAYS" | "AGENCY_PAYS") => proposeAgencyBilling(organizationId, relationId, mode), onSuccess: refresh });
+}
+
+export function useCancelAgencyBilling(organizationId: string, relationId: string) {
+  const refresh = useRefresh(organizationId);
+  return useMutation({ mutationFn: () => cancelAgencyBilling(organizationId, relationId), onSuccess: refresh });
+}
+
+/** Lo mismo, visto por el propietario del negocio. Solo se pide cuando el negocio tiene una agencia vinculada. */
+export function useOwnerBilling(organizationId: string, enabled: boolean) {
+  return useQuery({ queryKey: ["agency", organizationId, "owner-billing"], queryFn: () => getOwnerBilling(organizationId), enabled });
+}
+
+/** Tras decidir, cambia el plan efectivo del negocio: se refresca también todo lo que dependa de él. */
+function useRefreshOwner(organizationId: string) {
+  const refresh = useRefresh(organizationId);
+  const queryClient = useQueryClient();
+  return async () => {
+    await refresh();
+    await queryClient.invalidateQueries({ queryKey: ["organization-plan"] });
+  };
+}
+
+export function useConfirmOwnerBilling(organizationId: string) {
+  const refresh = useRefreshOwner(organizationId);
+  return useMutation({ mutationFn: () => confirmOwnerBilling(organizationId), onSuccess: refresh });
+}
+
+export function useRejectOwnerBilling(organizationId: string) {
+  const refresh = useRefreshOwner(organizationId);
+  return useMutation({ mutationFn: () => rejectOwnerBilling(organizationId), onSuccess: refresh });
+}
+
+export function useChangeOwnerBilling(organizationId: string) {
+  const refresh = useRefreshOwner(organizationId);
+  return useMutation({ mutationFn: (mode: "CLIENT_PAYS" | "AGENCY_PAYS") => changeOwnerBilling(organizationId, mode), onSuccess: refresh });
 }

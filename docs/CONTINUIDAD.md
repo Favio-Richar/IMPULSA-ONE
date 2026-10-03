@@ -5,9 +5,16 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-03, noche) — F9.4 HECHA con reservas en la rama `fase-9/f9-4-panel-agencia` (sobre F9.3); siguiente: F9.5
+## 0. RETOMAR AQUÍ (2026-10-03, noche) — F9.5a HECHA en la rama `fase-9/f9-5-gestion-clientes` (sobre F9.4); siguiente: F9.5b transferir
 
 **Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia y **push de la rama al cerrar cada una** (autorizado por Favio; ver memoria «Subir cada fase a GitHub»). Fusionar a `master` sigue pidiendo confirmación.
+
+**F9.5 se hace en sub-historias** (detalle en `docs/BACKLOG_FASE_9.md`): **F9.5a facturación hecha** (`AGENCY_PAYS` = el negocio usa los límites del plan de la
+agencia, sin cobrar nada nuevo; la agencia propone y el propietario confirma; historial; precedencia: suscripción propia y plan asignado a mano mandan).
+**Siguiente: F9.5b transferir** (doble consentimiento y vencimiento, estado `TRANSFERRING`, sin mover datos), luego **F9.5c duplicar** (organización nueva sin datos
+personales) y **F9.5d importar CSV** (cola BullMQ, informe por fila, idempotente).
+**Trampas nuevas:** el registro de cuentas tiene límite de 5 por minuto: los specs de Playwright que registran propietarios usan `packages/e2e/register-user.ts` (reintenta
+y espera); un `<label>` que envuelve un `<select>` toma como nombre accesible todas sus opciones: poner `aria-label` al select.
 
 **F9.4 — panel de agencia (cerrada con reservas; detalle en `docs/BACKLOG_FASE_9.md`):** resumen y tabla de clientes con rendimiento, plan, dominios, última
 publicación y alertas; solo suma clientes `ACTIVE`; búsqueda/filtro/orden/paginación en el servidor; 200 clientes en ~55 ms. **Reservas:** «tareas del equipo»

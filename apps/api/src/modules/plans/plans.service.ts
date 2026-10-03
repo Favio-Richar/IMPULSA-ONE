@@ -1,6 +1,6 @@
 import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
 import type { OrganizationPlanResponse, PlanResponse, PlanUsageResponse } from "@impulza/contracts";
-import { AgencyClientStatus, MediaStatus, MembershipSource, MembershipStatus, type Plan, type Prisma, type PrismaClient, ProductFileStatus, SiteStatus, SubscriptionStatus } from "@impulza/database";
+import { AgencyBillingMode, AgencyClientStatus, MediaStatus, MembershipSource, MembershipStatus, type Plan, type Prisma, type PrismaClient, ProductFileStatus, SiteStatus, SubscriptionStatus } from "@impulza/database";
 import { DEFAULT_PLAN_CODE, type EnforcedLimitKey, planLimitsSchema } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
@@ -17,6 +17,19 @@ const BYTES_PER_MB = 1024 * 1024;
 const PENDING_UPLOAD_RESERVATION_MS = 60 * 60 * 1000;
 
 const ENTITLED_STATUSES = [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING, SubscriptionStatus.PAST_DUE];
+
+/**
+ * Relaciones de agencia en las que `AGENCY_PAYS` rige (F9.5a): las mismas que dan acceso a la agencia (`relationGrantsAccess`):
+ * activa, en pausa, en traspaso, o recién creada por la agencia mientras el propietario acepta. Archivada, terminada o una
+ * solicitud sin aceptar no: ahí el negocio vuelve a su propio plan.
+ */
+const AGENCY_PAYS_WHERE = {
+  billingMode: AgencyBillingMode.AGENCY_PAYS,
+  OR: [
+    { status: { in: [AgencyClientStatus.ACTIVE, AgencyClientStatus.PAUSED, AgencyClientStatus.TRANSFERRING] } },
+    { status: AgencyClientStatus.INVITED, agencyCreated: true },
+  ],
+} satisfies Prisma.AgencyClientWhereInput;
 
 export interface EffectivePlan {
   plan: PlanResponse;
@@ -62,7 +75,16 @@ export class PlansService {
     return plans.map((plan) => this.toPlanResponse(plan));
   }
 
+  /**
+   * Orden de precedencia: la suscripción propia vigente, el plan asignado a mano por Impulza One, el plan de la agencia que
+   * paga (`AGENCY_PAYS`, F9.5a) y por último el plan por defecto. Quien ya paga lo suyo o tiene un plan decidido por el equipo
+   * de la plataforma nunca lo pierde porque una agencia ofrezca pagar.
+   */
   async resolveEffectivePlan(organizationId: string, db: Db = this.prisma): Promise<EffectivePlan> {
+    return this.resolveEffective(organizationId, db, true);
+  }
+
+  private async resolveEffective(organizationId: string, db: Db, allowAgency: boolean): Promise<EffectivePlan> {
     const subscription = await db.subscription.findFirst({
       where: { organizationId, status: { in: ENTITLED_STATUSES }, currentPeriodEnd: { gte: new Date() } },
       orderBy: { currentPeriodEnd: "desc" },
@@ -80,6 +102,15 @@ export class PlansService {
       return { plan: this.toPlanResponse(organization.plan), source: "assigned" };
     }
 
+    if (allowAgency) {
+      const relation = await db.agencyClient.findFirst({ where: { clientOrganizationId: organizationId, ...AGENCY_PAYS_WHERE }, select: { agencyOrganizationId: true } });
+      if (relation) {
+        // Una agencia no puede ser cliente de otra, así que aquí no hay recursión: se pide su plan sin volver a mirar agencias.
+        const agencyPlan = await this.resolveEffective(relation.agencyOrganizationId, db, false);
+        return { plan: agencyPlan.plan, source: "agency" };
+      }
+    }
+
     const defaultPlan = await db.plan.findUnique({ where: { code: DEFAULT_PLAN_CODE } });
     if (!defaultPlan) {
       logger.error("falta el plan por defecto en el catálogo (¿se corrió el seed?)", { code: DEFAULT_PLAN_CODE });
@@ -94,6 +125,10 @@ export class PlansService {
    * la regla no se escriba dos veces en dos módulos.
    */
   async resolveEffectivePlans(organizationIds: string[]): Promise<Map<string, EffectivePlan>> {
+    return this.resolveManyEffective(organizationIds, true);
+  }
+
+  private async resolveManyEffective(organizationIds: string[], allowAgency: boolean): Promise<Map<string, EffectivePlan>> {
     const result = new Map<string, EffectivePlan>();
     if (organizationIds.length === 0) {
       return result;
@@ -139,6 +174,22 @@ export class PlansService {
           ? { plan: this.toPlanResponse(assigned), source: "assigned" }
           : { plan: this.toPlanResponse(defaultPlan), source: "default" },
       );
+    }
+
+    // Los que quedaron en el plan por defecto y tienen una agencia que paga (F9.5a): dos consultas más, sin importar cuántos.
+    if (allowAgency) {
+      const unpaid = [...result].filter(([, effective]) => effective.source === "default").map(([id]) => id);
+      if (unpaid.length > 0) {
+        const relations = await this.prisma.agencyClient.findMany({
+          where: { clientOrganizationId: { in: unpaid }, ...AGENCY_PAYS_WHERE },
+          select: { clientOrganizationId: true, agencyOrganizationId: true },
+        });
+        const agencyPlans = await this.resolveManyEffective([...new Set(relations.map((relation) => relation.agencyOrganizationId))], false);
+        for (const relation of relations) {
+          const agencyPlan = agencyPlans.get(relation.agencyOrganizationId);
+          if (agencyPlan) result.set(relation.clientOrganizationId, { plan: agencyPlan.plan, source: "agency" });
+        }
+      }
     }
     return result;
   }

@@ -7,29 +7,12 @@ import { CircleAlert, Info, EyeOff, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useActiveOrgStore } from "../../lib/active-org-store";
-import { ApiError } from "../../lib/api-client";
 import { useAgencyClientAction } from "../../lib/hooks/use-agency";
 import { ConfirmButton } from "../confirm-button";
+import { BILLING_TEXT, STATUS_TEXT, errorText } from "./agency-text";
+import { ClientBilling } from "./client-billing";
 
-/** Texto de un error de la API: el mensaje del servidor si lo trae, o uno genérico. */
-export function errorText(error: unknown, fallback: string): string {
-  if (error instanceof ApiError) {
-    const body = error.body as { message?: unknown } | undefined;
-    if (typeof body?.message === "string") return body.message;
-  }
-  return fallback;
-}
-
-export const STATUS_TEXT: Record<AgencyOverviewItem["status"], string> = {
-  INVITED: "Invitado",
-  ACTIVE: "Activo",
-  PAUSED: "En pausa (solo lectura)",
-  ARCHIVED: "Archivado",
-  TRANSFERRING: "En traspaso",
-  ENDED: "Terminado",
-};
-
-export const BILLING_TEXT = { CLIENT_PAYS: "Paga el cliente", AGENCY_PAYS: "Paga la agencia" } as const;
+export { BILLING_TEXT, STATUS_TEXT, errorText };
 
 function statusLabel(item: AgencyOverviewItem): string {
   if (item.status === "INVITED") return item.agencyCreated ? "Esperando al propietario" : "Solicitud pendiente del propietario";
@@ -168,6 +151,8 @@ export function ClientRow({ organizationId, item }: { organizationId: string; it
           <li>{item.lastPublishedAt ? `Última publicación: ${dateFormat.format(new Date(item.lastPublishedAt))}` : "Sin páginas publicadas todavía"}</li>
         </ul>
       ) : null}
+
+      <ClientBilling organizationId={organizationId} item={item} />
 
       {item.alerts.length > 0 ? (
         <ul className="flex flex-col gap-1" aria-label="Alertas de este cliente" data-testid="client-alerts">

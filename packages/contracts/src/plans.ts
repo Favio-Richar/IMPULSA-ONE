@@ -53,7 +53,7 @@ export const organizationPlanResponse = z.object({
   plan: planResponse,
   /** De dónde sale el plan efectivo: una suscripción vigente, una asignación manual de
    *  superadministración, o el plan por defecto. */
-  source: z.enum(["subscription", "assigned", "default"]),
+  source: z.enum(["subscription", "assigned", "agency", "default"]),
   usage: planUsageResponse,
 });
 

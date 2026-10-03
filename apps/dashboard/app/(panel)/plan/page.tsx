@@ -45,6 +45,7 @@ const COMPARATOR_ROWS: Array<{ key: keyof PlanLimitsResponse; label: string; uni
 const SOURCE_LABELS: Record<OrganizationPlanResponse["source"], string> = {
   subscription: "Suscripción activa",
   assigned: "Asignado por el equipo de Impulza One",
+  agency: "Plan de tu agencia: ella paga y tu negocio usa sus límites",
   default: "Plan inicial",
 };
 

@@ -42,9 +42,10 @@ export const ROLE_LABELS: Record<string, string> = {
   AGENCY_MANAGER: "Agencia",
 };
 
-export const PLAN_SOURCE_LABELS: Record<"subscription" | "assigned" | "default", string> = {
+export const PLAN_SOURCE_LABELS: Record<"subscription" | "assigned" | "agency" | "default", string> = {
   subscription: "Suscripción vigente",
   assigned: "Asignado a mano",
+  agency: "Plan de su agencia (la agencia paga)",
   default: "Plan por defecto",
 };
 

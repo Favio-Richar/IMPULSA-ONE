@@ -13271,6 +13271,7 @@
                       "enum": [
                         "subscription",
                         "assigned",
+                        "agency",
                         "default"
                       ]
                     },
@@ -45611,6 +45612,7 @@
                       "enum": [
                         "subscription",
                         "assigned",
+                        "agency",
                         "default"
                       ]
                     },
@@ -46150,6 +46152,7 @@
                       "enum": [
                         "subscription",
                         "assigned",
+                        "agency",
                         "default"
                       ]
                     },
@@ -46685,6 +46688,7 @@
                       "enum": [
                         "subscription",
                         "assigned",
+                        "agency",
                         "default"
                       ]
                     },
@@ -47222,6 +47226,7 @@
                       "enum": [
                         "subscription",
                         "assigned",
+                        "agency",
                         "default"
                       ]
                     },
@@ -51835,6 +51840,32 @@
                       ],
                       "additionalProperties": false
                     },
+                    "billing": {
+                      "type": "object",
+                      "properties": {
+                        "agencyPays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "clientPays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "pendingChanges": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "agencyPays",
+                        "clientPays",
+                        "pendingChanges"
+                      ],
+                      "additionalProperties": false
+                    },
                     "totals": {
                       "type": "object",
                       "properties": {
@@ -51909,6 +51940,7 @@
                   "required": [
                     "range",
                     "clients",
+                    "billing",
                     "totals",
                     "alerts"
                   ],
@@ -52112,6 +52144,14 @@
                           "publicHidden": {
                             "type": "boolean"
                           },
+                          "pendingBillingMode": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
                           "performance": {
                             "nullable": true,
                             "type": "object",
@@ -52285,6 +52325,7 @@
                           "ownerInviteEmail",
                           "readOnly",
                           "publicHidden",
+                          "pendingBillingMode",
                           "performance",
                           "plan",
                           "domains",
@@ -52422,6 +52463,14 @@
                       "publicHidden": {
                         "type": "boolean"
                       },
+                      "pendingBillingMode": {
+                        "nullable": true,
+                        "type": "string",
+                        "enum": [
+                          "CLIENT_PAYS",
+                          "AGENCY_PAYS"
+                        ]
+                      },
                       "createdAt": {
                         "type": "string",
                         "format": "date-time",
@@ -52459,6 +52508,7 @@
                       "ownerAccepted",
                       "readOnly",
                       "publicHidden",
+                      "pendingBillingMode",
                       "createdAt",
                       "acceptedAt",
                       "pausedAt",
@@ -52623,6 +52673,14 @@
                     "publicHidden": {
                       "type": "boolean"
                     },
+                    "pendingBillingMode": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "CLIENT_PAYS",
+                        "AGENCY_PAYS"
+                      ]
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -52660,6 +52718,7 @@
                     "ownerAccepted",
                     "readOnly",
                     "publicHidden",
+                    "pendingBillingMode",
                     "createdAt",
                     "acceptedAt",
                     "pausedAt",
@@ -52820,6 +52879,14 @@
                     "publicHidden": {
                       "type": "boolean"
                     },
+                    "pendingBillingMode": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "CLIENT_PAYS",
+                        "AGENCY_PAYS"
+                      ]
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -52857,6 +52924,7 @@
                     "ownerAccepted",
                     "readOnly",
                     "publicHidden",
+                    "pendingBillingMode",
                     "createdAt",
                     "acceptedAt",
                     "pausedAt",
@@ -53030,6 +53098,14 @@
                     "publicHidden": {
                       "type": "boolean"
                     },
+                    "pendingBillingMode": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "CLIENT_PAYS",
+                        "AGENCY_PAYS"
+                      ]
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -53067,6 +53143,7 @@
                     "ownerAccepted",
                     "readOnly",
                     "publicHidden",
+                    "pendingBillingMode",
                     "createdAt",
                     "acceptedAt",
                     "pausedAt",
@@ -53102,6 +53179,704 @@
           }
         ],
         "summary": "Pausar, reanudar, archivar, desarchivar o soltar a un cliente",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/agency/clients/{clientId}/billing": {
+      "get": {
+        "description": "Requiere `agency.manage`.",
+        "operationId": "AgencyController_billing",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "path",
+            "description": "Identificador de la relación con el cliente (no el de su organización).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Modo, propuesta pendiente (si hay) e historial.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "CLIENT_PAYS",
+                        "AGENCY_PAYS"
+                      ]
+                    },
+                    "pending": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "fromMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "toMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "CONFIRMED",
+                            "REJECTED",
+                            "CANCELED"
+                          ]
+                        },
+                        "requestedBy": {
+                          "type": "string",
+                          "enum": [
+                            "AGENCY",
+                            "OWNER"
+                          ]
+                        },
+                        "requestedByEmail": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "decidedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "fromMode",
+                        "toMode",
+                        "status",
+                        "requestedBy",
+                        "requestedByEmail",
+                        "createdAt",
+                        "decidedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "fromMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "toMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "PENDING",
+                              "CONFIRMED",
+                              "REJECTED",
+                              "CANCELED"
+                            ]
+                          },
+                          "requestedBy": {
+                            "type": "string",
+                            "enum": [
+                              "AGENCY",
+                              "OWNER"
+                            ]
+                          },
+                          "requestedByEmail": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "decidedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fromMode",
+                          "toMode",
+                          "status",
+                          "requestedBy",
+                          "requestedByEmail",
+                          "createdAt",
+                          "decidedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "billingMode",
+                    "pending",
+                    "history"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Ese cliente no existe en tu agencia."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Quién paga el plan de un cliente: modo vigente, propuesta pendiente e historial",
+        "tags": [
+          "agency"
+        ]
+      },
+      "post": {
+        "description": "Queda pendiente hasta que el propietario del cliente lo confirme (le llega un aviso por correo). Con `AGENCY_PAYS` el negocio usa los límites del plan de la agencia; no se cobra nada nuevo. Si el cliente lo creó la agencia y su propietario aún no acepta la invitación, se aplica de inmediato (no hay a quién pedírselo). Requiere `agency.manage`.",
+        "operationId": "AgencyController_requestBilling",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "path",
+            "description": "Identificador de la relación con el cliente (no el de su organización).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "billingMode": {
+                    "type": "string",
+                    "enum": [
+                      "CLIENT_PAYS",
+                      "AGENCY_PAYS"
+                    ]
+                  }
+                },
+                "required": [
+                  "billingMode"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado de la facturación tras la solicitud.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "CLIENT_PAYS",
+                        "AGENCY_PAYS"
+                      ]
+                    },
+                    "pending": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "fromMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "toMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "CONFIRMED",
+                            "REJECTED",
+                            "CANCELED"
+                          ]
+                        },
+                        "requestedBy": {
+                          "type": "string",
+                          "enum": [
+                            "AGENCY",
+                            "OWNER"
+                          ]
+                        },
+                        "requestedByEmail": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "decidedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "fromMode",
+                        "toMode",
+                        "status",
+                        "requestedBy",
+                        "requestedByEmail",
+                        "createdAt",
+                        "decidedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "fromMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "toMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "PENDING",
+                              "CONFIRMED",
+                              "REJECTED",
+                              "CANCELED"
+                            ]
+                          },
+                          "requestedBy": {
+                            "type": "string",
+                            "enum": [
+                              "AGENCY",
+                              "OWNER"
+                            ]
+                          },
+                          "requestedByEmail": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "decidedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fromMode",
+                          "toMode",
+                          "status",
+                          "requestedBy",
+                          "requestedByEmail",
+                          "createdAt",
+                          "decidedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "billingMode",
+                    "pending",
+                    "history"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "409": {
+            "description": "Ya está en ese modo, ya hay una propuesta pendiente o la relación no está activa."
+          },
+          "429": {
+            "description": "Más de 20 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Proponer un cambio de quién paga el plan del cliente",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/agency/clients/{clientId}/billing/cancel": {
+      "post": {
+        "description": "Requiere `agency.manage`.",
+        "operationId": "AgencyController_cancelBilling",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "path",
+            "description": "Identificador de la relación con el cliente (no el de su organización).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado de la facturación tras cancelar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "CLIENT_PAYS",
+                        "AGENCY_PAYS"
+                      ]
+                    },
+                    "pending": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "fromMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "toMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "CONFIRMED",
+                            "REJECTED",
+                            "CANCELED"
+                          ]
+                        },
+                        "requestedBy": {
+                          "type": "string",
+                          "enum": [
+                            "AGENCY",
+                            "OWNER"
+                          ]
+                        },
+                        "requestedByEmail": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "decidedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "fromMode",
+                        "toMode",
+                        "status",
+                        "requestedBy",
+                        "requestedByEmail",
+                        "createdAt",
+                        "decidedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "fromMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "toMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "PENDING",
+                              "CONFIRMED",
+                              "REJECTED",
+                              "CANCELED"
+                            ]
+                          },
+                          "requestedBy": {
+                            "type": "string",
+                            "enum": [
+                              "AGENCY",
+                              "OWNER"
+                            ]
+                          },
+                          "requestedByEmail": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "decidedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fromMode",
+                          "toMode",
+                          "status",
+                          "requestedBy",
+                          "requestedByEmail",
+                          "createdAt",
+                          "decidedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "billingMode",
+                    "pending",
+                    "history"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "409": {
+            "description": "No hay una propuesta pendiente."
+          },
+          "429": {
+            "description": "Más de 20 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Cancelar la propuesta de facturación pendiente",
         "tags": [
           "agency"
         ]
@@ -53521,6 +54296,891 @@
           }
         ],
         "summary": "Rechazar la solicitud de una agencia",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/agency-link/billing": {
+      "get": {
+        "description": "Lo ve cualquier miembro del negocio. Nada de la suscripción ni de los medios de pago viaja acá.",
+        "operationId": "AgencyLinkController_billing",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Modo, propuesta pendiente (si hay) e historial.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "CLIENT_PAYS",
+                        "AGENCY_PAYS"
+                      ]
+                    },
+                    "pending": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "fromMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "toMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "CONFIRMED",
+                            "REJECTED",
+                            "CANCELED"
+                          ]
+                        },
+                        "requestedBy": {
+                          "type": "string",
+                          "enum": [
+                            "AGENCY",
+                            "OWNER"
+                          ]
+                        },
+                        "requestedByEmail": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "decidedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "fromMode",
+                        "toMode",
+                        "status",
+                        "requestedBy",
+                        "requestedByEmail",
+                        "createdAt",
+                        "decidedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "fromMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "toMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "PENDING",
+                              "CONFIRMED",
+                              "REJECTED",
+                              "CANCELED"
+                            ]
+                          },
+                          "requestedBy": {
+                            "type": "string",
+                            "enum": [
+                              "AGENCY",
+                              "OWNER"
+                            ]
+                          },
+                          "requestedByEmail": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "decidedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fromMode",
+                          "toMode",
+                          "status",
+                          "requestedBy",
+                          "requestedByEmail",
+                          "createdAt",
+                          "decidedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "billingMode",
+                    "pending",
+                    "history"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Este negocio no tiene una agencia vinculada."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Quién paga el plan de este negocio: modo vigente, propuesta pendiente e historial",
+        "tags": [
+          "agency"
+        ]
+      },
+      "post": {
+        "description": "El propietario solo puede pedir `CLIENT_PAYS` (pagar él) y se aplica al instante; que la agencia pague lo ofrece la agencia. Cierra cualquier propuesta pendiente. Solo el propietario.",
+        "operationId": "AgencyLinkController_ownerBilling",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "billingMode": {
+                    "type": "string",
+                    "enum": [
+                      "CLIENT_PAYS",
+                      "AGENCY_PAYS"
+                    ]
+                  }
+                },
+                "required": [
+                  "billingMode"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado de la facturación tras el cambio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "CLIENT_PAYS",
+                        "AGENCY_PAYS"
+                      ]
+                    },
+                    "pending": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "fromMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "toMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "CONFIRMED",
+                            "REJECTED",
+                            "CANCELED"
+                          ]
+                        },
+                        "requestedBy": {
+                          "type": "string",
+                          "enum": [
+                            "AGENCY",
+                            "OWNER"
+                          ]
+                        },
+                        "requestedByEmail": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "decidedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "fromMode",
+                        "toMode",
+                        "status",
+                        "requestedBy",
+                        "requestedByEmail",
+                        "createdAt",
+                        "decidedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "fromMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "toMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "PENDING",
+                              "CONFIRMED",
+                              "REJECTED",
+                              "CANCELED"
+                            ]
+                          },
+                          "requestedBy": {
+                            "type": "string",
+                            "enum": [
+                              "AGENCY",
+                              "OWNER"
+                            ]
+                          },
+                          "requestedByEmail": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "decidedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fromMode",
+                          "toMode",
+                          "status",
+                          "requestedBy",
+                          "requestedByEmail",
+                          "createdAt",
+                          "decidedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "billingMode",
+                    "pending",
+                    "history"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "El propietario no puede pedir que la agencia pague."
+          },
+          "409": {
+            "description": "Ya está en ese modo."
+          },
+          "429": {
+            "description": "Más de 20 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Volver a pagar el plan por tu cuenta",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/agency-link/billing/confirm": {
+      "post": {
+        "description": "Desde aquí rige el nuevo modo. Solo el propietario.",
+        "operationId": "AgencyLinkController_confirmBilling",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado de la facturación tras confirmar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "CLIENT_PAYS",
+                        "AGENCY_PAYS"
+                      ]
+                    },
+                    "pending": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "fromMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "toMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "CONFIRMED",
+                            "REJECTED",
+                            "CANCELED"
+                          ]
+                        },
+                        "requestedBy": {
+                          "type": "string",
+                          "enum": [
+                            "AGENCY",
+                            "OWNER"
+                          ]
+                        },
+                        "requestedByEmail": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "decidedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "fromMode",
+                        "toMode",
+                        "status",
+                        "requestedBy",
+                        "requestedByEmail",
+                        "createdAt",
+                        "decidedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "fromMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "toMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "PENDING",
+                              "CONFIRMED",
+                              "REJECTED",
+                              "CANCELED"
+                            ]
+                          },
+                          "requestedBy": {
+                            "type": "string",
+                            "enum": [
+                              "AGENCY",
+                              "OWNER"
+                            ]
+                          },
+                          "requestedByEmail": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "decidedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fromMode",
+                          "toMode",
+                          "status",
+                          "requestedBy",
+                          "requestedByEmail",
+                          "createdAt",
+                          "decidedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "billingMode",
+                    "pending",
+                    "history"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "409": {
+            "description": "No hay una propuesta pendiente."
+          },
+          "429": {
+            "description": "Más de 20 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Confirmar la propuesta de facturación de la agencia",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/agency-link/billing/reject": {
+      "post": {
+        "description": "Nada cambia. Solo el propietario.",
+        "operationId": "AgencyLinkController_rejectBilling",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado de la facturación tras rechazar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "billingMode": {
+                      "type": "string",
+                      "enum": [
+                        "CLIENT_PAYS",
+                        "AGENCY_PAYS"
+                      ]
+                    },
+                    "pending": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "fromMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "toMode": {
+                          "type": "string",
+                          "enum": [
+                            "CLIENT_PAYS",
+                            "AGENCY_PAYS"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "PENDING",
+                            "CONFIRMED",
+                            "REJECTED",
+                            "CANCELED"
+                          ]
+                        },
+                        "requestedBy": {
+                          "type": "string",
+                          "enum": [
+                            "AGENCY",
+                            "OWNER"
+                          ]
+                        },
+                        "requestedByEmail": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "decidedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "fromMode",
+                        "toMode",
+                        "status",
+                        "requestedBy",
+                        "requestedByEmail",
+                        "createdAt",
+                        "decidedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "fromMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "toMode": {
+                            "type": "string",
+                            "enum": [
+                              "CLIENT_PAYS",
+                              "AGENCY_PAYS"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "PENDING",
+                              "CONFIRMED",
+                              "REJECTED",
+                              "CANCELED"
+                            ]
+                          },
+                          "requestedBy": {
+                            "type": "string",
+                            "enum": [
+                              "AGENCY",
+                              "OWNER"
+                            ]
+                          },
+                          "requestedByEmail": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "decidedAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fromMode",
+                          "toMode",
+                          "status",
+                          "requestedBy",
+                          "requestedByEmail",
+                          "createdAt",
+                          "decidedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "billingMode",
+                    "pending",
+                    "history"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "409": {
+            "description": "No hay una propuesta pendiente."
+          },
+          "429": {
+            "description": "Más de 20 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Rechazar la propuesta de facturación de la agencia",
         "tags": [
           "agency"
         ]

@@ -513,3 +513,15 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - Migraciones reversibles (`down.sql`): `20261003100000_f93_agency`, `20261003100100_f93_agency_plan_clients_limit`,
   `20261003110000_f93_hide_public_site`.
 
+## 9u. Quién paga el plan de un cliente de agencia (F9.5a, BACKLOG_FASE_9.md, ADR-028 §2)
+
+- **AgencyBillingChange** (`agency_billing_changes`): historial de cambios de `AgencyClient.billing_mode`. `agency_client_id`
+  (`CASCADE`), `from_mode` / `to_mode` (`CHECK` de que difieran), `status` (`PENDING | CONFIRMED | REJECTED | CANCELED`),
+  `requested_by` (`AGENCY | OWNER`), `requested_by_id`, `decided_by_id`, `decided_at`. **Una propuesta pendiente por relación**:
+  índice único parcial `agency_billing_changes_one_pending` (`WHERE status = 'PENDING'`). El modo vigente sigue en
+  `agency_clients.billing_mode`; esta tabla es la historia y el cambio en curso.
+- **Plan efectivo** (no es una tabla, es una regla en `PlansService`): suscripción propia vigente → plan asignado a mano →
+  **plan de la agencia si `billing_mode = AGENCY_PAYS` y la relación da acceso** (activa, en pausa, en traspaso, o recién creada por la
+  agencia) → plan por defecto. Fuente nueva `agency`. Nada se cobra ni se guarda de medios de pago.
+- Migración reversible `20261003120000_f95a_agency_billing` (`down.sql`).
+

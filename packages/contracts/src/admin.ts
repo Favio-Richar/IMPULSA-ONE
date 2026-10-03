@@ -63,7 +63,7 @@ export const adminOrganizationDetailResponse = z.object({
   blockedReason: z.string().nullable(),
   createdAt: isoDateTime,
   plan: planResponse,
-  planSource: z.enum(["subscription", "assigned", "default"]),
+  planSource: z.enum(["subscription", "assigned", "agency", "default"]),
   usage: planUsageResponse,
   members: z.array(
     z.object({

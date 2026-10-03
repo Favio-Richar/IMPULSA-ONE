@@ -21,7 +21,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.2 | Marca de cada organización (logo, colores, datos) | Hecho (2026-10-03, revisada y corregida por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Hecho (2026-10-03, desarrollada y verificada por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.4 | Panel de agencia | Hecho con reservas (2026-10-03, desarrollada y verificada por Claude; reservas en el detalle de la historia y en `CONTINUIDAD.md` §0) |
-| F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | Pendiente |
+| F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | En progreso por sub-historias: **F9.5a facturación hecha** (2026-10-03); F9.5b transferir, F9.5c duplicar y F9.5d importar CSV pendientes |
 | F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | Pendiente |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | Pendiente |
 | F9.8 | Reportes por cliente | Pendiente |
@@ -225,7 +225,7 @@ fallar las pruebas: consolidado que suma a todos los estados (2 pruebas) y tabla
 
 ---
 
-### F9.5 — Gestión de clientes: importar, duplicar, transferir, facturación
+### F9.5 — Gestión de clientes: importar, duplicar, transferir, facturación — En progreso
 
 **Criterios de aceptación:**
 
@@ -247,6 +247,27 @@ fallar las pruebas: consolidado que suma a todos los estados (2 pruebas) y tabla
    datos personales (afirmar que no se copió ninguno); transferencia con rechazo, vencimiento y
    aceptación; cambio de facturación sin confirmación → falla. Playwright móvil/escritorio, capturas
    en `f95/`.
+
+**Se entrega en cuatro sub-historias, cada una con su commit y su push:** F9.5a facturación (criterio 4), F9.5b transferir (3), F9.5c duplicar (2) y
+F9.5d importar CSV con cola (1). F9.5 solo se marca «Hecho» cuando las cuatro pasen la Definición de Terminado.
+
+#### F9.5a — Facturación: quién paga el plan — Hecha (2026-10-03)
+
+**Decisión del propietario de la plataforma:** `AGENCY_PAYS` = el negocio usa los **límites del plan de la agencia** y no necesita suscripción propia;
+**no se cobra nada nuevo ni se toca Mercado Pago** (un cobro por cliente con el proveedor de pagos queda para cuando haya uno real configurado).
+**Qué hay:** modelo `AgencyBillingChange` (historial con propuesta pendiente; migración reversible); la agencia propone y el propietario confirma o
+rechaza (aviso por correo); el propietario puede volver a pagar él al instante; la agencia puede cancelar su propuesta; un cliente que la agencia creó y
+cuyo propietario aún no acepta se cambia de inmediato (no hay a quién pedir confirmación). El plan efectivo (`PlansService`, rutas individual y masiva)
+usa el plan de la agencia si `AGENCY_PAYS` y la relación da acceso; la suscripción propia vigente y el plan asignado a mano **mandan sobre** el de la
+agencia. Vista de qué paga quién en el resumen del panel; historial en la fila de la agencia y en Configuración › Agencia del propietario.
+**Verificado:** e2e de la API `agency-billing.e2e.test.ts` 19/19 (flujo, permisos, aislamiento, precedencia del plan, concurrencia —dos propuestas a la
+vez: una gana—, auditoría); reglas puras 6 pruebas; Playwright `facturacion-agencia.spec.ts` 2/2 en móvil y escritorio con un propietario real
+(proponer → rechazar → proponer → confirmar → el plan del negocio muestra el de la agencia → historial → volver a pagar), junto con los 10 de agencia y
+panel; capturas en `f95/`; suite completa 70/70 (API 829); builds de panel y admin; OpenAPI regenerado (237 rutas). **Mutaciones que hacen fallar las
+pruebas:** plan individual sin la rama de agencia (4 fallan), plan masivo sin ella (1), confirmar sin exigir permiso de propietario (2).
+**Límites (honestidad):** (a) no hay cobro real a la agencia por cliente (decisión de arriba); (b) con `AGENCY_PAYS` el negocio recibe los límites **completos**
+del plan de la agencia, no una fracción de un cupo compartido; (c) el cambio de plan se refleja al instante en los límites pero no genera aviso en pantalla
+para quien ya estaba usando el sistema; (d) el aviso al propietario sale por correo solo a la consola local (no hay proveedor de correo real todavía).
 
 ---
 

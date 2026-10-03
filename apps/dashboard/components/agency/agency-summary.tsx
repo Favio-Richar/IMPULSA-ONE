@@ -49,7 +49,7 @@ export function AgencySummary({ organizationId, days }: { organizationId: string
   if (dashboard.isPending) return <LoadingState label="Calculando el resumen…" />;
   if (dashboard.isError || !dashboard.data) return <ErrorState onRetry={() => void dashboard.refetch()} />;
 
-  const { clients, totals, alerts } = dashboard.data;
+  const { clients, totals, alerts, billing } = dashboard.data;
   // Sin clientes no hay nada que sumar: la tabla de abajo guía a dar de alta el primero.
   if (clients.total === 0) return null;
 
@@ -69,6 +69,11 @@ export function AgencySummary({ organizationId, days }: { organizationId: string
         <Kpi label="Reservas" value={numberFormat.format(totals.bookings)} testId="kpi-bookings" />
         <Kpi label="Pedidos" value={numberFormat.format(totals.orders)} testId="kpi-orders" />
       </div>
+      <p className="text-sm text-muted-foreground" data-testid="agency-billing-summary">
+        Facturación: pagas tú el plan de <strong className="text-foreground">{billing.agencyPays}</strong> cliente{billing.agencyPays === 1 ? "" : "s"} y {billing.clientPays === 1 ? "paga" : "pagan"} su propio plan{" "}
+        <strong className="text-foreground">{billing.clientPays}</strong>
+        {billing.pendingChanges > 0 ? ` · ${billing.pendingChanges} propuesta${billing.pendingChanges === 1 ? "" : "s"} esperando al propietario` : ""}.
+      </p>
       {alerts.clientsWithAlerts > 0 ? (
         <p role="status" className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/5 p-3 text-sm text-foreground" data-testid="agency-alerts-summary">
           <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />

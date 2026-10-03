@@ -25,6 +25,8 @@ export const agencyClientResponse = z.object({
   readOnly: z.boolean(),
   /** La agencia ocultó el sitio público de este cliente (pausa/archivo); se muestra de nuevo al reanudar o soltar. */
   publicHidden: z.boolean(),
+  /** Modo de facturación que la agencia propuso y el propietario aún no decide (F9.5a). */
+  pendingBillingMode: agencyBillingMode.nullable(),
   createdAt: isoDateTime,
   acceptedAt: isoDateTime.nullable(),
   pausedAt: isoDateTime.nullable(),
@@ -118,6 +120,8 @@ export const agencyDashboardResponse = z.object({
       ENDED: z.number().int(),
     }),
   }),
+  /** Qué paga quién entre las relaciones abiertas: los que paga la agencia y los que paga cada negocio. */
+  billing: z.object({ agencyPays: z.number().int(), clientPays: z.number().int(), pendingChanges: z.number().int() }),
   /** Suma de los clientes ACTIVE. */
   totals: agencyPerformance,
   alerts: z.object({
@@ -141,6 +145,7 @@ export const agencyOverviewItem = z.object({
   ownerInviteEmail: z.string().nullable(),
   readOnly: z.boolean(),
   publicHidden: z.boolean(),
+  pendingBillingMode: agencyBillingMode.nullable(),
   /** `null` si el cliente no está ACTIVE: no suma ni se mide. */
   performance: agencyPerformance.nullable(),
   plan: z
@@ -165,3 +170,30 @@ export const agencyOverviewResponse = z.object({
   items: z.array(agencyOverviewItem),
 });
 export type AgencyOverviewResponse = z.infer<typeof agencyOverviewResponse>;
+
+// ---- quién paga el plan (F9.5a) ---------------------------------------------------------------------------------------
+// Nada de la suscripción ni de los medios de pago del cliente viaja acá: solo el modo, la propuesta y el historial.
+
+export const agencyBillingChangeStatus = z.enum(["PENDING", "CONFIRMED", "REJECTED", "CANCELED"]);
+
+export const agencyBillingChange = z.object({
+  id: uuid,
+  fromMode: agencyBillingMode,
+  toMode: agencyBillingMode,
+  status: agencyBillingChangeStatus,
+  /** Quién lo pidió: la agencia o el propietario del negocio. */
+  requestedBy: z.enum(["AGENCY", "OWNER"]),
+  /** Correo de quien lo pidió (puede faltar si esa persona ya no existe). */
+  requestedByEmail: z.string().nullable(),
+  createdAt: isoDateTime,
+  decidedAt: isoDateTime.nullable(),
+});
+export type AgencyBillingChange = z.infer<typeof agencyBillingChange>;
+
+/** El modo vigente, la propuesta pendiente (si hay) y el historial, de más reciente a más antiguo. */
+export const agencyBillingResponse = z.object({
+  billingMode: agencyBillingMode,
+  pending: agencyBillingChange.nullable(),
+  history: z.array(agencyBillingChange),
+});
+export type AgencyBillingResponse = z.infer<typeof agencyBillingResponse>;

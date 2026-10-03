@@ -6,7 +6,8 @@ import { Button, EmptyState, ErrorState, Input, LoadingState } from "@impulza/ui
 import { useEffect, useState } from "react";
 import type { AgencyOverviewParams } from "../../lib/api/agency";
 import { useAgencyOverview } from "../../lib/hooks/use-agency";
-import { ClientRow, STATUS_TEXT } from "./client-row";
+import { STATUS_TEXT } from "./agency-text";
+import { ClientRow } from "./client-row";
 
 const PAGE_SIZE = 10;
 

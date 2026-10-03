@@ -1,16 +1,18 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { agencyClientResponse, agencyDashboardResponse, agencyOverviewResponse, agencyStatusResponse } from "@impulza/contracts";
+import { agencyBillingResponse, agencyClientResponse, agencyDashboardResponse, agencyOverviewResponse, agencyStatusResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import {
   agencyClientActionSchema,
   agencyDashboardQuerySchema,
+  changeBillingSchema,
   agencyOverviewQuerySchema,
   createAgencyClientSchema,
   linkAgencyClientSchema,
   type AgencyClientActionDto,
   type AgencyDashboardQuery,
   type AgencyOverviewQuery,
+  type ChangeBillingDto,
   type CreateAgencyClientDto,
   type LinkAgencyClientDto,
 } from "@impulza/validation";
@@ -34,6 +36,7 @@ import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
 import { OrganizationMembershipGuard } from "../organizations/guards/organization-membership.guard.js";
 import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
+import { AgencyBillingService } from "./agency-billing.service.js";
 import { AgencyDashboardService } from "./agency-dashboard.service.js";
 import { AgencyService } from "./agency.service.js";
 
@@ -51,6 +54,7 @@ export class AgencyController {
   constructor(
     private readonly agencyService: AgencyService,
     private readonly dashboardService: AgencyDashboardService,
+    private readonly billingService: AgencyBillingService,
   ) {}
 
   @Get()
@@ -198,5 +202,58 @@ export class AgencyController {
     @Body(new ZodValidationPipe(agencyClientActionSchema)) body: AgencyClientActionDto,
   ) {
     return this.agencyService.actOnClient(organizationId, user.id, clientId, body.action, body.hidePublicSite);
+  }
+
+  @Get("clients/:clientId/billing")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @ApiOperation({ summary: "Quién paga el plan de un cliente: modo vigente, propuesta pendiente e historial", description: "Requiere `agency.manage`." })
+  @ApiUuidParam("clientId", "Identificador de la relación con el cliente (no el de su organización).")
+  @ApiZodResponse(200, agencyBillingResponse, "Modo, propuesta pendiente (si hay) e historial.")
+  @ApiResponse({ status: 404, description: "Ese cliente no existe en tu agencia." })
+  async billing(@Param("organizationId") organizationId: string, @Param("clientId", new ParseUUIDPipe()) clientId: string) {
+    return this.billingService.historyForAgency(organizationId, clientId);
+  }
+
+  @Post("clients/:clientId/billing")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @RateLimit({ limit: 20, windowSeconds: 60, keyPrefix: "agency-billing-request" })
+  @ApiOperation({
+    summary: "Proponer un cambio de quién paga el plan del cliente",
+    description:
+      "Queda pendiente hasta que el propietario del cliente lo confirme (le llega un aviso por correo). Con `AGENCY_PAYS` el negocio usa los límites del plan de la agencia; no se cobra nada nuevo. Si el cliente lo creó la agencia y su propietario aún no acepta la invitación, se aplica de inmediato (no hay a quién pedírselo). Requiere `agency.manage`.",
+  })
+  @ApiUuidParam("clientId", "Identificador de la relación con el cliente (no el de su organización).")
+  @ApiZodBody(changeBillingSchema)
+  @ApiZodResponse(200, agencyBillingResponse, "Estado de la facturación tras la solicitud.")
+  @ApiRateLimited(20, 60)
+  @ApiResponse({ status: 409, description: "Ya está en ese modo, ya hay una propuesta pendiente o la relación no está activa." })
+  async requestBilling(
+    @Param("organizationId") organizationId: string,
+    @Param("clientId", new ParseUUIDPipe()) clientId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(changeBillingSchema)) body: ChangeBillingDto,
+  ) {
+    return this.billingService.requestChange(organizationId, user.id, clientId, body.billingMode);
+  }
+
+  @Post("clients/:clientId/billing/cancel")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @RateLimit({ limit: 20, windowSeconds: 60, keyPrefix: "agency-billing-cancel" })
+  @ApiOperation({ summary: "Cancelar la propuesta de facturación pendiente", description: "Requiere `agency.manage`." })
+  @ApiUuidParam("clientId", "Identificador de la relación con el cliente (no el de su organización).")
+  @ApiZodResponse(200, agencyBillingResponse, "Estado de la facturación tras cancelar.")
+  @ApiRateLimited(20, 60)
+  @ApiResponse({ status: 409, description: "No hay una propuesta pendiente." })
+  async cancelBilling(
+    @Param("organizationId") organizationId: string,
+    @Param("clientId", new ParseUUIDPipe()) clientId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.billingService.cancelPending(organizationId, user.id, clientId);
   }
 }

@@ -160,6 +160,7 @@ model User {
   memberships          Membership[]
   verificationTokens   VerificationToken[]
   auditLogsAsActor     AuditLog[]          @relation("AuditLogActor")
+  agencyMemberScopes   AgencyMemberScope[] @relation("AgencyMemberScopeUser")
   pageVersionsCreated  PageVersion[]       @relation("PageVersionAuthor")
   contactsAssigned     Contact[]           @relation("ContactAssignee")
   supportTicketsOpened SupportTicket[]     @relation("SupportTicketOpener")
@@ -227,6 +228,7 @@ model Organization {
   duplications        AgencyDuplication[]  @relation("AgencyDuplications")
   agencyImports       AgencyImport[]       @relation("AgencyImports")
   customRoles         CustomRole[]
+  agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
   auditLogs           AuditLog[]
@@ -294,7 +296,7 @@ model Membership {
   // ANALYST (solo lectura) como piso: si algo ignorara el rol personalizado, la persona no ganaría nada.
   customRoleId   String?          @map("custom_role_id") @db.Uuid
 
-  customRole   CustomRole?  @relation(fields: [customRoleId], references: [id])
+  customRole   CustomRole?  @relation(fields: [customRoleId], references: [id], onDelete: Restrict)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   role         Role         @relation(fields: [roleId], references: [id])
@@ -519,6 +521,7 @@ model AgencyClient {
   billingChanges     AgencyBillingChange[]
   transfers          AgencyTransfer[]
   duplicationAsTarget AgencyDuplication? @relation("DuplicationTarget")
+  scopeClients       AgencyMemberScopeClient[]
 
   @@index([agencyOrganizationId, status])
   @@index([clientOrganizationId])
@@ -2583,4 +2586,37 @@ model BrandProfile {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("brand_profiles")
+}
+
+// F9.6b (ADR-028 §3): hasta dónde llega una persona del equipo de una agencia. Sin fila = todos los clientes y todos los módulos (F9.3).
+model AgencyMemberScope {
+  id                   String   @id @default(uuid()) @db.Uuid
+  agencyOrganizationId String   @map("agency_organization_id") @db.Uuid
+  userId               String   @map("user_id") @db.Uuid
+  // true = todos los clientes de la agencia, también los futuros; false = solo los de `clients`.
+  allClients           Boolean  @default(true) @map("all_clients")
+  // Vacío = todos los módulos. Claves de AGENCY_MODULES (packages/validation).
+  modules              String[] @default([])
+  updatedById          String?  @map("updated_by_id") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  agencyOrganization Organization              @relation("AgencyMemberScopes", fields: [agencyOrganizationId], references: [id], onDelete: Cascade)
+  user               User                      @relation("AgencyMemberScopeUser", fields: [userId], references: [id], onDelete: Cascade)
+  clients            AgencyMemberScopeClient[]
+
+  @@unique([agencyOrganizationId, userId])
+  @@map("agency_member_scopes")
+}
+
+model AgencyMemberScopeClient {
+  scopeId        String @map("scope_id") @db.Uuid
+  agencyClientId String @map("agency_client_id") @db.Uuid
+
+  scope        AgencyMemberScope @relation(fields: [scopeId], references: [id], onDelete: Cascade)
+  agencyClient AgencyClient      @relation(fields: [agencyClientId], references: [id], onDelete: Cascade)
+
+  @@id([scopeId, agencyClientId])
+  @@index([agencyClientId])
+  @@map("agency_member_scope_clients")
 }

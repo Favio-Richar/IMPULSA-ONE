@@ -22,7 +22,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Hecho (2026-10-03, desarrollada y verificada por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.4 | Panel de agencia | Hecho con reservas (2026-10-03, desarrollada y verificada por Claude; reservas en el detalle de la historia y en `CONTINUIDAD.md` §0) |
 | F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | Hecho con reservas (2026-10-04): F9.5a facturación, F9.5b transferir, F9.5c duplicar y F9.5d importar CSV; reservas en cada sub-historia y en `CONTINUIDAD.md` §0 |
-| F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados hecha** (2026-10-04); faltan b (acceso por cliente y módulo), c (aprobación antes de publicar) y d (auditoría navegable) |
+| F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados** y **F9.6b acceso por cliente y módulo** hechas (2026-10-04); faltan c (aprobación antes de publicar) y d (auditoría navegable) |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | Pendiente |
 | F9.8 | Reportes por cliente | Pendiente |
 | F9.9 | Moderación y reportes de abuso | Pendiente |
@@ -375,6 +375,27 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
   (guard, invitar, cambiar rol, quitar, crear rol, borrar en uso, aislamiento), reglas puras, y Playwright móvil/escritorio (`equipo-roles.spec.ts`, capturas en `docs/design/capturas/f96`).
 - **Reservas honestas:** los roles personalizados no delegan a clientes de agencia (la agencia sigue delegando por el rol del sistema); editar un rol cambia al instante los permisos
   de quienes lo tienen (por diseño); no hay «clonar rol» ni plantillas de roles.
+
+#### F9.6b — Acceso del equipo de la agencia por cliente y por módulo (criterio 3) — hecha (2026-10-04)
+
+- **Modelo:** `AgencyMemberScope` (por persona de la agencia: `all_clients`, `modules[]`) + `AgencyMemberScopeClient` (clientes permitidos). **Sin fila = todo** (el comportamiento de F9.3), así que
+  nada existente cambia; volver a «todo» borra la fila. Migración reversible `20261004110000_f96b_agency_member_scope` (`down.sql`).
+- **Dos barreras (el criterio habla de un `AgencyAccessGuard`; la puerta única real es `OrganizationMembershipGuard`, ADR-028):** (1) las **membresías delegadas** solo existen en los clientes que caben en el
+  alcance (`loadMemberScope` se aplica al sincronizar a una persona y al dar acceso a un cliente nuevo, todo desde `@impulza/agency`); (2) la **puerta de entrada** vuelve a comprobar en cada petición el cliente
+  (`AGENCY_SCOPE_DENIED`) y el módulo (`AGENCY_MODULE_DENIED`), de modo que si la sincronización fallara el servidor sigue negando.
+- **Módulos:** 11 (`AGENCY_MODULES`: sitios, contactos y formularios, reservas, catálogo y pedidos, campañas, medios, analítica, enlaces, soporte, marca, IA). Una función pura (`agencyModuleOfSegments`) traduce la
+  ruta al módulo; lo que no es módulo (la organización misma, `plan`, `agency…`) no se acota, para que el selector de clientes siga funcionando.
+- **Reglas (`scopeChangeVerdict`, puras):** nadie cambia su propio acceso (`SELF_CHANGE`); el propietario de la agencia no se acota (`OWNER_PROTECTED`); nadie da más alcance del que tiene
+  (`SCOPE_ESCALATION`: ni «todos los clientes», ni un cliente o módulo que no tiene). Los clientes elegidos deben ser de **esa** agencia (uno ajeno responde 404); solo se acota a quien delega.
+- **API:** `GET /organizations/:id/agency/team` y `PUT …/agency/team/:userId/scope` (`agency.manage`); la lista de organizaciones trae `access.modules` para que el menú oculte lo no permitido. Cada cambio queda en
+  la auditoría (`agency.member_scope_changed`, con el alcance anterior y el nuevo).
+- **UI:** Agencia › Equipo y acceso a clientes (editor con clientes y secciones; lo que quien edita no tiene sale desactivado y explicado). Estados de carga, vacío, error y éxito; móvil y escritorio.
+- **Pruebas:** 9 de integración (por defecto todo, por cliente incluidos clientes nuevos y volver a «todos», por módulo, defensa en profundidad, las tres reglas, validaciones y rol sin permiso, aislamiento entre agencias,
+  auditoría, salir de la agencia), 7 mutaciones atrapadas (guard cliente, guard módulo, sincronización, cliente ajeno, quien no delega, reglas, resincronizar), reglas puras, Playwright móvil/escritorio
+  (`equipo-agencia.spec.ts`, capturas `09`–`11` en `docs/design/capturas/f96`).
+- **Reservas honestas:** el alcance es por persona y vale para todos los clientes por igual (no hay «solo Medios en el cliente A y solo Sitios en el B»); el alcance de alguien que sale de la agencia queda guardado
+  y rige si vuelve (falla cerrado); el menú muestra «Integraciones» a una persona delegada acotada aunque el servidor ya le niega webhooks (no es un módulo acotable); las lecturas públicas y los webhooks
+  salientes no pasan por esta puerta.
 
 ---
 

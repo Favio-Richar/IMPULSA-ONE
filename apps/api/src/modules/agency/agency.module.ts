@@ -11,6 +11,7 @@ import { AgencyImportController } from "./agency-import.controller.js";
 import { AgencyImportService } from "./agency-import.service.js";
 import { AGENCY_IMPORT_QUEUE_TOKEN } from "./agency.tokens.js";
 import { AgencyDuplicateService } from "./agency-duplicate.service.js";
+import { AgencyTeamService } from "./agency-team.service.js";
 import { AgencyTransferService } from "./agency-transfer.service.js";
 import { AgencyInvitationsController, AgencyLinkController } from "./agency-link.controller.js";
 import { AgencyController } from "./agency.controller.js";
@@ -23,7 +24,7 @@ import { AgencyService } from "./agency.service.js";
   // `AuthModule` aporta el adaptador de correo (invitaciones y avisos); `PublicSitesModule`, el aviso a apps/web al ocultar o mostrar un sitio.
   imports: [AuthModule, PublicSitesModule],
   controllers: [AgencyImportController, AgencyController, AgencyLinkController, AgencyInvitationsController],
-  providers: [AgencyService, AgencyAccessService, AgencyDashboardService, AgencyBillingService, AgencyTransferService, AgencyDuplicateService, AgencyImportService,
+  providers: [AgencyService, AgencyAccessService, AgencyDashboardService, AgencyBillingService, AgencyTransferService, AgencyDuplicateService, AgencyImportService, AgencyTeamService,
     // Conexión propia de BullMQ (exige `maxRetriesPerRequest: null`), igual que las colas de medios y analítica.
     { provide: AGENCY_IMPORT_QUEUE_TOKEN, useFactory: () => new Queue<AgencyImportJob>(AGENCY_IMPORT_QUEUE, { connection: { url: env.REDIS_URL, maxRetriesPerRequest: null } }) },
   ],

@@ -1,4 +1,4 @@
-export { delegatingMemberIds, grantAgencyAccessForClient, grantAgencyAccessToUser, relationGrantsAccess } from "./access.js";
+export { delegatingMemberIds, grantAgencyAccessForClient, grantAgencyAccessToUser, loadAgencyScopes, loadMemberScope, relationGrantsAccess } from "./access.js";
 export { createAgencyClientRecords, type NewAgencyClient } from "./client.js";
 export { ownerInviteEmail, ownerInviteUrl } from "./invite-email.js";
 export {

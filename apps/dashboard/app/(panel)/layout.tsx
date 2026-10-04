@@ -81,7 +81,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             brandName
           )}
         </div>
-        <SidebarNav kind={activeOrganization?.kind} delegated={activeOrganization?.access?.delegated ?? false} />
+        <SidebarNav kind={activeOrganization?.kind} delegated={activeOrganization?.access?.delegated ?? false} allowedModules={activeOrganization?.access?.modules ?? []} />
       </aside>
 
       {mobileNavOpen ? (
@@ -115,6 +115,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               onNavigate={() => setMobileNavOpen(false)}
               kind={activeOrganization?.kind}
               delegated={activeOrganization?.access?.delegated ?? false}
+              allowedModules={activeOrganization?.access?.modules ?? []}
             />
           </aside>
         </div>

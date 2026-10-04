@@ -61,3 +61,4 @@ export * from "./agency/transfer.js";
 export * from "./agency/duplicate.js";
 export * from "./agency/import-csv.js";
 export * from "./team/index.js";
+export * from "./team/agency-scope.js";

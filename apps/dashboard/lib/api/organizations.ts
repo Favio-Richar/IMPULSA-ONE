@@ -14,7 +14,7 @@ export interface Organization {
   createdAt: string;
   updatedAt: string;
   /** Cómo llegó el usuario a esta organización: propia, o delegada por una agencia (F9.3). Solo viene en la lista. */
-  access?: { delegated: boolean; agencyOrganizationId: string | null; agencyName: string | null; readOnly: boolean };
+  access?: { delegated: boolean; agencyOrganizationId: string | null; agencyName: string | null; readOnly: boolean; /** Módulos permitidos por la agencia (F9.6b); vacío = todos. */ modules: string[] };
 }
 
 export interface Member {

@@ -571,3 +571,10 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - **CustomRolePermission** (`custom_role_permissions`): PK `(custom_role_id, permission_id)`, ambas `CASCADE`. Los permisos salen del catálogo cerrado (`permissions`).
 - **Membership.custom_role_id** (nullable, `RESTRICT`): si está, sus permisos reemplazan a los de `role_id`, que queda en ANALYST como piso de solo lectura.
 - Migración reversible `20261004100000_f96a_custom_roles` (`down.sql`).
+
+## 9z. Acceso del equipo de agencia por cliente y módulo (F9.6b, BACKLOG_FASE_9.md, ADR-028 §3)
+
+- **AgencyMemberScope** (`agency_member_scopes`): `agency_organization_id` y `user_id` (ambas `CASCADE`), `all_clients` (por defecto `true`), `modules` (`TEXT[]`, vacío = todos), `updated_by_id`.
+  `UNIQUE (agency_organization_id, user_id)`. **Sin fila = sin restricciones.** Volver a «todo» borra la fila.
+- **AgencyMemberScopeClient** (`agency_member_scope_clients`): PK `(scope_id, agency_client_id)`, ambas `CASCADE` (si la relación con el cliente se borra, desaparece del alcance). Solo tiene filas cuando `all_clients = false`.
+- Migración reversible `20261004110000_f96b_agency_member_scope` (`down.sql`).

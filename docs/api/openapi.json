@@ -56654,6 +56654,332 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/agency/team": {
+      "get": {
+        "description": "Las personas que delegan acceso a clientes (propietario, administradores y gestores) con hasta dónde llega cada una, y los clientes entre los que elegir. Requiere `agency.manage`.",
+        "operationId": "AgencyController_team",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Equipo y clientes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "members": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "email": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string"
+                          },
+                          "scope": {
+                            "type": "object",
+                            "properties": {
+                              "allClients": {
+                                "type": "boolean"
+                              },
+                              "clientIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                }
+                              },
+                              "modules": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": [
+                              "allClients",
+                              "clientIds",
+                              "modules"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "isSelf": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "email",
+                          "role",
+                          "scope",
+                          "isSelf"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "clients": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "slug": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "slug"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "actorScope": {
+                      "type": "object",
+                      "properties": {
+                        "allClients": {
+                          "type": "boolean"
+                        },
+                        "clientIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
+                        },
+                        "modules": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "allClients",
+                        "clientIds",
+                        "modules"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "members",
+                    "clients",
+                    "actorScope"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Equipo de la agencia y su acceso por cliente y módulo",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/agency/team/{userId}/scope": {
+      "put": {
+        "description": "Reemplaza su alcance. `allClients: true` con `modules: []` lo devuelve a «todo». Nadie cambia su propio acceso (`SELF_CHANGE`), el propietario no se acota (`OWNER_PROTECTED`) y nadie da más alcance del que tiene (`SCOPE_ESCALATION`). Surte efecto en la siguiente petición de esa persona. Requiere `agency.manage`.",
+        "operationId": "AgencyController_setScope",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "description": "Persona del equipo de la agencia.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "allClients": {
+                    "type": "boolean"
+                  },
+                  "clientIds": {
+                    "default": [],
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "modules": {
+                    "default": [],
+                    "maxItems": 11,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "sitios",
+                        "contactos",
+                        "reservas",
+                        "catalogo",
+                        "campanas",
+                        "medios",
+                        "analitica",
+                        "enlaces",
+                        "soporte",
+                        "marca",
+                        "ia"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "allClients"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Alcance guardado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "allClients": {
+                      "type": "boolean"
+                    },
+                    "clientIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      }
+                    },
+                    "modules": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "allClients",
+                    "clientIds",
+                    "modules"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Cambio de su propio acceso, del propietario o más alcance del que quien cambia tiene."
+          },
+          "404": {
+            "description": "La persona no es del equipo de la agencia, o algún cliente no es de esta agencia."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Acotar a una persona del equipo por cliente y módulo",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
     "/api/v1/organizations/{organizationId}/agency-link": {
       "get": {
         "description": "La relación abierta (solicitud pendiente, activa, en pausa o archivada) con las personas de la agencia que tienen acceso hoy, o `null`.",

@@ -5,7 +5,7 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-04) — F9.6a (roles personalizados) hecha en la rama `fase-9/f9-6-equipo-avanzado` (sobre F9.5); siguiente: F9.6b (acceso por cliente y módulo), F9.6c (aprobación antes de publicar), F9.6d (auditoría navegable)
+## 0. RETOMAR AQUÍ (2026-10-04) — F9.6a (roles personalizados) y F9.6b (acceso por cliente y módulo) hechas en la rama `fase-9/f9-6-equipo-avanzado` (sobre F9.5); siguiente: F9.6c (aprobación antes de publicar), F9.6d (auditoría navegable)
 
 **Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia y **push de la rama al cerrar cada una** (autorizado por Favio; ver memoria «Subir cada fase a GitHub»). Fusionar a `master` sigue pidiendo confirmación.
 

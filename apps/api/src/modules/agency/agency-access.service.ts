@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { grantAgencyAccessForClient, grantAgencyAccessToUser, relationGrantsAccess } from "@impulza/agency";
+import { grantAgencyAccessForClient, grantAgencyAccessToUser, loadMemberScope, relationGrantsAccess } from "@impulza/agency";
 import {
   AgencyClientStatus,
   MembershipSource,
@@ -7,7 +7,7 @@ import {
   type Prisma,
   type PrismaClient,
 } from "@impulza/database";
-import { AGENCY_DELEGATE_ROLE, AGENCY_DELEGATING_ROLES } from "@impulza/validation";
+import { AGENCY_DELEGATE_ROLE, AGENCY_DELEGATING_ROLES, scopeAllowsClient } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -61,9 +61,11 @@ export class AgencyAccessService {
       select: { id: true, clientOrganizationId: true, status: true, agencyCreated: true },
     });
     const delegateRole = await this.prisma.role.findUniqueOrThrow({ where: { name: AGENCY_DELEGATE_ROLE } });
+    // F9.6b: además de ser elegible y que la relación dé acceso, el cliente debe caber en el alcance de la persona.
+    const scope = await loadMemberScope(this.prisma, agencyOrganizationId, userId);
 
     for (const relation of relations) {
-      if (eligible && relationGrantsAccess(relation)) {
+      if (eligible && relationGrantsAccess(relation) && scopeAllowsClient(scope, relation.id)) {
         await grantAgencyAccessToUser(this.prisma, relation.id, relation.clientOrganizationId, userId, delegateRole.id);
       } else {
         await this.prisma.membership.updateMany({

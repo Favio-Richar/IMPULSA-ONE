@@ -62,6 +62,11 @@ function AgencyView({ organizationId }: { organizationId: string }): React.JSX.E
         <p className="text-sm text-foreground" data-testid="agency-quota">
           Clientes: <strong>{clientsUsed}</strong> {clientsLimit === null ? "(sin límite)" : `de ${clientsLimit}`}
         </p>
+        <p className="text-sm">
+          <Link href="/agencia/equipo" className="font-medium text-primary underline underline-offset-2">
+            Equipo y acceso a clientes
+          </Link>
+        </p>
       </header>
 
       <div className="flex flex-wrap items-center justify-between gap-3">

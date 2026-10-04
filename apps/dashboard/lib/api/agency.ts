@@ -9,11 +9,13 @@ import type {
   AgencyImportSummary,
   AgencyIncomingTransfersResponse,
   AgencyLinkResponse,
+  AgencyMemberScopeResponse,
+  AgencyTeamResponse,
   AgencyOverviewResponse,
   AgencyTransferResponse,
   AgencyStatusResponse,
 } from "@impulza/contracts";
-import type { AgencyClientAction, AgencyClientStatusValue, AgencyOverviewQuery, CreateAgencyClientDto, CreateTransferDto, DuplicateClientDto, LinkAgencyClientDto } from "@impulza/validation";
+import type { AgencyClientAction, AgencyClientStatusValue, AgencyScopeDto, AgencyOverviewQuery, CreateAgencyClientDto, CreateTransferDto, DuplicateClientDto, LinkAgencyClientDto } from "@impulza/validation";
 import { apiFetch, apiFetchText } from "../api-client";
 
 // Modo agencia (F9.3, ADR-028 §2). Todo se resuelve en el servidor por la membresía real del usuario.
@@ -194,4 +196,14 @@ export function getAgencyImport(organizationId: string, importId: string, params
 /** El informe de errores como CSV seguro (sin fórmulas ejecutables), listo para corregir y volver a subir. */
 export function downloadImportErrors(organizationId: string, importId: string): Promise<string> {
   return apiFetchText(`${importsPath(organizationId)}/imports/${importId}/errors.csv`);
+}
+
+// ---- equipo de la agencia: acceso por cliente y módulo (F9.6b) ---------------------------------------------------------
+
+export function getAgencyTeam(organizationId: string): Promise<AgencyTeamResponse> {
+  return apiFetch<AgencyTeamResponse>(`${agencyPath(organizationId)}/team`);
+}
+
+export function setAgencyMemberScope(organizationId: string, userId: string, body: AgencyScopeDto): Promise<AgencyMemberScopeResponse> {
+  return apiFetch<AgencyMemberScopeResponse>(`${agencyPath(organizationId)}/team/${userId}/scope`, { method: "PUT", body });
 }

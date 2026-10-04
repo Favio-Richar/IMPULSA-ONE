@@ -17,6 +17,7 @@ import {
 import type { MyOrganizationResponse } from "@impulza/contracts";
 import { delegatedAccessVerdict, memberChangeVerdict, missingPermissions } from "@impulza/validation";
 import type { EmailAdapter } from "@impulza/auth";
+import { loadMemberScope } from "@impulza/agency";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
 import { AuditService } from "../audit/audit.service.js";
@@ -121,8 +122,9 @@ export class OrganizationsService {
                 agencyOrganizationId: relation.agencyOrganization.id,
                 agencyName: relation.agencyOrganization.name,
                 readOnly: relation.status === AgencyClientStatus.PAUSED,
+                modules: [...(await loadMemberScope(this.prisma, relation.agencyOrganization.id, userId)).modules],
               }
-            : { delegated: false, agencyOrganizationId: null, agencyName: null, readOnly: false },
+            : { delegated: false, agencyOrganizationId: null, agencyName: null, readOnly: false, modules: [] },
       });
     }
     return result;

@@ -1,6 +1,7 @@
 import { type CanActivate, type ExecutionContext, ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { MembershipSource, MembershipStatus, OrganizationStatus, type PrismaClient } from "@impulza/database";
-import { AGENCY_DELEGATING_ROLES, delegatedAccessVerdict } from "@impulza/validation";
+import { loadMemberScope } from "@impulza/agency";
+import { AGENCY_DELEGATING_ROLES, agencyModuleOfSegments, delegatedAccessVerdict, scopeAllowsClient, scopeAllowsModule, segmentsAfterOrganization } from "@impulza/validation";
 import type { Request } from "express";
 import { Reflector } from "@nestjs/core";
 import { PRISMA } from "../../../database/prisma.module.js";
@@ -86,6 +87,7 @@ export class OrganizationMembershipGuard implements CanActivate {
     membership: {
       userId: string;
       agencyClient: {
+        id: string;
         clientOrganizationId: string;
         agencyOrganizationId: string;
         status: Parameters<typeof delegatedAccessVerdict>[0]["status"];
@@ -133,6 +135,16 @@ export class OrganizationMembershipGuard implements CanActivate {
       !(AGENCY_DELEGATING_ROLES as readonly string[]).includes(agencyMembership.role.name)
     ) {
       deny("AGENCY_ACCESS_REVOKED", "Ya no formas parte de la agencia que tiene acceso a este negocio.");
+    }
+
+    // F9.6b: el alcance de la persona dentro de la agencia (por cliente y por módulo). Se lee en cada petición, así que acotar a alguien
+    // surte efecto en la siguiente; que además se quite su membresía en los clientes excluidos es solo la primera barrera.
+    const scope = await loadMemberScope(this.prisma, relation.agencyOrganizationId, membership.userId);
+    if (!scopeAllowsClient(scope, relation.id)) {
+      deny("AGENCY_SCOPE_DENIED", "Tu agencia no te dio acceso a este cliente.");
+    }
+    if (!scopeAllowsModule(scope, agencyModuleOfSegments(segmentsAfterOrganization(request.originalUrl)))) {
+      deny("AGENCY_MODULE_DENIED", "Tu agencia no te dio acceso a esta sección de este cliente.");
     }
   }
 }

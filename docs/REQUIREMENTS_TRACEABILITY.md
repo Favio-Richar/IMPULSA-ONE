@@ -116,7 +116,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Requisito | Fuente | Fase |
 |---|---|---|
 | Dashboard agencia, gestión de clientes (alta, cambio rápido, pausa/archivo, duplicación, transferencia, facturación) | PM §11.1–11.2 | Fase 9 (F9.3–F9.5, ADR-028) — **F9.3 hecha** (alta de clientes, acceso delegado, pausa/archivo con ocultar el sitio, revocación); **F9.4 hecha con reservas** (panel consolidado: faltan tareas del equipo y alertas de cobro); **F9.5 hecha** (facturación, transferir, duplicar e importar CSV; reservas en el backlog) (antes F6.8, bloqueada por #8) |
-| Equipo con roles personalizados, acceso por cliente/módulo, auditoría, aprobación antes de publicar | PM §11.3 | Fase 9 (F9.6, ADR-028) — **F9.6a hecha** (roles personalizados y reglas contra la escalada); faltan acceso por cliente/módulo, aprobación antes de publicar y auditoría navegable |
+| Equipo con roles personalizados, acceso por cliente/módulo, auditoría, aprobación antes de publicar | PM §11.3 | Fase 9 (F9.6, ADR-028) — **F9.6a hecha** (roles personalizados y reglas contra la escalada) y **F9.6b hecha** (acceso por cliente/módulo); faltan aprobación antes de publicar y auditoría navegable |
 | Marca blanca: logo/colores, dominio de agencia, portal cliente, correos con marca, plantillas privadas | PM §11.4 | Fase 9 (F9.7, ADR-028) — Pendiente (antes F6.9) |
 | Reportes por cliente: comparación de periodos, programación, comentarios, exportación, enlace compartido | PM §11.5 | Fase 9 (F9.8, ADR-028) — Pendiente |
 | Marca configurable: el dueño de la plataforma (logo, nombre, colores, correos) y cada organización (logo, colores, datos) desde la interfaz | PM §11.4, §12 | Fase 9 (F9.1–F9.2, ADR-028) — Pendiente |

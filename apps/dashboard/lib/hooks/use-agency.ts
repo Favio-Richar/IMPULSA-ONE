@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AgencyClientAction, CreateAgencyClientDto, CreateTransferDto, DuplicateClientDto, LinkAgencyClientDto } from "@impulza/validation";
+import type { AgencyClientAction, AgencyScopeDto, CreateAgencyClientDto, CreateTransferDto, DuplicateClientDto, LinkAgencyClientDto } from "@impulza/validation";
 import {
   acceptAgencyLink,
   acceptIncomingTransfer,
@@ -19,6 +19,7 @@ import {
   getAgencyLink,
   getAgencyOverview,
   getAgencyStatus,
+  getAgencyTeam,
   getOwnerBilling,
   getOwnerTransfer,
   listAgencyImports,
@@ -32,6 +33,7 @@ import {
   type AgencyOverviewParams,
   listAgencyClients,
   rejectAgencyLink,
+  setAgencyMemberScope,
   requestAgencyLink,
   revokeAgencyLink,
 } from "../api/agency";
@@ -249,4 +251,15 @@ export function useAgencyImport(organizationId: string, importId: string | null,
 export function useUploadAgencyImport(organizationId: string) {
   const refresh = useRefresh(organizationId);
   return useMutation({ mutationFn: (body: { csv: string; fileName?: string }) => uploadAgencyImport(organizationId, body), onSuccess: refresh });
+}
+
+// ---- equipo de la agencia: acceso por cliente y módulo (F9.6b) ---------------------------------------------------------
+
+export function useAgencyTeam(organizationId: string) {
+  return useQuery({ queryKey: ["agency", organizationId, "team"], queryFn: () => getAgencyTeam(organizationId) });
+}
+
+export function useSetMemberScope(organizationId: string) {
+  const refresh = useRefresh(organizationId);
+  return useMutation({ mutationFn: (input: { userId: string; body: AgencyScopeDto }) => setAgencyMemberScope(organizationId, input.userId, input.body), onSuccess: refresh });
 }

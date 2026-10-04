@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import {
   agencyBillingResponse,
@@ -7,7 +7,9 @@ import {
   agencyDuplicateResponse,
   agencyIncomingTransfersResponse,
   agencyOverviewResponse,
+  agencyMemberScopeResponse,
   agencyStatusResponse,
+  agencyTeamResponse,
   agencyTransferResponse,
 } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
@@ -18,11 +20,13 @@ import {
   createTransferSchema,
   duplicateClientSchema,
   agencyOverviewQuerySchema,
+  agencyScopeSchema,
   createAgencyClientSchema,
   linkAgencyClientSchema,
   type AgencyClientActionDto,
   type AgencyDashboardQuery,
   type AgencyOverviewQuery,
+  type AgencyScopeDto,
   type ChangeBillingDto,
   type CreateTransferDto,
   type DuplicateClientDto,
@@ -52,6 +56,7 @@ import { RequirePermission } from "../rbac/require-permission.decorator.js";
 import { AgencyBillingService } from "./agency-billing.service.js";
 import { AgencyDashboardService } from "./agency-dashboard.service.js";
 import { AgencyDuplicateService } from "./agency-duplicate.service.js";
+import { AgencyTeamService } from "./agency-team.service.js";
 import { AgencyTransferService } from "./agency-transfer.service.js";
 import { AgencyService } from "./agency.service.js";
 
@@ -72,6 +77,7 @@ export class AgencyController {
     private readonly billingService: AgencyBillingService,
     private readonly transferService: AgencyTransferService,
     private readonly duplicateService: AgencyDuplicateService,
+    private readonly teamService: AgencyTeamService,
   ) {}
 
   @Get()
@@ -402,5 +408,39 @@ export class AgencyController {
     @Body(new ZodValidationPipe(duplicateClientSchema)) body: DuplicateClientDto,
   ) {
     return this.duplicateService.duplicate(organizationId, user, clientId, body);
+  }
+
+  @Get("team")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @ApiOperation({
+    summary: "Equipo de la agencia y su acceso por cliente y módulo",
+    description: "Las personas que delegan acceso a clientes (propietario, administradores y gestores) con hasta dónde llega cada una, y los clientes entre los que elegir. Requiere `agency.manage`.",
+  })
+  @ApiZodResponse(200, agencyTeamResponse, "Equipo y clientes.")
+  team(@Param("organizationId") organizationId: string, @CurrentUser() user: User) {
+    return this.teamService.list(organizationId, user.id);
+  }
+
+  @Put("team/:userId/scope")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @ApiOperation({
+    summary: "Acotar a una persona del equipo por cliente y módulo",
+    description:
+      "Reemplaza su alcance. `allClients: true` con `modules: []` lo devuelve a «todo». Nadie cambia su propio acceso (`SELF_CHANGE`), el propietario no se acota (`OWNER_PROTECTED`) y nadie da más alcance del que tiene (`SCOPE_ESCALATION`). Surte efecto en la siguiente petición de esa persona. Requiere `agency.manage`.",
+  })
+  @ApiUuidParam("userId", "Persona del equipo de la agencia.")
+  @ApiZodBody(agencyScopeSchema)
+  @ApiZodResponse(200, agencyMemberScopeResponse, "Alcance guardado.")
+  @ApiResponse({ status: 403, description: "Cambio de su propio acceso, del propietario o más alcance del que quien cambia tiene." })
+  @ApiResponse({ status: 404, description: "La persona no es del equipo de la agencia, o algún cliente no es de esta agencia." })
+  setScope(
+    @Param("organizationId") organizationId: string,
+    @Param("userId", ParseUUIDPipe) userId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(agencyScopeSchema)) body: AgencyScopeDto,
+  ) {
+    return this.teamService.setScope(organizationId, user.id, userId, body);
   }
 }

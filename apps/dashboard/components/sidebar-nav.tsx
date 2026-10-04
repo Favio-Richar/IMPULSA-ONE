@@ -45,16 +45,36 @@ const NAV_ITEMS = [
  */
 const HIDDEN_WHEN_DELEGATED = new Set(["/cobros", "/plan", "/configuracion", "/configuracion/roles", "/configuracion/agencia"]);
 
+/** A qué módulo acotable (F9.6b) pertenece cada pantalla del menú; lo que no está aquí no se acota. */
+const MODULE_OF_HREF: Record<string, string> = {
+  "/sitios": "sitios",
+  "/contactos": "contactos",
+  "/reservas": "reservas",
+  "/catalogo": "catalogo",
+  "/pedidos": "catalogo",
+  "/campanas": "campanas",
+  "/secuencias": "campanas",
+  "/automatizaciones": "campanas",
+  "/medios": "medios",
+  "/analitica": "analitica",
+  "/enlaces": "enlaces",
+  "/soporte": "soporte",
+  "/configuracion/marca": "marca",
+};
+
 export function SidebarNav({
   onNavigate,
   kind,
   delegated = false,
+  allowedModules = [],
 }: {
   onNavigate?: () => void;
   /** Tipo de la organización activa: una agencia administra clientes en `/agencia`; un negocio ve su agencia en Configuración. */
   kind?: "BUSINESS" | "AGENCY";
   /** Se está dentro del negocio de un cliente a través de una agencia. */
   delegated?: boolean;
+  /** Módulos que la agencia le dejó a esta persona en este cliente; vacío = todos (F9.6b). El servidor igual lo niega. */
+  allowedModules?: string[];
 }): React.JSX.Element {
   const pathname = usePathname();
   const items = [
@@ -62,7 +82,12 @@ export function SidebarNav({
     kind === "AGENCY"
       ? { href: "/agencia", label: "Agencia", icon: Building2 }
       : { href: "/configuracion/agencia", label: "Agencia", icon: Building2 },
-  ].filter((item) => !(delegated && HIDDEN_WHEN_DELEGATED.has(item.href)));
+  ]
+    .filter((item) => !(delegated && HIDDEN_WHEN_DELEGATED.has(item.href)))
+    .filter((item) => {
+      const moduleKey = MODULE_OF_HREF[item.href];
+      return !(delegated && moduleKey !== undefined && allowedModules.length > 0 && !allowedModules.includes(moduleKey));
+    });
 
   return (
     <nav className="flex flex-col gap-1 p-3" aria-label="Navegación principal">

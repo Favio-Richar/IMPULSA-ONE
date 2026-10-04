@@ -83,6 +83,8 @@ export const organizationAccessResponse = z.object({
   agencyName: z.string().nullable(),
   /** Solo lectura (cliente en pausa). */
   readOnly: z.boolean(),
+  /** Módulos a los que la agencia limitó a esta persona en este cliente (F9.6b); vacío = todos. El panel oculta el resto. */
+  modules: z.array(z.string()),
 });
 export type OrganizationAccessResponse = z.infer<typeof organizationAccessResponse>;
 
@@ -318,3 +320,34 @@ export type AgencyImportDetailResponse = z.infer<typeof agencyImportDetailRespon
 
 export const agencyImportListResponse = z.object({ items: z.array(agencyImportSummary) });
 export type AgencyImportListResponse = z.infer<typeof agencyImportListResponse>;
+
+// ---- equipo de la agencia: acceso por cliente y módulo (F9.6b, ADR-028 §3) ----------------------------------------------
+
+export const agencyMemberScopeResponse = z.object({
+  allClients: z.boolean(),
+  /** Ids de relación (`AgencyClient.id`) permitidos; vacío si `allClients`. */
+  clientIds: z.array(uuid),
+  /** Claves de módulo permitidas; vacío = todos los módulos. */
+  modules: z.array(z.string()),
+});
+
+export const agencyTeamMemberResponse = z.object({
+  userId: uuid,
+  email: z.string(),
+  /** Rol en la agencia (OWNER, ADMIN o AGENCY_MANAGER: los que delegan). */
+  role: z.string(),
+  scope: agencyMemberScopeResponse,
+  /** `true` si la persona es quien consulta (no puede cambiarse a sí misma). */
+  isSelf: z.boolean(),
+});
+
+export const agencyTeamResponse = z.object({
+  members: z.array(agencyTeamMemberResponse),
+  /** Los clientes entre los que se puede elegir (relaciones que no terminaron). */
+  clients: z.array(z.object({ id: uuid, name: z.string(), slug: z.string() })),
+  /** El alcance de quien consulta: el editor no ofrece más de lo que esa persona puede dar. */
+  actorScope: agencyMemberScopeResponse,
+});
+export type AgencyMemberScopeResponse = z.infer<typeof agencyMemberScopeResponse>;
+export type AgencyTeamMemberResponse = z.infer<typeof agencyTeamMemberResponse>;
+export type AgencyTeamResponse = z.infer<typeof agencyTeamResponse>;

@@ -203,3 +203,11 @@ con motivo y vía de apelación. Nada se borra; todo es reversible y queda audit
 - **Escalada:** las reglas son funciones puras (`memberChangeVerdict`, `missingPermissions`) con su prueba, y el servidor las aplica al invitar, cambiar rol, quitar y al crear,
   editar o borrar un rol. Nadie entrega lo que no tiene, ni se toca a quien tiene más que uno, ni se cambia el propio rol; el propietario es intocable por esta vía.
 - **Agencia:** `/roles` se suma a lo que un cliente nunca delega (junto con `members`); el rol delegado de la agencia sigue siendo el del sistema.
+
+## Notas de implementación de F9.6b — acceso del equipo de agencia por cliente y módulo (2026-10-04)
+
+- **Sin fila = todo:** el alcance es una restricción opcional por persona, no un permiso nuevo; así nada de F9.3 cambia y un olvido falla hacia lo que ya existía, pero **acotar** falla cerrado (la puerta lo
+  vuelve a comprobar en cada petición, además de que la sincronización quita las membresías de los clientes excluidos).
+- **Una sola lectura:** `loadMemberScope` vive en `@impulza/agency` y la usan la API (sincronización y puerta de entrada) y el worker (importación y altas): una regla.
+- **Módulos por ruta:** `agencyModuleOfSegments` (pura, probada contra rutas reales) agrupa las rutas en 11 módulos; lo que no es módulo no se acota.
+- **Sin escalada:** `scopeChangeVerdict` — nadie cambia su propio acceso, el propietario no se acota y nadie da más alcance del que tiene (`scopeWithin`).

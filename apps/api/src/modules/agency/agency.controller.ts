@@ -4,6 +4,7 @@ import {
   agencyBillingResponse,
   agencyClientResponse,
   agencyDashboardResponse,
+  agencyDuplicateResponse,
   agencyIncomingTransfersResponse,
   agencyOverviewResponse,
   agencyStatusResponse,
@@ -15,6 +16,7 @@ import {
   agencyDashboardQuerySchema,
   changeBillingSchema,
   createTransferSchema,
+  duplicateClientSchema,
   agencyOverviewQuerySchema,
   createAgencyClientSchema,
   linkAgencyClientSchema,
@@ -23,6 +25,7 @@ import {
   type AgencyOverviewQuery,
   type ChangeBillingDto,
   type CreateTransferDto,
+  type DuplicateClientDto,
   type CreateAgencyClientDto,
   type LinkAgencyClientDto,
 } from "@impulza/validation";
@@ -48,6 +51,7 @@ import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
 import { AgencyBillingService } from "./agency-billing.service.js";
 import { AgencyDashboardService } from "./agency-dashboard.service.js";
+import { AgencyDuplicateService } from "./agency-duplicate.service.js";
 import { AgencyTransferService } from "./agency-transfer.service.js";
 import { AgencyService } from "./agency.service.js";
 
@@ -67,6 +71,7 @@ export class AgencyController {
     private readonly dashboardService: AgencyDashboardService,
     private readonly billingService: AgencyBillingService,
     private readonly transferService: AgencyTransferService,
+    private readonly duplicateService: AgencyDuplicateService,
   ) {}
 
   @Get()
@@ -371,5 +376,31 @@ export class AgencyController {
     @CurrentUser() user: User,
   ) {
     return this.transferService.receiverReject(organizationId, user.id, transferId);
+  }
+
+  @Post("clients/:clientId/duplicate")
+  @ApiPlanLimited("clients")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.AGENCY_MANAGE)
+  @RateLimit({ limit: 5, windowSeconds: 60, keyPrefix: "agency-client-duplicate" })
+  @ApiOperation({
+    summary: "Duplicar un cliente en una organización nueva",
+    description:
+      "Crea un cliente NUEVO (con la invitación a su propietario, como «Nuevo cliente») y copia el contenido del sitio del origen: sitios, páginas, bloques, temas propios y colores de marca, todo en **borrador**. **Nunca** copia contactos, respuestas de formularios, pedidos, reservas, pagos, cuentas de cobro, claves, imágenes ni videos de la biblioteca, dominios, identificadores de medición, productos, servicios ni formularios: los bloques que apuntaban a ellos quedan sin configurar. Respeta el plan del cliente nuevo (sitios y páginas) e informa qué se omitió. Es idempotente por `idempotencyKey`: repetir la misma petición devuelve el mismo resultado (`replayed: true`) sin crear otro cliente; la misma clave con otra petición responde 409. Se hace todo o nada. Requiere `agency.manage` y cupo de clientes.",
+  })
+  @ApiUuidParam("clientId", "Identificador de la relación con el cliente que se duplica (no el de su organización).")
+  @ApiZodBody(duplicateClientSchema)
+  @ApiZodResponse(200, agencyDuplicateResponse, "El cliente nuevo y el informe de lo que se copió y lo que no.")
+  @ApiRateLimited(5, 60)
+  @ApiResponse({ status: 404, description: "Ese cliente no existe en tu agencia." })
+  @ApiResponse({ status: 409, description: "Identificador en uso, clave de idempotencia reutilizada con otra petición, o el cliente no tiene una relación con acceso." })
+  async duplicate(
+    @Param("organizationId") organizationId: string,
+    @Param("clientId", new ParseUUIDPipe()) clientId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(duplicateClientSchema)) body: DuplicateClientDto,
+  ) {
+    return this.duplicateService.duplicate(organizationId, user, clientId, body);
   }
 }

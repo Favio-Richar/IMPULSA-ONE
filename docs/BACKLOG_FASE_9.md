@@ -21,7 +21,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.2 | Marca de cada organización (logo, colores, datos) | Hecho (2026-10-03, revisada y corregida por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Hecho (2026-10-03, desarrollada y verificada por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.4 | Panel de agencia | Hecho con reservas (2026-10-03, desarrollada y verificada por Claude; reservas en el detalle de la historia y en `CONTINUIDAD.md` §0) |
-| F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | En progreso por sub-historias: **F9.5a facturación** y **F9.5b transferir hechas** (2026-10-03); F9.5c duplicar y F9.5d importar CSV pendientes |
+| F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | En progreso por sub-historias: **F9.5a facturación, F9.5b transferir y F9.5c duplicar hechas** (2026-10-03); F9.5d importar CSV pendiente |
 | F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | Pendiente |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | Pendiente |
 | F9.8 | Reportes por cliente | Pendiente |
@@ -290,6 +290,26 @@ local (no hay proveedor real todavía); (c) el cliente en traspaso no suma al co
 (d) al pasar a otra agencia, quién paga vuelve a empezar en `CLIENT_PAYS` y debe volver a acordarse con ella; (e) las corridas completas de la API (850 pruebas, con la
 máquina cargada por Docker y otras aplicaciones) hacían expirar una prueba distinta cada vez por el límite por defecto de 5 s (analítica, soporte, webhooks), todas
 verdes aisladas: se subió `testTimeout` a 15 s en `apps/api/vitest.config.ts` (solo cambia cuánto se espera, no lo que se verifica) y la suite completa quedó 70/70.
+
+#### F9.5c — Duplicar un cliente — Hecha (2026-10-03)
+
+**Qué hay:** modelo `AgencyDuplication` (migración reversible); `POST /agency/clients/:id/duplicate` crea un cliente **nuevo** (con la invitación a su propietario,
+como «Nuevo cliente», respetando el cupo de clientes) y copia en la misma transacción sitios, páginas, bloques, temas propios y colores de marca, todo en
+**borrador**. Reglas puras de limpieza en `@impulza/validation` (`agency/duplicate.ts`). Pantalla: «Duplicar en un cliente nuevo» en la fila, con la lista de lo que
+no se copia antes de crear, y un informe después (qué se creó, qué revisar antes de publicar, qué se ajustó o quedó fuera por el plan y «Qué NO se copia nunca»).
+**Verificado:** e2e de la API `agency-duplicate.e2e.test.ts` 17/17 sobre un origen sembrado **con datos sensibles y referencias** (contacto, pedido, reserva, dominio,
+cuenta de cobro con token, formulario, datos fiscales, IDs de GA4 y Pixel, imágenes y fondo de la biblioteca, regla de botón inteligente): se afirma que no se copió ninguna
+fila sensible, que **no queda ningún rastro** del origen en lo copiado (ni su id, ni sus archivos, ni su formulario, ni sus claves) y que el origen queda **idéntico**;
+plan gratis (1 sitio, 3 páginas) y plan sin tope; idempotencia (reintento, misma clave con otra petición, dos peticiones a la vez → un solo cliente); **todo o nada**
+(fallo simulado a mitad de la copia: no queda organización, relación ni sitios, y la clave no se gasta); sin cupo de clientes → 402 sin crear nada; aislamiento entre agencias;
+solo con relación con acceso; auditoría. Reglas puras 19 pruebas. Playwright `duplicar-agencia.spec.ts` 2/2 en móvil y escritorio (informe en pantalla y comprobación en
+la base), junto con los otros cuatro specs de agencia; capturas en `f95/`. **Mutaciones que hacen fallar las pruebas:** no detectar los medios del origen (3 fallan), copiar los
+identificadores de medición (2), duplicar sin relación con acceso (1), duplicar el cliente de otra agencia (1), copiar los datos fiscales (2) e ignorar la clave de
+idempotencia (1). **Defecto hallado y corregido al probar:** al quitar la imagen del SEO quedaba un `openGraph: {}` vacío; ahora un contenedor que queda vacío por la limpieza se descarta.
+**Límites (honestidad):** (a) los archivos de la biblioteca **no se copian** (hay que volver a subirlos): no se puede saber si contienen datos personales; (b) no se copian productos,
+servicios, formularios ni calendarios: los bloques que los usaban quedan sin configurar; (c) sí viajan los textos y datos de contacto del negocio origen (WhatsApp, correo,
+mapa, redes, testimonios): el informe los marca para revisar y todo queda en borrador; (d) no se pide consentimiento al propietario del negocio origen (queda en su historial
+de auditoría) porque la agencia ya tiene acceso delegado de edición; (e) la duplicación no incluye pruebas A/B, embudos ni campañas.
 
 ---
 

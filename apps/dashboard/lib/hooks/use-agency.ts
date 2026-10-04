@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AgencyClientAction, CreateAgencyClientDto, CreateTransferDto, LinkAgencyClientDto } from "@impulza/validation";
+import type { AgencyClientAction, CreateAgencyClientDto, CreateTransferDto, DuplicateClientDto, LinkAgencyClientDto } from "@impulza/validation";
 import {
   acceptAgencyLink,
   acceptIncomingTransfer,
@@ -11,6 +11,7 @@ import {
   changeOwnerBilling,
   confirmOwnerBilling,
   createAgencyClient,
+  duplicateAgencyClient,
   enableAgency,
   getAgencyClientBilling,
   getAgencyDashboard,
@@ -213,4 +214,11 @@ export function useAcceptOwnerTransfer(organizationId: string) {
 export function useRejectOwnerTransfer(organizationId: string) {
   const refresh = useRefreshOwner(organizationId);
   return useMutation({ mutationFn: () => rejectOwnerTransfer(organizationId), onSuccess: refresh });
+}
+
+// ---- duplicar un cliente (F9.5c) --------------------------------------------------------------------------------------
+
+export function useDuplicateAgencyClient(organizationId: string, relationId: string) {
+  const refresh = useRefresh(organizationId);
+  return useMutation({ mutationFn: (body: DuplicateClientDto) => duplicateAgencyClient(organizationId, relationId, body), onSuccess: refresh });
 }

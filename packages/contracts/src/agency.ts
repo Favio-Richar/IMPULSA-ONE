@@ -237,3 +237,37 @@ export type AgencyTransferResponse = z.infer<typeof agencyTransferResponse>;
 export const agencyIncomingTransfersResponse = z.object({ items: z.array(agencyTransfer) });
 export type AgencyIncomingTransfersResponse = z.infer<typeof agencyIncomingTransfersResponse>;
 
+// ---- duplicar un cliente (F9.5c) ----------------------------------------------------------------------------------------
+// Crea una organización NUEVA con el contenido del sitio. El informe dice qué se copió y, con la misma claridad, qué no.
+
+export const agencyDuplicateReport = z.object({
+  sites: z.number().int(),
+  pages: z.number().int(),
+  blocks: z.number().int(),
+  /** Temas propios del cliente origen que se copiaron (los del catálogo se comparten, no se copian). */
+  themes: z.number().int(),
+  /** Solo los colores de marca: el logo es un archivo del origen y los datos fiscales no se copian. */
+  brandColorsCopied: z.boolean(),
+  /** Imágenes de la biblioteca del origen que se quitaron de la copia. */
+  imagesRemoved: z.number().int(),
+  /** Bloques que apuntaban a un formulario, servicios o productos del origen y quedaron sin configurar. */
+  referencesCleared: z.number().int(),
+  smartCtaRulesDropped: z.number().int(),
+  /** Lo que el plan del cliente nuevo no deja copiar. */
+  skippedByPlan: z.object({ sites: z.number().int(), pages: z.number().int() }),
+  blocksSkipped: z.array(z.object({ type: z.string(), reason: z.enum(["unknown_type", "future_version", "invalid_after_cleanup"]) })),
+  /** Qué datos del negocio origen conviene revisar antes de publicar (WhatsApp, correo, mapa…). */
+  needsReview: z.array(z.string()),
+  /** Lo que una duplicación nunca copia. */
+  notCopied: z.array(z.string()),
+});
+export type AgencyDuplicateReport = z.infer<typeof agencyDuplicateReport>;
+
+export const agencyDuplicateResponse = z.object({
+  client: agencyClientResponse,
+  /** `true` si la clave de idempotencia ya se había usado: no se creó nada nuevo y esto es el resultado de la primera vez. */
+  replayed: z.boolean(),
+  report: agencyDuplicateReport,
+});
+export type AgencyDuplicateResponse = z.infer<typeof agencyDuplicateResponse>;
+

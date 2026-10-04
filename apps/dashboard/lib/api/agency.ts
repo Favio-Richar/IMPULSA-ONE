@@ -3,13 +3,14 @@ import type {
   AgencyBillingResponse,
   AgencyClientResponse,
   AgencyDashboardResponse,
+  AgencyDuplicateResponse,
   AgencyIncomingTransfersResponse,
   AgencyLinkResponse,
   AgencyOverviewResponse,
   AgencyTransferResponse,
   AgencyStatusResponse,
 } from "@impulza/contracts";
-import type { AgencyClientAction, AgencyClientStatusValue, AgencyOverviewQuery, CreateAgencyClientDto, CreateTransferDto, LinkAgencyClientDto } from "@impulza/validation";
+import type { AgencyClientAction, AgencyClientStatusValue, AgencyOverviewQuery, CreateAgencyClientDto, CreateTransferDto, DuplicateClientDto, LinkAgencyClientDto } from "@impulza/validation";
 import { apiFetch } from "../api-client";
 
 // Modo agencia (F9.3, ADR-028 §2). Todo se resuelve en el servidor por la membresía real del usuario.
@@ -155,4 +156,11 @@ export function acceptOwnerTransfer(organizationId: string): Promise<AgencyTrans
 
 export function rejectOwnerTransfer(organizationId: string): Promise<AgencyTransferResponse> {
   return apiFetch<AgencyTransferResponse>(`${linkPath(organizationId)}/transfer/reject`, { method: "POST" });
+}
+
+// ---- duplicar un cliente (F9.5c) --------------------------------------------------------------------------------------
+
+/** Crea un cliente NUEVO con el contenido del sitio del origen (en borrador, sin datos personales). Idempotente por `idempotencyKey`. */
+export function duplicateAgencyClient(organizationId: string, relationId: string, body: DuplicateClientDto): Promise<AgencyDuplicateResponse> {
+  return apiFetch<AgencyDuplicateResponse>(`${agencyPath(organizationId)}/clients/${relationId}/duplicate`, { method: "POST", body });
 }

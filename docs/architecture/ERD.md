@@ -539,3 +539,15 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - **Nunca se mueven datos:** el traspaso solo cambia relaciones y membresías delegadas; las filas del negocio conservan su `organization_id`.
 - Migración reversible `20261003130000_f95b_agency_transfer` (`down.sql`).
 
+## 9w. Duplicar un cliente (F9.5c, BACKLOG_FASE_9.md, ADR-028 §2)
+
+- **AgencyDuplication** (`agency_duplications`): la huella de una duplicación, para que sea idempotente. `agency_organization_id` (`CASCADE`),
+  `idempotency_key` (8–100 caracteres, `CHECK`) con `UNIQUE (agency_organization_id, idempotency_key)`, `payload_hash` (huella de la petición:
+  detecta una clave reutilizada con otra), `source_agency_client_id`, `target_agency_client_id` (`UNIQUE`, `CASCADE`: si el cliente nuevo se borra,
+  el registro se va con él y la clave vuelve a poder usarse) y `report` (JSON: lo que se copió y lo que no).
+- **Qué crea una duplicación:** una organización NUEVA (como «Nuevo cliente»: relación `INVITED` con `agency_created`, invitación al propietario) y,
+  en la misma transacción, `sites` (`DRAFT`, sin `ga4_measurement_id` ni `meta_pixel_id`), `pages` (`DRAFT`, sin `page_versions`), `blocks` y
+  `block_versions` (versión 1), `themes` propios (nuevos, no los del catálogo) y los colores de `brand_profiles`. **Nunca** filas de `contacts`,
+  `orders`, `bookings`, `forms`, `site_domains`, `payment_accounts`, `products`, `media_assets` ni los datos fiscales de la marca.
+- Migración reversible `20261003140000_f95c_agency_duplication` (`down.sql`).
+

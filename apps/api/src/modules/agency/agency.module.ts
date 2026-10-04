@@ -4,6 +4,7 @@ import { PublicSitesModule } from "../public-sites/public-sites.module.js";
 import { AgencyAccessService } from "./agency-access.service.js";
 import { AgencyBillingService } from "./agency-billing.service.js";
 import { AgencyDashboardService } from "./agency-dashboard.service.js";
+import { AgencyDuplicateService } from "./agency-duplicate.service.js";
 import { AgencyTransferService } from "./agency-transfer.service.js";
 import { AgencyInvitationsController, AgencyLinkController } from "./agency-link.controller.js";
 import { AgencyController } from "./agency.controller.js";
@@ -16,7 +17,7 @@ import { AgencyService } from "./agency.service.js";
   // `AuthModule` aporta el adaptador de correo (invitaciones y avisos); `PublicSitesModule`, el aviso a apps/web al ocultar o mostrar un sitio.
   imports: [AuthModule, PublicSitesModule],
   controllers: [AgencyController, AgencyLinkController, AgencyInvitationsController],
-  providers: [AgencyService, AgencyAccessService, AgencyDashboardService, AgencyBillingService, AgencyTransferService],
+  providers: [AgencyService, AgencyAccessService, AgencyDashboardService, AgencyBillingService, AgencyTransferService, AgencyDuplicateService],
   exports: [AgencyService, AgencyAccessService],
 })
 export class AgencyModule {}

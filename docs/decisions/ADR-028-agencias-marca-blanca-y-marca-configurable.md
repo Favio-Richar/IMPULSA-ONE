@@ -154,3 +154,25 @@ con motivo y vía de apelación. Nada se borra; todo es reversible y queda audit
   vuelve sola a `ACTIVE`. La agencia receptora debe tener cupo de clientes: se comprueba al aceptar y de nuevo al completar.
 - **Sin sondeos:** a la agencia receptora se la identifica con su identificador **y** el correo de su propietario, como al vincular un negocio.
 
+## Notas de implementación de F9.5c — duplicar un cliente (2026-10-03)
+
+- **Qué es:** crear una organización nueva con el contenido del sitio de otra, en **borrador**. El criterio original pedía copiar «sitios, páginas, bloques,
+  temas y marca» y **nunca** contactos, pedidos, pagos, medios con datos personales, claves ni cuentas de cobro.
+- **Regla de fondo — ninguna referencia cruzada:** una copia no puede quedar apuntando a un archivo o recurso del cliente origen (rompería ADR-002 y
+  filtraría datos del origen). Por eso: las imágenes de la biblioteca del origen (se reconocen por `/org/<id>/` en la URL) se **quitan** de bloques, SEO,
+  fondo y texto enriquecido; los bloques que apuntaban a un formulario, servicios o productos del origen quedan **sin configurar**; las reglas del botón
+  inteligente se rehacen con los ids de los bloques nuevos; y no se copian los identificadores de medición (GA4, Pixel), que mandarían las visitas del
+  cliente nuevo a la cuenta del origen. De la marca solo viajan los colores.
+- **Decisión sobre los medios:** no se copian archivos. Como no se puede saber si una imagen contiene datos personales, la regla conservadora es no copiar
+  ninguna de la biblioteca; el informe dice cuántas se quitaron para que se vuelvan a subir.
+- **Se respeta el plan del cliente nuevo** (sitios y páginas por sitio; la página de inicio siempre viaja) y el informe indica qué quedó fuera. Un bloque que
+  queda inválido tras la limpieza no se copia a medias: se omite y se informa.
+- **Datos del negocio origen que sí viajan** (son contenido del sitio, no datos de sus clientes): textos, enlaces, números de WhatsApp, correo y teléfono de
+  contacto de los bloques, direcciones del mapa, redes sociales y testimonios. Como casi seguro no son los del cliente nuevo, el informe los lista en
+  «Revisa antes de publicar», y como todo queda en borrador nada sale al público sin que alguien lo publique.
+- **Idempotente y atómico:** la clave de idempotencia (`idempotencyKey`) hace que reintentar devuelva el mismo resultado (`replayed: true`) sin crear otro
+  cliente ni otro correo; la misma clave con otra petición es 409. La organización, la relación, la invitación y todo el contenido se crean en **una**
+  transacción: si algo falla no queda nada a medias y la clave no se «gasta».
+- **Transparencia con el dueño del origen:** queda una entrada de auditoría en el negocio origen (`agency.client.duplicated_from`) sin decir a dónde. No se
+  pide su consentimiento: la agencia ya tiene acceso delegado de edición a ese contenido; es una reserva a revisar si se quiere endurecer.
+

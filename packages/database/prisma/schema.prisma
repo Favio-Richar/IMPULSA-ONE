@@ -224,6 +224,7 @@ model Organization {
   plan                Plan?                @relation(fields: [planId], references: [id])
   memberships         Membership[]
   incomingTransfers   AgencyTransfer[]     @relation("AgencyTransferReceiver")
+  duplications        AgencyDuplication[]  @relation("AgencyDuplications")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
   auditLogs           AuditLog[]
@@ -480,6 +481,7 @@ model AgencyClient {
   memberships        Membership[]
   billingChanges     AgencyBillingChange[]
   transfers          AgencyTransfer[]
+  duplicationAsTarget AgencyDuplication? @relation("DuplicationTarget")
 
   @@index([agencyOrganizationId, status])
   @@index([clientOrganizationId])
@@ -557,6 +559,27 @@ model AgencyTransfer {
   @@index([agencyClientId, createdAt])
   @@index([toAgencyOrganizationId, status])
   @@map("agency_transfers")
+}
+
+// F9.5c (ADR-028 §2): duplicar un cliente crea una organización NUEVA copiando sitios, páginas, bloques, temas y colores de marca
+// (nunca contactos, pedidos, pagos, medios, claves ni cuentas de cobro). La clave de idempotencia hace que reintentar la misma
+// petición devuelva el mismo resultado en vez de crear otro cliente. `payload_hash` detecta una clave reutilizada con otra petición.
+model AgencyDuplication {
+  id                   String   @id @default(uuid()) @db.Uuid
+  agencyOrganizationId String   @map("agency_organization_id") @db.Uuid
+  idempotencyKey       String   @map("idempotency_key")
+  payloadHash          String   @map("payload_hash")
+  sourceAgencyClientId String   @map("source_agency_client_id") @db.Uuid
+  // La relación con el cliente nuevo: si se borra, el registro se va con ella y la clave vuelve a poder usarse.
+  targetAgencyClientId String   @unique @map("target_agency_client_id") @db.Uuid
+  report               Json
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  agencyOrganization Organization @relation("AgencyDuplications", fields: [agencyOrganizationId], references: [id], onDelete: Cascade)
+  targetAgencyClient AgencyClient @relation("DuplicationTarget", fields: [targetAgencyClientId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyOrganizationId, idempotencyKey])
+  @@map("agency_duplications")
 }
 
 // F9.1 (ADR-028 §4): Marca de la plataforma configurable por superadministración (singleton).

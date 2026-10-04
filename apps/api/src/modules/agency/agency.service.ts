@@ -23,6 +23,7 @@ import {
   OrganizationKind,
   type AgencyClient,
   type Organization,
+  type Prisma,
   type PrismaClient,
   type User,
 } from "@impulza/database";
@@ -52,7 +53,7 @@ const RELATION_INCLUDE = {
   clientOrganization: { select: CLIENT_ORG_SELECT },
   billingChanges: { where: { status: AgencyBillingChangeStatus.PENDING }, select: { toMode: true } },
 } as const;
-type RelationWithClient = AgencyClient & {
+export type RelationWithClient = AgencyClient & {
   clientOrganization: Pick<Organization, "id" | "name" | "slug" | "publicHiddenAt">;
   billingChanges: Array<{ toMode: AgencyBillingMode }>;
 };
@@ -156,6 +157,11 @@ export class AgencyService {
     };
   }
 
+  /** Un cliente de la agencia, tal como lo ve ella; 404 si no es de esta agencia (ADR-002). */
+  async clientResponse(agencyOrganizationId: string, relationId: string): Promise<AgencyClientResponse> {
+    return this.toClientResponse(await this.getRelation(agencyOrganizationId, relationId));
+  }
+
   async listClients(agencyOrganizationId: string): Promise<AgencyClientResponse[]> {
     await this.assertAgency(agencyOrganizationId);
     const relations = await this.prisma.agencyClient.findMany({
@@ -168,6 +174,19 @@ export class AgencyService {
 
   /** Alta de un cliente nuevo: la agencia crea su organización y trabaja desde ya; el propietario recibe una invitación. */
   async createClient(agencyOrganizationId: string, actor: User, input: CreateAgencyClientDto): Promise<AgencyClientResponse> {
+    return this.createClientWith(agencyOrganizationId, actor, input);
+  }
+
+  /**
+   * Alta de un cliente nuevo. `populate` (opcional) corre **dentro de la misma transacción**, con la organización y la relación ya
+   * creadas: así quien lo usa (duplicar un cliente, F9.5c) deja todo o nada, nunca un cliente a medio llenar.
+   */
+  async createClientWith(
+    agencyOrganizationId: string,
+    actor: User,
+    input: CreateAgencyClientDto,
+    populate?: (tx: Prisma.TransactionClient, relation: RelationWithClient) => Promise<void>,
+  ): Promise<AgencyClientResponse> {
     const agency = await this.assertAgency(agencyOrganizationId);
     if (await this.prisma.organization.findUnique({ where: { slug: input.slug } })) {
       throw new ConflictException("Ese identificador ya está en uso.");
@@ -194,6 +213,7 @@ export class AgencyService {
         include: RELATION_INCLUDE,
       });
       await this.access.grantForClient(tx, created);
+      if (populate) await populate(tx, created);
       return created;
     });
 

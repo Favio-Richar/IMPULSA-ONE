@@ -58,3 +58,4 @@ export * from "./agency/index.js";
 export * from "./agency/dashboard.js";
 export * from "./agency/billing.js";
 export * from "./agency/transfer.js";
+export * from "./agency/duplicate.js";

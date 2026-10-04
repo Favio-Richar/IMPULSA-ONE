@@ -11,6 +11,7 @@ import { useAgencyClientAction } from "../../lib/hooks/use-agency";
 import { ConfirmButton } from "../confirm-button";
 import { BILLING_TEXT, STATUS_TEXT, errorText } from "./agency-text";
 import { ClientBilling } from "./client-billing";
+import { ClientDuplicate } from "./client-duplicate";
 import { ClientTransfer } from "./client-transfer";
 
 export { BILLING_TEXT, STATUS_TEXT, errorText };
@@ -155,6 +156,7 @@ export function ClientRow({ organizationId, item }: { organizationId: string; it
 
       <ClientBilling organizationId={organizationId} item={item} />
       <ClientTransfer organizationId={organizationId} item={item} />
+      <ClientDuplicate organizationId={organizationId} item={item} />
 
       {item.alerts.length > 0 ? (
         <ul className="flex flex-col gap-1" aria-label="Alertas de este cliente" data-testid="client-alerts">

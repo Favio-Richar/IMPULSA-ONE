@@ -7,6 +7,13 @@ cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
 ## 0. RETOMAR AQUÍ (2026-10-04) — F9.6a (roles personalizados) y F9.6b (acceso por cliente y módulo) hechas en la rama `fase-9/f9-6-equipo-avanzado` (sobre F9.5); siguiente: F9.6c (aprobación antes de publicar), F9.6d (auditoría navegable)
 
+**Diseño ya pensado para F9.6c (aprobación antes de publicar), sin código todavía:** la publicación real son dos rutas, `POST …/pages/:pageId/publish` y `POST …/versions/:versionId/restore` (`PageVersionsService`).
+Opción `Organization.requirePublishApproval`; tabla `PublishRequest` (PENDING/APPROVED/REJECTED/CANCELLED, comentario, digest sha256 del contenido a publicar, índice único parcial de una pendiente por página);
+permisos nuevos `publish.approve` (OWNER y ADMIN) y `publish.configure` (solo OWNER) en `packages/database/src/permissions.ts` + matriz de `packages/validation/src/team/index.ts` (hay una prueba que exige que coincidan);
+quien tiene `publish.approve` publica directo; el resto necesita una solicitud APROBADA cuyo digest coincida con el contenido actual (si se edita después, hay que pedir de nuevo); nadie aprueba su propia solicitud;
+`publish-settings` va a `DENIED_SEGMENTS` (la agencia no apaga la compuerta); correo a los aprobadores y a quien pidió (hoy solo consola). El panel publica desde `sitios/[siteId]/paginas/[pageId]/page.tsx` y `…/editor/page.tsx`.
+Luego **F9.6d** (auditoría navegable: filtros por actor/acción/cliente/fecha, paginación en servidor, CSV seguro con `csvCell`), y después F9.7 a F9.10. **No tocar `apps/api` mientras corre su suite completa.**
+
 **Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia y **push de la rama al cerrar cada una** (autorizado por Favio; ver memoria «Subir cada fase a GitHub»). Fusionar a `master` sigue pidiendo confirmación.
 
 **F9.5 hecha** (detalle y reservas en `docs/BACKLOG_FASE_9.md`): **a** facturación (`AGENCY_PAYS` = el negocio usa los límites del plan de la agencia, sin cobrar nada nuevo), **b** transferir (el

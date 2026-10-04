@@ -35,6 +35,8 @@ export const memberResponse = z.object({
   status: membershipStatus,
   /** DIRECT = del equipo del negocio; AGENCY = acceso delegado por una agencia (F9.3). */
   source: z.enum(["DIRECT", "AGENCY"]),
+  /** Si tiene un rol personalizado (F9.6a): `role` trae entonces su nombre. */
+  customRoleId: uuid.nullable(),
 });
 
 export const invitationResponse = z.object({
@@ -48,3 +50,37 @@ export type MyOrganizationResponse = z.infer<typeof myOrganizationResponse>;
 export type OrganizationResponse = z.infer<typeof organizationResponse>;
 export type MemberResponse = z.infer<typeof memberResponse>;
 export type InvitationResponse = z.infer<typeof invitationResponse>;
+
+// ---- roles personalizados (F9.6a, ADR-028 §3) -------------------------------------------------------------------------
+// Los cuerpos de petición viven en `@impulza/validation` (`team/`).
+
+export const customRoleResponse = z.object({
+  id: uuid,
+  name: z.string(),
+  description: z.string().nullable(),
+  /** Claves del catálogo cerrado de permisos, ordenadas. */
+  permissions: z.array(z.string()),
+  /** Cuántas personas lo tienen hoy: un rol en uso no se borra. */
+  memberCount: z.number().int().nonnegative(),
+  createdAt: isoDateTime,
+  updatedAt: isoDateTime,
+});
+
+export const systemRoleResponse = z.object({
+  name: z.string(),
+  /** Roles que se pueden asignar a mano; OWNER y los de plataforma o agencia se muestran pero no se asignan. */
+  assignable: z.boolean(),
+  permissions: z.array(z.string()),
+});
+
+export const rolesResponse = z.object({
+  system: z.array(systemRoleResponse),
+  custom: z.array(customRoleResponse),
+  /** Lo que tiene quien consulta: el editor deshabilita lo que no puede entregar (el servidor lo vuelve a comprobar). */
+  actorPermissions: z.array(z.string()),
+  maxCustomRoles: z.number().int().positive(),
+});
+
+export type CustomRoleResponse = z.infer<typeof customRoleResponse>;
+export type SystemRoleResponse = z.infer<typeof systemRoleResponse>;
+export type RolesResponse = z.infer<typeof rolesResponse>;

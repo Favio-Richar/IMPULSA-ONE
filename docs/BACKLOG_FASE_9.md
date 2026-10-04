@@ -22,7 +22,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Hecho (2026-10-03, desarrollada y verificada por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.4 | Panel de agencia | Hecho con reservas (2026-10-03, desarrollada y verificada por Claude; reservas en el detalle de la historia y en `CONTINUIDAD.md` §0) |
 | F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | Hecho con reservas (2026-10-04): F9.5a facturación, F9.5b transferir, F9.5c duplicar y F9.5d importar CSV; reservas en cada sub-historia y en `CONTINUIDAD.md` §0 |
-| F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | Pendiente |
+| F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados hecha** (2026-10-04); faltan b (acceso por cliente y módulo), c (aprobación antes de publicar) y d (auditoría navegable) |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | Pendiente |
 | F9.8 | Reportes por cliente | Pendiente |
 | F9.9 | Moderación y reportes de abuso | Pendiente |
@@ -356,6 +356,25 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
    paginación en servidor y exportación CSV segura.
 6. **Pruebas:** matriz de permisos (cada rol × cada acción relevante), escalada bloqueada, publicar sin
    aprobación → 403, flujo de aprobación completo. Playwright móvil/escritorio, capturas en `f96/`.
+
+#### F9.6a — Roles personalizados y reglas contra la escalada (criterios 1 y 2) — hecha (2026-10-04)
+
+- **Modelo:** `CustomRole` (por organización, nombre único dentro de ella, hasta 20) + `CustomRolePermission` (catálogo cerrado) y `Membership.customRoleId`. La membresía
+  conserva `roleId` apuntando a **ANALYST** (solo lectura) como piso: si algo ignorara el rol personalizado, la persona no ganaría nada. Migración reversible
+  `20261004100000_f96a_custom_roles` (`down.sql`).
+- **Una sola función responde «qué puede esta persona»** (`permissionsOfMembership`): la usan el `PermissionGuard`, los cambios de rol y las invitaciones.
+- **Reglas (puras en `packages/validation/src/team`, aplicadas en el servidor):** nadie da permisos que no tiene (`ESCALATION`, con la lista en `missing`); nadie cambia su
+  propio rol (`SELF_CHANGE`) ni edita/borra el rol personalizado que tiene; no se actúa sobre quien ya tiene permisos que el actor no tiene (`TARGET_ABOVE_ACTOR`: un rol con
+  «cambiar roles» no degrada a un administrador); el propietario no se cambia ni se quita (`OWNER_PROTECTED`; así el último propietario nunca se degrada) y `OWNER` ni se
+  asigna ni sirve de nombre de rol; un rol en uso no se borra (409); una agencia con acceso delegado no llega a `/roles` (`AGENCY_LIMIT`).
+- **API:** `GET/POST /organizations/:id/roles`, `PUT/DELETE …/roles/:roleId`; invitar y cambiar rol aceptan `role` **o** `customRoleId`. Todo queda en la auditoría
+  (`custom_role.created/updated/deleted`, `membership.invited/role_changed`).
+- **UI:** Configuración › Equipo (lista, cambiar rol, quitar, invitar) y Configuración › Roles (editor con matriz módulo × acción; lo que quien edita no tiene sale
+  desactivado y explicado). Estados de carga, vacío, error y éxito; móvil y escritorio.
+- **Pruebas:** 11 de integración (matriz, escalada, propietario, aislamiento entre organizaciones, rol en uso, tope, cuerpo inválido, catálogo = base), 7 mutaciones atrapadas
+  (guard, invitar, cambiar rol, quitar, crear rol, borrar en uso, aislamiento), reglas puras, y Playwright móvil/escritorio (`equipo-roles.spec.ts`, capturas en `docs/design/capturas/f96`).
+- **Reservas honestas:** los roles personalizados no delegan a clientes de agencia (la agencia sigue delegando por el rol del sistema); editar un rol cambia al instante los permisos
+  de quienes lo tienen (por diseño); no hay «clonar rol» ni plantillas de roles.
 
 ---
 

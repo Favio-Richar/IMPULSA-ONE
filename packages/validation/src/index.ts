@@ -60,3 +60,4 @@ export * from "./agency/billing.js";
 export * from "./agency/transfer.js";
 export * from "./agency/duplicate.js";
 export * from "./agency/import-csv.js";
+export * from "./team/index.js";

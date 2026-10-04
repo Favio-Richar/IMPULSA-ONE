@@ -119,7 +119,7 @@ export class OrganizationsController {
     @CurrentUser() user: User,
     @Body(new ZodValidationPipe(inviteMemberSchema)) body: InviteMemberDto,
   ) {
-    return this.organizationsService.inviteMember(organizationId, user.id, body.email, body.role);
+    return this.organizationsService.inviteMember(organizationId, user.id, body.email, { role: body.role, customRoleId: body.customRoleId });
   }
 
   @Patch(":organizationId/members/:membershipId")
@@ -135,7 +135,11 @@ export class OrganizationsController {
   @ApiUuidParam("membershipId", "Membresía a modificar, no el id de usuario.")
   @ApiZodBody(changeRoleSchema)
   @ApiResponse({ status: 204, description: "Rol actualizado." })
-  @ApiResponse({ status: 403, description: "El rol de OWNER no se cambia por esta vía." })
+  @ApiResponse({
+    status: 403,
+    description:
+      "El rol de OWNER no se cambia por esta vía; nadie cambia su propio rol, ni el de alguien con más permisos que él, ni da permisos que no tiene (`SELF_CHANGE`, `TARGET_ABOVE_ACTOR`, `ESCALATION`).",
+  })
   @ApiResponse({ status: 404, description: MEMBERSHIP_NOT_FOUND })
   @ApiOrganizationScopedErrors()
   async changeRole(
@@ -144,7 +148,7 @@ export class OrganizationsController {
     @CurrentUser() user: User,
     @Body(new ZodValidationPipe(changeRoleSchema)) body: ChangeRoleDto,
   ): Promise<void> {
-    await this.organizationsService.changeRole(organizationId, user.id, membershipId, body.role);
+    await this.organizationsService.changeRole(organizationId, user.id, membershipId, { role: body.role, customRoleId: body.customRoleId });
   }
 
   @Delete(":organizationId/members/:membershipId")

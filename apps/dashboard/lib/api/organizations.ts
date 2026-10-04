@@ -25,6 +25,8 @@ export interface Member {
   status: "INVITED" | "ACTIVE" | "SUSPENDED" | "REMOVED";
   /** `AGENCY` = acceso delegado por una agencia (F9.3). */
   source: "DIRECT" | "AGENCY";
+  /** Rol personalizado de la organización (F9.6a): si lo tiene, `role` trae su nombre. */
+  customRoleId: string | null;
 }
 
 export function listMyOrganizations(): Promise<Organization[]> {

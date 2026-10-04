@@ -564,3 +564,10 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   (cada minuto) retoma lo que lleva más de 2 minutos sin avanzar. Las importaciones terminadas se borran a los 60 días (guardan correos de terceros).
 - Migración reversible `20261003150000_f95d_agency_import` (`down.sql`).
 
+## 9y. Roles personalizados (F9.6a, BACKLOG_FASE_9.md, ADR-028 §3)
+
+- **CustomRole** (`custom_roles`): `organization_id` (`CASCADE`), `name`, `description`, `created_by_id`. `UNIQUE (organization_id, name)`. Hasta 20 por organización (candado
+  consultivo en la API).
+- **CustomRolePermission** (`custom_role_permissions`): PK `(custom_role_id, permission_id)`, ambas `CASCADE`. Los permisos salen del catálogo cerrado (`permissions`).
+- **Membership.custom_role_id** (nullable, `RESTRICT`): si está, sus permisos reemplazan a los de `role_id`, que queda en ANALYST como piso de solo lectura.
+- Migración reversible `20261004100000_f96a_custom_roles` (`down.sql`).

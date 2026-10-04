@@ -226,6 +226,7 @@ model Organization {
   incomingTransfers   AgencyTransfer[]     @relation("AgencyTransferReceiver")
   duplications        AgencyDuplication[]  @relation("AgencyDuplications")
   agencyImports       AgencyImport[]       @relation("AgencyImports")
+  customRoles         CustomRole[]
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
   auditLogs           AuditLog[]
@@ -289,7 +290,11 @@ model Membership {
   // F9.3 (ADR-028 §2): una membresía delegada nace de una relación de agencia y desaparece con ella.
   source         MembershipSource @default(DIRECT)
   agencyClientId String?          @map("agency_client_id") @db.Uuid
+  // F9.6a (ADR-028 §3): rol personalizado de la organización. Si está, sus permisos reemplazan a los de `roleId`, que queda en
+  // ANALYST (solo lectura) como piso: si algo ignorara el rol personalizado, la persona no ganaría nada.
+  customRoleId   String?          @map("custom_role_id") @db.Uuid
 
+  customRole   CustomRole?  @relation(fields: [customRoleId], references: [id])
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   role         Role         @relation(fields: [roleId], references: [id])
@@ -299,7 +304,37 @@ model Membership {
   @@unique([userId, organizationId])
   @@index([organizationId])
   @@index([agencyClientId])
+  @@index([customRoleId])
   @@map("memberships")
+}
+
+// F9.6a (ADR-028 §3): rol propio de una organización, armado con permisos del catálogo cerrado.
+model CustomRole {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  description    String?
+  createdById    String?  @map("created_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  permissions  CustomRolePermission[]
+  memberships  Membership[]
+
+  @@unique([organizationId, name])
+  @@map("custom_roles")
+}
+
+model CustomRolePermission {
+  customRoleId String @map("custom_role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  customRole CustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([customRoleId, permissionId])
+  @@map("custom_role_permissions")
 }
 
 model Role {
@@ -321,6 +356,7 @@ model Permission {
   description String?
 
   roles RolePermission[]
+  customRoles CustomRolePermission[]
 
   @@map("permissions")
 }

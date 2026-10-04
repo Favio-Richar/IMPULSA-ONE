@@ -101,12 +101,12 @@ const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 /**
  * Lo que un cliente nunca delega, **por ruta** (los permisos del rol cubren el resto):
  * - `payment-accounts` y `billing`: su cuenta de cobro (token de Mercado Pago, ADR-013) y su suscripción.
- * - `members`: su equipo y su propietario (invitar, cambiar roles, remover; el propietario no se cambia por esta vía).
+ * - `members` y `roles`: su equipo, sus roles personalizados y su propietario (invitar, cambiar roles, remover; el propietario no se cambia por esta vía).
  * - cualquier `export`: sacar la lista de contactos de su negocio exige un permiso explícito del cliente (F9.6).
  * - `plan` solo se lee.
  * Los datos de acceso del propietario (contraseña, 2FA) viven fuera de las rutas de organización: no son alcanzables.
  */
-const DENIED_SEGMENTS = new Set(["payment-accounts", "billing", "members"]);
+const DENIED_SEGMENTS = new Set(["payment-accounts", "billing", "members", "roles"]);
 const READ_ONLY_SEGMENTS = new Set(["plan"]);
 
 /** Segmentos de la ruta después de `organizations/<id>/` (vacío si la ruta es la de la organización misma). */

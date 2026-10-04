@@ -57,6 +57,8 @@ describe("delegatedAccessVerdict — límites duros (lo que el cliente nunca del
     ["su equipo (invitar)", "POST", "members"],
     ["cambiar el rol de alguien o al propietario", "PATCH", `members/${ORG}`],
     ["remover a alguien o al propietario", "DELETE", `members/${ORG}`],
+    ["los roles personalizados (listar)", "GET", "roles"],
+    ["los roles personalizados (crear)", "POST", "roles"],
     ["exportar los datos de un contacto", "GET", `contacts/${ORG}/export`],
   ];
   it.each(hard)("bloquea %s con AGENCY_LIMIT, también con la relación activa", (_label, method, rest) => {

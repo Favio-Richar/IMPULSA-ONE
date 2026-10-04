@@ -23,15 +23,15 @@ export class PermissionGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<RequestWithMembership>();
-    const grant = await this.prisma.rolePermission.findFirst({
-      where: {
-        roleId: request.membership.roleId,
-        permission: { key: required },
-      },
-    });
+    // Con rol personalizado (F9.6a) mandan sus permisos y no los del rol del sistema que queda de piso.
+    const { customRoleId, roleId } = request.membership;
+    const grant =
+      customRoleId !== null
+        ? await this.prisma.customRolePermission.findFirst({ where: { customRoleId, permission: { key: required } } })
+        : await this.prisma.rolePermission.findFirst({ where: { roleId, permission: { key: required } } });
 
     if (!grant) {
-      throw new ForbiddenException(`Tu rol (${request.membership.role.name}) no tiene el permiso requerido.`);
+      throw new ForbiddenException(`Tu rol (${customRoleId !== null ? "personalizado" : request.membership.role.name}) no tiene el permiso requerido.`);
     }
 
     return true;

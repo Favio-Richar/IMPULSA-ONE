@@ -196,3 +196,10 @@ con motivo y vía de apelación. Nada se borra; todo es reversible y queda audit
   (`response.text()` lo descarta por especificación: se decodifican los bytes).
 - **Privacidad:** las filas guardan correos de terceros (propietarios de clientes), así que se borran a los 60 días.
 
+## Notas de implementación de F9.6a — roles personalizados (2026-10-04)
+
+- **Piso de solo lectura:** una membresía con rol personalizado guarda `role_id = ANALYST` y `custom_role_id`. Toda decisión de permisos pasa por `permissionsOfMembership`; el rol
+  del sistema que queda debajo no concede nada, así que un olvido en algún punto del código falla cerrado.
+- **Escalada:** las reglas son funciones puras (`memberChangeVerdict`, `missingPermissions`) con su prueba, y el servidor las aplica al invitar, cambiar rol, quitar y al crear,
+  editar o borrar un rol. Nadie entrega lo que no tiene, ni se toca a quien tiene más que uno, ni se cambia el propio rol; el propietario es intocable por esta vía.
+- **Agencia:** `/roles` se suma a lo que un cliente nunca delega (junto con `members`); el rol delegado de la agencia sigue siendo el del sistema.

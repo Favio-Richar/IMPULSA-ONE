@@ -15,7 +15,7 @@ import {
   type User,
 } from "@impulza/database";
 import type { MyOrganizationResponse } from "@impulza/contracts";
-import { delegatedAccessVerdict } from "@impulza/validation";
+import { delegatedAccessVerdict, memberChangeVerdict, missingPermissions } from "@impulza/validation";
 import type { EmailAdapter } from "@impulza/auth";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
@@ -25,6 +25,13 @@ import type { AssignableRole } from "./assignable-roles.js";
 import type { MembershipWithRole } from "./request-with-membership.js";
 import { PlansService } from "../plans/plans.service.js";
 import { AgencyAccessService } from "../agency/agency-access.service.js";
+import { permissionsOfMembership, permissionsOfSystemRole } from "./team-permissions.js";
+
+/** Un rol del sistema o uno personalizado (F9.6a): exactamente uno. */
+export interface RoleChoice {
+  role?: AssignableRole | undefined;
+  customRoleId?: string | undefined;
+}
 
 function toOrganizationResponse(organization: Organization): Omit<MyOrganizationResponse, "access"> {
   return {
@@ -126,11 +133,11 @@ export class OrganizationsService {
   }
 
   async listMembers(organizationId: string): Promise<
-    Array<{ membershipId: string; userId: string; email: string; role: string; status: MembershipStatus; source: MembershipSource }>
+    Array<{ membershipId: string; userId: string; email: string; role: string; status: MembershipStatus; source: MembershipSource; customRoleId: string | null }>
   > {
     const memberships = await this.prisma.membership.findMany({
       where: { organizationId, status: { not: MembershipStatus.REMOVED } },
-      include: { user: true, role: true },
+      include: { user: true, role: true, customRole: { select: { name: true } } },
       orderBy: { invitedAt: "asc" },
     });
 
@@ -138,18 +145,48 @@ export class OrganizationsService {
       membershipId: membership.id,
       userId: membership.userId,
       email: membership.user.email,
-      role: membership.role.name,
+      role: membership.customRole?.name ?? membership.role.name,
       status: membership.status,
       source: membership.source,
+      customRoleId: membership.customRoleId,
     }));
+  }
+
+  private async actorMembership(organizationId: string, actorId: string) {
+    return this.prisma.membership.findUniqueOrThrow({ where: { userId_organizationId: { userId: actorId, organizationId } }, include: { role: true } });
+  }
+
+  /**
+   * Resuelve lo que se va a asignar. Un rol personalizado se guarda con el rol ANALYST de piso (solo lectura) y su `customRoleId`; uno
+   * de otra organización responde como si no existiera.
+   */
+  private async resolveRoleChoice(db: Pick<PrismaClient, "role" | "customRole" | "rolePermission" | "customRolePermission">, organizationId: string, choice: RoleChoice) {
+    if (choice.customRoleId !== undefined) {
+      const custom = await db.customRole.findFirst({ where: { id: choice.customRoleId, organizationId } });
+      if (!custom) throw new NotFoundException("El rol no existe en esta organización.");
+      const floor = await db.role.findUniqueOrThrow({ where: { name: "ANALYST" } });
+      const permissions = await permissionsOfMembership(db as PrismaClient, { roleId: floor.id, customRoleId: custom.id });
+      return { roleId: floor.id, customRoleId: custom.id as string | null, label: custom.name, permissions };
+    }
+    const role = await db.role.findUniqueOrThrow({ where: { name: choice.role as AssignableRole } });
+    return { roleId: role.id, customRoleId: null as string | null, label: role.name, permissions: await permissionsOfSystemRole(db as PrismaClient, role.id) };
   }
 
   async inviteMember(
     organizationId: string,
     actorId: string,
     email: string,
-    roleName: AssignableRole,
+    choice: RoleChoice,
   ): Promise<{ membershipId: string }> {
+    const role = await this.resolveRoleChoice(this.prisma, organizationId, choice);
+    const roleName = role.label;
+    // Nadie invita con un rol que tenga permisos que no tiene (F9.6a).
+    const actor = await this.actorMembership(organizationId, actorId);
+    const missing = missingPermissions(await permissionsOfMembership(this.prisma, actor), role.permissions);
+    if (missing.length > 0) {
+      throw new ForbiddenException({ statusCode: 403, error: "Forbidden", code: "ESCALATION", message: "No puedes dar permisos que tú no tienes.", missing });
+    }
+
     const invitee = await this.prisma.user.findUnique({ where: { email } });
     if (!invitee) {
       // A diferencia de login/forgot-password, aquí sí se puede confirmar: quien invita ya
@@ -164,8 +201,6 @@ export class OrganizationsService {
       throw new ConflictException("Esa persona ya es miembro o tiene una invitación pendiente.");
     }
 
-    const role = await this.prisma.role.findUniqueOrThrow({ where: { name: roleName } });
-
     // Una invitación pendiente ya ocupa un lugar del plan (F4.2): por eso se verifica al invitar y
     // no al aceptar.
     const membership = await this.prisma.$transaction(async (tx) => {
@@ -173,10 +208,10 @@ export class OrganizationsService {
       return existingMembership
         ? tx.membership.update({
             where: { id: existingMembership.id },
-            data: { status: MembershipStatus.INVITED, roleId: role.id, invitedAt: new Date(), acceptedAt: null, source: MembershipSource.DIRECT, agencyClientId: null },
+            data: { status: MembershipStatus.INVITED, roleId: role.roleId, customRoleId: role.customRoleId, invitedAt: new Date(), acceptedAt: null, source: MembershipSource.DIRECT, agencyClientId: null },
           })
         : tx.membership.create({
-            data: { userId: invitee.id, organizationId, roleId: role.id, status: MembershipStatus.INVITED },
+            data: { userId: invitee.id, organizationId, roleId: role.roleId, customRoleId: role.customRoleId, status: MembershipStatus.INVITED },
           });
     });
 
@@ -196,7 +231,7 @@ export class OrganizationsService {
       action: "membership.invited",
       targetType: "Membership",
       targetId: membership.id,
-      metadata: { email: invitee.email, role: roleName },
+      metadata: { email: invitee.email, role: roleName, customRoleId: role.customRoleId },
     });
 
     return { membershipId: membership.id };
@@ -238,7 +273,7 @@ export class OrganizationsService {
     organizationId: string,
     actorId: string,
     targetMembershipId: string,
-    roleName: AssignableRole,
+    choice: RoleChoice,
   ): Promise<void> {
     const target = await this.getOrgMembershipOrThrow(organizationId, targetMembershipId);
     if (target.role.name === "OWNER") {
@@ -246,8 +281,9 @@ export class OrganizationsService {
     }
     this.assertNotDelegated(target);
 
-    const role = await this.prisma.role.findUniqueOrThrow({ where: { name: roleName } });
-    await this.prisma.membership.update({ where: { id: target.id }, data: { roleId: role.id } });
+    const role = await this.resolveRoleChoice(this.prisma, organizationId, choice);
+    await this.assertMemberChange(organizationId, actorId, target, role.permissions);
+    await this.prisma.membership.update({ where: { id: target.id }, data: { roleId: role.roleId, customRoleId: role.customRoleId } });
     await this.syncIfAgency(organizationId, target.userId);
 
     await this.auditService.record({
@@ -256,7 +292,7 @@ export class OrganizationsService {
       action: "membership.role_changed",
       targetType: "Membership",
       targetId: target.id,
-      metadata: { previousRole: target.role.name, newRole: roleName },
+      metadata: { previousRole: target.customRoleId ? `custom:${target.customRoleId}` : target.role.name, newRole: role.label, customRoleId: role.customRoleId },
     });
   }
 
@@ -266,6 +302,8 @@ export class OrganizationsService {
       throw new ForbiddenException("No se puede remover al OWNER de la organización.");
     }
     this.assertNotDelegated(target);
+    // Irse uno mismo del equipo no es escalar nada; quitar a otra persona sí pasa por las reglas.
+    if (target.userId !== actorId) await this.assertMemberChange(organizationId, actorId, target, []);
 
     await this.prisma.membership.update({
       where: { id: target.id },
@@ -281,6 +319,22 @@ export class OrganizationsService {
       targetId: target.id,
       metadata: { role: target.role.name },
     });
+  }
+
+  /** Las reglas contra la escalada de privilegios (F9.6a), en un solo sitio para cambiar roles y quitar gente. */
+  private async assertMemberChange(organizationId: string, actorId: string, target: MembershipWithRole, granted: string[]): Promise<void> {
+    const actor = await this.actorMembership(organizationId, actorId);
+    const verdict = memberChangeVerdict({
+      actorMembershipId: actor.id,
+      targetMembershipId: target.id,
+      targetRoleName: target.role.name,
+      actorPermissions: await permissionsOfMembership(this.prisma, actor),
+      targetPermissions: await permissionsOfMembership(this.prisma, target),
+      granted,
+    });
+    if (!verdict.allowed) {
+      throw new ForbiddenException({ statusCode: 403, error: "Forbidden", code: verdict.code, message: verdict.message, ...(verdict.missing ? { missing: verdict.missing } : {}) });
+    }
   }
 
   private async getOrgMembershipOrThrow(

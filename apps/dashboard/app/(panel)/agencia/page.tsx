@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AgencySummary, PeriodSelect } from "../../../components/agency/agency-summary";
 import { BILLING_TEXT, errorText } from "../../../components/agency/client-row";
+import { ClientImport } from "../../../components/agency/client-import";
 import { ClientsTable } from "../../../components/agency/clients-table";
 import { IncomingTransfers } from "../../../components/agency/incoming-transfers";
 import { PlanLimitNotice } from "../../../components/plan-limit-notice";
@@ -92,6 +93,9 @@ function AddClientSection({ organizationId, initiallyOpen }: { organizationId: s
       <div className="grid gap-4 p-4 pt-1 lg:grid-cols-2">
         <NewClientForm organizationId={organizationId} />
         <LinkClientForm organizationId={organizationId} />
+        <div className="lg:col-span-2">
+          <ClientImport organizationId={organizationId} />
+        </div>
       </div>
     </details>
   );

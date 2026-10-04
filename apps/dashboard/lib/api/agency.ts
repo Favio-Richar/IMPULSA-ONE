@@ -4,6 +4,9 @@ import type {
   AgencyClientResponse,
   AgencyDashboardResponse,
   AgencyDuplicateResponse,
+  AgencyImportDetailResponse,
+  AgencyImportListResponse,
+  AgencyImportSummary,
   AgencyIncomingTransfersResponse,
   AgencyLinkResponse,
   AgencyOverviewResponse,
@@ -11,7 +14,7 @@ import type {
   AgencyStatusResponse,
 } from "@impulza/contracts";
 import type { AgencyClientAction, AgencyClientStatusValue, AgencyOverviewQuery, CreateAgencyClientDto, CreateTransferDto, DuplicateClientDto, LinkAgencyClientDto } from "@impulza/validation";
-import { apiFetch } from "../api-client";
+import { apiFetch, apiFetchText } from "../api-client";
 
 // Modo agencia (F9.3, ADR-028 §2). Todo se resuelve en el servidor por la membresía real del usuario.
 
@@ -163,4 +166,32 @@ export function rejectOwnerTransfer(organizationId: string): Promise<AgencyTrans
 /** Crea un cliente NUEVO con el contenido del sitio del origen (en borrador, sin datos personales). Idempotente por `idempotencyKey`. */
 export function duplicateAgencyClient(organizationId: string, relationId: string, body: DuplicateClientDto): Promise<AgencyDuplicateResponse> {
   return apiFetch<AgencyDuplicateResponse>(`${agencyPath(organizationId)}/clients/${relationId}/duplicate`, { method: "POST", body });
+}
+
+// ---- importar clientes por CSV (F9.5d) --------------------------------------------------------------------------------
+
+const importsPath = (organizationId: string) => `${agencyPath(organizationId)}/clients`;
+
+/** El texto de la plantilla CSV (con BOM y separado por punto y coma). */
+export function downloadImportTemplate(organizationId: string): Promise<string> {
+  return apiFetchText(`${importsPath(organizationId)}/import/template`);
+}
+
+/** Sube el archivo: el servidor lo valida fila por fila y lo encola; el worker crea los clientes. Responde al instante. */
+export function uploadAgencyImport(organizationId: string, body: { csv: string; fileName?: string }): Promise<AgencyImportSummary> {
+  return apiFetch<AgencyImportSummary>(`${importsPath(organizationId)}/import`, { method: "POST", body });
+}
+
+export function listAgencyImports(organizationId: string): Promise<AgencyImportListResponse> {
+  return apiFetch<AgencyImportListResponse>(`${importsPath(organizationId)}/imports`);
+}
+
+export function getAgencyImport(organizationId: string, importId: string, params: { page: number; pageSize: number; onlyErrors: boolean }): Promise<AgencyImportDetailResponse> {
+  const query = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize), onlyErrors: String(params.onlyErrors) });
+  return apiFetch<AgencyImportDetailResponse>(`${importsPath(organizationId)}/imports/${importId}?${query.toString()}`);
+}
+
+/** El informe de errores como CSV seguro (sin fórmulas ejecutables), listo para corregir y volver a subir. */
+export function downloadImportErrors(organizationId: string, importId: string): Promise<string> {
+  return apiFetchText(`${importsPath(organizationId)}/imports/${importId}/errors.csv`);
 }

@@ -271,3 +271,50 @@ export const agencyDuplicateResponse = z.object({
 });
 export type AgencyDuplicateResponse = z.infer<typeof agencyDuplicateResponse>;
 
+// ---- importar clientes por CSV (F9.5d) ----------------------------------------------------------------------------------
+// El archivo se valida fila por fila en el servidor; el worker crea los clientes por una cola y el progreso se consulta. Un error en una
+// fila no frena a las demás: el informe dice qué pasó con cada una.
+
+export const agencyImportStatus = z.enum(["QUEUED", "RUNNING", "COMPLETED"]);
+export const agencyImportRowStatus = z.enum(["PENDING", "PROCESSING", "CREATED", "EXISTED", "ERROR"]);
+
+export const agencyImportSummary = z.object({
+  id: uuid,
+  status: agencyImportStatus,
+  fileName: z.string().nullable(),
+  totalRows: z.number().int(),
+  /** Filas con resultado (creadas, ya existentes o con error): `processedRows / totalRows` es el avance. */
+  processedRows: z.number().int(),
+  createdRows: z.number().int(),
+  /** Filas cuyo cliente ya existía (reimportar no duplica). */
+  existedRows: z.number().int(),
+  errorRows: z.number().int(),
+  /** El tope de clientes del plan al subir el archivo (`null` = sin límite). */
+  clientsLimit: z.number().int().nullable(),
+  createdAt: isoDateTime,
+  startedAt: isoDateTime.nullable(),
+  finishedAt: isoDateTime.nullable(),
+});
+export type AgencyImportSummary = z.infer<typeof agencyImportSummary>;
+
+export const agencyImportRow = z.object({
+  /** Posición entre las filas de datos (1 = la primera). En el archivo es la línea `rowNumber + 1`. */
+  rowNumber: z.number().int(),
+  name: z.string(),
+  slug: z.string(),
+  ownerEmail: z.string(),
+  billingMode: agencyBillingMode,
+  status: agencyImportRowStatus,
+  errorCode: z.string().nullable(),
+  errorMessage: z.string().nullable(),
+});
+export type AgencyImportRow = z.infer<typeof agencyImportRow>;
+
+export const agencyImportDetailResponse = z.object({
+  import: agencyImportSummary,
+  rows: z.object({ items: z.array(agencyImportRow), page: z.number().int(), pageSize: z.number().int(), total: z.number().int() }),
+});
+export type AgencyImportDetailResponse = z.infer<typeof agencyImportDetailResponse>;
+
+export const agencyImportListResponse = z.object({ items: z.array(agencyImportSummary) });
+export type AgencyImportListResponse = z.infer<typeof agencyImportListResponse>;

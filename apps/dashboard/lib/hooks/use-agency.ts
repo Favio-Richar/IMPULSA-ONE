@@ -15,17 +15,20 @@ import {
   enableAgency,
   getAgencyClientBilling,
   getAgencyDashboard,
+  getAgencyImport,
   getAgencyLink,
   getAgencyOverview,
   getAgencyStatus,
   getOwnerBilling,
   getOwnerTransfer,
+  listAgencyImports,
   listIncomingTransfers,
   proposeAgencyBilling,
   rejectIncomingTransfer,
   rejectOwnerBilling,
   rejectOwnerTransfer,
   startAgencyTransfer,
+  uploadAgencyImport,
   type AgencyOverviewParams,
   listAgencyClients,
   rejectAgencyLink,
@@ -221,4 +224,29 @@ export function useRejectOwnerTransfer(organizationId: string) {
 export function useDuplicateAgencyClient(organizationId: string, relationId: string) {
   const refresh = useRefresh(organizationId);
   return useMutation({ mutationFn: (body: DuplicateClientDto) => duplicateAgencyClient(organizationId, relationId, body), onSuccess: refresh });
+}
+
+// ---- importar clientes por CSV (F9.5d) --------------------------------------------------------------------------------
+
+export function useAgencyImports(organizationId: string, enabled: boolean) {
+  return useQuery({ queryKey: ["agency", organizationId, "imports"], queryFn: () => listAgencyImports(organizationId), enabled });
+}
+
+/**
+ * El avance de una importación. Mientras el worker trabaja se vuelve a preguntar cada 1,5 s; al terminar deja de hacerlo. Conserva lo que
+ * ya se veía mientras llega la siguiente respuesta (el avance no parpadea).
+ */
+export function useAgencyImport(organizationId: string, importId: string | null, params: { page: number; pageSize: number; onlyErrors: boolean }) {
+  return useQuery({
+    queryKey: ["agency", organizationId, "import", importId, params],
+    queryFn: () => getAgencyImport(organizationId, importId as string, params),
+    enabled: importId !== null,
+    placeholderData: keepPreviousData,
+    refetchInterval: (query) => (query.state.data && query.state.data.import.status !== "COMPLETED" ? 1500 : false),
+  });
+}
+
+export function useUploadAgencyImport(organizationId: string) {
+  const refresh = useRefresh(organizationId);
+  return useMutation({ mutationFn: (body: { csv: string; fileName?: string }) => uploadAgencyImport(organizationId, body), onSuccess: refresh });
 }

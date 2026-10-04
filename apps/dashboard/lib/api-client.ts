@@ -47,3 +47,18 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
   return (await response.json()) as T;
 }
+
+/**
+ * Como `apiFetch`, pero devuelve el cuerpo como **texto** (un CSV que se descarga). Mismas reglas: sesión por cookie, y un error de la
+ * API sale como `ApiError` con su cuerpo.
+ */
+export async function apiFetchText(path: string): Promise<string> {
+  const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, { method: "GET", credentials: "include", headers: { Accept: "text/csv" } });
+  if (!response.ok) {
+    const errorBody: unknown = await response.json().catch(() => undefined);
+    throw new ApiError(response.status, errorBody);
+  }
+  // `response.text()` descarta el BOM del principio (así lo manda la especificación de `fetch`), y sin él Excel mostraría mal las tildes
+  // del CSV que se descarga: se decodifican los bytes conservándolo.
+  return new TextDecoder("utf-8", { ignoreBOM: true }).decode(await response.arrayBuffer());
+}

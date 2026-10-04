@@ -17,6 +17,7 @@
   "dependencies": {
     "@impulza/ai": "workspace:*",
     "@impulza/analytics": "workspace:*",
+    "@impulza/agency": "workspace:*",
     "@impulza/auth": "workspace:*",
     "@impulza/payments": "workspace:*",
     "@impulza/webhooks": "workspace:*",

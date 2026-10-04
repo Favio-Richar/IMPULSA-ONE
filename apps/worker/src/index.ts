@@ -5,6 +5,7 @@ import { Redis } from "ioredis";
 import { parseStorageConfig, parseVideoToolsConfig, privateStorageAdapter, S3StorageAdapter } from "@impulza/storage";
 import { ConsoleEmailAdapter } from "@impulza/auth";
 import { MercadoPagoGateway, MercadoPagoOAuth, WebpayOneclickGateway } from "@impulza/payments";
+import { startAgencyImportWorkers } from "./agency-import.js";
 import { startAnalyticsWorkers } from "./analytics-workers.js";
 import { startAutomationWorkers } from "./automations.js";
 import { startBillingWorkers } from "./billing.js";
@@ -171,6 +172,21 @@ const paymentAccounts =
       })
     : null;
 
+// Importación de clientes por CSV (F9.5d, ADR-028 §2): crea los clientes y avisa a cada propietario (por consola, como el resto de los correos).
+// Sin `APP_BASE_URL` no hay a dónde apuntar el enlace de la invitación: no arranca (y lo dice) en vez de mandar un enlace roto. Las
+// importaciones quedan en la cola y se procesan cuando se configure.
+const agencyImports = env.APP_BASE_URL
+  ? await startAgencyImportWorkers({
+      prisma,
+      email: new ConsoleEmailAdapter(),
+      connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+      appBaseUrl: env.APP_BASE_URL,
+    })
+  : null;
+if (!agencyImports) {
+  logger.warn("agency.import.disabled", { reason: "Sin APP_BASE_URL: la importación de clientes por CSV no se procesa hasta que se configure." });
+}
+
 const healthServer = createHealthServer([
   {
     name: "database",
@@ -210,6 +226,7 @@ async function shutdown(signal: string): Promise<void> {
   await newsletter.close();
   await sequences.close();
   await pageCampaigns?.close();
+  await agencyImports?.close();
   healthRedis.disconnect();
   await prisma.$disconnect();
   process.exit(0);

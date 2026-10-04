@@ -4,6 +4,7 @@ import { agencyDuplicateReport, type AgencyDuplicateReport, type AgencyDuplicate
 import { AgencyClientStatus, OrganizationKind, Prisma, SiteStatus, type PrismaClient, type User } from "@impulza/database";
 import {
   DUPLICATE_NOT_COPIED,
+  isReservedSlug,
   prepareBackground,
   prepareBlockForDuplicate,
   prepareSeoMeta,
@@ -277,11 +278,16 @@ export class AgencyDuplicateService {
     return report;
   }
 
-  /** Un identificador de sitio libre: el del cliente nuevo para el primero, `-2`, `-3`… para los siguientes, y un sufijo si ya está tomado. */
+  /**
+   * Un identificador de sitio libre: el del cliente nuevo para el primero, `-2`, `-3`… para los siguientes, y un sufijo si ya está tomado.
+   * El identificador de un SITIO es público, así que nunca puede ser un nombre reservado por la plataforma (`www`, `planes`…), aunque el
+   * identificador del cliente (la organización) sí lo sea: en ese caso el sitio lleva un sufijo.
+   */
   private async freeSiteSlug(tx: Tx, base: string, index: number): Promise<string> {
     const first = index === 0 ? base : `${base}-${index + 1}`;
     for (let attempt = 0; attempt < SLUG_ATTEMPTS; attempt += 1) {
       const candidate = attempt === 0 ? first : `${first}-${randomUUID().slice(0, 4)}`;
+      if (isReservedSlug(candidate)) continue;
       const [site, redirect] = await Promise.all([tx.site.findUnique({ where: { slug: candidate }, select: { id: true } }), tx.siteSlugRedirect.findUnique({ where: { fromSlug: candidate }, select: { id: true } })]);
       if (!site && !redirect) return candidate;
     }

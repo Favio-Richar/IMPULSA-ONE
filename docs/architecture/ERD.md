@@ -551,3 +551,16 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   `orders`, `bookings`, `forms`, `site_domains`, `payment_accounts`, `products`, `media_assets` ni los datos fiscales de la marca.
 - Migración reversible `20261003140000_f95c_agency_duplication` (`down.sql`).
 
+## 9x. Importar clientes por CSV (F9.5d, BACKLOG_FASE_9.md, ADR-028 §2)
+
+- **AgencyImport** (`agency_imports`): una importación. `agency_organization_id` (`CASCADE`), `created_by_id`, `status` (`QUEUED | RUNNING | COMPLETED`),
+  `file_name`, contadores de avance (`total_rows`, `processed_rows`, `created_rows`, `existed_rows`, `error_rows`) y `clients_limit` (el tope de clientes del
+  plan **congelado al subir**; `NULL` = sin límite). `CHECK`: lo procesado es la suma de sus resultados y no pasa del total — el avance no se puede descuadrar.
+- **AgencyImportRow** (`agency_import_rows`): una fila del archivo. `import_id` (`CASCADE`), `row_number` (≥ 1; en el archivo es la línea `row_number + 1`),
+  `name`, `slug`, `owner_email` (normalizados si es válida; tal cual y acotados si no, para poder corregirlos), `billing_mode`, `status`
+  (`PENDING | PROCESSING | CREATED | EXISTED | ERROR`), `error_code`, `error_message` y `client_organization_id` (sin clave foránea a propósito: el informe sobrevive
+  si el cliente se borra). `UNIQUE (import_id, row_number)`.
+- **Cola:** `agency-import` (BullMQ). La API encola con `jobId` = id de la importación; el worker la consume. Si la cola pierde el trabajo, el mantenimiento del worker
+  (cada minuto) retoma lo que lleva más de 2 minutos sin avanzar. Las importaciones terminadas se borran a los 60 días (guardan correos de terceros).
+- Migración reversible `20261003150000_f95d_agency_import` (`down.sql`).
+

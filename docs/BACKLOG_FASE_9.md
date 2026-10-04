@@ -21,7 +21,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.2 | Marca de cada organización (logo, colores, datos) | Hecho (2026-10-03, revisada y corregida por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Hecho (2026-10-03, desarrollada y verificada por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.4 | Panel de agencia | Hecho con reservas (2026-10-03, desarrollada y verificada por Claude; reservas en el detalle de la historia y en `CONTINUIDAD.md` §0) |
-| F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | En progreso por sub-historias: **F9.5a facturación, F9.5b transferir y F9.5c duplicar hechas** (2026-10-03); F9.5d importar CSV pendiente |
+| F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | Hecho con reservas (2026-10-04): F9.5a facturación, F9.5b transferir, F9.5c duplicar y F9.5d importar CSV; reservas en cada sub-historia y en `CONTINUIDAD.md` §0 |
 | F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | Pendiente |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | Pendiente |
 | F9.8 | Reportes por cliente | Pendiente |
@@ -225,7 +225,7 @@ fallar las pruebas: consolidado que suma a todos los estados (2 pruebas) y tabla
 
 ---
 
-### F9.5 — Gestión de clientes: importar, duplicar, transferir, facturación — En progreso
+### F9.5 — Gestión de clientes: importar, duplicar, transferir, facturación — Hecho con reservas
 
 **Criterios de aceptación:**
 
@@ -248,8 +248,8 @@ fallar las pruebas: consolidado que suma a todos los estados (2 pruebas) y tabla
    aceptación; cambio de facturación sin confirmación → falla. Playwright móvil/escritorio, capturas
    en `f95/`.
 
-**Se entrega en cuatro sub-historias, cada una con su commit y su push:** F9.5a facturación (criterio 4), F9.5b transferir (3), F9.5c duplicar (2) y
-F9.5d importar CSV con cola (1). F9.5 solo se marca «Hecho» cuando las cuatro pasen la Definición de Terminado.
+**Se entregó en cuatro sub-historias, cada una con su commit y su push:** F9.5a facturación (criterio 4), F9.5b transferir (3), F9.5c duplicar (2) y
+F9.5d importar CSV con cola (1). Las cuatro pasaron la Definición de Terminado, con las reservas que cada una declara.
 
 #### F9.5a — Facturación: quién paga el plan — Hecha (2026-10-03)
 
@@ -310,6 +310,31 @@ idempotencia (1). **Defecto hallado y corregido al probar:** al quitar la imagen
 servicios, formularios ni calendarios: los bloques que los usaban quedan sin configurar; (c) sí viajan los textos y datos de contacto del negocio origen (WhatsApp, correo,
 mapa, redes, testimonios): el informe los marca para revisar y todo queda en borrador; (d) no se pide consentimiento al propietario del negocio origen (queda en su historial
 de auditoría) porque la agencia ya tiene acceso delegado de edición; (e) la duplicación no incluye pruebas A/B, embudos ni campañas.
+
+#### F9.5d — Importar clientes por CSV — Hecha (2026-10-04)
+
+**Qué hay:** plantilla CSV descargable; `POST /agency/clients/import` valida el archivo **entero, fila por fila, en el servidor** y guarda cada fila (las válidas pendientes, las
+inválidas con su motivo y su línea); el **worker** consume la cola BullMQ `agency-import` y crea cada cliente (organización, relación, acceso delegado, invitación al propietario,
+auditoría) en su propia transacción; el avance se consulta (`GET imports/:id`, con informe paginado) y se descarga el informe de errores como CSV seguro. Modelos `AgencyImport` y
+`AgencyImportRow` (migración reversible, con un `CHECK` que impide descuadrar el avance). Paquete nuevo `@impulza/agency` con la lógica que comparten la API y el worker.
+Pantalla en `/agencia`: plantilla, selector de archivo, barra de avance con recuento, informe de problemas por fila y «Importaciones anteriores».
+**Verificado:** reglas puras del CSV 24 pruebas (comillas, separadores, saltos de línea dentro de un campo, BOM, CRLF, neutralización de fórmulas, ida y vuelta); procesador contra la base
+real en el worker 12 pruebas (creación completa, reimportar no duplica, identificador ajeno, cupo, dos workers a la vez, recuperación tras una caída, correo caído, no-agencia,
+mantenimiento y borrado, `CHECK` del avance); e2e de la API `agency-import.e2e.test.ts` 17 pruebas **con un worker real de BullMQ consumiendo la cola** (subir → encolar → procesar →
+progreso), archivo inservible, tope de filas, una importación a la vez, cupo congelado, informe, aislamiento entre agencias, permisos y límite de subidas; Playwright
+`importar-agencia.spec.ts` 4 pruebas por proyecto (móvil y escritorio) con el worker real: avance en pantalla, informe, descargas, reimportar sin duplicar, archivo en Windows-1252 y archivo
+inservible; capturas en `f95/`. Los seis specs de agencia juntos pasan. **Mutaciones que hacen fallar las pruebas:** sin reclamar la fila (1), sin comprobar el cupo (2), sin reconocer al
+cliente que ya existe (2), sin acceso delegado (1), sin recuperar filas colgadas (1), tomar por suyo un identificador ajeno (1), varias importaciones a la vez (1), una agencia viendo las
+de otra (1), no congelar el cupo (1) y no encolar (7).
+**Defectos hallados y corregidos al probar:** (1) el archivo descargado **perdía el BOM** (`response.text()` lo descarta) y Excel habría mostrado mal las tildes; (2) la plantilla respondía 200 a una
+organización que no es agencia; (3) **en F9.5c**, la duplicación podía crear un sitio con un identificador público reservado (`www`, `planes`…) si el cliente nuevo se llamaba así; ahora el sitio lleva un sufijo.
+**Límites (honestidad):** (a) las invitaciones salen a la consola local (no hay proveedor de correo real todavía); (b) el worker no arranca sin `APP_BASE_URL` (no habría a dónde apuntar el
+enlace): las importaciones quedan en cola y se procesan al configurarla; (c) una importación a la vez por agencia y 200 filas por archivo (para más, varios archivos); (d) el cupo queda
+congelado al subir: si el plan cambia a mitad de una importación, rige el de antes; (e) el vencimiento de las invitaciones y las importaciones viejas se aplican por el mantenimiento del worker (cada minuto), no en el
+instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
+
+**Cierre de F9.5:** las cuatro sub-historias están hechas. Reservas que siguen abiertas de F9.5: los avisos por correo solo salen a la consola local; el cobro real por `AGENCY_PAYS` no existe
+(decisión del propietario, sin cobrar nada nuevo); los archivos de la biblioteca no se copian al duplicar; el vencimiento de un traspaso se aplica al consultarlo.
 
 ---
 

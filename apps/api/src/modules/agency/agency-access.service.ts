@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { grantAgencyAccessForClient, grantAgencyAccessToUser, relationGrantsAccess } from "@impulza/agency";
 import {
   AgencyClientStatus,
   MembershipSource,
@@ -13,19 +14,9 @@ type Db = PrismaClient | Prisma.TransactionClient;
 
 const DELEGATING = new Set<string>(AGENCY_DELEGATING_ROLES);
 
-/** Relaciones en las que la agencia trabaja (o puede volver a hacerlo): reciben membresías delegadas. */
-export function relationGrantsAccess(relation: { status: AgencyClientStatus; agencyCreated: boolean }): boolean {
-  switch (relation.status) {
-    case AgencyClientStatus.ACTIVE:
-    case AgencyClientStatus.PAUSED:
-    case AgencyClientStatus.TRANSFERRING:
-      return true;
-    case AgencyClientStatus.INVITED:
-      return relation.agencyCreated;
-    default:
-      return false;
-  }
-}
+// La regla de qué relaciones dan acceso y cómo se sincronizan las membresías vive en `@impulza/agency`: el worker (importación por CSV)
+// da de alta clientes con la misma. Se reexporta acá para no cambiar a quienes ya la importan desde este módulo.
+export { relationGrantsAccess };
 
 /**
  * Membresías delegadas (ADR-028 §2): el acceso de una agencia a un cliente **es** una `Membership` en la
@@ -40,52 +31,9 @@ export function relationGrantsAccess(relation: { status: AgencyClientStatus; age
 export class AgencyAccessService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
-  /** Personas de la agencia que reciben acceso delegado: miembros activos con un rol que delega. */
-  private async delegatingMembers(db: Db, agencyOrganizationId: string): Promise<string[]> {
-    const members = await db.membership.findMany({
-      where: {
-        organizationId: agencyOrganizationId,
-        status: MembershipStatus.ACTIVE,
-        source: MembershipSource.DIRECT,
-        role: { name: { in: [...DELEGATING] } },
-      },
-      select: { userId: true },
-    });
-    return members.map((member) => member.userId);
-  }
-
-  /**
-   * Da acceso delegado a una persona en la organización de un cliente. Una persona que ya es miembro directo
-   * activo del cliente conserva su membresía (la directa gana). Devuelve `true` si quedó con acceso delegado.
-   */
-  private async grantToUser(db: Db, relationId: string, clientOrganizationId: string, userId: string, delegateRoleId: string): Promise<boolean> {
-    const existing = await db.membership.findUnique({ where: { userId_organizationId: { userId, organizationId: clientOrganizationId } } });
-    const data = {
-      status: MembershipStatus.ACTIVE,
-      roleId: delegateRoleId,
-      source: MembershipSource.AGENCY,
-      agencyClientId: relationId,
-      acceptedAt: new Date(),
-    };
-    if (!existing) {
-      await db.membership.create({ data: { userId, organizationId: clientOrganizationId, invitedAt: new Date(), ...data } });
-      return true;
-    }
-    if (existing.source === MembershipSource.DIRECT && existing.status !== MembershipStatus.REMOVED) {
-      return false; // ya es del equipo del cliente: no se le pisa el rol
-    }
-    await db.membership.update({ where: { id: existing.id }, data });
-    return true;
-  }
-
   /** Da acceso a todas las personas de la agencia que corresponde. Idempotente. */
   async grantForClient(db: Db, relation: { id: string; agencyOrganizationId: string; clientOrganizationId: string }): Promise<number> {
-    const delegateRole = await db.role.findUniqueOrThrow({ where: { name: AGENCY_DELEGATE_ROLE } });
-    let granted = 0;
-    for (const userId of await this.delegatingMembers(db, relation.agencyOrganizationId)) {
-      if (await this.grantToUser(db, relation.id, relation.clientOrganizationId, userId, delegateRole.id)) granted += 1;
-    }
-    return granted;
+    return grantAgencyAccessForClient(db, relation);
   }
 
   /** Quita el acceso delegado de una relación: las membresías pasan a REMOVED (la historia de auditoría se conserva). */
@@ -116,7 +64,7 @@ export class AgencyAccessService {
 
     for (const relation of relations) {
       if (eligible && relationGrantsAccess(relation)) {
-        await this.grantToUser(this.prisma, relation.id, relation.clientOrganizationId, userId, delegateRole.id);
+        await grantAgencyAccessToUser(this.prisma, relation.id, relation.clientOrganizationId, userId, delegateRole.id);
       } else {
         await this.prisma.membership.updateMany({
           where: { userId, organizationId: relation.clientOrganizationId, agencyClientId: relation.id, source: MembershipSource.AGENCY, status: { not: MembershipStatus.REMOVED } },

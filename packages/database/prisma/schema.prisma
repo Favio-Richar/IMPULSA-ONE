@@ -225,6 +225,7 @@ model Organization {
   memberships         Membership[]
   incomingTransfers   AgencyTransfer[]     @relation("AgencyTransferReceiver")
   duplications        AgencyDuplication[]  @relation("AgencyDuplications")
+  agencyImports       AgencyImport[]       @relation("AgencyImports")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
   auditLogs           AuditLog[]
@@ -580,6 +581,74 @@ model AgencyDuplication {
 
   @@unique([agencyOrganizationId, idempotencyKey])
   @@map("agency_duplications")
+}
+
+// F9.5d (ADR-028 §2): importar clientes por CSV. La API valida el archivo fila por fila y guarda cada fila (las válidas PENDING, las
+// inválidas ERROR con su motivo); el worker las crea por una cola BullMQ y actualiza el progreso. Reimportar el mismo archivo no
+// duplica: una fila cuyo identificador ya es un cliente de esta agencia creado con ese mismo correo queda EXISTED.
+enum AgencyImportStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+}
+
+enum AgencyImportRowStatus {
+  PENDING
+  PROCESSING
+  CREATED
+  EXISTED
+  ERROR
+}
+
+model AgencyImport {
+  id                   String             @id @default(uuid()) @db.Uuid
+  agencyOrganizationId String             @map("agency_organization_id") @db.Uuid
+  createdById          String?            @map("created_by_id") @db.Uuid
+  status               AgencyImportStatus @default(QUEUED)
+  fileName             String?            @map("file_name")
+  totalRows            Int                @map("total_rows")
+  processedRows        Int                @default(0) @map("processed_rows")
+  createdRows          Int                @default(0) @map("created_rows")
+  existedRows          Int                @default(0) @map("existed_rows")
+  errorRows            Int                @default(0) @map("error_rows")
+  // El tope de clientes del plan al subir el archivo (`null` = sin límite): el worker no pasa de ahí aunque el plan cambie a mitad.
+  clientsLimit         Int?               @map("clients_limit")
+  startedAt            DateTime?          @map("started_at") @db.Timestamptz(6)
+  finishedAt           DateTime?          @map("finished_at") @db.Timestamptz(6)
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  agencyOrganization Organization      @relation("AgencyImports", fields: [agencyOrganizationId], references: [id], onDelete: Cascade)
+  rows               AgencyImportRow[]
+
+  @@index([agencyOrganizationId, createdAt])
+  @@index([status, updatedAt])
+  @@map("agency_imports")
+}
+
+model AgencyImportRow {
+  id                   String                @id @default(uuid()) @db.Uuid
+  importId             String                @map("import_id") @db.Uuid
+  // Posición entre las filas de datos (1 = la primera después del encabezado); en el archivo es la línea `row_number + 1`.
+  rowNumber            Int                   @map("row_number")
+  // Los datos de la fila: normalizados si es válida; tal cual (acotados) si no, para poder mostrar y corregir el problema.
+  name                 String
+  slug                 String
+  ownerEmail           String                @map("owner_email")
+  billingMode          AgencyBillingMode     @default(CLIENT_PAYS) @map("billing_mode")
+  status               AgencyImportRowStatus @default(PENDING)
+  errorCode            String?               @map("error_code")
+  errorMessage         String?               @map("error_message")
+  // El cliente creado (o el que ya existía). Sin clave foránea a propósito: el informe sobrevive aunque ese cliente se borre.
+  clientOrganizationId String?               @map("client_organization_id") @db.Uuid
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  import AgencyImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@unique([importId, rowNumber])
+  @@index([importId, status])
+  @@map("agency_import_rows")
 }
 
 // F9.1 (ADR-028 §4): Marca de la plataforma configurable por superadministración (singleton).

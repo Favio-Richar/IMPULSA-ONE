@@ -3,6 +3,7 @@ import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
 import { agencyDuplicateResponse } from "@impulza/contracts";
+import { isReservedSlug } from "@impulza/validation";
 import type { PrismaClient } from "@impulza/database";
 import cookieParser from "cookie-parser";
 import type { Redis } from "ioredis";
@@ -54,6 +55,7 @@ describe("Duplicar un cliente (e2e) — F9.5c / ADR-028", () => {
   afterAll(async () => {
     await prisma.organization.deleteMany({ where: { memberships: { some: { user: { email: { endsWith: EMAIL_DOMAIN } } } } } });
     await prisma.organization.deleteMany({ where: { slug: { startsWith: "dup-e2e-" } } });
+    await prisma.organization.deleteMany({ where: { slug: "autodiscover" } });
     await prisma.user.deleteMany({ where: { email: { endsWith: EMAIL_DOMAIN } } });
     await prisma.plan.deleteMany({ where: { code: { startsWith: "dup-e2e-plan" } } });
     await app.close();
@@ -318,6 +320,19 @@ describe("Duplicar un cliente (e2e) — F9.5c / ADR-028", () => {
       const before = JSON.stringify(await snapshot(client.clientId));
       await agency.agent.post(client.url).set(CSRF).send(body({ billingMode: "AGENCY_PAYS" })).expect(200);
       expect(JSON.stringify(await snapshot(client.clientId))).toBe(before);
+    });
+
+    it("si el identificador del cliente es un nombre reservado, el sitio copiado lleva otro (el de un sitio es público)", async () => {
+      const agency = await newAgency();
+      const client = await activeClient(agency);
+      await seedSource(client.clientId);
+      await prisma.organization.deleteMany({ where: { slug: "autodiscover" } });
+      const result = parse(await agency.agent.post(client.url).set(CSRF).send(body({ slug: "autodiscover" })).expect(200));
+      const sites = (await snapshot(result.client.clientOrganizationId)).sites;
+      expect(sites).toHaveLength(1);
+      expect(sites[0]?.slug).not.toBe("autodiscover");
+      expect(sites[0]?.slug.startsWith("autodiscover-")).toBe(true);
+      expect(isReservedSlug(sites[0]!.slug)).toBe(false);
     });
 
     it("un cliente sin contenido se duplica igual: el informe va en ceros", async () => {

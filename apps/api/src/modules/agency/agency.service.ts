@@ -6,6 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { createAgencyClientRecords, ownerInviteEmail, ownerInviteUrl } from "@impulza/agency";
 import { generateVerificationToken, hashToken, type EmailAdapter } from "@impulza/auth";
 import type {
   AcceptOwnerInvitationResponse,
@@ -197,24 +198,19 @@ export class AgencyService {
     const relation = await this.prisma.$transaction(async (tx) => {
       // El cupo se verifica dentro de la transacción y con un lock: dos altas simultáneas no pasan juntas el límite.
       await this.plans.assertWithinLimit(tx, agencyOrganizationId, "clients");
-      const client = await tx.organization.create({ data: { name: input.name, slug: input.slug, kind: OrganizationKind.BUSINESS } });
-      const created = await tx.agencyClient.create({
-        data: {
-          agencyOrganizationId,
-          clientOrganizationId: client.id,
-          status: AgencyClientStatus.INVITED,
-          billingMode: input.billingMode,
-          agencyCreated: true,
-          requestedById: actor.id,
-          ownerInviteEmail: input.ownerEmail,
-          ownerInviteTokenHash: hash,
-          ownerInviteExpiresAt: new Date(now.getTime() + AGENCY_OWNER_INVITE_TTL_DAYS * DAY_MS),
-        },
-        include: RELATION_INCLUDE,
+      const { relation: created } = await createAgencyClientRecords(tx, {
+        agencyOrganizationId,
+        actorId: actor.id,
+        name: input.name,
+        slug: input.slug,
+        ownerEmail: input.ownerEmail,
+        billingMode: input.billingMode,
+        inviteTokenHash: hash,
+        inviteExpiresAt: new Date(now.getTime() + AGENCY_OWNER_INVITE_TTL_DAYS * DAY_MS),
       });
-      await this.access.grantForClient(tx, created);
-      if (populate) await populate(tx, created);
-      return created;
+      const full = await tx.agencyClient.findUniqueOrThrow({ where: { id: created.id }, include: RELATION_INCLUDE });
+      if (populate) await populate(tx, full);
+      return full;
     });
 
     await this.audit.record({
@@ -235,14 +231,7 @@ export class AgencyService {
     });
 
     // El correo sale después de confirmar: un fallo del proveedor no deshace el alta (el propietario se puede reinvitar).
-    const inviteUrl = `${env.APP_BASE_URL.replace(/\/$/, "")}/invitaciones/agencia?token=${raw}`;
-    await this.safeSend(input.ownerEmail, {
-      subject: `${agency.name} te invita a administrar «${input.name}» — Impulza One`,
-      text:
-        `${agency.name} creó el espacio de «${input.name}» en Impulza One y te invita a ser su propietario.\n\n` +
-        `Como propietario decides quién entra: la agencia trabaja con acceso delegado y puedes revocarlo cuando quieras.\n\n` +
-        `Acepta la invitación (vence en ${AGENCY_OWNER_INVITE_TTL_DAYS} días): ${inviteUrl}`,
-    });
+    await this.safeSend(input.ownerEmail, ownerInviteEmail({ agencyName: agency.name, clientName: input.name, inviteUrl: ownerInviteUrl(env.APP_BASE_URL, raw) }));
     return this.toClientResponse(relation);
   }
 

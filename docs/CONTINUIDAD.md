@@ -5,20 +5,21 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-03, noche) — F9.5a, F9.5b y F9.5c HECHAS en la rama `fase-9/f9-5-gestion-clientes` (sobre F9.4); siguiente: F9.5d importar CSV
+## 0. RETOMAR AQUÍ (2026-10-04) — F9.5 COMPLETA (a, b, c y d) en la rama `fase-9/f9-5-gestion-clientes` (sobre F9.4); siguiente: F9.6
 
 **Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia y **push de la rama al cerrar cada una** (autorizado por Favio; ver memoria «Subir cada fase a GitHub»). Fusionar a `master` sigue pidiendo confirmación.
 
-**F9.5 se hace en sub-historias** (detalle en `docs/BACKLOG_FASE_9.md`): **F9.5a facturación hecha** (`AGENCY_PAYS` = el negocio usa los límites del plan de la
-agencia, sin cobrar nada nuevo). **F9.5b transferir hecha** (a su propietario o a otra agencia; el propietario siempre consiente). **F9.5c duplicar hecha** (cliente
-nuevo con el sitio del origen en borrador; nunca datos personales, de cobro ni archivos del origen; ninguna referencia cruzada; idempotente y atómico).
-**Siguiente: F9.5d importar CSV** (plantilla descargable, validación fila por fila en el servidor, informe de errores por fila, tope de filas, idempotente, respeta el cupo
-del plan, procesada por cola BullMQ con progreso visible, sin inyección CSV al exportar). Cuando termine, F9.5 pasa a «Hecho» y sigue F9.6.
-**Trampas nuevas:** el registro de cuentas tiene límite de 5 por minuto: los specs de Playwright que registran personas usan `packages/e2e/register-user.ts` (reintenta y espera) y
-suben el límite de tiempo de la prueba; un `<label>` que envuelve un `<select>` toma como nombre accesible todas sus opciones: poner `aria-label` al select; **no correr
-`prisma format` sobre `schema.prisma`** (realinea ~200 líneas ajenas: agregar los modelos a mano y validar con `prisma validate`); un `const` de un esquema Zod usado antes de
-declararse rompe el módulo al cargar; en los heredocs de Bash con comillas simples y acentos el shell puede rechazar todo el comando: escribir los scripts con la herramienta
-Write y ejecutarlos; las claves de almacenamiento de medios llevan `/org/<id>/` (así se reconocen los archivos de una organización); `apps/api` usa `testTimeout` de 15 s.
+**F9.5 hecha** (detalle y reservas en `docs/BACKLOG_FASE_9.md`): **a** facturación (`AGENCY_PAYS` = el negocio usa los límites del plan de la agencia, sin cobrar nada nuevo), **b** transferir (el
+propietario siempre consiente), **c** duplicar (cliente nuevo en borrador, sin datos personales ni archivos del origen) y **d** importar CSV (cola BullMQ procesada por el worker, informe por fila,
+idempotente, con cupo). **Siguiente: F9.6** (equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar).
+**Novedad de arquitectura:** existe el paquete **`@impulza/agency`** (alta de cliente, acceso delegado, correo de invitación e importación) que comparten la API y el worker; la API ya no tiene su propia
+copia. Al agregar un paquete al workspace: declararlo en el `package.json` de quien lo usa, `pnpm install --prefer-offline` (cambia `pnpm-lock.yaml`, hay que commitearlo) y recompilarlo (`pnpm turbo run build
+--filter=@impulza/agency`) antes de correr pruebas del worker, que lo leen compilado.
+**Trampas nuevas:** `response.text()` de `fetch` **descarta el BOM** (para CSV con tildes decodificar los bytes con `TextDecoder(..., { ignoreBOM: true })`); el cuerpo JSON por defecto de la API es de 100 kB
+(con acentos a 2 bytes: topes de texto por debajo de eso); la reserva de nombres (`www`, `planes`…) es del identificador público de un **sitio**, no del de una organización; el registro de cuentas tiene límite
+de 5 por minuto (los specs usan `packages/e2e/register-user.ts`); un `<label>` que envuelve un `<select>` toma como nombre accesible todas sus opciones (poner `aria-label`); **no correr `prisma format`**
+sobre `schema.prisma`; en los heredocs de Bash con acentos el shell puede rechazar todo el comando (escribir los scripts con la herramienta Write); las claves de almacenamiento de medios llevan `/org/<id>/`;
+`apps/api` usa `testTimeout` de 15 s; en PowerShell, `2>&1 | Select-String` sobre salidas ruidosas oculta el resumen: redirigir a un archivo y leer solo las líneas útiles.
 
 **F9.4 — panel de agencia (cerrada con reservas; detalle en `docs/BACKLOG_FASE_9.md`):** resumen y tabla de clientes con rendimiento, plan, dominios, última
 publicación y alertas; solo suma clientes `ACTIVE`; búsqueda/filtro/orden/paginación en el servidor; 200 clientes en ~55 ms. **Reservas:** «tareas del equipo»

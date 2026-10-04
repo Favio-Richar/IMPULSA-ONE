@@ -176,3 +176,23 @@ con motivo y vía de apelación. Nada se borra; todo es reversible y queda audit
 - **Transparencia con el dueño del origen:** queda una entrada de auditoría en el negocio origen (`agency.client.duplicated_from`) sin decir a dónde. No se
   pide su consentimiento: la agencia ya tiene acceso delegado de edición a ese contenido; es una reserva a revisar si se quiere endurecer.
 
+## Notas de implementación de F9.5d — importar clientes por CSV (2026-10-04)
+
+- **Dónde se procesa:** en el **worker**, por una cola BullMQ (`agency-import`), como manda la arquitectura. La API valida el archivo entero y guarda cada fila; no crea
+  ningún cliente, así subir un archivo grande responde al instante. La lógica compartida vive en el paquete nuevo `@impulza/agency`: el alta de un cliente y el acceso
+  delegado ya no se escriben dos veces (la API los usa desde ahí).
+- **Fila por fila:** cada fila se valida en el servidor y se crea en su propia transacción: un error no frena a las demás y el avance se ve fila a fila. Cada fila se
+  *reclama* (`PENDING → PROCESSING`) antes de crearse: dos workers nunca crean la misma. Si un worker muere a mitad, la fila colgada vuelve a la cola y, si el cliente ya
+  se había creado, queda como existente (no se duplica).
+- **Idempotencia:** reimportar el mismo archivo no duplica. Una fila cuyo identificador ya es un cliente **de esta agencia, creado por ella y con ese mismo correo** queda
+  `EXISTED` (sin otra invitación). Un identificador de otro negocio, o de un cliente propio con otro correo o ya terminado, es un error de esa fila.
+- **Cupo del plan:** se congela al subir (`clients_limit`) y el worker lo comprueba con el **mismo candado** que usa la API al crear clientes (`plan-limit:<agencia>:clients`):
+  una importación y un alta manual no pasan juntas el límite. Las filas que ya no caben quedan con error `NO_QUOTA`, no se pierden en silencio. Tope: 200 filas y
+  45 000 caracteres por archivo (por debajo del cuerpo JSON por defecto de la API, para que el mensaje sea siempre el claro). Una importación a la vez por agencia.
+- **Sin inyección de fórmulas:** un CSV es texto y nada se evalúa. Todo lo que **sale** en un CSV (plantilla e informe de errores) pasa por `csvCell`, que antepone una comilla
+  simple a lo que una hoja de cálculo ejecutaría (`=`, `+`, `-`, `@`, tabulación, retorno), venga de quien venga. El lector acepta coma, punto y coma (el de Excel en español) o
+  tabulación, comillas con separadores y saltos de línea adentro, BOM y CRLF; una comilla sin cerrar es un error claro.
+- **Archivos de Excel en Windows:** el panel lee el archivo como UTF-8 y, si no lo es, como Windows-1252, para no romper tildes y eñes; y conserva el BOM al descargar
+  (`response.text()` lo descarta por especificación: se decodifican los bytes).
+- **Privacidad:** las filas guardan correos de terceros (propietarios de clientes), así que se borran a los 60 días.
+

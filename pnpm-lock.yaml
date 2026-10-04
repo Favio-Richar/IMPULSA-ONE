@@ -263,6 +263,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@impulza/agency':
+        specifier: workspace:*
+        version: link:../../packages/agency
       '@impulza/ai':
         specifier: workspace:*
         version: link:../../packages/ai
@@ -566,6 +569,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@impulza/agency':
+        specifier: workspace:*
+        version: link:../../packages/agency
       '@impulza/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
@@ -618,6 +624,37 @@ importers:
       tsx:
         specifier: 4.23.13
         version: 4.23.13
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vite:
+        specifier: 8.3.0
+        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+      vitest:
+        specifier: 5.0.0
+        version: 5.0.0(@opentelemetry/api@1.9.1)(@types/node@26.5.1)(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+
+  packages/agency:
+    dependencies:
+      '@impulza/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@impulza/database':
+        specifier: workspace:*
+        version: link:../database
+      '@impulza/validation':
+        specifier: workspace:*
+        version: link:../validation
+    devDependencies:
+      '@impulza/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@impulza/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 26.5.1
+        version: 26.5.1
       typescript:
         specifier: 6.0.3
         version: 6.0.3

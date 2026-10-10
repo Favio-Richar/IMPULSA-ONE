@@ -578,3 +578,12 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   `UNIQUE (agency_organization_id, user_id)`. **Sin fila = sin restricciones.** Volver a «todo» borra la fila.
 - **AgencyMemberScopeClient** (`agency_member_scope_clients`): PK `(scope_id, agency_client_id)`, ambas `CASCADE` (si la relación con el cliente se borra, desaparece del alcance). Solo tiene filas cuando `all_clients = false`.
 - Migración reversible `20261004110000_f96b_agency_member_scope` (`down.sql`).
+
+## 9za. Aprobación antes de publicar (F9.6c, BACKLOG_FASE_9.md, ADR-028 §3)
+
+- **Organization.require_publish_approval** (`BOOLEAN`, por defecto `false`): activa la compuerta. Solo `publish.configure` (propietario) la cambia; apagarla cancela las pendientes.
+- **PublishRequest** (`publish_requests`): `organization_id` y `page_id` (`CASCADE`), `kind` (`PUBLISH` | `RESTORE`), `target_version_id` (solo `RESTORE`, `SET NULL`), `status` (`PENDING` | `APPROVED` | `REJECTED` | `CANCELLED`),
+  `content_digest` (sha256 del snapshot canónico) y `content_snapshot` (el contenido exacto pedido), `requested_by_id` / `reviewed_by_id` (`SET NULL`), comentarios, `reviewed_at`, `consumed_at` y `published_version_id`
+  (una aprobación se usa **una sola vez**: al publicar queda cerrada con la versión resultante).
+- **Índice parcial único** `publish_requests_one_pending_per_page` (`page_id` donde `status = 'PENDING'`): una sola pendiente por página; creado con SQL en la migración `20261005100000_f96c_publish_approval` (con `down.sql`).
+- Permisos nuevos: `publish.approve` (OWNER, ADMIN) y `publish.configure` (OWNER). `AGENCY_DELEGATE` no tiene ninguno: la agencia pide, el cliente aprueba.

@@ -5,14 +5,15 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-04) — F9.6a (roles personalizados) y F9.6b (acceso por cliente y módulo) hechas en la rama `fase-9/f9-6-equipo-avanzado` (sobre F9.5); siguiente: F9.6c (aprobación antes de publicar), F9.6d (auditoría navegable)
+## 0. RETOMAR AQUÍ (2026-10-10) — F9.6a, F9.6b y F9.6c hechas en la rama `fase-9/f9-6-equipo-avanzado` (sobre F9.5); siguiente: F9.6d (auditoría navegable), luego F9.7
 
-**Diseño ya pensado para F9.6c (aprobación antes de publicar), sin código todavía:** la publicación real son dos rutas, `POST …/pages/:pageId/publish` y `POST …/versions/:versionId/restore` (`PageVersionsService`).
-Opción `Organization.requirePublishApproval`; tabla `PublishRequest` (PENDING/APPROVED/REJECTED/CANCELLED, comentario, digest sha256 del contenido a publicar, índice único parcial de una pendiente por página);
-permisos nuevos `publish.approve` (OWNER y ADMIN) y `publish.configure` (solo OWNER) en `packages/database/src/permissions.ts` + matriz de `packages/validation/src/team/index.ts` (hay una prueba que exige que coincidan);
-quien tiene `publish.approve` publica directo; el resto necesita una solicitud APROBADA cuyo digest coincida con el contenido actual (si se edita después, hay que pedir de nuevo); nadie aprueba su propia solicitud;
-`publish-settings` va a `DENIED_SEGMENTS` (la agencia no apaga la compuerta); correo a los aprobadores y a quien pidió (hoy solo consola). El panel publica desde `sitios/[siteId]/paginas/[pageId]/page.tsx` y `…/editor/page.tsx`.
-Luego **F9.6d** (auditoría navegable: filtros por actor/acción/cliente/fecha, paginación en servidor, CSV seguro con `csvCell`), y después F9.7 a F9.10. **No tocar `apps/api` mientras corre su suite completa.**
+**F9.6c (aprobación antes de publicar) cerrada**: detalle y reservas en `docs/BACKLOG_FASE_9.md`. La compuerta vive en `PageVersionsService` (publicar y restaurar, dentro de la transacción) con `PublishApprovalService`
+(`apps/api/src/modules/pages`); el panel usa `usePublishFlow` (`apps/dashboard/components/publish`). **Trampas nuevas:** los permisos solo se siembran (`db:seed`), no hay migración que los inserte; tras agregar permisos
+reconstruir `validation`, `contracts`, `database`; el árbol de trabajo está en CRLF (`core.autocrlf`): los scripts de edición deben normalizar CRLF↔LF; en heredocs de Bash los `\n` de Python se vuelven saltos reales
+(escribir los scripts con la herramienta Write); `Select` de `@impulza/ui` es un `<select>` nativo (`onChange`, no `onValueChange`); Prisma 6 soporta `omit` (se usa para no cargar el snapshot en listas).
+
+**Siguiente — F9.6d (auditoría navegable):** vista filtrable por actor, acción, cliente y fecha; paginación en servidor; exportación CSV segura con `csvCell`. Las acciones ya se registran en `AuditLog`; falta la consulta,
+el permiso de lectura (decidir: `audit.view` en OWNER/ADMIN) y la pantalla. Luego F9.7 a F9.10. **No tocar `apps/api` mientras corre su suite completa.**
 
 **Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia y **push de la rama al cerrar cada una** (autorizado por Favio; ver memoria «Subir cada fase a GitHub»). Fusionar a `master` sigue pidiendo confirmación.
 

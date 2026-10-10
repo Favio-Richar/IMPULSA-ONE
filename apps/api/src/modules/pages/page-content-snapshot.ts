@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import type { Prisma, PrismaClient } from "@impulza/database";
 import { seoMetaSchema } from "@impulza/validation";
 import { z } from "zod";
 
@@ -71,4 +73,43 @@ function canonicalize(value: unknown): unknown {
  */
 export function snapshotsEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(canonicalize(a)) === JSON.stringify(canonicalize(b));
+}
+
+/**
+ * Huella del contenido (sha256 del JSON canónico). Una solicitud de publicación guarda la de lo que se pidió publicar: aprobarla es
+ * aprobar ESE contenido, y publicar exige que el contenido vivo siga teniendo la misma huella (F9.6c). Canónico = sin depender del orden
+ * de claves, igual que `snapshotsEqual`.
+ */
+export function snapshotDigest(snapshot: unknown): string {
+  return createHash("sha256").update(JSON.stringify(canonicalize(snapshot))).digest("hex");
+}
+
+/** Arma el snapshot con el estado **vivo** actual de la página y sus bloques (lo que se publicaría ahora). */
+export async function buildLiveSnapshot(
+  db: PrismaClient | Prisma.TransactionClient,
+  pageId: string,
+  page: { slug: string; visibility: string; seoMeta: Prisma.JsonValue | null },
+): Promise<PageContentSnapshot> {
+  const blocks = await db.block.findMany({
+    where: { pageId },
+    orderBy: { position: "asc" },
+    include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } },
+  });
+
+  return pageContentSnapshotSchema.parse({
+    slug: page.slug,
+    visibility: page.visibility,
+    seoMeta: page.seoMeta,
+    blocks: blocks.map((block, index) => ({
+      id: block.id,
+      type: block.type,
+      position: index,
+      configSchemaVersion: block.configSchemaVersion,
+      visible: block.visible,
+      scheduledStart: block.scheduledStart?.toISOString() ?? null,
+      scheduledEnd: block.scheduledEnd?.toISOString() ?? null,
+      ...(block.isPrimary ? { isPrimary: true } : {}),
+      config: block.versions[0]?.config ?? null,
+    })),
+  });
 }

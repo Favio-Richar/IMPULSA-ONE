@@ -28,6 +28,9 @@ interface PageHealthProps {
   onOpenBlock: (blockId: string) => void;
   onPublish: () => void;
   publishing: boolean;
+  /** Texto y estado del botón de publicar: con aprobación exigida pasa a «Pedir aprobación» (F9.6c). */
+  publishLabel?: string;
+  publishDisabled?: boolean;
 }
 
 /**
@@ -35,7 +38,7 @@ interface PageHealthProps {
  * lectura) que abre el detalle con cada hallazgo y un botón que lleva a corregirlo. El puntaje lo
  * calcula el servidor; acá solo se pinta.
  */
-export function PageHealth({ siteId, pageId, health, onOpenBlock, onPublish, publishing }: PageHealthProps): React.JSX.Element {
+export function PageHealth({ siteId, pageId, health, onOpenBlock, onPublish, publishing, publishLabel = "Publicar", publishDisabled = false }: PageHealthProps): React.JSX.Element {
   const [open, setOpen] = useState(false);
 
   if (health.isPending) {
@@ -126,6 +129,8 @@ export function PageHealth({ siteId, pageId, health, onOpenBlock, onPublish, pub
                         siteId={siteId}
                         pageId={pageId}
                         publishing={publishing}
+                        publishLabel={publishLabel}
+                        publishDisabled={publishDisabled}
                         onOpenBlock={(blockId) => {
                           setOpen(false);
                           onOpenBlock(blockId);
@@ -150,6 +155,8 @@ function FindingRow({
   siteId,
   pageId,
   publishing,
+  publishLabel,
+  publishDisabled,
   onOpenBlock,
   onPublish,
   onClose,
@@ -158,6 +165,8 @@ function FindingRow({
   siteId: string;
   pageId: string;
   publishing: boolean;
+  publishLabel: string;
+  publishDisabled: boolean;
   onOpenBlock: (blockId: string) => void;
   onPublish: () => void;
   onClose: () => void;
@@ -175,8 +184,8 @@ function FindingRow({
     );
   } else if (message.fix === "publish") {
     action = (
-      <Button type="button" size="sm" loading={publishing} onClick={onPublish}>
-        Publicar
+      <Button type="button" size="sm" loading={publishing} disabled={publishDisabled} onClick={onPublish}>
+        {publishLabel}
       </Button>
     );
   } else if (message.fix === "seo") {

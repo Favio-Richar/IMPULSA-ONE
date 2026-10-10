@@ -27,6 +27,7 @@ export const AGENCY_MODULE_KEYS = AGENCY_MODULES.map((module) => module.key) as 
 const ROOT_SEGMENT_MODULE: Record<string, AgencyModuleKey> = {
   sites: "sitios",
   themes: "sitios",
+  "publish-requests": "sitios",
   contacts: "contactos",
   bookings: "reservas",
   orders: "catalogo",

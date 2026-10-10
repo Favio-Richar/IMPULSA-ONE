@@ -18,7 +18,13 @@ import { PreviewPane } from "../../../../../../../components/block-editor/previe
 import { BLOCK_FIELD_SETS } from "../../../../../../../lib/block-fields/catalog";
 import { useActiveOrgStore } from "../../../../../../../lib/active-org-store";
 import { useBlockHistory } from "../../../../../../../lib/hooks/use-block-history";
-import { usePage, usePageHealth, usePublishPage } from "../../../../../../../lib/hooks/use-pages";
+import { usePage, usePageHealth } from "../../../../../../../lib/hooks/use-pages";
+import {
+  PublishErrorText,
+  PublishNotice,
+  PublishRequestDialog,
+  usePublishFlow,
+} from "../../../../../../../components/publish/publish-flow";
 import { useSiteBackground, useSiteTheme } from "../../../../../../../lib/hooks/use-sites";
 import {
   useBlocks,
@@ -65,7 +71,7 @@ function BlockEditor({
   const reorderMutation = useReorderBlocks(organizationId, siteId, pageId);
   const duplicateMutation = useDuplicateBlock(organizationId, siteId, pageId);
   const deleteMutation = useDeleteBlock(organizationId, siteId, pageId);
-  const publishMutation = usePublishPage(organizationId, siteId, pageId);
+  const flow = usePublishFlow(organizationId, siteId, pageId);
   // F6.1: se recalcula cada vez que cambian la página o sus bloques (ver `usePageHealth`).
   const healthQuery = usePageHealth(organizationId, siteId, pageId, Math.max(pageQuery.dataUpdatedAt, blocksQuery.dataUpdatedAt));
 
@@ -265,8 +271,10 @@ function BlockEditor({
             pageId={pageId}
             health={healthQuery}
             onOpenBlock={setSelectedBlockId}
-            onPublish={() => publishMutation.mutate()}
-            publishing={publishMutation.isPending}
+            onPublish={flow.act}
+            publishing={flow.busy}
+            publishLabel={flow.label}
+            publishDisabled={flow.disabled}
           />
           <Button type="button" variant="secondary" size="sm" onClick={() => setTemplateDialogOpen(true)}>
             <LayoutTemplate className="size-4" aria-hidden="true" />
@@ -276,18 +284,24 @@ function BlockEditor({
             <span className="text-sm text-muted-foreground">
               {page.status === "PUBLISHED" ? "Publicada" : "Borrador — nunca publicada"}
             </span>
-            <Button type="button" size="sm" loading={publishMutation.isPending} onClick={() => publishMutation.mutate()}>
-              Publicar
+            <Button type="button" size="sm" loading={flow.busy} disabled={flow.disabled} onClick={flow.act}>
+              {flow.label}
             </Button>
           </div>
         </div>
       </div>
-      {publishMutation.isError ? (
-        <p role="alert" className="-mt-2 self-end text-sm text-danger">
-          No pudimos publicar. Intenta de nuevo.
+      <PublishNotice flow={flow} />
+      <div className="-mt-2 self-end">
+        <PublishErrorText flow={flow} />
+      </div>
+      <PublishRequestDialog flow={flow} />
+      {flow.requestMutation.isSuccess ? (
+        <p role="status" className="-mt-2 inline-flex items-center gap-1 self-end text-sm text-success motion-pop">
+          <Check className="size-3.5" aria-hidden="true" />
+          Solicitud enviada. Quien pueda aprobar recibió un aviso.
         </p>
       ) : null}
-      {publishMutation.isSuccess ? (
+      {flow.publishMutation.isSuccess ? (
         <p className="-mt-2 self-end text-sm text-success motion-pop inline-flex items-center gap-1">
           <Check className="size-3.5" aria-hidden="true" />
           Publicado.

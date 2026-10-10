@@ -28,6 +28,8 @@ describe("agencyModuleOfSegments", () => {
     ["support-tickets", "soporte"],
     ["brand-profile", "marca"],
     ["ai", "ia"],
+    ["publish-requests", "sitios"],
+    ["publish-requests/abc/approve", "sitios"],
     ["sites/x/ai", "ia"],
   ])("la ruta %s es del módulo %s", (path, module) => {
     expect(moduleOf(path)).toBe(module);

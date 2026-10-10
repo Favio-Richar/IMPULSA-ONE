@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { Building2, CalendarCheck, ChartColumn, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Palette, Settings, ShieldCheck, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
+import { Building2, CalendarCheck, ChartColumn, ClipboardCheck, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Palette, Settings, ShieldCheck, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -12,6 +12,8 @@ import { usePathname } from "next/navigation";
 const NAV_ITEMS = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/sitios", label: "Sitios", icon: Globe },
+  // Cola de solicitudes de publicación (F9.6c, ADR-028 §3).
+  { href: "/aprobaciones", label: "Aprobaciones", icon: ClipboardCheck },
   { href: "/analitica", label: "Analítica", icon: ChartColumn },
   { href: "/contactos", label: "Contactos", icon: Users },
   // Campañas de email (F5.6).
@@ -48,6 +50,7 @@ const HIDDEN_WHEN_DELEGATED = new Set(["/cobros", "/plan", "/configuracion", "/c
 /** A qué módulo acotable (F9.6b) pertenece cada pantalla del menú; lo que no está aquí no se acota. */
 const MODULE_OF_HREF: Record<string, string> = {
   "/sitios": "sitios",
+  "/aprobaciones": "sitios",
   "/contactos": "contactos",
   "/reservas": "reservas",
   "/catalogo": "catalogo",

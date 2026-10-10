@@ -61,6 +61,14 @@ export const PERMISSION_MODULES = [
   },
   { module: "integraciones", label: "Integraciones", actions: [{ permission: "webhooks.manage", label: "Webhooks" }] },
   {
+    module: "publicacion",
+    label: "Aprobación de publicaciones",
+    actions: [
+      { permission: "publish.approve", label: "Aprobar y publicar" },
+      { permission: "publish.configure", label: "Activar la aprobación" },
+    ],
+  },
+  {
     module: "agencia",
     label: "Agencia",
     actions: [

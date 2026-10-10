@@ -22,7 +22,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Hecho (2026-10-03, desarrollada y verificada por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.4 | Panel de agencia | Hecho con reservas (2026-10-03, desarrollada y verificada por Claude; reservas en el detalle de la historia y en `CONTINUIDAD.md` §0) |
 | F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | Hecho con reservas (2026-10-04): F9.5a facturación, F9.5b transferir, F9.5c duplicar y F9.5d importar CSV; reservas en cada sub-historia y en `CONTINUIDAD.md` §0 |
-| F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados** y **F9.6b acceso por cliente y módulo** hechas (2026-10-04); faltan c (aprobación antes de publicar) y d (auditoría navegable) |
+| F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados**, **F9.6b acceso por cliente y módulo** y **F9.6c aprobación antes de publicar** hechas (2026-10-04/05); falta d (auditoría navegable) |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | Pendiente |
 | F9.8 | Reportes por cliente | Pendiente |
 | F9.9 | Moderación y reportes de abuso | Pendiente |
@@ -396,6 +396,25 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
 - **Reservas honestas:** el alcance es por persona y vale para todos los clientes por igual (no hay «solo Medios en el cliente A y solo Sitios en el B»); el alcance de alguien que sale de la agencia queda guardado
   y rige si vuelve (falla cerrado); el menú muestra «Integraciones» a una persona delegada acotada aunque el servidor ya le niega webhooks (no es un módulo acotable); las lecturas públicas y los webhooks
   salientes no pasan por esta puerta.
+
+#### F9.6c — Aprobación antes de publicar (criterio 4) — hecha (2026-10-05)
+
+- **Modelo:** `Organization.requirePublishApproval` + `PublishRequest` (contenido exacto pedido, su digest sha256, estado, comentarios, uso único). Una pendiente por página (índice parcial). Migración reversible
+  `20261005100000_f96c_publish_approval` (`down.sql` verificada: aplicar, borrar la fila de `_prisma_migrations`, redesplegar).
+- **Compuerta en el servidor, en las DOS únicas vías que publican** (`publishPage` y `restoreVersion`, comprobado por búsqueda de `PageStatus.PUBLISHED`/`pageVersion.create`): con la opción activa y sin `publish.approve`
+  solo se publica el contenido de una solicitud APROBADA, sin usar y con el mismo digest que el contenido vivo; se comprueba y se consume **dentro de la transacción** que crea la versión (403 `PUBLISH_APPROVAL_REQUIRED` /
+  `PUBLISH_APPROVAL_OUTDATED`). Publicar sin cambios sigue siendo idempotente y no pide nada.
+- **Reglas:** nadie resuelve su propia solicitud (`SELF_REVIEW`, aunque tenga el permiso); solo quien pidió la cancela; una nueva con otro contenido reemplaza a la pendiente; la aprobación de volver a una versión no
+  sirve para otra; solo el propietario activa la opción y una agencia delegada no llega a `publish-settings` (`AGENCY_LIMIT`); `publish-requests` cuenta como módulo `sitios` para el alcance de la agencia.
+- **API:** `GET/PUT …/publish-settings`, `GET …/publish-requests` (filtro y paginación en servidor), `GET …/:id` (con contenido), `POST …/:id/approve|reject|cancel`, `GET/POST …/pages/:pageId/publish-status|publish-requests`.
+  Todo en la auditoría (`publish_request.created/approved/rejected/cancelled`, `publish_settings.updated`) y con aviso por correo a quienes aprueban y a quien pidió (hoy solo consola).
+- **Defecto previo corregido de paso:** dos publicaciones simultáneas de una página daban 500 por la unicidad `[pageId, versionNumber]`; ahora cada página publica de a una (candado transaccional) y la segunda responde idempotente.
+- **UI:** botón único de publicar (editor, detalle de página y panel de salud) que pasa a «Pedir aprobación» / «Esperando aprobación» / «Publicar»; aviso con el estado y el motivo de un rechazo; historial con «Pedir aprobación» para restaurar;
+  nueva pantalla **Aprobaciones** (cola, filtro, paginación, revisión del contenido, aprobar/rechazar con motivo) y tarjeta de la opción en Configuración › Equipo. Estados de carga, vacío, error y éxito; móvil y escritorio.
+- **Pruebas:** 18 de integración (`publish-approval.e2e.test.ts`) + caso transversal de aislamiento (85/85), reglas puras, permisos, Playwright móvil/escritorio (`aprobacion-publicar.spec.ts`, capturas `12`–`20` en
+  `docs/design/capturas/f96`), y 6 mutaciones atrapadas (compuerta, digest, uso único en publicar, uso único en restaurar, autoaprobación, aislamiento).
+- **Reservas honestas:** la compuerta cubre la publicación de **páginas**; el tema, el fondo, los Smart CTA y las pruebas A/B se aplican en vivo por diseño (ADR) y no pasan por ella; no hay vencimiento de una aprobación
+  (la protege el digest y el uso único); los correos solo salen a la consola local; el portal del cliente que aprueba (`CLIENT_VIEWER`) llega con F9.7.
 
 ---
 

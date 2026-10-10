@@ -162,6 +162,8 @@ model User {
   auditLogsAsActor     AuditLog[]          @relation("AuditLogActor")
   agencyMemberScopes   AgencyMemberScope[] @relation("AgencyMemberScopeUser")
   pageVersionsCreated  PageVersion[]       @relation("PageVersionAuthor")
+  publishRequestsMade     PublishRequest[]  @relation("PublishRequestRequester")
+  publishRequestsReviewed PublishRequest[]  @relation("PublishRequestReviewer")
   contactsAssigned     Contact[]           @relation("ContactAssignee")
   supportTicketsOpened SupportTicket[]     @relation("SupportTicketOpener")
   supportMessages      SupportMessage[]    @relation("SupportMessageAuthor")
@@ -219,6 +221,8 @@ model Organization {
   blockedReason String?            @map("blocked_reason")
   // F9.3: la agencia ocultó el sitio público del cliente (pausa/archivo). Reversible; NULL = visible. Ver `ACTIVE_ORGANIZATION`.
   publicHiddenAt DateTime?         @map("public_hidden_at") @db.Timestamptz(6)
+  // F9.6c (ADR-028 §3): si es true, publicar o restaurar una página exige una solicitud aprobada, salvo para quien tiene `publish.approve`.
+  requirePublishApproval Boolean   @default(false) @map("require_publish_approval")
   createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -228,6 +232,7 @@ model Organization {
   duplications        AgencyDuplication[]  @relation("AgencyDuplications")
   agencyImports       AgencyImport[]       @relation("AgencyImports")
   customRoles         CustomRole[]
+  publishRequests     PublishRequest[]
   agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
@@ -899,6 +904,7 @@ model Page {
   site     Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
   blocks   Block[]
   versions PageVersion[]
+  publishRequests PublishRequest[]
   abTests  AbTest[]
   campaigns PageCampaign[]
 
@@ -926,10 +932,60 @@ model PageVersion {
 
   page      Page  @relation(fields: [pageId], references: [id], onDelete: Cascade)
   createdBy User? @relation("PageVersionAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  restoreRequests PublishRequest[] @relation("PublishRequestTarget")
+  publishedByRequests PublishRequest[] @relation("PublishRequestResult")
 
   @@unique([pageId, versionNumber])
   @@index([pageId])
   @@map("page_versions")
+}
+
+// F9.6c (ADR-028 §3): aprobación antes de publicar. Una solicitud guarda el contenido exacto que se pide publicar (`contentSnapshot`, con su
+// `contentDigest`): aprobarla es aprobar ESE contenido, y publicar exige que el contenido vivo siga teniendo ese digest. La unicidad de «una
+// pendiente por página» es un índice parcial creado con SQL en la migración (Prisma no lo expresa).
+enum PublishRequestKind {
+  PUBLISH
+  RESTORE
+}
+
+enum PublishRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model PublishRequest {
+  id              String               @id @default(uuid()) @db.Uuid
+  organizationId  String               @map("organization_id") @db.Uuid
+  pageId          String               @map("page_id") @db.Uuid
+  kind            PublishRequestKind   @default(PUBLISH)
+  // RESTORE: la versión del historial a la que se quiere volver.
+  targetVersionId String?              @map("target_version_id") @db.Uuid
+  status          PublishRequestStatus @default(PENDING)
+  contentDigest   String               @map("content_digest")
+  contentSnapshot Json                 @map("content_snapshot")
+  requestedById   String?              @map("requested_by_id") @db.Uuid
+  requestComment  String?              @map("request_comment")
+  reviewedById    String?              @map("reviewed_by_id") @db.Uuid
+  reviewComment   String?              @map("review_comment")
+  reviewedAt      DateTime?            @map("reviewed_at") @db.Timestamptz(6)
+  // Una aprobación se usa una sola vez: al publicar queda `consumedAt` y la versión resultante.
+  consumedAt         DateTime?         @map("consumed_at") @db.Timestamptz(6)
+  publishedVersionId String?           @map("published_version_id") @db.Uuid
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  page             Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  targetVersion    PageVersion? @relation("PublishRequestTarget", fields: [targetVersionId], references: [id], onDelete: SetNull)
+  publishedVersion PageVersion? @relation("PublishRequestResult", fields: [publishedVersionId], references: [id], onDelete: SetNull)
+  requestedBy      User?        @relation("PublishRequestRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  reviewedBy       User?        @relation("PublishRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, createdAt])
+  @@index([pageId, status])
+  @@map("publish_requests")
 }
 
 model Block {

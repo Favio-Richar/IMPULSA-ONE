@@ -58,6 +58,8 @@ describe("delegatedAccessVerdict — límites duros (lo que el cliente nunca del
     ["cambiar el rol de alguien o al propietario", "PATCH", `members/${ORG}`],
     ["remover a alguien o al propietario", "DELETE", `members/${ORG}`],
     ["los roles personalizados (listar)", "GET", "roles"],
+    ["la compuerta de aprobacion (leer)", "GET", "publish-settings"],
+    ["la compuerta de aprobacion (apagarla)", "PUT", "publish-settings"],
     ["los roles personalizados (crear)", "POST", "roles"],
     ["exportar los datos de un contacto", "GET", `contacts/${ORG}/export`],
   ];

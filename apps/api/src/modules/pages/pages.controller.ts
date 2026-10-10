@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { pageHealthResponse, pageResponse, pageVersionResponse, pageVersionSummaryResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
@@ -17,6 +17,7 @@ import {
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
 import { OrganizationMembershipGuard } from "../organizations/guards/organization-membership.guard.js";
+import type { RequestWithMembership } from "../organizations/request-with-membership.js";
 import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
 import {
@@ -34,6 +35,8 @@ import { PagesService } from "./pages.service.js";
 const PAGE_NOT_FOUND =
   "Página no encontrada: no existe, está en la papelera, o el sitio pertenece a otra organización (ADR-002).";
 const SLUG_TAKEN = "Ya existe una página con ese slug en este sitio.";
+const PUBLISH_APPROVAL_403 =
+  "La organización exige aprobación antes de publicar y no hay una solicitud aprobada de este contenido (código `PUBLISH_APPROVAL_REQUIRED`, o `PUBLISH_APPROVAL_OUTDATED` si cambió después de aprobarse).";
 const VERSION_NOT_FOUND = "Versión no encontrada: no existe, o no pertenece a esta página.";
 
 @ApiTags("pages")
@@ -237,7 +240,7 @@ export class PagesController {
   @ApiOperation({
     summary: "Publicar la página",
     description:
-      "Requiere `page.manage`. Toma una foto inmutable del contenido vivo (campos de la página + bloques con su configuración vigente) y la agrega al historial; marca la página como `PUBLISHED`. **Idempotente**: si el contenido no cambió desde la última publicación, no crea una versión nueva — devuelve la última tal cual, para que dejar la pestaña de publicar abierta y hacer clic varias veces no llene el historial de entradas idénticas.",
+      "Requiere `page.manage`. Toma una foto inmutable del contenido vivo (campos de la página + bloques con su configuración vigente) y la agrega al historial; marca la página como `PUBLISHED`. **Idempotente**: si el contenido no cambió desde la última publicación, no crea una versión nueva — devuelve la última tal cual, para que dejar la pestaña de publicar abierta y hacer clic varias veces no llene el historial de entradas idénticas. **Aprobación (F9.6c):** si la organización la exige y quien publica no tiene `publish.approve`, solo se publica el contenido de una solicitud aprobada y sin usar; si no, responde 403 `PUBLISH_APPROVAL_REQUIRED` (o `PUBLISH_APPROVAL_OUTDATED` si el contenido cambió después de aprobarse).",
   })
   @ApiUuidParam("siteId", "Sitio dueño de la página.")
   @ApiUuidParam("pageId", "Página a publicar.")
@@ -247,13 +250,15 @@ export class PagesController {
     "Versión vigente después de publicar (nueva, o la última si no hubo cambios).",
   )
   @ApiResponse({ status: 404, description: PAGE_NOT_FOUND })
+  @ApiResponse({ status: 403, description: PUBLISH_APPROVAL_403 })
   async publish(
     @Param("organizationId") organizationId: string,
     @Param("siteId") siteId: string,
     @Param("pageId") pageId: string,
     @CurrentUser() user: User,
+    @Req() req: RequestWithMembership,
   ) {
-    return this.pageVersionsService.publishPage(organizationId, user.id, siteId, pageId);
+    return this.pageVersionsService.publishPage(organizationId, user.id, siteId, pageId, req.membership);
   }
 
   // Leer el historial no exige permiso, mismo criterio que leer la página: basta con ser miembro
@@ -308,6 +313,7 @@ export class PagesController {
   @ApiUuidParam("versionId", "Versión del historial a la que volver.")
   @ApiZodResponse(201, pageVersionResponse, "Versión nueva, con el contenido restaurado.")
   @ApiResponse({ status: 404, description: VERSION_NOT_FOUND })
+  @ApiResponse({ status: 403, description: PUBLISH_APPROVAL_403 })
   @ApiResponse({
     status: 409,
     description: "El slug de esa versión ya lo usa otra página del sitio. Renómbrala antes de restaurar esta.",
@@ -318,7 +324,8 @@ export class PagesController {
     @Param("pageId") pageId: string,
     @Param("versionId") versionId: string,
     @CurrentUser() user: User,
+    @Req() req: RequestWithMembership,
   ) {
-    return this.pageVersionsService.restoreVersion(organizationId, user.id, siteId, pageId, versionId);
+    return this.pageVersionsService.restoreVersion(organizationId, user.id, siteId, pageId, versionId, req.membership);
   }
 }

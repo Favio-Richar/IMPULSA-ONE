@@ -106,7 +106,7 @@ const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
  * - `plan` solo se lee.
  * Los datos de acceso del propietario (contraseña, 2FA) viven fuera de las rutas de organización: no son alcanzables.
  */
-const DENIED_SEGMENTS = new Set(["payment-accounts", "billing", "members", "roles"]);
+const DENIED_SEGMENTS = new Set(["payment-accounts", "billing", "members", "roles", "publish-settings"]);
 const READ_ONLY_SEGMENTS = new Set(["plan"]);
 
 /** Segmentos de la ruta después de `organizations/<id>/` (vacío si la ruta es la de la organización misma). */

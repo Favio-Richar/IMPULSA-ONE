@@ -4,7 +4,14 @@ import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AuditService } from "../audit/audit.service.js";
 import { RevalidateWebService } from "../public-sites/revalidate-web.service.js";
-import { pageContentSnapshotSchema, snapshotsEqual, type PageContentSnapshot } from "./page-content-snapshot.js";
+import {
+  buildLiveSnapshot,
+  pageContentSnapshotSchema,
+  snapshotDigest,
+  snapshotsEqual,
+  type PageContentSnapshot,
+} from "./page-content-snapshot.js";
+import { PublishApprovalService, type ActorMembership } from "./publish-approval.service.js";
 
 /** Resumen de una versión para el historial navegable — sin el snapshot completo (F2.6). */
 export interface PageVersionSummary {
@@ -29,6 +36,7 @@ export class PageVersionsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
     private readonly revalidateWebService: RevalidateWebService,
+    private readonly publishApprovalService: PublishApprovalService,
   ) {}
 
   /**
@@ -143,36 +151,7 @@ export class PageVersionsService {
       return (await this.prisma.block.count({ where: { pageId } })) > 0;
     }
 
-    return !snapshotsEqual(last.contentSnapshot, await this.buildCandidateSnapshot(pageId, page));
-  }
-
-  /** Arma el snapshot con el estado **vivo** actual de la página y sus bloques. */
-  private async buildCandidateSnapshot(
-    pageId: string,
-    page: { slug: string; visibility: string; seoMeta: Prisma.JsonValue | null },
-  ): Promise<PageContentSnapshot> {
-    const blocks = await this.prisma.block.findMany({
-      where: { pageId },
-      orderBy: { position: "asc" },
-      include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } },
-    });
-
-    return pageContentSnapshotSchema.parse({
-      slug: page.slug,
-      visibility: page.visibility,
-      seoMeta: page.seoMeta,
-      blocks: blocks.map((block, index) => ({
-        id: block.id,
-        type: block.type,
-        position: index,
-        configSchemaVersion: block.configSchemaVersion,
-        visible: block.visible,
-        scheduledStart: block.scheduledStart?.toISOString() ?? null,
-        scheduledEnd: block.scheduledEnd?.toISOString() ?? null,
-        ...(block.isPrimary ? { isPrimary: true } : {}),
-        config: block.versions[0]?.config ?? null,
-      })),
-    });
+    return !snapshotsEqual(last.contentSnapshot, await buildLiveSnapshot(this.prisma, pageId, page));
   }
 
   /**
@@ -190,16 +169,34 @@ export class PageVersionsService {
     actorId: string,
     siteId: string,
     pageId: string,
+    membership: ActorMembership,
   ): Promise<PageVersionDetail> {
     const page = await this.getPageOrThrow(organizationId, siteId, pageId);
-    const candidate = await this.buildCandidateSnapshot(pageId, page);
+    const candidate = await buildLiveSnapshot(this.prisma, pageId, page);
+    const needsApproval = await this.publishApprovalService.needsApproval(this.prisma, organizationId, membership);
 
     const { versionId, created } = await this.prisma.$transaction(async (tx) => {
+      // Una publicación por página a la vez: sin el candado, dos a la vez calculaban el mismo número de versión y una terminaba en
+      // un 500 por la unicidad `[pageId, versionNumber]`. La que espera encuentra el contenido ya publicado y responde idempotente.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`page-publish:${pageId}`}, 0))`;
       const last = await tx.pageVersion.findFirst({ where: { pageId }, orderBy: { versionNumber: "desc" } });
 
+      // Sin cambios no se publica nada, así que tampoco hace falta aprobación (idempotente, F2.6).
       if (last && snapshotsEqual(last.contentSnapshot, candidate)) {
         return { versionId: last.id, created: false };
       }
+
+      // F9.6c: con la aprobación exigida, publicar solo es posible con una solicitud aprobada de ESTE contenido. Se comprueba
+      // dentro de la misma transacción que crea la versión, así dos publicaciones a la vez no usan la misma aprobación.
+      const approvalId = needsApproval
+        ? await this.publishApprovalService.findApprovalFor(tx, {
+            organizationId,
+            pageId,
+            kind: "PUBLISH",
+            digest: snapshotDigest(candidate),
+            targetVersionId: null,
+          })
+        : null;
 
       const version = await tx.pageVersion.create({
         data: {
@@ -212,6 +209,9 @@ export class PageVersionsService {
       });
 
       await tx.page.update({ where: { id: pageId }, data: { status: PageStatus.PUBLISHED } });
+      if (approvalId !== null) {
+        await this.publishApprovalService.markConsumed(tx, approvalId, version.id);
+      }
 
       return { versionId: version.id, created: true };
     });
@@ -254,6 +254,7 @@ export class PageVersionsService {
     siteId: string,
     pageId: string,
     versionId: string,
+    membership: ActorMembership,
   ): Promise<PageVersionDetail> {
     await this.getPageOrThrow(organizationId, siteId, pageId);
 
@@ -263,10 +264,23 @@ export class PageVersionsService {
     }
 
     const snapshot = pageContentSnapshotSchema.parse(target.contentSnapshot);
+    const needsApproval = await this.publishApprovalService.needsApproval(this.prisma, organizationId, membership);
 
     let newVersionId: string;
     try {
       newVersionId = await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`page-publish:${pageId}`}, 0))`;
+        // F9.6c: restaurar también publica (reemplaza lo que ve el público), así que pasa por la misma compuerta.
+        const approvalId = needsApproval
+          ? await this.publishApprovalService.findApprovalFor(tx, {
+              organizationId,
+              pageId,
+              kind: "RESTORE",
+              digest: snapshotDigest(snapshot),
+              targetVersionId: target.id,
+            })
+          : null;
+
         await tx.block.deleteMany({ where: { pageId } });
 
         for (const [index, block] of snapshot.blocks.entries()) {
@@ -318,6 +332,10 @@ export class PageVersionsService {
             createdById: actorId,
           },
         });
+
+        if (approvalId !== null) {
+          await this.publishApprovalService.markConsumed(tx, approvalId, version.id);
+        }
 
         return version.id;
       });

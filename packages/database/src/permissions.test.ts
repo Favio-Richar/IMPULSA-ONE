@@ -75,4 +75,21 @@ describe("catálogo de permisos (F1.6)", () => {
       .map(([role]) => role);
     expect(withLink).toEqual(["OWNER"]);
   });
+
+  // F9.6c (ADR-028 s3): la compuerta de publicacion.
+  it("solo el propietario activa la aprobacion antes de publicar; aprueban el propietario y los administradores", () => {
+    const holders = (key: string) =>
+      Object.entries(ROLE_PERMISSIONS)
+        .filter(([, keys]) => keys.includes(key as never))
+        .map(([role]) => role)
+        .sort();
+    expect(holders(PERMISSIONS.PUBLISH_CONFIGURE)).toEqual(["OWNER"]);
+    expect(holders(PERMISSIONS.PUBLISH_APPROVE)).toEqual(["ADMIN", "OWNER"]);
+  });
+
+  it("la agencia delegada nunca se aprueba a si misma: no tiene publish.approve ni publish.configure", () => {
+    const delegate = ROLE_PERMISSIONS.AGENCY_DELEGATE!;
+    expect(delegate).not.toContain(PERMISSIONS.PUBLISH_APPROVE);
+    expect(delegate).not.toContain(PERMISSIONS.PUBLISH_CONFIGURE);
+  });
 });

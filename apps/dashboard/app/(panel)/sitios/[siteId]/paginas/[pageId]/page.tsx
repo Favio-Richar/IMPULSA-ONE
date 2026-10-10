@@ -27,6 +27,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { SeoAiDialog } from "../../../../../../components/ai/ai-assistant-dialogs";
 import { ConfirmButton } from "../../../../../../components/confirm-button";
+import {
+  PublishErrorText,
+  PublishNotice,
+  PublishRequestDialog,
+  publishErrorMessage,
+  usePublishFlow,
+} from "../../../../../../components/publish/publish-flow";
 import { SmartCtaCard } from "../../../../../../components/smart-cta/smart-cta-card";
 import { useActiveOrgStore } from "../../../../../../lib/active-org-store";
 import { ApiError } from "../../../../../../lib/api-client";
@@ -35,7 +42,6 @@ import {
   usePage,
   usePages,
   usePageVersions,
-  usePublishPage,
   useRestorePageVersion,
   useUpdatePage,
 } from "../../../../../../lib/hooks/use-pages";
@@ -211,24 +217,27 @@ function PublishCard({
   pageId: string;
   status: "DRAFT" | "PUBLISHED";
 }): React.JSX.Element {
-  const publishMutation = usePublishPage(organizationId, siteId, pageId);
+  const flow = usePublishFlow(organizationId, siteId, pageId);
 
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle>Publicación</CardTitle>
-        <Button loading={publishMutation.isPending} onClick={() => publishMutation.mutate()}>
-          Publicar
+        <Button loading={flow.busy} disabled={flow.disabled} onClick={flow.act}>
+          {flow.label}
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">{STATUS_LABEL[status]}</p>
-        {publishMutation.isError ? (
-          <p role="alert" className="mt-2 text-sm text-danger">
-            No pudimos publicar. Intenta de nuevo.
+        <PublishNotice flow={flow} />
+        <PublishErrorText flow={flow} />
+        {flow.publishMutation.isSuccess ? <p className="text-sm text-success">Publicado.</p> : null}
+        {flow.requestMutation.isSuccess ? (
+          <p role="status" className="text-sm text-success">
+            Solicitud enviada. Quien pueda aprobar recibió un aviso.
           </p>
         ) : null}
-        {publishMutation.isSuccess ? <p className="mt-2 text-sm text-success">Publicado.</p> : null}
+        <PublishRequestDialog flow={flow} />
       </CardContent>
     </Card>
   );
@@ -438,6 +447,7 @@ function VersionHistory({
 }): React.JSX.Element {
   const versionsQuery = usePageVersions(organizationId, siteId, pageId);
   const restoreMutation = useRestorePageVersion(organizationId, siteId, pageId);
+  const flow = usePublishFlow(organizationId, siteId, pageId);
 
   if (versionsQuery.isPending) {
     return <LoadingState label="Cargando historial…" />;
@@ -478,17 +488,31 @@ function VersionHistory({
                     {version.createdBy?.email ?? "Cuenta eliminada"}
                   </TableCell>
                   <TableCell>
-                    <ConfirmButton
-                      variant="ghost"
-                      size="sm"
-                      disabled={index === 0}
-                      title={index === 0 ? "Ya es la versión vigente." : undefined}
-                      confirmLabel={`¿Restaurar la versión #${version.versionNumber}?`}
-                      loading={restoreMutation.isPending}
-                      onConfirm={() => restoreMutation.mutate(version.id)}
-                    >
-                      Restaurar
-                    </ConfirmButton>
+                    {flow.mustRequest && index !== 0 && !restoreApproved(flow.status, version.versionNumber) ? (
+                      restorePending(flow.status, version.versionNumber) ? (
+                        <span className="text-sm text-muted-foreground">Esperando aprobación</span>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => flow.openRequest({ versionId: version.id, versionNumber: version.versionNumber })}
+                        >
+                          Pedir aprobación
+                        </Button>
+                      )
+                    ) : (
+                      <ConfirmButton
+                        variant="ghost"
+                        size="sm"
+                        disabled={index === 0}
+                        title={index === 0 ? "Ya es la versión vigente." : undefined}
+                        confirmLabel={`¿Restaurar la versión #${version.versionNumber}?`}
+                        loading={restoreMutation.isPending}
+                        onConfirm={() => restoreMutation.mutate(version.id)}
+                      >
+                        Restaurar
+                      </ConfirmButton>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -497,10 +521,29 @@ function VersionHistory({
         )}
         {restoreMutation.isError ? (
           <p role="alert" className="mt-2 text-sm text-danger">
-            No pudimos restaurar esa versión. Intenta de nuevo.
+            {publishErrorMessage(restoreMutation.error, "No pudimos restaurar esa versión. Intenta de nuevo.")}
           </p>
         ) : null}
+        {flow.requestMutation.isSuccess ? (
+          <p role="status" className="mt-2 text-sm text-success">
+            Solicitud enviada. Quien pueda aprobar recibió un aviso.
+          </p>
+        ) : null}
+        <PublishRequestDialog flow={flow} />
       </CardContent>
     </Card>
   );
+}
+
+type PublishStatus = NonNullable<ReturnType<typeof usePublishFlow>["status"]>;
+
+/** ¿Hay una aprobación sin usar para volver a esta versión? */
+function restoreApproved(status: PublishStatus | undefined, versionNumber: number): boolean {
+  return (status?.approved ?? []).some((request) => request.kind === "RESTORE" && request.targetVersionNumber === versionNumber);
+}
+
+/** ¿Hay una solicitud pendiente para volver a esta versión? */
+function restorePending(status: PublishStatus | undefined, versionNumber: number): boolean {
+  const pending = status?.pending;
+  return pending?.kind === "RESTORE" && pending.targetVersionNumber === versionNumber;
 }

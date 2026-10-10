@@ -3,6 +3,7 @@
 import { EmptyState } from "@impulza/ui";
 import Link from "next/link";
 import { InviteCard } from "../../../components/team/invite-card";
+import { PublishSettingsCard } from "../../../components/publish/settings-card";
 import { MembersCard } from "../../../components/team/members-card";
 import { useActiveOrgStore } from "../../../lib/active-org-store";
 
@@ -28,6 +29,7 @@ export default function ConfiguracionPage(): React.JSX.Element {
       </header>
       <MembersCard organizationId={organizationId} />
       <InviteCard organizationId={organizationId} />
+      <PublishSettingsCard organizationId={organizationId} />
     </div>
   );
 }

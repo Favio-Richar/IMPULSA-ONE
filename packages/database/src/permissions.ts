@@ -29,6 +29,9 @@ export const PERMISSIONS = {
   // F9.3 (ADR-028): modo agencia.
   AGENCY_MANAGE: "agency.manage",
   AGENCY_LINK_MANAGE: "agency.link.manage",
+  // F9.6c (ADR-028 s3): aprobacion antes de publicar.
+  PUBLISH_APPROVE: "publish.approve",
+  PUBLISH_CONFIGURE: "publish.configure",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -138,6 +141,15 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.AGENCY_LINK_MANAGE,
     description: "En un negocio: aceptar o rechazar la solicitud de una agencia y revocar su acceso en cualquier momento (F9.3, ADR-028 §2). Solo el propietario.",
   },
+  {
+    key: PERMISSIONS.PUBLISH_APPROVE,
+    description:
+      "Aprobar o rechazar las solicitudes de publicación de otras personas y publicar sin pedir aprobación cuando la organización la exige (F9.6c, ADR-028 §3).",
+  },
+  {
+    key: PERMISSIONS.PUBLISH_CONFIGURE,
+    description: "Activar o desactivar la aprobación antes de publicar de la organización (F9.6c). Solo el propietario: es la compuerta misma.",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -180,6 +192,9 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     // El propietario decide qué agencia entra a su negocio y puede revocarla (F9.3, ADR-028 §2).
     PERMISSIONS.AGENCY_LINK_MANAGE,
     PERMISSIONS.AGENCY_MANAGE,
+    // La compuerta de publicación la decide el dueño; aprobar lo comparte con ADMIN (F9.6c).
+    PERMISSIONS.PUBLISH_CONFIGURE,
+    PERMISSIONS.PUBLISH_APPROVE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -204,6 +219,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.CAMPAIGN_MANAGE,
     PERMISSIONS.WEBHOOKS_MANAGE,
     PERMISSIONS.AGENCY_MANAGE,
+    PERMISSIONS.PUBLISH_APPROVE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y

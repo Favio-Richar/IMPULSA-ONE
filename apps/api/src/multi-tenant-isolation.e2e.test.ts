@@ -2341,4 +2341,39 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("F9.6c Aprobación antes de publicar: solicitudes y opción nunca se cruzan (ADR-002, ADR-028 §3)", () => {
+    it("B no ve, resuelve ni cambia la compuerta de A; la solicitud de A no aparece en B", async () => {
+      const page = await prisma.page.findFirstOrThrow({ where: { siteId: orgA.siteId } });
+      const request = await prisma.publishRequest.create({
+        data: {
+          organizationId: orgA.id,
+          pageId: page.id,
+          contentDigest: "0".repeat(64),
+          contentSnapshot: { slug: page.slug, visibility: "PUBLIC", seoMeta: null, blocks: [] },
+        },
+      });
+      try {
+        const base = `/api/v1/organizations/${orgA.id}`;
+        // Por la ruta de A: no es miembro (403). Por la de B: la solicitud no existe ahí (404).
+        await orgB.ownerAgent.get(`${base}/publish-requests`).expect(403);
+        await orgB.ownerAgent.get(`${base}/publish-requests/${request.id}`).expect(403);
+        await orgB.ownerAgent.post(`${base}/publish-requests/${request.id}/approve`).set(CSRF_HEADERS).send({}).expect(403);
+        await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/publish-requests/${request.id}`).expect(404);
+        await orgB.ownerAgent.post(`/api/v1/organizations/${orgB.id}/publish-requests/${request.id}/approve`).set(CSRF_HEADERS).send({}).expect(404);
+        await orgB.ownerAgent.post(`/api/v1/organizations/${orgB.id}/publish-requests/${request.id}/reject`).set(CSRF_HEADERS).send({ comment: "Intento cruzado" }).expect(404);
+
+        // La compuerta de A no la toca B.
+        await orgB.ownerAgent.get(`${base}/publish-settings`).expect(403);
+        await orgB.ownerAgent.put(`${base}/publish-settings`).set(CSRF_HEADERS).send({ requireApproval: true }).expect(403);
+        expect((await prisma.organization.findUniqueOrThrow({ where: { id: orgA.id }, select: { requirePublishApproval: true } })).requirePublishApproval).toBe(false);
+
+        const listB = await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/publish-requests`).expect(200);
+        expect((listB.body.items as Array<{ id: string }>).map((item) => item.id)).not.toContain(request.id);
+        expect((await prisma.publishRequest.findUniqueOrThrow({ where: { id: request.id } })).status).toBe("PENDING");
+      } finally {
+        await prisma.publishRequest.deleteMany({ where: { organizationId: orgA.id } });
+      }
+    });
+  });
+
 });

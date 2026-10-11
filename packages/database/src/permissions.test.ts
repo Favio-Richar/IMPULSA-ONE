@@ -87,6 +87,14 @@ describe("catálogo de permisos (F1.6)", () => {
     expect(holders(PERMISSIONS.PUBLISH_APPROVE)).toEqual(["ADMIN", "OWNER"]);
   });
 
+  it("la auditoria es de propietario y administradores; la agencia delegada no la ve", () => {
+    const holders = Object.entries(ROLE_PERMISSIONS)
+      .filter(([, keys]) => keys.includes(PERMISSIONS.AUDIT_VIEW))
+      .map(([role]) => role)
+      .sort();
+    expect(holders).toEqual(["ADMIN", "OWNER"]);
+  });
+
   it("la agencia delegada nunca se aprueba a si misma: no tiene publish.approve ni publish.configure", () => {
     const delegate = ROLE_PERMISSIONS.AGENCY_DELEGATE!;
     expect(delegate).not.toContain(PERMISSIONS.PUBLISH_APPROVE);

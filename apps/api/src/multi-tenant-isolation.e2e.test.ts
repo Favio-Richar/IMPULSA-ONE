@@ -2376,4 +2376,23 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("F9.6d Auditoría navegable: nunca se cruza (ADR-002, ADR-028 §3)", () => {
+    it("B no ve ni exporta la auditoría de A, y la propia de B no trae lo de A", async () => {
+      const marker = `auditoria-iso-${Date.now()}`;
+      await prisma.auditLog.create({ data: { organizationId: orgA.id, action: "site.updated", targetType: "Site", metadata: { marker } } });
+      try {
+        await orgB.ownerAgent.get(`/api/v1/organizations/${orgA.id}/audit-logs`).expect(403);
+        await orgB.ownerAgent.get(`/api/v1/organizations/${orgA.id}/audit-logs/export`).expect(403);
+        const own = await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/audit-logs?action=site`).expect(200);
+        expect(JSON.stringify(own.body)).not.toContain(marker);
+        const mine = await orgA.ownerAgent.get(`/api/v1/organizations/${orgA.id}/audit-logs?action=site.updated`).expect(200);
+        expect(JSON.stringify(mine.body)).toContain(marker);
+        // B no es una agencia: su vista de agencia no existe.
+        await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/agency/audit-logs`).expect(403);
+      } finally {
+        await prisma.auditLog.deleteMany({ where: { organizationId: orgA.id, action: "site.updated", metadata: { path: ["marker"], equals: marker } } });
+      }
+    });
+  });
+
 });

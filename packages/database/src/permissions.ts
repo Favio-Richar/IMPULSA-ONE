@@ -32,6 +32,8 @@ export const PERMISSIONS = {
   // F9.6c (ADR-028 s3): aprobacion antes de publicar.
   PUBLISH_APPROVE: "publish.approve",
   PUBLISH_CONFIGURE: "publish.configure",
+  // F9.6d (ADR-028 s3): auditoria navegable.
+  AUDIT_VIEW: "audit.view",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -150,6 +152,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.PUBLISH_CONFIGURE,
     description: "Activar o desactivar la aprobación antes de publicar de la organización (F9.6c). Solo el propietario: es la compuerta misma.",
   },
+  {
+    key: PERMISSIONS.AUDIT_VIEW,
+    description: "Ver y exportar la auditoría de la organización: quién hizo qué y cuándo (F9.6d, ADR-028 §3). En una agencia, también las acciones que su equipo hizo en sus clientes.",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -195,6 +201,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     // La compuerta de publicación la decide el dueño; aprobar lo comparte con ADMIN (F9.6c).
     PERMISSIONS.PUBLISH_CONFIGURE,
     PERMISSIONS.PUBLISH_APPROVE,
+    // La auditoría incluye cuentas y acciones del equipo: es del propietario y de los administradores (F9.6d).
+    PERMISSIONS.AUDIT_VIEW,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -220,6 +228,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.WEBHOOKS_MANAGE,
     PERMISSIONS.AGENCY_MANAGE,
     PERMISSIONS.PUBLISH_APPROVE,
+    PERMISSIONS.AUDIT_VIEW,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y

@@ -22,7 +22,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.3 | Modelo de agencia: clientes, acceso delegado y aislamiento | Hecho (2026-10-03, desarrollada y verificada por Claude; reservas en `CONTINUIDAD.md` §0) |
 | F9.4 | Panel de agencia | Hecho con reservas (2026-10-03, desarrollada y verificada por Claude; reservas en el detalle de la historia y en `CONTINUIDAD.md` §0) |
 | F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | Hecho con reservas (2026-10-04): F9.5a facturación, F9.5b transferir, F9.5c duplicar y F9.5d importar CSV; reservas en cada sub-historia y en `CONTINUIDAD.md` §0 |
-| F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados**, **F9.6b acceso por cliente y módulo** y **F9.6c aprobación antes de publicar** hechas (2026-10-04/05); falta d (auditoría navegable) |
+| F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados**, **F9.6b acceso por cliente y módulo** **F9.6c aprobación antes de publicar** y **F9.6d auditoría navegable** hechas (2026-10-04/11): **F9.6 completa** |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | Pendiente |
 | F9.8 | Reportes por cliente | Pendiente |
 | F9.9 | Moderación y reportes de abuso | Pendiente |
@@ -415,6 +415,19 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
   `docs/design/capturas/f96`), y 6 mutaciones atrapadas (compuerta, digest, uso único en publicar, uso único en restaurar, autoaprobación, aislamiento).
 - **Reservas honestas:** la compuerta cubre la publicación de **páginas**; el tema, el fondo, los Smart CTA y las pruebas A/B se aplican en vivo por diseño (ADR) y no pasan por ella; no hay vencimiento de una aprobación
   (la protege el digest y el uso único); los correos solo salen a la consola local; el portal del cliente que aprueba (`CLIENT_VIEWER`) llega con F9.7.
+
+#### F9.6d — Auditoría navegable (criterio 5) — hecha (2026-10-11)
+
+- **Sin modelo nuevo:** se consulta `AuditLog`. Permiso `audit.view` (OWNER y ADMIN); una agencia delegada no lo tiene y `audit-logs` entra a los segmentos que un cliente nunca delega (`AGENCY_LIMIT`).
+- **API:** `GET …/audit-logs` y `…/audit-logs/export` (organización) y `GET …/agency/audit-logs` y `…/export` (agencia). Filtros validados (persona por fragmento de correo, acción o su prefijo, tipo de recurso, fechas con
+  rango máximo de 366 días y, en agencia, cliente); paginación y recuento en la base; exportación por `toCsv` (celdas neutralizadas), tope de 10 000 filas con aviso y límite de 10 por minuto.
+- **Límites de visibilidad:** una organización solo ve la suya; la agencia ve **solo las acciones que su equipo hizo con acceso delegado** (nunca lo que el cliente hace por su cuenta), y una persona acotada a ciertos clientes
+  solo ve esos (un cliente fuera de su alcance o ajeno responde 404, igual que uno inexistente). Exportar queda registrado (`audit.exported`, con filtros y cantidad, sin contenido).
+- **UI:** Configuración › Auditoría y Agencia › Auditoría: filtros, lista con etiquetas legibles y detalle desplegable, paginación, exportar CSV; estados de carga, vacío, sin resultados, error y sin permiso; móvil y escritorio.
+- **Pruebas:** 6 de integración (`audit-query.e2e.test.ts`) + caso transversal de aislamiento, esquemas y CSV (unitarias), Playwright móvil/escritorio (`auditoria.spec.ts`, capturas `21`–`24`), y 5 mutaciones atrapadas
+  (agencia ve lo del cliente, alcance por cliente, aislamiento de organización, permiso, registro de la exportación).
+- **Reservas honestas:** la agencia acotada por **módulo** (F9.6b) ve igual las acciones de todos los módulos en sus clientes permitidos (el filtro es por cliente); el detalle muestra el `metadata` tal cual se guardó (el servidor
+  nunca guarda secretos, ST §16); no hay búsqueda de texto libre dentro del detalle; no se archiva ni se purga la auditoría (sin política de retención todavía).
 
 ---
 

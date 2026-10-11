@@ -5,15 +5,14 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-10) — F9.6a, F9.6b y F9.6c hechas en la rama `fase-9/f9-6-equipo-avanzado` (sobre F9.5); siguiente: F9.6d (auditoría navegable), luego F9.7
+## 0. RETOMAR AQUÍ (2026-10-11) — **F9.6 completa** (a, b, c y d) en la rama `fase-9/f9-6-equipo-avanzado`; siguiente: F9.7 (marca blanca)
 
-**F9.6c (aprobación antes de publicar) cerrada**: detalle y reservas en `docs/BACKLOG_FASE_9.md`. La compuerta vive en `PageVersionsService` (publicar y restaurar, dentro de la transacción) con `PublishApprovalService`
-(`apps/api/src/modules/pages`); el panel usa `usePublishFlow` (`apps/dashboard/components/publish`). **Trampas nuevas:** los permisos solo se siembran (`db:seed`), no hay migración que los inserte; tras agregar permisos
-reconstruir `validation`, `contracts`, `database`; el árbol de trabajo está en CRLF (`core.autocrlf`): los scripts de edición deben normalizar CRLF↔LF; en heredocs de Bash los `\n` de Python se vuelven saltos reales
-(escribir los scripts con la herramienta Write); `Select` de `@impulza/ui` es un `<select>` nativo (`onChange`, no `onValueChange`); Prisma 6 soporta `omit` (se usa para no cargar el snapshot en listas).
+**F9.6d (auditoría navegable) cerrada**: detalle y reservas en `docs/BACKLOG_FASE_9.md`. Servicio `AuditQueryService` y controladores en `apps/api/src/modules/audit`; panel en `apps/dashboard/components/audit`.
+**Trampa nueva:** `@RequirePermission` es un decorador **de método** (no de clase): ponerlo en cada ruta. El `vite-node --watch` de la API no recarga un módulo/controlador nuevo (404): reiniciarla.
+**F9.6c** sigue descrita en el backlog (compuerta en publicar/restaurar, `PublishApprovalService`, `usePublishFlow`).
 
-**Siguiente — F9.6d (auditoría navegable):** vista filtrable por actor, acción, cliente y fecha; paginación en servidor; exportación CSV segura con `csvCell`. Las acciones ya se registran en `AuditLog`; falta la consulta,
-el permiso de lectura (decidir: `audit.view` en OWNER/ADMIN) y la pantalla. Luego F9.7 a F9.10. **No tocar `apps/api` mientras corre su suite completa.**
+**Siguiente — F9.7 (marca blanca):** leer el criterio completo en `docs/BACKLOG_FASE_9.md` (WhiteLabelSettings, dominio de agencia reutilizando dominios, portal del cliente `CLIENT_VIEWER`, correos con la marca de la agencia,
+plantillas privadas). Es la historia con más superficie de seguridad (suplantación, dominio no verificado, portal): empezar por el modelo y las reglas puras. **No tocar `apps/api` mientras corre su suite completa.**
 
 **Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia y **push de la rama al cerrar cada una** (autorizado por Favio; ver memoria «Subir cada fase a GitHub»). Fusionar a `master` sigue pidiendo confirmación.
 

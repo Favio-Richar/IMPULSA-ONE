@@ -60,6 +60,8 @@ describe("delegatedAccessVerdict — límites duros (lo que el cliente nunca del
     ["los roles personalizados (listar)", "GET", "roles"],
     ["la compuerta de aprobacion (leer)", "GET", "publish-settings"],
     ["la compuerta de aprobacion (apagarla)", "PUT", "publish-settings"],
+    ["la auditoria del cliente (leer)", "GET", "audit-logs"],
+    ["la auditoria del cliente (exportar)", "GET", "audit-logs/export"],
     ["los roles personalizados (crear)", "POST", "roles"],
     ["exportar los datos de un contacto", "GET", `contacts/${ORG}/export`],
   ];

@@ -587,3 +587,8 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   (una aprobación se usa **una sola vez**: al publicar queda cerrada con la versión resultante).
 - **Índice parcial único** `publish_requests_one_pending_per_page` (`page_id` donde `status = 'PENDING'`): una sola pendiente por página; creado con SQL en la migración `20261005100000_f96c_publish_approval` (con `down.sql`).
 - Permisos nuevos: `publish.approve` (OWNER, ADMIN) y `publish.configure` (OWNER). `AGENCY_DELEGATE` no tiene ninguno: la agencia pide, el cliente aprueba.
+
+## 9zb. Auditoría navegable (F9.6d, BACKLOG_FASE_9.md, ADR-028 §3)
+
+- Sin tablas nuevas: se consulta `audit_logs` (índices por `organization_id` y `actor_id`). La vista de agencia filtra por la marca `metadata.delegatedBy.agencyOrganizationId` y por las organizaciones de sus clientes (y, si la persona
+  está acotada por F9.6b, solo las de su alcance). Permiso nuevo `audit.view` (OWNER, ADMIN); `AGENCY_DELEGATE` no lo tiene y `audit-logs` es un segmento que el cliente nunca delega.

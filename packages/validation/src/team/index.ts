@@ -60,6 +60,7 @@ export const PERMISSION_MODULES = [
     ],
   },
   { module: "integraciones", label: "Integraciones", actions: [{ permission: "webhooks.manage", label: "Webhooks" }] },
+  { module: "auditoria", label: "Auditoría", actions: [{ permission: "audit.view", label: "Ver y exportar" }] },
   {
     module: "publicacion",
     label: "Aprobación de publicaciones",

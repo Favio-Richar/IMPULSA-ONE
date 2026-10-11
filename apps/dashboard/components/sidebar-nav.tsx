@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { Building2, CalendarCheck, ChartColumn, ClipboardCheck, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Palette, Settings, ShieldCheck, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
+import { Building2, CalendarCheck, ChartColumn, ClipboardCheck, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Palette, ScrollText, Settings, ShieldCheck, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -39,13 +39,15 @@ const NAV_ITEMS = [
   { href: "/configuracion", label: "Equipo", icon: Settings },
   // F9.6a: roles personalizados (ADR-028 §3).
   { href: "/configuracion/roles", label: "Roles", icon: ShieldCheck },
+  // F9.6d: auditoría navegable (ADR-028 s3). Solo propietario y administradores; el servidor lo comprueba.
+  { href: "/configuracion/auditoria", label: "Auditoría", icon: ScrollText },
 ];
 
 /**
  * Lo que un negocio nunca delega a su agencia (ADR-028 §2): su cuenta de cobro, su suscripción y su equipo. El servidor
  * ya lo niega (`AGENCY_LIMIT`); esto evita ofrecer pantallas que siempre fallarían.
  */
-const HIDDEN_WHEN_DELEGATED = new Set(["/cobros", "/plan", "/configuracion", "/configuracion/roles", "/configuracion/agencia"]);
+const HIDDEN_WHEN_DELEGATED = new Set(["/cobros", "/plan", "/configuracion", "/configuracion/roles", "/configuracion/auditoria", "/configuracion/agencia"]);
 
 /** A qué módulo acotable (F9.6b) pertenece cada pantalla del menú; lo que no está aquí no se acota. */
 const MODULE_OF_HREF: Record<string, string> = {

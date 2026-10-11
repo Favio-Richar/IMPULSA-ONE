@@ -66,6 +66,10 @@ function AgencyView({ organizationId }: { organizationId: string }): React.JSX.E
           <Link href="/agencia/equipo" className="font-medium text-primary underline underline-offset-2">
             Equipo y acceso a clientes
           </Link>
+          {" · "}
+          <Link href="/agencia/auditoria" className="font-medium text-primary underline underline-offset-2">
+            Auditoría
+          </Link>
         </p>
       </header>
 

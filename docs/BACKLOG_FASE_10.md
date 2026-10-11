@@ -7,7 +7,7 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 | Historia | Título | Estado |
 |---|---|---|
 | F10.1 | Miembros de sitio y contenido protegido (enlace mágico) | **Hecha** (2026-10-11): API 12/12, suite 74/74 (API 1035), Playwright 4/4; reservas en el detalle |
-| F10.2 | Planes de membresía y cobro recurrente por la cuenta del negocio | Pendiente |
+| F10.2 | Planes de membresía y cobro por la cuenta del negocio | **Hecha la parte (a)** (2026-10-11): planes, compra, acceso por vigencia, reembolsos; falta (b) avisos de renovación y vencimiento |
 | F10.3 | Cursos: módulos, lecciones y progreso | Pendiente |
 | F10.4 | Tarjeta digital, vCard y pases de wallet | Pendiente |
 | F10.5 | PWA: instalación y modo sin conexión acotado | Pendiente |
@@ -58,6 +58,31 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 5. Panel: planes (crear, editar, archivar), miembros con su estado, ingresos del periodo.
 6. **Pruebas:** proveedor simulado (aprobado, rechazado, pendiente, reembolsado), idempotencia del webhook, vigencia que
    corta el acceso, doble cobro imposible, aislamiento, Playwright de compra y cancelación.
+
+**Hecha — F10.2a (2026-10-11): planes, compra y acceso por periodo pagado.**
+
+- **Modelo** (migración reversible `20261011200000_f102_membership_plans`): `MembershipPlan` (precio entero en la unidad mínima, `CHECK > 0`, moneda de 3 letras), `MembershipPurchase` (copia del plan, pago único y
+  asignado de forma condicional, vigencia con `CHECK` de que una compra pagada tiene periodo) y `SiteMember.source` (`INVITED` | `PURCHASED`). Revertirla deja a los compradores como invitados (conservan acceso): documentado
+  en `down.sql`.
+- **Modelo de cobro: periodos PREPAGADOS que se apilan, sin cobro automático.** Cada compra paga un periodo de 30 o 365 días; renovar antes suma los días (el nuevo empieza donde termina el vigente). Se eligió así porque
+  reutiliza el Checkout Pro del negocio ya verificado (ADR-013) y no exige permisos de suscripción sobre la cuenta del vendedor.
+- **El dinero va directo a la cuenta de Mercado Pago del negocio** (Impulza no custodia ni cobra comisión). El precio sale del plan guardado: el cuerpo de la compra rechaza cualquier campo de precio. La confirmación
+  nunca sale del aviso ni de la URL de regreso: se consulta el pago con el token del negocio y se aplica solo si la cuenta receptora, la referencia, el monto y la moneda coinciden; asignar el pago es condicional (dos
+  avisos simultáneos: uno activa, otro `unchanged`). Un pago aprobado que llega con el cobro vencido igual se aplica.
+- **Acceso por vigencia:** un miembro invitado entra mientras esté activo; uno que compró, solo con un periodo pagado vigente y aprobado. Un reembolso total, un contracargo o un reclamo lo cortan (parcial no). La
+  sesión sigue siendo válida: el contenido responde **403 `MEMBERSHIP_INACTIVE`** y la puerta ofrece renovar. Un miembro revocado no puede comprar.
+- **API:** panel `…/members/plans` (crear, editar, archivar, restaurar; tope de 10 planes activos; solo CLP por ahora, que es lo que cobra el Checkout Pro integrado; ingresos del mes neto de devoluciones y miembros vigentes
+  por plan); público `GET …/members/plans`, `POST …/members/plans/:id/checkout`, `GET /public/memberships/purchases/:token`; webhook firmado `POST /payments/mercadopago/memberships/:id/webhook`.
+- **Web:** la puerta ofrece comprar (o renovar) si el negocio tiene cuenta conectada; `/membresia/:token` («Tu membresía», con el tema del sitio, `noindex`, sin caché). **Panel:** sección «Planes de membresía» con aviso
+  de «conecta tu cuenta» y origen/vigencia de cada miembro.
+- **Defecto encontrado por la prueba de navegador y corregido:** un componente cliente arrastraba la validación de variables de entorno del servidor; el formateador de precio vive ahora en un módulo sin dependencias
+  del servidor.
+- **Pruebas:** 10 de validación (planes, reglas de acceso, apilado), 11 de integración (panel, permisos y aislamiento, sin cuenta, precio del plan, firma, mismatch de monto/cuenta/pago ajeno, carrera, apilado y
+  vencimiento, reembolso, revocado/archivado/falla de pasarela, sitio despublicado), 3 de proxy web, Playwright `membresias.spec.ts` + regresión de `miembros.spec.ts` 8/8; **4 mutaciones atrapadas** (sin verificar
+  monto/cuenta, asignación no condicional, sin regla de vigencia, periodos sin apilar). Barrido de aislamiento automático con las rutas nuevas (OpenAPI 317 rutas).
+- **Reservas honestas:** (1) **sin cobro recurrente automático** (Mercado Pago permite preaprobaciones en la cuenta del vendedor, pero exige otro permiso OAuth y credenciales reales para probarse); (2) **aún sin
+  recordatorios de renovación ni aviso de vencimiento** (F10.2b); (3) la compra real contra Mercado Pago se prueba con la pasarela simulada: Playwright no tiene la aplicación configurada, así que el botón de pago no se
+  ejerce contra Mercado Pago; (4) solo CLP; (5) la devolución se hace desde Mercado Pago (no desde el panel): el aviso la registra y corta el acceso.
 
 ## F10.3 — Cursos
 

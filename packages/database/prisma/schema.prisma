@@ -246,6 +246,7 @@ model Organization {
   reportComments      ReportComment[]
   abuseReports        AbuseReport[]
   siteMembers         SiteMember[]
+  membershipPlans     MembershipPlan[]
   agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
@@ -843,6 +844,7 @@ model Site {
   newsletterConfirmations NewsletterConfirmation[]
   abuseReports        AbuseReport[]
   members             SiteMember[]
+  membershipPlans     MembershipPlan[]
 
   @@index([organizationId])
   @@map("sites")
@@ -2943,6 +2945,9 @@ model SiteMember {
   email          String
   name           String?
   status         SiteMemberStatus @default(ACTIVE)
+  // INVITED: lo dio de alta el negocio (acceso mientras este activo). PURCHASED: se hizo miembro pagando (F10.2): su acceso
+  // depende de que tenga un periodo pagado vigente.
+  source         SiteMemberSource @default(INVITED)
   lastAccessAt   DateTime?        @map("last_access_at") @db.Timestamptz(6)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -2951,6 +2956,7 @@ model SiteMember {
   site         Site                @relation(fields: [siteId], references: [id], onDelete: Cascade)
   loginTokens  SiteMemberLoginToken[]
   sessions     SiteMemberSession[]
+  purchases    MembershipPurchase[]
 
   @@unique([siteId, email], map: "site_members_site_email_key")
   @@index([organizationId])
@@ -2985,4 +2991,89 @@ model SiteMemberSession {
 
   @@index([memberId])
   @@map("site_member_sessions")
+}
+
+// ---------------------------------------------------------------------------------------------
+// F10.2 (ADR-029): planes de membresia y cobro por la cuenta de Mercado Pago del propio negocio.
+// Periodos PREPAGADOS que se apilan: no hay cobro automatico; el acceso dura hasta `period_end`.
+// ---------------------------------------------------------------------------------------------
+
+enum SiteMemberSource {
+  INVITED
+  PURCHASED
+}
+
+enum MembershipPeriod {
+  MONTHLY
+  YEARLY
+}
+
+enum MembershipPlanStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum MembershipPurchaseStatus {
+  PENDING
+  PAID
+  EXPIRED
+}
+
+model MembershipPlan {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  siteId         String               @map("site_id") @db.Uuid
+  name           String
+  description    String?
+  // Unidad minima de la moneda (ST 8): nunca decimal.
+  priceAmount    Int                  @map("price_amount")
+  priceCurrency  String               @default("CLP") @map("price_currency")
+  period         MembershipPeriod
+  status         MembershipPlanStatus @default(ACTIVE)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  purchases    MembershipPurchase[]
+
+  @@index([siteId, status])
+  @@index([organizationId])
+  @@map("membership_plans")
+}
+
+// Una compra = un periodo pagado. Guarda copia del plan (nombre, importe, moneda, dias) para que cambiar o archivar el plan no
+// altere lo ya comprado. El pago de Mercado Pago es unico y se asigna de forma condicional (idempotencia).
+model MembershipPurchase {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  organizationId       String                   @map("organization_id") @db.Uuid
+  siteId               String                   @map("site_id") @db.Uuid
+  planId               String                   @map("plan_id") @db.Uuid
+  memberId             String                   @map("member_id") @db.Uuid
+  planName             String                   @map("plan_name")
+  amount               Int
+  currency             String
+  periodDays           Int                      @map("period_days")
+  status               MembershipPurchaseStatus @default(PENDING)
+  checkoutPreferenceId String?                  @map("checkout_preference_id")
+  checkoutUrl          String?                  @map("checkout_url")
+  checkoutExpiresAt    DateTime?                @map("checkout_expires_at") @db.Timestamptz(6)
+  // Solo el hash del enlace "Tu membresia": el enlace va por correo y por la URL de regreso.
+  statusTokenHash      String?                  @unique @map("status_token_hash")
+  providerPaymentId    String?                  @unique @map("provider_payment_id")
+  paymentStatus        String?                  @map("payment_status")
+  refundedAmount       Int                      @default(0) @map("refunded_amount")
+  paidAt               DateTime?                @map("paid_at") @db.Timestamptz(6)
+  periodStart          DateTime?                @map("period_start") @db.Timestamptz(6)
+  periodEnd            DateTime?                @map("period_end") @db.Timestamptz(6)
+  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  member SiteMember     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  plan   MembershipPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, status])
+  @@index([siteId, status, paidAt])
+  @@index([organizationId])
+  @@map("membership_purchases")
 }

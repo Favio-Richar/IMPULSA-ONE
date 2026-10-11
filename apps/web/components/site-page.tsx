@@ -6,6 +6,7 @@ import type { PublicFormResponse } from "@impulza/contracts";
 import { AB_BUCKET_COOKIE, memberCookieName, parseAbBucket, themeTokensSchema } from "@impulza/validation";
 import { hasExperiments, randomAbBucket, resolveExperimentBlocks } from "../lib/ab";
 import { getBookingAvailable, getMemberPage, getPublicForm, getPublicPage, getPublicSite } from "../lib/api";
+import { getMemberPlans } from "../lib/memberships";
 import { applySmartCta, smartCtaNeedsBookings } from "../lib/smart-cta";
 import { AbBucketCookie } from "./ab-bucket-cookie";
 import { AnalyticsTracker } from "./analytics-tracker";
@@ -64,11 +65,13 @@ export async function SitePage({
   let isMember = false;
   if (publicPage.membersOnly) {
     const memberToken = (await cookies()).get(memberCookieName(siteSlug))?.value;
-    const memberPage = memberToken ? await getMemberPage(siteSlug, pageSlug, memberToken) : null;
-    if (!memberPage) {
-      return <MemberGate siteSlug={siteSlug} siteName={site.name} />;
+    const result = memberToken ? await getMemberPage(siteSlug, pageSlug, memberToken) : ({ kind: "none" } as const);
+    if (result.kind !== "ok") {
+      // F10.2: si el negocio vende membresías, la puerta ofrece comprarlas (o renovarlas).
+      const { plans } = await getMemberPlans(siteSlug);
+      return <MemberGate siteSlug={siteSlug} siteName={site.name} plans={plans} inactive={result.kind === "inactive"} />;
     }
-    page = memberPage;
+    page = result.page;
     isMember = true;
   }
 

@@ -66,3 +66,112 @@ export type SetPageMembersOnlyDto = z.infer<typeof setPageMembersOnlySchema>;
 export function memberCookieName(siteSlug: string): string {
   return `impulza_member_${siteSlug}`;
 }
+
+// ───────────────────────────── F10.2: planes de membresía ─────────────────────────────
+
+export const MEMBERSHIP_PERIODS = ["MONTHLY", "YEARLY"] as const;
+export type MembershipPeriodValue = (typeof MEMBERSHIP_PERIODS)[number];
+export const MEMBERSHIP_PERIOD_DAYS: Record<MembershipPeriodValue, number> = { MONTHLY: 30, YEARLY: 365 };
+export const MEMBERSHIP_PERIOD_LABELS: Record<MembershipPeriodValue, string> = { MONTHLY: "al mes", YEARLY: "al año" };
+export const MEMBERSHIP_PLANS_PER_SITE_MAX = 10;
+export const MEMBERSHIP_PRICE_MAX = 100_000_000;
+export const MEMBERSHIP_PLAN_NAME_MAX = 80;
+export const MEMBERSHIP_PLAN_DESCRIPTION_MAX = 500;
+
+const planName = z
+  .string()
+  .max(MEMBERSHIP_PLAN_NAME_MAX * 2)
+  .transform(cleanPlainText)
+  .pipe(z.string().min(2, "Ponle un nombre al plan.").max(MEMBERSHIP_PLAN_NAME_MAX, `Máximo ${MEMBERSHIP_PLAN_NAME_MAX} caracteres.`));
+
+const planDescription = z
+  .string()
+  .max(MEMBERSHIP_PLAN_DESCRIPTION_MAX * 2)
+  .transform(cleanPlainText)
+  .pipe(z.string().max(MEMBERSHIP_PLAN_DESCRIPTION_MAX, `Máximo ${MEMBERSHIP_PLAN_DESCRIPTION_MAX} caracteres.`));
+
+/** Precio en la unidad mínima de la moneda (ST §8): entero positivo, nunca decimal. */
+const planPrice = z
+  .number({ error: "Escribe el precio." })
+  .int("El precio debe ser un número entero.")
+  .min(1, "El precio debe ser mayor que cero.")
+  .max(MEMBERSHIP_PRICE_MAX, "El precio es demasiado alto.");
+
+const planCurrency = z
+  .string()
+  .trim()
+  .transform((value) => value.toUpperCase())
+  .pipe(z.string().regex(/^[A-Z]{3}$/, "Usa el código de moneda de 3 letras, por ejemplo CLP."));
+
+export const createMembershipPlanSchema = z
+  .object({
+    name: planName,
+    description: planDescription.optional(),
+    priceAmount: planPrice,
+    priceCurrency: planCurrency.default("CLP"),
+    period: z.enum(MEMBERSHIP_PERIODS, { error: "Elige si se cobra al mes o al año." }),
+  })
+  .strict();
+export type CreateMembershipPlanDto = z.infer<typeof createMembershipPlanSchema>;
+
+export const updateMembershipPlanSchema = z
+  .object({
+    name: planName.optional(),
+    description: planDescription.nullable().optional(),
+    priceAmount: planPrice.optional(),
+    priceCurrency: planCurrency.optional(),
+    period: z.enum(MEMBERSHIP_PERIODS).optional(),
+  })
+  .strict()
+  .refine((body) => Object.keys(body).length > 0, { message: "Envía al menos un campo a modificar." });
+export type UpdateMembershipPlanDto = z.infer<typeof updateMembershipPlanSchema>;
+
+/** Quien compra: correo y, opcionalmente, nombre. El precio nunca viene del cliente: sale del plan guardado. */
+export const startMembershipCheckoutSchema = z.object({ email: memberEmailSchema, name: optionalName.optional() }).strict();
+export type StartMembershipCheckoutDto = z.infer<typeof startMembershipCheckoutSchema>;
+
+/** Compra de un periodo, tal como la necesita la regla de acceso. */
+export interface PurchaseForAccess {
+  status: "PENDING" | "PAID" | "EXPIRED";
+  paymentStatus: string | null;
+  amount: number;
+  refundedAmount: number;
+  periodEnd: Date | null;
+}
+
+/**
+ * ¿Esta compra da acceso ahora? Debe estar pagada, con el pago todavía aprobado (un reembolso total, un contracargo o un
+ * reclamo la dejan sin efecto) y dentro de su periodo. Una devolución parcial no corta el acceso: el negocio decide.
+ */
+export function purchaseGrantsAccess(purchase: PurchaseForAccess, now: Date): boolean {
+  return (
+    purchase.status === "PAID" &&
+    purchase.paymentStatus === "approved" &&
+    purchase.refundedAmount < purchase.amount &&
+    purchase.periodEnd !== null &&
+    purchase.periodEnd.getTime() > now.getTime()
+  );
+}
+
+/**
+ * Acceso de un miembro a las páginas protegidas. Un miembro INVITADO entra mientras esté activo; uno que se hizo miembro
+ * PAGANDO entra solo mientras tenga un periodo pagado vigente.
+ */
+export function memberHasAccess(member: { source: "INVITED" | "PURCHASED" }, purchases: PurchaseForAccess[], now: Date): boolean {
+  if (member.source === "INVITED") return true;
+  return purchases.some((purchase) => purchaseGrantsAccess(purchase, now));
+}
+
+/** Fin del acceso de pago: el mayor `periodEnd` de las compras que hoy dan acceso, o `null`. */
+export function paidUntil(purchases: PurchaseForAccess[], now: Date): Date | null {
+  const ends = purchases.filter((purchase) => purchaseGrantsAccess(purchase, now)).map((purchase) => purchase.periodEnd as Date);
+  return ends.length === 0 ? null : new Date(Math.max(...ends.map((date) => date.getTime())));
+}
+
+/**
+ * Inicio del periodo que se compra: si ya hay uno vigente, el nuevo empieza donde termina (los periodos se apilan y no se
+ * pierde nada al renovar antes); si no, empieza ahora.
+ */
+export function nextPeriodStart(purchases: PurchaseForAccess[], now: Date): Date {
+  return paidUntil(purchases, now) ?? now;
+}

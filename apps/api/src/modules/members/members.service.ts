@@ -1,13 +1,15 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import { ConflictException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import type { EmailAdapter } from "@impulza/auth";
 import type { MemberSessionResponse, MemberSettingsResponse, SiteMemberListResponse, SiteMemberResponse } from "@impulza/contracts";
-import { Prisma, SiteMemberStatus, type PrismaClient } from "@impulza/database";
+import { Prisma, SiteMemberSource, SiteMemberStatus, type PrismaClient } from "@impulza/database";
 import {
   MEMBER_LOGIN_TOKEN_TTL_MINUTES,
   MEMBER_SESSION_TTL_DAYS,
   MEMBER_TOKEN_PATTERN,
   MEMBERS_PER_SITE_MAX,
+  memberHasAccess,
+  paidUntil,
   type AddMemberDto,
   type ListMembersQueryDto,
 } from "@impulza/validation";
@@ -75,16 +77,25 @@ export class MembersService {
     void this.sendAccessLink(site, member.id, email).catch((error) => logger.error("no se pudo enviar el enlace de acceso de miembro", { siteId: site.id, error }));
   }
 
-  private async sendAccessLink(site: { id: string; name: string; organizationId: string }, memberId: string, email: string): Promise<void> {
+  /**
+   * Emite un enlace de acceso de un solo uso (solo se guarda su hash). `null` si no hay URL pública configurada. Lo usa el correo de
+   * acceso y también la confirmación de una compra, que lo incluye en su propio correo.
+   */
+  async createLoginLink(siteId: string, memberId: string): Promise<string | null> {
     const token = newToken();
     await this.prisma.siteMemberLoginToken.create({
       data: { memberId, tokenHash: hashMemberToken(token), expiresAt: new Date(Date.now() + MEMBER_LOGIN_TOKEN_TTL_MINUTES * 60_000) },
     });
     if (!env.PUBLIC_SITE_BASE_URL) {
-      logger.warn("PUBLIC_SITE_BASE_URL no está configurado: no se puede armar el enlace de acceso de miembro", { siteId: site.id });
-      return;
+      logger.warn("PUBLIC_SITE_BASE_URL no está configurado: no se puede armar el enlace de acceso de miembro", { siteId });
+      return null;
     }
-    const link = `${env.PUBLIC_SITE_BASE_URL.replace(/\/$/, "")}/miembros/${token}`;
+    return `${env.PUBLIC_SITE_BASE_URL.replace(/\/$/, "")}/miembros/${token}`;
+  }
+
+  private async sendAccessLink(site: { id: string; name: string; organizationId: string }, memberId: string, email: string): Promise<void> {
+    const link = await this.createLoginLink(site.id, memberId);
+    if (!link) return;
     const text = [
       `Hola:`,
       ``,
@@ -128,7 +139,14 @@ export class MembersService {
     if (!sessionToken || !MEMBER_TOKEN_PATTERN.test(sessionToken)) throw new UnauthorizedException("Necesitas iniciar sesión como miembro.");
     const session = await this.prisma.siteMemberSession.findUnique({
       where: { tokenHash: hashMemberToken(sessionToken) },
-      include: { member: { include: { site: { select: { id: true, slug: true, status: true, moderationHiddenAt: true, organization: { select: { status: true, publicHiddenAt: true } } } } } } },
+      include: {
+        member: {
+          include: {
+            site: { select: { id: true, slug: true, status: true, moderationHiddenAt: true, organization: { select: { status: true, publicHiddenAt: true } } } },
+            purchases: { where: { status: "PAID" }, select: { status: true, paymentStatus: true, amount: true, refundedAmount: true, periodEnd: true } },
+          },
+        },
+      },
     });
     const site = session?.member.site;
     if (
@@ -144,6 +162,11 @@ export class MembersService {
       site.organization.publicHiddenAt !== null
     ) {
       throw new UnauthorizedException("Necesitas iniciar sesión como miembro.");
+    }
+    // F10.2: quien entró pagando conserva su sesión pero solo ve el contenido mientras tenga un periodo pagado vigente (un reembolso
+    // total o un contracargo también lo cortan). 403 y no 401: la sesión es válida; lo que falta es renovar.
+    if (!memberHasAccess(session.member, session.member.purchases, new Date())) {
+      throw new ForbiddenException({ statusCode: 403, error: "Forbidden", code: "MEMBERSHIP_INACTIVE", message: "Tu membresía no está vigente. Renuévala para seguir entrando." });
     }
     return { id: session.member.id, email: session.member.email, name: session.member.name, siteId: site.id };
   }
@@ -169,12 +192,18 @@ export class MembersService {
     return site;
   }
 
-  private toResponse(member: { id: string; email: string; name: string | null; status: SiteMemberStatus; lastAccessAt: Date | null; createdAt: Date }): SiteMemberResponse {
+  private toResponse(
+    member: { id: string; email: string; name: string | null; status: SiteMemberStatus; source: SiteMemberSource; lastAccessAt: Date | null; createdAt: Date },
+    purchases: Array<{ status: "PENDING" | "PAID" | "EXPIRED"; paymentStatus: string | null; amount: number; refundedAmount: number; periodEnd: Date | null }> = [],
+  ): SiteMemberResponse {
+    const until = member.source === "PURCHASED" ? paidUntil(purchases, new Date()) : null;
     return {
       id: member.id,
       email: member.email,
       name: member.name,
       status: member.status,
+      source: member.source,
+      paidUntil: until?.toISOString() ?? null,
       lastAccessAt: member.lastAccessAt?.toISOString() ?? null,
       createdAt: member.createdAt.toISOString(),
     };
@@ -189,9 +218,15 @@ export class MembersService {
     }
     const [total, rows] = await Promise.all([
       this.prisma.siteMember.count({ where }),
-      this.prisma.siteMember.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: (query.page - 1) * query.pageSize, take: query.pageSize }),
+      this.prisma.siteMember.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        include: { purchases: { where: { status: "PAID" }, select: { status: true, paymentStatus: true, amount: true, refundedAmount: true, periodEnd: true } } },
+      }),
     ]);
-    return { items: rows.map((row) => this.toResponse(row)), total, page: query.page, pageSize: query.pageSize };
+    return { items: rows.map((row) => this.toResponse(row, row.purchases)), total, page: query.page, pageSize: query.pageSize };
   }
 
   async add(organizationId: string, siteId: string, actorId: string, dto: AddMemberDto): Promise<SiteMemberResponse> {

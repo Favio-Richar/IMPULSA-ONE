@@ -22517,6 +22517,1128 @@
         ]
       }
     },
+    "/api/v1/public/sites/{siteSlug}/members/plans": {
+      "get": {
+        "description": "Vacío si el negocio no conectó su cuenta de Mercado Pago: no se ofrece lo que no se puede cobrar.",
+        "operationId": "PublicMembershipPlansController_plans",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Planes activos del sitio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "checkoutAvailable": {
+                      "type": "boolean"
+                    },
+                    "plans": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "priceAmount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "priceCurrency": {
+                            "type": "string"
+                          },
+                          "period": {
+                            "type": "string",
+                            "enum": [
+                              "MONTHLY",
+                              "YEARLY"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "description",
+                          "priceAmount",
+                          "priceCurrency",
+                          "period"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "checkoutAvailable",
+                    "plans"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El sitio no existe o no está publicado."
+          },
+          "429": {
+            "description": "Más de 120 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Planes de membresía que se pueden comprar",
+        "tags": [
+          "public-members"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/members/plans/{planId}/checkout": {
+      "post": {
+        "description": "Crea el cobro en la cuenta de Mercado Pago del negocio. El precio sale del plan guardado, nunca del cuerpo. Devuelve dónde pagar y el enlace «Tu membresía».",
+        "operationId": "PublicMembershipPlansController_start",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "planId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 240
+                  }
+                },
+                "required": [
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Dónde pagar y dónde ver el estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "checkoutUrl": {
+                      "type": "string"
+                    },
+                    "statusUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "checkoutUrl",
+                    "statusUrl"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plan o sitio no encontrados."
+          },
+          "409": {
+            "description": "Este correo no puede comprar."
+          },
+          "429": {
+            "description": "Más de 10 peticiones en 600 s desde la misma IP. Reintentar después de la ventana."
+          },
+          "503": {
+            "description": "El pago en línea no está disponible."
+          }
+        },
+        "summary": "Comprar un periodo de un plan",
+        "tags": [
+          "public-members"
+        ]
+      }
+    },
+    "/api/v1/public/memberships/purchases/{token}": {
+      "get": {
+        "description": "Con `paymentId` (el `payment_id` con que vuelve Mercado Pago) consulta ese pago con el token del negocio antes de responder; la URL nunca se toma como verdad.",
+        "operationId": "PublicMembershipStatusController_status",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "paymentId",
+            "required": false,
+            "in": "query",
+            "description": "Id del pago en Mercado Pago, tal como vuelve el comprador.",
+            "schema": {}
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La compra y su estado de pago.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "siteSlug": {
+                      "type": "string"
+                    },
+                    "siteName": {
+                      "type": "string"
+                    },
+                    "planName": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "PENDING",
+                        "PAID",
+                        "EXPIRED"
+                      ]
+                    },
+                    "paymentStatus": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "checkoutUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "periodEnd": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "siteSlug",
+                    "siteName",
+                    "planName",
+                    "amount",
+                    "currency",
+                    "status",
+                    "paymentStatus",
+                    "checkoutUrl",
+                    "periodEnd"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El enlace no es válido o la compra ya no existe."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Estado de una compra de membresía con su enlace",
+        "tags": [
+          "public-members"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/members/plans": {
+      "get": {
+        "description": "Indica si el cobro en línea está disponible (cuenta de Mercado Pago conectada).",
+        "operationId": "MembershipPlansController_list",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Planes, disponibilidad del cobro e ingresos del mes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "plans": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "priceAmount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "priceCurrency": {
+                            "type": "string"
+                          },
+                          "period": {
+                            "type": "string",
+                            "enum": [
+                              "MONTHLY",
+                              "YEARLY"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "ACTIVE",
+                              "ARCHIVED"
+                            ]
+                          },
+                          "activeMembers": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "description",
+                          "priceAmount",
+                          "priceCurrency",
+                          "period",
+                          "status",
+                          "activeMembers",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "checkoutAvailable": {
+                      "type": "boolean"
+                    },
+                    "monthRevenue": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "currency": {
+                            "type": "string"
+                          },
+                          "amount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "purchases": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "currency",
+                          "amount",
+                          "purchases"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "plans",
+                    "checkoutAvailable",
+                    "monthRevenue"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "429": {
+            "description": "Más de 120 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Planes del sitio, miembros vigentes y lo cobrado en el mes",
+        "tags": [
+          "members"
+        ]
+      },
+      "post": {
+        "description": "Precio en la unidad mínima de la moneda; periodo mensual o anual prepagado.",
+        "operationId": "MembershipPlansController_create",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "priceAmount": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000000
+                  },
+                  "priceCurrency": {
+                    "type": "string"
+                  },
+                  "period": {
+                    "type": "string",
+                    "enum": [
+                      "MONTHLY",
+                      "YEARLY"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "priceAmount",
+                  "period"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "El plan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "priceAmount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "priceCurrency": {
+                      "type": "string"
+                    },
+                    "period": {
+                      "type": "string",
+                      "enum": [
+                        "MONTHLY",
+                        "YEARLY"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ACTIVE",
+                        "ARCHIVED"
+                      ]
+                    },
+                    "activeMembers": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "priceAmount",
+                    "priceCurrency",
+                    "period",
+                    "status",
+                    "activeMembers",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "409": {
+            "description": "Tope de planes activos o moneda no compatible con Mercado Pago."
+          },
+          "429": {
+            "description": "Más de 30 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Crear un plan de membresía",
+        "tags": [
+          "members"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/members/plans/{planId}": {
+      "put": {
+        "description": "Solo afecta compras futuras: cada compra guarda copia de lo que se pagó.",
+        "operationId": "MembershipPlansController_update",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "planId",
+            "required": true,
+            "in": "path",
+            "description": "Plan.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "description": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "priceAmount": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000000
+                  },
+                  "priceCurrency": {
+                    "type": "string"
+                  },
+                  "period": {
+                    "type": "string",
+                    "enum": [
+                      "MONTHLY",
+                      "YEARLY"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "El plan actualizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "priceAmount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "priceCurrency": {
+                      "type": "string"
+                    },
+                    "period": {
+                      "type": "string",
+                      "enum": [
+                        "MONTHLY",
+                        "YEARLY"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ACTIVE",
+                        "ARCHIVED"
+                      ]
+                    },
+                    "activeMembers": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "priceAmount",
+                    "priceCurrency",
+                    "period",
+                    "status",
+                    "activeMembers",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Editar un plan",
+        "tags": [
+          "members"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/members/plans/{planId}/archive": {
+      "post": {
+        "description": "Deja de ofrecerse; quienes ya pagaron conservan su periodo.",
+        "operationId": "MembershipPlansController_archive",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "planId",
+            "required": true,
+            "in": "path",
+            "description": "Plan.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El plan archivado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "priceAmount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "priceCurrency": {
+                      "type": "string"
+                    },
+                    "period": {
+                      "type": "string",
+                      "enum": [
+                        "MONTHLY",
+                        "YEARLY"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ACTIVE",
+                        "ARCHIVED"
+                      ]
+                    },
+                    "activeMembers": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "priceAmount",
+                    "priceCurrency",
+                    "period",
+                    "status",
+                    "activeMembers",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Archivar un plan",
+        "tags": [
+          "members"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/members/plans/{planId}/restore": {
+      "post": {
+        "operationId": "MembershipPlansController_restore",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "planId",
+            "required": true,
+            "in": "path",
+            "description": "Plan.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El plan activo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "priceAmount": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "priceCurrency": {
+                      "type": "string"
+                    },
+                    "period": {
+                      "type": "string",
+                      "enum": [
+                        "MONTHLY",
+                        "YEARLY"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ACTIVE",
+                        "ARCHIVED"
+                      ]
+                    },
+                    "activeMembers": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "priceAmount",
+                    "priceCurrency",
+                    "period",
+                    "status",
+                    "activeMembers",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Volver a ofrecer un plan archivado",
+        "tags": [
+          "members"
+        ]
+      }
+    },
     "/api/v1/organizations/{organizationId}/sites/{siteId}/members": {
       "get": {
         "description": "Búsqueda por correo o nombre, filtro de estado y paginación en el servidor.",
@@ -22587,6 +23709,19 @@
                               "REVOKED"
                             ]
                           },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "INVITED",
+                              "PURCHASED"
+                            ]
+                          },
+                          "paidUntil": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
                           "lastAccessAt": {
                             "nullable": true,
                             "type": "string",
@@ -22604,6 +23739,8 @@
                           "email",
                           "name",
                           "status",
+                          "source",
+                          "paidUntil",
                           "lastAccessAt",
                           "createdAt"
                         ],
@@ -22752,6 +23889,19 @@
                         "REVOKED"
                       ]
                     },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "INVITED",
+                        "PURCHASED"
+                      ]
+                    },
+                    "paidUntil": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
                     "lastAccessAt": {
                       "nullable": true,
                       "type": "string",
@@ -22769,6 +23919,8 @@
                     "email",
                     "name",
                     "status",
+                    "source",
+                    "paidUntil",
                     "lastAccessAt",
                     "createdAt"
                   ],
@@ -23146,6 +24298,19 @@
                         "REVOKED"
                       ]
                     },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "INVITED",
+                        "PURCHASED"
+                      ]
+                    },
+                    "paidUntil": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
                     "lastAccessAt": {
                       "nullable": true,
                       "type": "string",
@@ -23163,6 +24328,8 @@
                     "email",
                     "name",
                     "status",
+                    "source",
+                    "paidUntil",
                     "lastAccessAt",
                     "createdAt"
                   ],
@@ -23269,6 +24436,19 @@
                         "REVOKED"
                       ]
                     },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "INVITED",
+                        "PURCHASED"
+                      ]
+                    },
+                    "paidUntil": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
                     "lastAccessAt": {
                       "nullable": true,
                       "type": "string",
@@ -23286,6 +24466,8 @@
                     "email",
                     "name",
                     "status",
+                    "source",
+                    "paidUntil",
                     "lastAccessAt",
                     "createdAt"
                   ],
@@ -23391,6 +24573,245 @@
         "summary": "Quitar a un miembro y sus datos",
         "tags": [
           "members"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/payment-accounts": {
+      "get": {
+        "description": "Si hay una cuenta de Mercado Pago conectada y en qué estado. Nunca tokens (F5.8, ADR-013).",
+        "operationId": "PaymentAccountsController_status",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado de la cuenta de cobro.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "available": {
+                      "type": "boolean"
+                    },
+                    "canManage": {
+                      "type": "boolean"
+                    },
+                    "mercadoPago": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "CONNECTED",
+                            "ERROR"
+                          ]
+                        },
+                        "liveMode": {
+                          "type": "boolean"
+                        },
+                        "connectedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "liveMode",
+                        "connectedAt",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "available",
+                    "canManage",
+                    "mercadoPago"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Cuenta de cobro del negocio",
+        "tags": [
+          "payment-accounts"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago/connect": {
+      "post": {
+        "description": "Devuelve la URL de autorización de Mercado Pago (OAuth con PKCE y `state` de un solo uso, 10 minutos).",
+        "operationId": "PaymentAccountsController_connect",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "URL a la que llevar al dueño.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "422": {
+            "description": "`PAYMENTS_UNAVAILABLE`: la aplicación de Mercado Pago no está configurada."
+          },
+          "429": {
+            "description": "Más de 10 peticiones en 600 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Empezar a conectar Mercado Pago",
+        "tags": [
+          "payment-accounts"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago": {
+      "delete": {
+        "description": "Borra los tokens guardados. Los cobros vuelven a enlaces de pago externos. Queda auditado.",
+        "operationId": "PaymentAccountsController_disconnect",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Desconectada."
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "`NOT_CONNECTED`."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Desconectar Mercado Pago",
+        "tags": [
+          "payment-accounts"
         ]
       }
     },
@@ -33604,245 +35025,6 @@
         "summary": "Conectar cuenta de Google Calendar",
         "tags": [
           "bookings"
-        ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/payment-accounts": {
-      "get": {
-        "description": "Si hay una cuenta de Mercado Pago conectada y en qué estado. Nunca tokens (F5.8, ADR-013).",
-        "operationId": "PaymentAccountsController_status",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Estado de la cuenta de cobro.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "available": {
-                      "type": "boolean"
-                    },
-                    "canManage": {
-                      "type": "boolean"
-                    },
-                    "mercadoPago": {
-                      "nullable": true,
-                      "type": "object",
-                      "properties": {
-                        "status": {
-                          "type": "string",
-                          "enum": [
-                            "CONNECTED",
-                            "ERROR"
-                          ]
-                        },
-                        "liveMode": {
-                          "type": "boolean"
-                        },
-                        "connectedAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                        },
-                        "expiresAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                        }
-                      },
-                      "required": [
-                        "status",
-                        "liveMode",
-                        "connectedAt",
-                        "expiresAt"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": [
-                    "available",
-                    "canManage",
-                    "mercadoPago"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Cuenta de cobro del negocio",
-        "tags": [
-          "payment-accounts"
-        ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago/connect": {
-      "post": {
-        "description": "Devuelve la URL de autorización de Mercado Pago (OAuth con PKCE y `state` de un solo uso, 10 minutos).",
-        "operationId": "PaymentAccountsController_connect",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "URL a la que llevar al dueño.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "url": {
-                      "type": "string",
-                      "format": "uri"
-                    }
-                  },
-                  "required": [
-                    "url"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          },
-          "422": {
-            "description": "`PAYMENTS_UNAVAILABLE`: la aplicación de Mercado Pago no está configurada."
-          },
-          "429": {
-            "description": "Más de 10 peticiones en 600 s desde la misma IP. Reintentar después de la ventana."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Empezar a conectar Mercado Pago",
-        "tags": [
-          "payment-accounts"
-        ]
-      }
-    },
-    "/api/v1/organizations/{organizationId}/payment-accounts/mercadopago": {
-      "delete": {
-        "description": "Borra los tokens guardados. Los cobros vuelven a enlaces de pago externos. Queda auditado.",
-        "operationId": "PaymentAccountsController_disconnect",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "required": true,
-            "in": "path",
-            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Requested-With",
-            "in": "header",
-            "required": false,
-            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "impulza-one"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Desconectada."
-          },
-          "400": {
-            "description": "Entrada inválida (detalle en `issues`)."
-          },
-          "401": {
-            "description": "Sin sesión válida."
-          },
-          "403": {
-            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
-          },
-          "404": {
-            "description": "`NOT_CONNECTED`."
-          }
-        },
-        "security": [
-          {
-            "sesion": []
-          }
-        ],
-        "summary": "Desconectar Mercado Pago",
-        "tags": [
-          "payment-accounts"
         ]
       }
     },

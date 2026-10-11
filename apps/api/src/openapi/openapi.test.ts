@@ -101,6 +101,10 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/sites/{siteSlug}/members/me",
       "GET /api/v1/public/sites/{siteSlug}/members/pages/{pageSlug}",
       "POST /api/v1/public/sites/{siteSlug}/members/logout",
+      // Membresías (F10.2): planes que se pueden comprar, compra por la cuenta del negocio y «Tu membresía» con su enlace.
+      "GET /api/v1/public/sites/{siteSlug}/members/plans",
+      "POST /api/v1/public/sites/{siteSlug}/members/plans/{planId}/checkout",
+      "GET /api/v1/public/memberships/purchases/{token}",
       "GET /api/v1/public/short-links/{slug}",
       "GET /api/v1/public/qr/{qrCodeId}",
       // Catálogo de planes (F4.1): los precios de un SaaS son públicos (página de precios).

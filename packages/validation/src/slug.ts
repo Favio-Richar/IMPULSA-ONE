@@ -58,6 +58,8 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "reportar",
   // Acceso de miembros (F10.1): `/miembros/:token` es una ruta fija de apps/web.
   "miembros",
+  // Estado de una compra de membresia (F10.2): `/membresia/:token`.
+  "membresia",
   // Superficies propias de la plataforma.
   "admin",
   "app",

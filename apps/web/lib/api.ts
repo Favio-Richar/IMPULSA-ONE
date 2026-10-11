@@ -69,20 +69,26 @@ export function getPublicPage(siteSlug: string, pageSlug: string): Promise<Publi
 
 /**
  * F10.1: contenido de una página «solo miembros». Sin caché a propósito (`no-store`): es contenido de una persona con sesión y
- * nunca debe compartirse entre visitantes. `null` si la sesión no sirve (vencida, revocada, de otro sitio) o la página no existe.
+ * nunca debe compartirse entre visitantes. `none` si la sesión no sirve (vencida, revocada, de otro sitio) o la página no existe; `inactive` si su membresía pagada terminó.
  */
-export async function getMemberPage(siteSlug: string, pageSlug: string, sessionToken: string): Promise<PublicPageResponse | null> {
+export type MemberPageResult = { kind: "ok"; page: PublicPageResponse } | { kind: "none" } | { kind: "inactive" };
+
+export async function getMemberPage(siteSlug: string, pageSlug: string, sessionToken: string): Promise<MemberPageResult> {
   const response = await fetch(`${env.API_BASE_URL}/public/sites/${encodeURIComponent(siteSlug)}/members/pages/${encodeURIComponent(pageSlug)}`, {
     cache: "no-store",
     headers: { "x-member-session": sessionToken },
   });
+  // 403: la sesión es válida pero su periodo pagado terminó (o se reembolsó). Se le ofrece renovar, no volver a pedir el enlace.
+  if (response.status === 403) {
+    return { kind: "inactive" };
+  }
   if (response.status === 401 || response.status === 404) {
-    return null;
+    return { kind: "none" };
   }
   if (!response.ok) {
     throw new Error(`La API pública respondió ${response.status} para la página de miembros de ${siteSlug}`);
   }
-  return publicPageResponse.parse(await response.json());
+  return { kind: "ok", page: publicPageResponse.parse(await response.json()) };
 }
 
 /** F3.2: la definición real de un formulario referenciado por un bloque `contact_form`. `null` si

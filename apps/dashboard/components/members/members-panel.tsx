@@ -15,6 +15,7 @@ import {
   setPageMembersOnly,
 } from "../../lib/api/members";
 import { ConfirmButton } from "../confirm-button";
+import { PlansSection } from "./plans-section";
 
 const PAGE_SIZE = 20;
 const dateFormat = new Intl.DateTimeFormat("es-CL", { dateStyle: "medium" });
@@ -33,6 +34,7 @@ export function MembersPanel({ organizationId, siteId }: { organizationId: strin
   return (
     <div className="flex flex-col gap-8">
       <ProtectedPages organizationId={organizationId} siteId={siteId} />
+      <PlansSection organizationId={organizationId} siteId={siteId} />
       <MembersList organizationId={organizationId} siteId={siteId} />
     </div>
   );
@@ -234,6 +236,12 @@ function MembersList({ organizationId, siteId }: { organizationId: string; siteI
                   <span className="truncate text-sm font-medium text-foreground">{member.name ?? member.email}</span>
                   <span className="truncate text-xs text-muted-foreground">
                     {member.name ? `${member.email} · ` : ""}
+                    {member.source === "PURCHASED"
+                      ? member.paidUntil
+                        ? `Pagó · vigente hasta ${dateFormat.format(new Date(member.paidUntil))}`
+                        : "Pagó · sin periodo vigente"
+                      : "Invitado"}
+                    {" · "}
                     {member.lastAccessAt ? `Último acceso ${dateFormat.format(new Date(member.lastAccessAt))}` : "Aún no ha entrado"}
                   </span>
                 </div>

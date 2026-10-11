@@ -4,8 +4,8 @@ import { Button, ErrorState, LoadingState } from "@impulza/ui";
 import { brandCssVariables } from "@impulza/validation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { BlockedOrganizationBanner } from "../../components/blocked-organization-banner";
 import { DelegatedAccessBanner } from "../../components/delegated-access-banner";
 import { OrgSwitcher } from "../../components/org-switcher";
@@ -20,6 +20,7 @@ import { usePanelBrand } from "../../lib/hooks/use-white-label";
 
 export default function PanelLayout({ children }: { children: React.ReactNode }): React.JSX.Element | null {
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -71,6 +72,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   const user = meQuery.data;
   const activeOrganization = orgsQuery.data?.find((org) => org.id === activeOrganizationId);
+  const clientViewer = activeOrganization?.access?.clientViewer ?? false;
+  // F9.7e: el visor del portal no tiene panel de gestión; su inicio es la cola de aprobaciones.
+  const sendViewerHome = clientViewer && pathname === "/";
 
   async function handleLogout(): Promise<void> {
     await logout();
@@ -90,7 +94,12 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             brandName
           )}
         </div>
-        <SidebarNav kind={activeOrganization?.kind} delegated={activeOrganization?.access?.delegated ?? false} allowedModules={activeOrganization?.access?.modules ?? []} />
+        <SidebarNav
+          kind={activeOrganization?.kind}
+          delegated={activeOrganization?.access?.delegated ?? false}
+          allowedModules={activeOrganization?.access?.modules ?? []}
+          clientViewer={clientViewer}
+        />
       </aside>
 
       {mobileNavOpen ? (
@@ -125,6 +134,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               kind={activeOrganization?.kind}
               delegated={activeOrganization?.access?.delegated ?? false}
               allowedModules={activeOrganization?.access?.modules ?? []}
+              clientViewer={clientViewer}
             />
           </aside>
         </div>
@@ -159,7 +169,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         {orgsQuery.data ? <BlockedOrganizationBanner organizations={orgsQuery.data} /> : null}
         {orgsQuery.data ? <DelegatedAccessBanner organizations={orgsQuery.data} /> : null}
 
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6">
+          {sendViewerHome ? <ViewerHomeRedirect /> : children}
+        </main>
 
         {panelBrand?.footerText || panelBrand?.supportEmail ? (
           <footer className="border-t border-border px-4 py-3 text-xs text-muted-foreground" data-testid="panel-brand-footer">
@@ -171,4 +183,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       </div>
     </div>
   );
+}
+
+/** Lleva al visor del portal a su inicio (la cola de aprobaciones): el efecto evita navegar durante el render. */
+function ViewerHomeRedirect(): null {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/aprobaciones");
+  }, [router]);
+  return null;
 }

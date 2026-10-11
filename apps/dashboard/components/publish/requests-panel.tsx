@@ -7,9 +7,13 @@ import { Check, Clock, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { BLOCK_LABELS } from "../../lib/block-fields/labels";
+import { listMyOrganizations } from "../../lib/api/organizations";
 import { useMe } from "../../lib/hooks/use-me";
+import { useQuery } from "@tanstack/react-query";
 import {
+  useAddPublishComment,
   useApprovePublishRequest,
+  usePublishComments,
   usePublishRequest,
   usePublishRequests,
   usePublishSettings,
@@ -157,6 +161,9 @@ function RequestDialog({
   const detail = usePublishRequest(organizationId, requestId);
   const settings = usePublishSettings(organizationId);
   const meQuery = useMe();
+  // El visor del portal revisa y aprueba, pero no edita: no se le ofrece abrir el editor (el servidor igual lo niega).
+  const organizations = useQuery({ queryKey: ["organizations"], queryFn: listMyOrganizations });
+  const isViewer = organizations.data?.find((org) => org.id === organizationId)?.access?.clientViewer === true;
   const approve = useApprovePublishRequest(organizationId);
   const reject = useRejectPublishRequest(organizationId);
   const [comment, setComment] = useState("");
@@ -265,7 +272,7 @@ function RequestDialog({
                 ))}
               </ol>
             )}
-            {request.status === "PENDING" ? (
+            {request.status === "PENDING" && !isViewer ? (
               <Link
                 href={`/sitios/${request.siteId}/paginas/${request.pageId}/editor`}
                 className="self-start text-sm text-primary underline underline-offset-2"
@@ -292,6 +299,8 @@ function RequestDialog({
             </section>
           ) : null}
 
+          <CommentThread organizationId={organizationId} requestId={request.id} />
+
           {canReview ? (
             <Textarea
               label={rejecting ? "Motivo del rechazo" : "Comentario (opcional)"}
@@ -316,5 +325,57 @@ function RequestDialog({
         </div>
       ) : null}
     </Dialog>
+  );
+}
+
+/** La conversación de una solicitud: quien pide, quien revisa y el cliente en su portal (F9.7e). */
+function CommentThread({ organizationId, requestId }: { organizationId: string; requestId: string }): React.JSX.Element {
+  const comments = usePublishComments(organizationId, requestId);
+  const add = useAddPublishComment(organizationId, requestId);
+  const [text, setText] = useState("");
+
+  return (
+    <section className="flex flex-col gap-2 border-t border-border pt-3" aria-label="Comentarios" data-testid="comment-thread">
+      <h3 className="text-sm font-semibold text-foreground">Comentarios</h3>
+      {comments.isPending ? (
+        <p className="text-sm text-muted-foreground">Cargando comentarios…</p>
+      ) : comments.isError ? (
+        <p role="alert" className="text-sm text-danger">
+          No pudimos cargar los comentarios.
+        </p>
+      ) : comments.data.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Todavía no hay comentarios.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {comments.data.map((comment) => (
+            <li key={comment.id} className="rounded-md bg-surface p-3 text-sm" data-testid="comment">
+              <p className="text-xs text-muted-foreground">
+                {comment.author?.email ?? "Una cuenta eliminada"} · {dateText(comment.createdAt)}
+              </p>
+              <p className="whitespace-pre-wrap text-foreground">{comment.body}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="flex flex-col gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const body = text.trim();
+          if (body === "") return;
+          add.mutate(body, { onSuccess: () => setText("") });
+        }}
+      >
+        <Textarea label="Escribe un comentario" rows={2} maxLength={1000} value={text} onChange={(event) => setText(event.target.value)} />
+        <Button type="submit" size="sm" variant="secondary" className="self-start" loading={add.isPending} disabled={text.trim() === ""}>
+          Comentar
+        </Button>
+        {add.isError ? (
+          <p role="alert" className="text-sm text-danger">
+            {publishErrorMessage(add.error, "No pudimos enviar el comentario.")}
+          </p>
+        ) : null}
+      </form>
+    </section>
   );
 }

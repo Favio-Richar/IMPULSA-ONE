@@ -2,6 +2,8 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put, Query, R
 import { ApiCookieAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import {
   pagePublishStatusResponse,
+  publishRequestCommentResponse,
+  publishRequestCommentsResponse,
   publishRequestDetailResponse,
   publishRequestListResponse,
   publishRequestSummaryResponse,
@@ -10,11 +12,13 @@ import {
 import { PERMISSIONS, type User } from "@impulza/database";
 import {
   approvePublishRequestSchema,
+  createPublishCommentSchema,
   createPublishRequestSchema,
   publishRequestListQuerySchema,
   publishSettingsSchema,
   rejectPublishRequestSchema,
   type ApprovePublishRequestDto,
+  type CreatePublishCommentDto,
   type CreatePublishRequestDto,
   type PublishRequestListQuery,
   type PublishSettingsDto,
@@ -142,6 +146,40 @@ export class PublishRequestsController {
   @ApiResponse({ status: 404, description: NOT_FOUND })
   detail(@Param("organizationId") organizationId: string, @Param("requestId") requestId: string) {
     return this.approvals.detail(organizationId, requestId);
+  }
+
+  @Get(":requestId/comments")
+  @ApiOperation({
+    summary: "Comentarios de una solicitud",
+    description: "Del más antiguo al más reciente. Basta ser miembro activo (también el visor del portal del cliente).",
+  })
+  @ApiUuidParam("requestId", "Solicitud de esta organización.")
+  @ApiZodResponse(200, publishRequestCommentsResponse, "Comentarios de la solicitud.")
+  @ApiResponse({ status: 404, description: NOT_FOUND })
+  comments(@Param("organizationId") organizationId: string, @Param("requestId") requestId: string) {
+    return this.approvals.listComments(organizationId, requestId);
+  }
+
+  @Post(":requestId/comments")
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.PUBLISH_COMMENT)
+  @RateLimit({ limit: 60, windowSeconds: 60, keyPrefix: "publish-request-comment" })
+  @ApiOperation({
+    summary: "Comentar una solicitud",
+    description: "Requiere `publish.comment` (quien pide, quien revisa y el visor del portal del cliente). Queda en la auditoría.",
+  })
+  @ApiUuidParam("requestId", "Solicitud de esta organización.")
+  @ApiZodBody(createPublishCommentSchema)
+  @ApiZodResponse(201, publishRequestCommentResponse, "Comentario creado.")
+  @ApiRateLimited(60, 60)
+  @ApiResponse({ status: 404, description: NOT_FOUND })
+  comment(
+    @Param("organizationId") organizationId: string,
+    @Param("requestId") requestId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(createPublishCommentSchema)) body: CreatePublishCommentDto,
+  ) {
+    return this.approvals.addComment(organizationId, user.id, requestId, body);
   }
 
   @Post(":requestId/approve")

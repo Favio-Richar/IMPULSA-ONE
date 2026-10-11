@@ -101,7 +101,7 @@ export class OrganizationsService {
   async listMyOrganizations(userId: string): Promise<MyOrganizationResponse[]> {
     const memberships = await this.prisma.membership.findMany({
       where: { userId, status: MembershipStatus.ACTIVE },
-      include: { organization: true, agencyClient: { include: { agencyOrganization: { select: { id: true, name: true } } } } },
+      include: { organization: true, role: { select: { name: true } }, agencyClient: { include: { agencyOrganization: { select: { id: true, name: true } } } } },
       orderBy: { acceptedAt: "asc" },
     });
 
@@ -123,8 +123,9 @@ export class OrganizationsService {
                 agencyName: relation.agencyOrganization.name,
                 readOnly: relation.status === AgencyClientStatus.PAUSED,
                 modules: [...(await loadMemberScope(this.prisma, relation.agencyOrganization.id, userId)).modules],
+                clientViewer: false,
               }
-            : { delegated: false, agencyOrganizationId: null, agencyName: null, readOnly: false, modules: [] },
+            : { delegated: false, agencyOrganizationId: null, agencyName: null, readOnly: false, modules: [], clientViewer: membership.role.name === "CLIENT_VIEWER" },
       });
     }
     return result;

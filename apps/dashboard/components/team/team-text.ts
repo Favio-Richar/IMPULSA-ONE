@@ -8,6 +8,7 @@ export const ROLE_LABELS: Record<string, string> = {
   ANALYST: "Analista",
   SUPPORT: "Soporte",
   AGENCY_MANAGER: "Gestor de agencia",
+  CLIENT_VIEWER: "Visor del portal (revisa y aprueba)",
   AGENCY_DELEGATE: "Agencia (acceso delegado)",
   SUPER_ADMIN: "Superadministrador",
 };

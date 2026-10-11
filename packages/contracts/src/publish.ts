@@ -71,6 +71,15 @@ export const publishSettingsResponse = z.object({
   canApprove: z.boolean(),
 });
 
+export const publishRequestCommentResponse = z.object({
+  id: uuid,
+  body: z.string(),
+  author: person,
+  createdAt: isoDateTime,
+});
+export const publishRequestCommentsResponse = z.array(publishRequestCommentResponse);
+export type PublishRequestCommentResponse = z.infer<typeof publishRequestCommentResponse>;
+
 export type PublishRequestSummaryResponse = z.infer<typeof publishRequestSummaryResponse>;
 export type PublishRequestDetailResponse = z.infer<typeof publishRequestDetailResponse>;
 export type PublishRequestListResponse = z.infer<typeof publishRequestListResponse>;

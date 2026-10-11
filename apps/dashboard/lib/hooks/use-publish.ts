@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  addPublishComment,
   approvePublishRequest,
   cancelPublishRequest,
+  listPublishComments,
   getPagePublishStatus,
   getPublishRequest,
   getPublishSettings,
@@ -94,5 +96,21 @@ export function useUpdatePublishSettings(organizationId: string) {
         queryClient.invalidateQueries({ queryKey: ["pages", organizationId] }),
       ]);
     },
+  });
+}
+
+export function usePublishComments(organizationId: string, requestId: string | null) {
+  return useQuery({
+    queryKey: [...requestsKey(organizationId), "comments", requestId] as const,
+    queryFn: () => listPublishComments(organizationId, requestId!),
+    enabled: requestId !== null,
+  });
+}
+
+export function useAddPublishComment(organizationId: string, requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: string) => addPublishComment(organizationId, requestId, body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [...requestsKey(organizationId), "comments", requestId] }),
   });
 }

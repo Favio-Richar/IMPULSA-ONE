@@ -20,6 +20,7 @@ const ROLES = [
   { name: "SUPPORT", description: "Soporte al cliente con acceso limitado y auditado." },
   { name: "AGENCY_MANAGER", description: "Gestiona múltiples cuentas de cliente en modo agencia." },
   { name: "AGENCY_DELEGATE", description: "Rol delegado de una agencia dentro de la organización de un cliente (F9.3, ADR-028 §2)." },
+  { name: "CLIENT_VIEWER", description: "Portal del cliente: revisa, aprueba y comenta publicaciones; no gestiona nada (F9.7e, ADR-028 §5)." },
   { name: "SUPER_ADMIN", description: "Superadministración de la plataforma — rutas y guards aparte (ADR-002)." },
 ];
 

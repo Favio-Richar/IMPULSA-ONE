@@ -40,6 +40,7 @@ export const ROLE_LABELS: Record<string, string> = {
   ANALYST: "Analista",
   SUPPORT: "Soporte",
   AGENCY_MANAGER: "Agencia",
+  CLIENT_VIEWER: "Visor del portal",
 };
 
 export const PLAN_SOURCE_LABELS: Record<"subscription" | "assigned" | "agency" | "default", string> = {

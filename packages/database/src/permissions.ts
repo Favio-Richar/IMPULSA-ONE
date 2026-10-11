@@ -34,6 +34,8 @@ export const PERMISSIONS = {
   PUBLISH_CONFIGURE: "publish.configure",
   // F9.6d (ADR-028 s3): auditoria navegable.
   AUDIT_VIEW: "audit.view",
+  // F9.7e (ADR-028 s5): comentar las solicitudes de publicacion (el portal del cliente).
+  PUBLISH_COMMENT: "publish.comment",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -156,6 +158,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.AUDIT_VIEW,
     description: "Ver y exportar la auditoría de la organización: quién hizo qué y cuándo (F9.6d, ADR-028 §3). En una agencia, también las acciones que su equipo hizo en sus clientes.",
   },
+  {
+    key: PERMISSIONS.PUBLISH_COMMENT,
+    description: "Comentar las solicitudes de publicación: quien pide, quien revisa y el cliente que aprueba en su portal (F9.7e, ADR-028 §5).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -203,6 +209,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.PUBLISH_APPROVE,
     // La auditoría incluye cuentas y acciones del equipo: es del propietario y de los administradores (F9.6d).
     PERMISSIONS.AUDIT_VIEW,
+    PERMISSIONS.PUBLISH_COMMENT,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -229,6 +236,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.AGENCY_MANAGE,
     PERMISSIONS.PUBLISH_APPROVE,
     PERMISSIONS.AUDIT_VIEW,
+    PERMISSIONS.PUBLISH_COMMENT,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y
@@ -248,6 +256,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     // Catálogo y pedidos (F5.5): contenido y atención comercial del día a día.
     PERMISSIONS.CATALOG_MANAGE,
     PERMISSIONS.ORDER_MANAGE,
+    // Quien pide la publicación conversa con quien la revisa (F9.7e).
+    PERMISSIONS.PUBLISH_COMMENT,
   ],
   ANALYST: [],
   // SUPPORT es "soporte al cliente con acceso limitado y auditado" (seed.ts) — administrar el
@@ -279,6 +289,10 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.CATALOG_MANAGE,
     PERMISSIONS.ORDER_MANAGE,
     PERMISSIONS.CAMPAIGN_MANAGE,
+    PERMISSIONS.PUBLISH_COMMENT,
   ],
+  // Portal del cliente (F9.7e, ADR-028 s5): del lado del negocio, quien revisa y aprueba lo que su agencia o su equipo prepara.
+  // Sin `page.manage`: aprueba, pero no publica. El resto de lo que puede o no ver lo fija `clientViewerVerdict` en la puerta de entrada.
+  CLIENT_VIEWER: [PERMISSIONS.PUBLISH_APPROVE, PERMISSIONS.PUBLISH_COMMENT],
   SUPER_ADMIN: [],
 };

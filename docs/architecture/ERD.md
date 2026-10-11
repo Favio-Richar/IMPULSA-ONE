@@ -609,3 +609,9 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - **AgencyDomain** (`agency_domains`): `agency_organization_id` (`CASCADE`), `domain`, `verification_status` (`PENDING`/`VERIFIED`/`FAILED`, mismo enum que `site_domains`), `verification_token`, `verified_at`, `last_checked_at`,
   `last_check_error`, `ssl_status`. Único `(agency_organization_id, domain)` y **índice parcial** `agency_domains_one_verified_per_domain` (un dominio verificado en una sola agencia). La exclusión con `site_domains` se aplica
   en la verificación, bajo un candado por nombre. Migración reversible `20261011120000_f97d_agency_domains`.
+
+## 9zf. Portal del cliente (F9.7e, BACKLOG_FASE_9.md, ADR-028 §5)
+
+- **PublishRequestComment** (`publish_request_comments`): `publish_request_id` (`CASCADE`), `organization_id` (índice; el filtro de aislamiento), `author_id` (`SET NULL`), `body`, `created_at`. Migración reversible `20261011130000_f97e_client_portal`.
+- **Rol** `CLIENT_VIEWER` (sembrado, asignable por propietario y administradores) con `publish.approve` y `publish.comment` solamente; **permiso** nuevo `publish.comment` (OWNER, ADMIN, EDITOR, AGENCY_DELEGATE, CLIENT_VIEWER).
+  Lo que el visor puede alcanzar lo fija una lista de rutas permitidas (`clientViewerVerdict`) aplicada en `OrganizationMembershipGuard`.

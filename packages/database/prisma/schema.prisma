@@ -164,6 +164,7 @@ model User {
   pageVersionsCreated  PageVersion[]       @relation("PageVersionAuthor")
   publishRequestsMade     PublishRequest[]  @relation("PublishRequestRequester")
   publishRequestsReviewed PublishRequest[]  @relation("PublishRequestReviewer")
+  publishRequestComments  PublishRequestComment[]
   contactsAssigned     Contact[]           @relation("ContactAssignee")
   supportTicketsOpened SupportTicket[]     @relation("SupportTicketOpener")
   supportMessages      SupportMessage[]    @relation("SupportMessageAuthor")
@@ -988,6 +989,7 @@ model PublishRequest {
   publishedVersion PageVersion? @relation("PublishRequestResult", fields: [publishedVersionId], references: [id], onDelete: SetNull)
   requestedBy      User?        @relation("PublishRequestRequester", fields: [requestedById], references: [id], onDelete: SetNull)
   reviewedBy       User?        @relation("PublishRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  comments         PublishRequestComment[]
 
   @@index([organizationId, status, createdAt])
   @@index([pageId, status])
@@ -2730,4 +2732,22 @@ model AgencyDomain {
   @@index([agencyOrganizationId])
   @@index([domain])
   @@map("agency_domains")
+}
+
+// F9.7e (ADR-028 s5): conversacion sobre una solicitud de publicacion (el portal del cliente). Es de la organizacion de la solicitud y se
+// borra con ella; el autor queda `SetNull` si su cuenta se elimina.
+model PublishRequestComment {
+  id               String   @id @default(uuid()) @db.Uuid
+  publishRequestId String   @map("publish_request_id") @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  authorId         String?  @map("author_id") @db.Uuid
+  body             String
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  publishRequest PublishRequest @relation(fields: [publishRequestId], references: [id], onDelete: Cascade)
+  author         User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([publishRequestId, createdAt])
+  @@index([organizationId])
+  @@map("publish_request_comments")
 }

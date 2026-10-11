@@ -72,6 +72,7 @@ export function SidebarNav({
   kind,
   delegated = false,
   allowedModules = [],
+  clientViewer = false,
 }: {
   onNavigate?: () => void;
   /** Tipo de la organización activa: una agencia administra clientes en `/agencia`; un negocio ve su agencia en Configuración. */
@@ -80,6 +81,8 @@ export function SidebarNav({
   delegated?: boolean;
   /** Módulos que la agencia le dejó a esta persona en este cliente; vacío = todos (F9.6b). El servidor igual lo niega. */
   allowedModules?: string[];
+  /** Visor del portal del cliente (F9.7e): solo ve lo que el servidor le deja usar (Aprobaciones). */
+  clientViewer?: boolean;
 }): React.JSX.Element {
   const pathname = usePathname();
   const items = [
@@ -88,6 +91,7 @@ export function SidebarNav({
       ? { href: "/agencia", label: "Agencia", icon: Building2 }
       : { href: "/configuracion/agencia", label: "Agencia", icon: Building2 },
   ]
+    .filter((item) => !clientViewer || item.href === "/aprobaciones")
     .filter((item) => !(delegated && HIDDEN_WHEN_DELEGATED.has(item.href)))
     .filter((item) => {
       const moduleKey = MODULE_OF_HREF[item.href];

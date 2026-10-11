@@ -1,4 +1,5 @@
 import type {
+  PublishRequestCommentResponse,
   PagePublishStatusResponse,
   PublishRequestDetailResponse,
   PublishRequestListResponse,
@@ -71,4 +72,12 @@ export function getPublishSettings(organizationId: string): Promise<PublishSetti
 
 export function updatePublishSettings(organizationId: string, requireApproval: boolean): Promise<PublishSettingsResponse> {
   return apiFetch<PublishSettingsResponse>(`${base(organizationId)}/publish-settings`, { method: "PUT", body: { requireApproval } });
+}
+
+export function listPublishComments(organizationId: string, requestId: string): Promise<PublishRequestCommentResponse[]> {
+  return apiFetch<PublishRequestCommentResponse[]>(`${base(organizationId)}/publish-requests/${requestId}/comments`);
+}
+
+export function addPublishComment(organizationId: string, requestId: string, body: string): Promise<PublishRequestCommentResponse> {
+  return apiFetch<PublishRequestCommentResponse>(`${base(organizationId)}/publish-requests/${requestId}/comments`, { method: "POST", body: { body } });
 }

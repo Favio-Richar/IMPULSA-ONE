@@ -5,14 +5,17 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-11) — **F9.6 completa** (a, b, c y d) en la rama `fase-9/f9-6-equipo-avanzado`; siguiente: F9.7 (marca blanca)
+## 0. RETOMAR AQUÍ (2026-10-11) — **F9.6 y F9.7 completas** (a–e) en la rama `fase-9/f9-6-equipo-avanzado`; siguiente: F9.8 (reportes por cliente)
 
-**F9.6d (auditoría navegable) cerrada**: detalle y reservas en `docs/BACKLOG_FASE_9.md`. Servicio `AuditQueryService` y controladores en `apps/api/src/modules/audit`; panel en `apps/dashboard/components/audit`.
-**Trampa nueva:** `@RequirePermission` es un decorador **de método** (no de clase): ponerlo en cada ruta. El `vite-node --watch` de la API no recarga un módulo/controlador nuevo (404): reiniciarla.
-**F9.6c** sigue descrita en el backlog (compuerta en publicar/restaurar, `PublishApprovalService`, `usePublishFlow`).
+**F9.7 (marca blanca) cerrada en cinco commits** (detalle y reservas en `docs/BACKLOG_FASE_9.md`): **a** marca blanca de la agencia + cascada con dos audiencias (`team`/`customer`, ver nota en ADR-028); **b** correos con cabecera
+legal y remitente solo con dominio verificado; **c** plantillas privadas (`Template.organizationId`); **d** dominio del portal de la agencia (`AgencyDomain`, `GET /public/portal/:hostname`); **e** portal del cliente (rol
+`CLIENT_VIEWER`, lista de rutas permitidas en la puerta única, comentarios).
+**Trampas nuevas:** toda lectura de `templates` debe filtrar `organizationId: null` (catálogo) o los dueños visibles; un rol nuevo exige `db:seed` y agregarlo a `KNOWN_ROLE_NAMES` (permissions.test), `RESERVED_ROLE_NAMES` y
+`ASSIGNABLE_ROLES`; si un módulo usa `PlatformBrandingService` debe importar `PlatformBrandingModule`; `prisma generate` exige parar API y worker; los scripts de edición con `\n` escritos por heredoc se rompen: usar la
+herramienta Write.
 
-**Siguiente — F9.7 (marca blanca):** leer el criterio completo en `docs/BACKLOG_FASE_9.md` (WhiteLabelSettings, dominio de agencia reutilizando dominios, portal del cliente `CLIENT_VIEWER`, correos con la marca de la agencia,
-plantillas privadas). Es la historia con más superficie de seguridad (suplantación, dominio no verificado, portal): empezar por el modelo y las reglas puras. **No tocar `apps/api` mientras corre su suite completa.**
+**Siguiente — F9.8 (reportes por cliente):** leer el criterio en `docs/BACKLOG_FASE_9.md` (informe por cliente con comparación de periodos, programación por cola, exportación CSV/imprimible, enlace compartido con token de
+alta entropía y vencimiento). Cuando exista, abrir `reports` en la lista permitida del visor (`clientViewerVerdict`). **No tocar `apps/api` mientras corre su suite completa.**
 
 **Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia y **push de la rama al cerrar cada una** (autorizado por Favio; ver memoria «Subir cada fase a GitHub»). Fusionar a `master` sigue pidiendo confirmación.
 

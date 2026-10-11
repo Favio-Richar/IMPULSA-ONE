@@ -87,6 +87,8 @@ export const organizationAccessResponse = z.object({
   readOnly: z.boolean(),
   /** Módulos a los que la agencia limitó a esta persona en este cliente (F9.6b); vacío = todos. El panel oculta el resto. */
   modules: z.array(z.string()),
+  /** La persona es visor del portal del cliente en esta organización (F9.7e): el panel le muestra solo lo que puede usar. */
+  clientViewer: z.boolean(),
 });
 export type OrganizationAccessResponse = z.infer<typeof organizationAccessResponse>;
 

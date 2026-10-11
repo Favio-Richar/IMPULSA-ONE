@@ -23,7 +23,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.4 | Panel de agencia | Hecho con reservas (2026-10-03, desarrollada y verificada por Claude; reservas en el detalle de la historia y en `CONTINUIDAD.md` §0) |
 | F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | Hecho con reservas (2026-10-04): F9.5a facturación, F9.5b transferir, F9.5c duplicar y F9.5d importar CSV; reservas en cada sub-historia y en `CONTINUIDAD.md` §0 |
 | F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados**, **F9.6b acceso por cliente y módulo** **F9.6c aprobación antes de publicar** y **F9.6d auditoría navegable** hechas (2026-10-04/11): **F9.6 completa** |
-| F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | Pendiente |
+| F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | **Hecha** (2026-10-11): **a** marca y cascada, **b** correos, **c** plantillas privadas, **d** dominio de agencia, **e** portal del cliente (los reportes del portal llegan con F9.8) |
 | F9.8 | Reportes por cliente | Pendiente |
 | F9.9 | Moderación y reportes de abuso | Pendiente |
 | F9.10 | Aislamiento, seguridad y cierre de la fase | Pendiente |
@@ -507,6 +507,22 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
   «agencia sin marca» la cubre una segunda capa del servicio que descarta una marca sin nombre).
 - **Reservas honestas:** el certificado https depende del hosting (igual que los dominios de sitio: `sslStatus` queda `PENDING`); el CNAME de destino se define con el dominio definitivo de la plataforma; el portal en sí
   (pantallas del cliente) es F9.7e.
+
+#### F9.7e — Portal del cliente (criterios 1 —pantallas de acceso—, 3 y 6) — hecha (2026-10-11)
+
+- **Rol `CLIENT_VIEWER`** (sembrado; lo asignan propietario y administradores): solo `publish.approve` y `publish.comment`. Revisa lo que se le pide aprobar, comenta y aprueba o rechaza (con motivo); **no puede publicar**
+  (no tiene `page.manage`) ni gestionar nada.
+- **Deny por defecto en la puerta única:** `clientViewerVerdict` (función pura, 58 casos) deja pasar solo: leer la organización, `panel-brand`, `publish-settings` (lectura), sitios y páginas (lectura), solicitudes de
+  publicación (lista, detalle, aprobar, rechazar) y sus comentarios. Todo lo demás —equipo, roles, plan, facturación, cobros, contactos, pedidos, campañas, webhooks, marca, auditoría, formularios, dominios, escrituras—
+  responde 403 `CLIENT_VIEWER_LIMIT`. Una ruta nueva queda cerrada para el visor hasta que alguien la abra a propósito.
+- **Comentarios** en las solicitudes (`PublishRequestComment`), con permiso `publish.comment`, límite de peticiones, auditoría (`publish_request.commented`) y aislamiento por organización (404 con una solicitud ajena).
+- **Aviso:** quien tiene `publish.approve` (incluido el visor) recibe el correo de una solicitud nueva, con la marca de la agencia si la tiene (F9.7b).
+- **Pantallas de acceso con la marca de la agencia:** si el panel se visita por el dominio VERIFICADO del portal de una agencia (F9.7d), el login y el registro llevan su marca (sin el mosaico de plantillas); en cualquier
+  otro host, la de la plataforma. La resolución nunca bloquea el acceso.
+- **UI:** el visor ve un menú con solo «Aprobaciones», su inicio es esa cola, y en la revisión ve el contenido, el hilo de comentarios y aprueba o rechaza.
+- **Pruebas:** 7 de integración (`client-portal.e2e.test.ts`) + reglas puras + Playwright móvil/escritorio (`portal-cliente.spec.ts`, capturas `09`–`10` en `f97/`) y 3 mutaciones atrapadas (puerta, aislamiento de comentarios, permiso).
+- **Reservas honestas:** los **reportes** que el criterio 3 menciona llegan con F9.8 (la lista permitida los abrirá entonces); servir el panel en el dominio de la agencia exige configurar hosting, CORS y cookies de ese dominio (no
+  hay hosting todavía); solo el propietario o un administrador del negocio invita visores (una agencia delegada no toca el equipo del cliente, ADR-028 §2); los comentarios no envían correo; no hay hilos por bloque.
 
 ---
 

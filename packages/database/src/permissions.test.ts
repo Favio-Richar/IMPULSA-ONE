@@ -9,6 +9,7 @@ const KNOWN_ROLE_NAMES = [
   "SUPPORT",
   "AGENCY_MANAGER",
   "AGENCY_DELEGATE",
+  "CLIENT_VIEWER",
   "SUPER_ADMIN",
 ];
 
@@ -84,7 +85,8 @@ describe("catálogo de permisos (F1.6)", () => {
         .map(([role]) => role)
         .sort();
     expect(holders(PERMISSIONS.PUBLISH_CONFIGURE)).toEqual(["OWNER"]);
-    expect(holders(PERMISSIONS.PUBLISH_APPROVE)).toEqual(["ADMIN", "OWNER"]);
+    // El visor del portal aprueba (no publica: no tiene `page.manage`).
+    expect(holders(PERMISSIONS.PUBLISH_APPROVE)).toEqual(["ADMIN", "CLIENT_VIEWER", "OWNER"]);
   });
 
   it("la auditoria es de propietario y administradores; la agencia delegada no la ve", () => {
@@ -99,5 +101,10 @@ describe("catálogo de permisos (F1.6)", () => {
     const delegate = ROLE_PERMISSIONS.AGENCY_DELEGATE!;
     expect(delegate).not.toContain(PERMISSIONS.PUBLISH_APPROVE);
     expect(delegate).not.toContain(PERMISSIONS.PUBLISH_CONFIGURE);
+  });
+
+  it("el visor del portal aprueba y comenta, pero no puede gestionar páginas ni nada más", () => {
+    expect([...ROLE_PERMISSIONS.CLIENT_VIEWER!].sort()).toEqual([PERMISSIONS.PUBLISH_APPROVE, PERMISSIONS.PUBLISH_COMMENT].sort());
+    expect(ROLE_PERMISSIONS.CLIENT_VIEWER).not.toContain(PERMISSIONS.PAGE_MANAGE);
   });
 });

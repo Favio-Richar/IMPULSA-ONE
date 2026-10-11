@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundExce
 import { MembershipStatus, PERMISSIONS, Prisma, PublishRequestKind, PublishRequestStatus, type PrismaClient } from "@impulza/database";
 import type { EmailAdapter } from "@impulza/auth";
 import type {
+  PublishRequestCommentResponse,
   PagePublishStatusResponse,
   PublishRequestDetailResponse,
   PublishRequestListResponse,
@@ -12,6 +13,7 @@ import {
   publishGate,
   reviewVerdict,
   type ApprovePublishRequestDto,
+  type CreatePublishCommentDto,
   type CreatePublishRequestDto,
   type PublishRequestListQuery,
   type RejectPublishRequestDto,
@@ -359,6 +361,38 @@ export class PublishApprovalService {
       metadata: { pageId: existing.pageId, kind: existing.kind },
     });
     return toSummary(await this.getRequestOrThrow(organizationId, requestId));
+  }
+
+  // ---- comentarios (portal del cliente, F9.7e) -----------------------------------------------------------------------
+
+  /** Los comentarios de una solicitud de ESTA organización, del más antiguo al más reciente. */
+  async listComments(organizationId: string, requestId: string): Promise<PublishRequestCommentResponse[]> {
+    await this.getRequestOrThrow(organizationId, requestId);
+    const rows = await this.prisma.publishRequestComment.findMany({
+      where: { publishRequestId: requestId, organizationId },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: 200,
+      select: { id: true, body: true, createdAt: true, author: { select: { id: true, email: true } } },
+    });
+    return rows.map((row) => ({ id: row.id, body: row.body, author: row.author, createdAt: row.createdAt.toISOString() }));
+  }
+
+  async addComment(organizationId: string, actorId: string, requestId: string, dto: CreatePublishCommentDto): Promise<PublishRequestCommentResponse> {
+    // Filtrada por organización: la solicitud de otra organización es un 404 (ADR-002), no un comentario cruzado.
+    await this.getRequestOrThrow(organizationId, requestId);
+    const row = await this.prisma.publishRequestComment.create({
+      data: { publishRequestId: requestId, organizationId, authorId: actorId, body: dto.body },
+      select: { id: true, body: true, createdAt: true, author: { select: { id: true, email: true } } },
+    });
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "publish_request.commented",
+      targetType: "PublishRequest",
+      targetId: requestId,
+      metadata: { commentId: row.id },
+    });
+    return { id: row.id, body: row.body, author: row.author, createdAt: row.createdAt.toISOString() };
   }
 
   // ---- lectura -----------------------------------------------------------------------------------------------------

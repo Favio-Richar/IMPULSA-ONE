@@ -1,8 +1,10 @@
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import type { PublicPlatformBrandingResponse } from "@impulza/contracts";
 import { DEFAULT_PLATFORM_BRANDING } from "@impulza/validation";
 import { listTemplates } from "../../lib/api/templates";
 import { getPlatformBranding } from "../../lib/api/branding";
+import { getPortalBrand, withPortalBrand } from "../../lib/api/portal";
 import { AuthMosaic } from "../../components/auth/auth-mosaic";
 import { env } from "../../lib/env";
 
@@ -18,11 +20,17 @@ import { env } from "../../lib/env";
  * Beacons, etc. dejan volver a su landing desde el login.
  */
 export default async function AuthLayout({ children }: { children: ReactNode }) {
+  // F9.7e: si se entra por el dominio verificado del portal de una agencia, las pantallas de acceso llevan su marca (y no el mosaico
+  // de plantillas de la plataforma). En cualquier otro host, la marca de la plataforma de siempre.
+  const portalBrand = await getPortalBrand((await headers()).get("host"));
+
   let templates: Awaited<ReturnType<typeof listTemplates>> = [];
-  try {
-    templates = await listTemplates();
-  } catch {
-    templates = [];
+  if (!portalBrand) {
+    try {
+      templates = await listTemplates();
+    } catch {
+      templates = [];
+    }
   }
 
   let branding: PublicPlatformBrandingResponse = DEFAULT_PLATFORM_BRANDING as PublicPlatformBrandingResponse;
@@ -30,6 +38,9 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
     branding = await getPlatformBranding();
   } catch {
     branding = DEFAULT_PLATFORM_BRANDING as PublicPlatformBrandingResponse;
+  }
+  if (portalBrand) {
+    branding = withPortalBrand(branding, portalBrand);
   }
 
   return (

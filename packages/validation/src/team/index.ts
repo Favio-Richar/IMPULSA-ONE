@@ -67,6 +67,7 @@ export const PERMISSION_MODULES = [
     actions: [
       { permission: "publish.approve", label: "Aprobar y publicar" },
       { permission: "publish.configure", label: "Activar la aprobación" },
+      { permission: "publish.comment", label: "Comentar" },
     ],
   },
   {
@@ -89,7 +90,7 @@ export const CUSTOM_ROLE_NAME_MAX = 40;
 /** Tope de roles propios por organización: el equipo no necesita decenas y limita el trabajo de cada petición. */
 export const CUSTOM_ROLES_PER_ORGANIZATION_MAX = 20;
 /** Nombres que no pueden usarse: se confundirían con los roles del sistema. */
-export const RESERVED_ROLE_NAMES = ["OWNER", "ADMIN", "EDITOR", "ANALYST", "SUPPORT", "AGENCY_MANAGER", "AGENCY_DELEGATE", "SUPER_ADMIN"] as const;
+export const RESERVED_ROLE_NAMES = ["OWNER", "ADMIN", "EDITOR", "ANALYST", "SUPPORT", "AGENCY_MANAGER", "AGENCY_DELEGATE", "CLIENT_VIEWER", "SUPER_ADMIN"] as const;
 
 const roleNameSchema = z
   .string()

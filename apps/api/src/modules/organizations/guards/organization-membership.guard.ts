@@ -1,7 +1,7 @@
 import { type CanActivate, type ExecutionContext, ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { MembershipSource, MembershipStatus, OrganizationStatus, type PrismaClient } from "@impulza/database";
 import { loadMemberScope } from "@impulza/agency";
-import { AGENCY_DELEGATING_ROLES, agencyModuleOfSegments, delegatedAccessVerdict, scopeAllowsClient, scopeAllowsModule, segmentsAfterOrganization } from "@impulza/validation";
+import { AGENCY_DELEGATING_ROLES, CLIENT_VIEWER_ROLE, agencyModuleOfSegments, clientViewerVerdict, delegatedAccessVerdict, scopeAllowsClient, scopeAllowsModule, segmentsAfterOrganization } from "@impulza/validation";
 import type { Request } from "express";
 import { Reflector } from "@nestjs/core";
 import { PRISMA } from "../../../database/prisma.module.js";
@@ -70,6 +70,15 @@ export class OrganizationMembershipGuard implements CanActivate {
 
     if (membership.source === MembershipSource.AGENCY) {
       await this.assertDelegatedAccess(membership, organizationId, request);
+    }
+
+    // F9.7e (ADR-028 §5): el visor del portal del cliente solo entra por una lista de rutas permitidas; todo lo demás se niega aquí,
+    // en la puerta única, así una ruta nueva queda cerrada para este rol hasta que alguien la abra a propósito.
+    if (membership.role.name === CLIENT_VIEWER_ROLE) {
+      const verdict = clientViewerVerdict({ method: request.method, path: request.originalUrl });
+      if (!verdict.allowed) {
+        throw new ForbiddenException({ statusCode: 403, error: "Forbidden", code: verdict.code, message: verdict.message });
+      }
     }
 
     requestWithUser.membership = membership;

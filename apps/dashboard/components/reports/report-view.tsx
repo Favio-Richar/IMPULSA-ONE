@@ -7,6 +7,7 @@ import { Printer } from "lucide-react";
 import { useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import { getReport, getReportCsv } from "../../lib/api/reports";
+import { ShareLinks } from "./share-links";
 
 const number = new Intl.NumberFormat("es-CL");
 const percent = new Intl.NumberFormat("es-CL", { style: "percent", maximumFractionDigits: 1 });
@@ -119,7 +120,10 @@ export function ReportView({ organizationId }: { organizationId: string }): Reac
           <ErrorState onRetry={() => void query.refetch()} />
         )
       ) : (
-        <ReportBody report={query.data} onCsv={() => csv.mutate()} csvLoading={csv.isPending} csvError={csv.isError} />
+        <>
+          <ReportBody report={query.data} onCsv={() => csv.mutate()} csvLoading={csv.isPending} csvError={csv.isError} />
+          <ShareLinks organizationId={organizationId} from={applied.from} to={applied.to} />
+        </>
       )}
     </div>
   );

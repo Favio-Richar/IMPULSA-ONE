@@ -165,6 +165,7 @@ model User {
   publishRequestsMade     PublishRequest[]  @relation("PublishRequestRequester")
   publishRequestsReviewed PublishRequest[]  @relation("PublishRequestReviewer")
   publishRequestComments  PublishRequestComment[]
+  reportShareLinksCreated ReportShareLink[]
   contactsAssigned     Contact[]           @relation("ContactAssignee")
   supportTicketsOpened SupportTicket[]     @relation("SupportTicketOpener")
   supportMessages      SupportMessage[]    @relation("SupportMessageAuthor")
@@ -237,6 +238,7 @@ model Organization {
   whiteLabel          WhiteLabelSettings?
   agencyDomains       AgencyDomain[]
   privateTemplates    Template[]
+  reportShareLinks    ReportShareLink[]
   agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
@@ -2750,4 +2752,27 @@ model PublishRequestComment {
   @@index([publishRequestId, createdAt])
   @@index([organizationId])
   @@map("publish_request_comments")
+}
+
+// F9.8b (ADR-028 s6): enlace compartido de solo lectura de un informe. El token (256 bits aleatorios) NUNCA se guarda: solo su SHA-256. El periodo
+// queda fijo en el enlace; vence siempre y se puede revocar. Solo sirve cifras agregadas de la organizacion dueña.
+model ReportShareLink {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  tokenHash      String    @unique @map("token_hash")
+  label          String?
+  periodFrom     String    @map("period_from")
+  periodTo       String    @map("period_to")
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdById    String?   @map("created_by_id") @db.Uuid
+  lastAccessedAt DateTime? @map("last_accessed_at") @db.Timestamptz(6)
+  accessCount    Int       @default(0) @map("access_count")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@map("report_share_links")
 }

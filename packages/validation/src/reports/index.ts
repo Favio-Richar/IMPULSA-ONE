@@ -14,14 +14,34 @@ const dayString = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Usa el formato AAAA-MM-DD.")
   .refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`)) && new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) === value, "Fecha inválida.");
 
-export const reportQuerySchema = z
-  .object({ from: dayString, to: dayString })
-  .refine((value) => value.from <= value.to, { message: "La fecha inicial no puede ser posterior a la final.", path: ["to"] })
-  .refine((value) => daysInRange(value.from, value.to) <= REPORT_RANGE_MAX_DAYS, {
-    message: `El periodo no puede pasar de ${REPORT_RANGE_MAX_DAYS} días.`,
-    path: ["to"],
-  });
+const periodShape = { from: dayString, to: dayString };
+
+function periodIsValid<T extends { from: string; to: string }>(schema: z.ZodType<T>) {
+  return schema
+    .refine((value) => value.from <= value.to, { message: "La fecha inicial no puede ser posterior a la final.", path: ["to"] })
+    .refine((value) => daysInRange(value.from, value.to) <= REPORT_RANGE_MAX_DAYS, {
+      message: `El periodo no puede pasar de ${REPORT_RANGE_MAX_DAYS} días.`,
+      path: ["to"],
+    });
+}
+
+export const reportQuerySchema = periodIsValid(z.object(periodShape));
 export type ReportQuery = z.infer<typeof reportQuerySchema>;
+
+/** Enlace compartido del informe (F9.8b): periodo fijo, vencimiento obligatorio (hasta 90 días) y una etiqueta opcional. */
+export const REPORT_SHARE_MAX_DAYS = 90;
+export const REPORT_SHARE_DEFAULT_DAYS = 14;
+export const createReportShareSchema = periodIsValid(
+  z.object({
+    ...periodShape,
+    label: z.string().trim().max(80, "Máximo 80 caracteres.").nullish().transform((value) => (value ? value : null)),
+    expiresInDays: z.number().int().min(1, "Al menos 1 día.").max(REPORT_SHARE_MAX_DAYS, `Hasta ${REPORT_SHARE_MAX_DAYS} días.`).default(REPORT_SHARE_DEFAULT_DAYS),
+  }),
+);
+export type CreateReportShareDto = z.infer<typeof createReportShareSchema>;
+
+/** Los tokens de enlace son 32 bytes en base64url (43 caracteres): cualquier otra forma ni se consulta en la base de datos. */
+export const REPORT_SHARE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 function toTime(day: string): number {
   return Date.parse(`${day}T00:00:00.000Z`);

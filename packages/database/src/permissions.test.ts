@@ -107,4 +107,12 @@ describe("catálogo de permisos (F1.6)", () => {
     expect([...ROLE_PERMISSIONS.CLIENT_VIEWER!].sort()).toEqual([PERMISSIONS.PUBLISH_APPROVE, PERMISSIONS.PUBLISH_COMMENT].sort());
     expect(ROLE_PERMISSIONS.CLIENT_VIEWER).not.toContain(PERMISSIONS.PAGE_MANAGE);
   });
+
+  it("compartir informes es de quien administra y de la agencia delegada, no del visor ni del analista", () => {
+    const holders = Object.entries(ROLE_PERMISSIONS)
+      .filter(([, keys]) => keys.includes(PERMISSIONS.REPORT_SHARE))
+      .map(([role]) => role)
+      .sort();
+    expect(holders).toEqual(["ADMIN", "AGENCY_DELEGATE", "OWNER"]);
+  });
 });

@@ -110,6 +110,9 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/domains/{hostname}",
       // Resolución del portal de una agencia (F9.7d): sin sesión, solo la marca pública de una agencia con dominio verificado; límite de tasa.
       "GET /api/v1/public/portal/{hostname}",
+      // Informe compartido (F9.8b): el token es la credencial; vence, se revoca, solo cifras agregadas y con límite de tasa.
+      "GET /api/v1/public/reports/{token}",
+      "GET /api/v1/public/reports/{token}/csv",
       // Reserva pública (F5.2): el visitante no tiene sesión. CSRF, límite de tasa y antispam.
       "GET /api/v1/public/sites/{siteSlug}/booking",
       "GET /api/v1/public/sites/{siteSlug}/booking/availability",

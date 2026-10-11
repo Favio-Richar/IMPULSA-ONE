@@ -71,4 +71,11 @@ describe("redactPath", () => {
     );
     expect(redactPath(undefined)).toBeUndefined();
   });
+
+  it("oculta el token del enlace compartido de un informe, también con /csv (F9.8b)", () => {
+    const token = "a".repeat(43);
+    expect(redactPath(`/api/v1/public/reports/${token}`)).toBe("/api/v1/public/reports/[redactado]");
+    expect(redactPath(`/api/v1/public/reports/${token}/csv`)).toBe("/api/v1/public/reports/[redactado]/csv");
+    expect(redactPath(`/api/v1/public/reports/${token}/csv`)).not.toContain(token);
+  });
 });

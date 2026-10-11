@@ -559,7 +559,21 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
 - **UI:** «Reportes» en el menú: periodos rápidos y fechas libres, tabla con variaciones, conversión, barras por día, ranking, **Descargar CSV** e **Imprimir** (la hoja de impresión oculta menú y controles).
 - **Pruebas:** 5 de integración (cifras conocidas, aislamiento por organización, validación, historial del plan, CSV), reglas puras (9), Playwright móvil/escritorio (`reportes.spec.ts`, capturas en `f98/`) y 4 mutaciones
   atrapadas tras fortalecer dos pruebas que no las atrapaban (la mezcla de ventas entre organizaciones se comprobaba con «no contiene un número», que una suma puede esquivar: ahora son valores exactos).
-- **Pendiente de F9.8:** **b** enlace compartido de solo lectura (token, vencimiento, revocable), **c** programación semanal/mensual por cola con correo, **d** comentarios de la agencia y respuesta del cliente.
+- **Pendiente de F9.8:** **c** programación semanal/mensual por cola con correo, **d** comentarios de la agencia y respuesta del cliente.
+
+#### F9.8b — Enlace compartido de solo lectura (criterio 5) — hecha (2026-10-11)
+
+- **Token:** 32 bytes aleatorios (256 bits, base64url de 43 caracteres) que **no se guarda**: solo su SHA-256. Se muestra una única vez al crearlo y viaja con `Cache-Control: no-store`. Ni la auditoría ni la lista lo llevan.
+- **Solo lectura y acotado:** periodo fijo, vencimiento obligatorio (1 a 90 días), revocable (idempotente) y con tope de 20 enlaces vigentes por organización. Sirve **solo cifras agregadas** de la organización dueña (sin contactos ni ids
+  internos). Una organización bloqueada o con el sitio oculto por su agencia deja de servirlo; un plan que ya no cubre el historial tampoco.
+- **Respuestas:** desconocido o mal formado → 404 (una forma que no es de token ni se consulta); revocado → 410 `LINK_REVOKED`; vencido → 410 `LINK_EXPIRED`. Con límite de peticiones por origen.
+- **El token no se registra:** `redactPath` lo oculta en los logs (`/public/reports/<token>[/csv]`), la página va con `noindex`, `Referrer-Policy: no-referrer` y sin caché. Solo se guarda un contador de visitas y la última hora.
+- **API:** `GET/POST …/reports/share-links`, `DELETE …/:linkId` (`report.share`; auditado: `report.share_created/revoked`) y `GET /public/reports/:token` y `…/csv`.
+- **Sitio público:** `/informe/[token]` (sin sesión; marca del negocio, cifras con su comparación, bloques con más clics y descarga del CSV desde el mismo origen) y mensaje claro cuando el enlace ya no está disponible.
+- **UI:** «Compartir este informe» en Reportes (nombre, vencimiento, copiar el enlace una sola vez y lista con visitas y revocar).
+- **Pruebas:** 5 de integración (`report-share.e2e.test.ts`) + redacción en logs + caso transversal de aislamiento + Playwright móvil/escritorio (enlace sin sesión, CSV, revocación y 404 de uno inventado; capturas `02`–`04`)
+  y 6 mutaciones atrapadas (revocado, vencido, filtro por organización, organización bloqueada, token en claro, tope).
+- **Reservas honestas:** el enlace fija el periodo (si termina hoy, cada visita ve cifras actualizadas hasta hoy); no hay contraseña opcional ni lista de correos permitidos; el CSV público lleva los mismos totales del informe.
 
 ---
 

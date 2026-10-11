@@ -615,3 +615,8 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - **PublishRequestComment** (`publish_request_comments`): `publish_request_id` (`CASCADE`), `organization_id` (índice; el filtro de aislamiento), `author_id` (`SET NULL`), `body`, `created_at`. Migración reversible `20261011130000_f97e_client_portal`.
 - **Rol** `CLIENT_VIEWER` (sembrado, asignable por propietario y administradores) con `publish.approve` y `publish.comment` solamente; **permiso** nuevo `publish.comment` (OWNER, ADMIN, EDITOR, AGENCY_DELEGATE, CLIENT_VIEWER).
   Lo que el visor puede alcanzar lo fija una lista de rutas permitidas (`clientViewerVerdict`) aplicada en `OrganizationMembershipGuard`.
+
+## 9zg. Enlace compartido del informe (F9.8b, BACKLOG_FASE_9.md, ADR-028 §6)
+
+- **ReportShareLink** (`report_share_links`): `organization_id` (`CASCADE`), `token_hash` (SHA-256 único; **el token nunca se guarda**), `label`, `period_from`/`period_to` (fijos), `expires_at` (obligatorio, hasta 90 días),
+  `revoked_at`, `created_by_id` (`SET NULL`), `last_accessed_at`, `access_count`. Sin IP ni agente de usuario. Migración reversible `20261011140000_f98b_report_share_links`. Permiso nuevo `report.share` (OWNER, ADMIN, AGENCY_DELEGATE).

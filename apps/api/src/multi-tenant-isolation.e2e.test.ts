@@ -2476,4 +2476,33 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("F9.8b Enlace compartido del informe: nunca se cruza (ADR-002, ADR-028 §6)", () => {
+    it("B no lista, crea ni revoca enlaces de A, y el enlace de A no sirve nada de B", async () => {
+      const link = await prisma.reportShareLink.create({
+        data: {
+          organizationId: orgA.id,
+          tokenHash: `iso-${Date.now().toString(36)}-${"0".repeat(40)}`,
+          periodFrom: "2026-01-01",
+          periodTo: "2026-01-31",
+          expiresAt: new Date(Date.now() + 86_400_000),
+        },
+      });
+      try {
+        const base = `/api/v1/organizations/${orgA.id}/reports/share-links`;
+        await orgB.ownerAgent.get(base).expect(403);
+        await orgB.ownerAgent.post(base).set(CSRF_HEADERS).send({ from: "2026-01-01", to: "2026-01-31" }).expect(403);
+        await orgB.ownerAgent.delete(`${base}/${link.id}`).set(CSRF_HEADERS).expect(403);
+        // Por su propia ruta, el id de A no existe.
+        await orgB.ownerAgent.delete(`/api/v1/organizations/${orgB.id}/reports/share-links/${link.id}`).set(CSRF_HEADERS).expect(404);
+        const own = await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/reports/share-links`).expect(200);
+        expect(own.body).toEqual([]);
+        // Y el informe en pantalla de A tampoco es accesible para B.
+        await orgB.ownerAgent.get(`/api/v1/organizations/${orgA.id}/reports/summary?from=2026-01-01&to=2026-01-31`).expect(403);
+        expect((await prisma.reportShareLink.findUniqueOrThrow({ where: { id: link.id } })).revokedAt).toBeNull();
+      } finally {
+        await prisma.reportShareLink.deleteMany({ where: { id: link.id } });
+      }
+    });
+  });
+
 });

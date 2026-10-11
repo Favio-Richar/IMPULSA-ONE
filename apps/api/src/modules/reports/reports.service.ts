@@ -82,6 +82,11 @@ export class ReportsService {
     }
   }
 
+  /** El periodo pedido debe caber en el historial del plan (402 si no): lo usa también la creación de un enlace compartido. */
+  async assertPeriodAllowed(organizationId: string, from: string): Promise<void> {
+    await this.analytics.assertWithinHistoryLimit(organizationId, from);
+  }
+
   async build(organizationId: string, query: ReportQuery): Promise<ReportResponse> {
     const period: ReportPeriod = { from: query.from, to: query.to };
     // El periodo pedido sí obedece al historial del plan (402 si se pasa), como el resto de la analítica.

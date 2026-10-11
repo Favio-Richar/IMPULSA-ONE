@@ -36,6 +36,8 @@ export const PERMISSIONS = {
   AUDIT_VIEW: "audit.view",
   // F9.7e (ADR-028 s5): comentar las solicitudes de publicacion (el portal del cliente).
   PUBLISH_COMMENT: "publish.comment",
+  // F9.8b (ADR-028 s6): enlaces compartidos de solo lectura del informe.
+  REPORT_SHARE: "report.share",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -162,6 +164,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.PUBLISH_COMMENT,
     description: "Comentar las solicitudes de publicación: quien pide, quien revisa y el cliente que aprueba en su portal (F9.7e, ADR-028 §5).",
   },
+  {
+    key: PERMISSIONS.REPORT_SHARE,
+    description: "Crear, ver y revocar enlaces compartidos de solo lectura del informe del cliente (F9.8b, ADR-028 §6).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -210,6 +216,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     // La auditoría incluye cuentas y acciones del equipo: es del propietario y de los administradores (F9.6d).
     PERMISSIONS.AUDIT_VIEW,
     PERMISSIONS.PUBLISH_COMMENT,
+    PERMISSIONS.REPORT_SHARE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -237,6 +244,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.PUBLISH_APPROVE,
     PERMISSIONS.AUDIT_VIEW,
     PERMISSIONS.PUBLISH_COMMENT,
+    PERMISSIONS.REPORT_SHARE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y
@@ -290,6 +298,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.ORDER_MANAGE,
     PERMISSIONS.CAMPAIGN_MANAGE,
     PERMISSIONS.PUBLISH_COMMENT,
+    // La agencia comparte el informe con su cliente (F9.8b).
+    PERMISSIONS.REPORT_SHARE,
   ],
   // Portal del cliente (F9.7e, ADR-028 s5): del lado del negocio, quien revisa y aprueba lo que su agencia o su equipo prepara.
   // Sin `page.manage`: aprueba, pero no publica. El resto de lo que puede o no ver lo fija `clientViewerVerdict` en la puerta de entrada.

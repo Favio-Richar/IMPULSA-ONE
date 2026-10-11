@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { PrismaClient } from "@impulza/database";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, request as apiRequest, test, type Page } from "@playwright/test";
 import { FIXTURE_PATH, type SeededFixture } from "../global-setup.js";
 
 // F9.8a — informe por cliente (ADR-028 §6), en teléfono y escritorio: cifras conocidas, comparación con el periodo anterior, CSV sin
@@ -103,3 +103,68 @@ test("el informe muestra cifras conocidas con su comparación, se descarga en CS
   await page.getByRole("button", { name: "Ver informe" }).click();
   await expect(page.getByText("Revisa las fechas")).toBeVisible();
 });
+
+test("un enlace compartido se abre sin sesión, muestra el informe sin datos personales y deja de servir al revocarlo", async ({ page, browser }, testInfo) => {
+  test.setTimeout(240_000);
+  const project = testInfo.project.name;
+  await page.addInitScript((id) => {
+    window.localStorage.setItem("impulza-active-org", JSON.stringify({ state: { activeOrganizationId: id }, version: 0 }));
+  }, fixture.organizationId);
+  await page.goto("/reportes");
+  await page.getByLabel("Desde").fill(day(-206));
+  await page.getByLabel("Hasta").fill(day(-200));
+  await page.getByRole("button", { name: "Ver informe" }).click();
+  await expect(page.getByTestId("report-metrics")).toBeVisible();
+
+  // Crear el enlace: el token solo se muestra ahora.
+  const panel = page.getByTestId("share-links");
+  await panel.getByLabel("Nombre del enlace (opcional)").fill(`Cliente ${project}`);
+  await panel.getByRole("button", { name: "Crear enlace" }).click();
+  const created = page.getByTestId("share-link-created");
+  await expect(created).toBeVisible();
+  const url = await created.getByLabel("Enlace del informe").inputValue();
+  expect(url).toMatch(/\/informe\/[A-Za-z0-9_-]{43}$/);
+  await expectNoHorizontalScroll(page);
+  await capture(page, `02-compartir-${project}.png`);
+
+  // Se abre en un navegador SIN sesión: ve el informe fijado, con la marca, sin datos personales.
+  const anonymous = await browser.newContext();
+  const shared = await anonymous.newPage();
+  try {
+    await shared.goto(url);
+    const report = shared.getByTestId("shared-report");
+    await expect(report).toBeVisible();
+    await expect(report.locator('[data-metric="pageViews"]')).toContainText("100");
+    await expect(report.locator('[data-metric="pageViews"]')).toContainText("+100");
+    await expect(report).not.toContainText("@");
+    await expectNoHorizontalScroll(shared);
+    await capture(shared, `03-informe-compartido-${project}.png`);
+    // Sin indexar.
+    await expect(shared.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    // El CSV sale del mismo enlace.
+    const csv = await anonymous.request.get(`${url}/csv`);
+    expect(csv.status()).toBe(200);
+    expect(await csv.text()).toContain("Visitas;100;50");
+
+    // Revocarlo desde el panel.
+    const row = panel.getByTestId("share-link").first();
+    await row.getByRole("button", { name: "Revocar" }).click();
+    await row.getByRole("button", { name: "Sí" }).click();
+    await expect(panel.getByTestId("share-link").first()).toHaveAttribute("data-active", "false");
+
+    await shared.reload();
+    await expect(shared.getByText("Este enlace ya no está disponible")).toBeVisible();
+    expect((await anonymous.request.get(`${url}/csv`)).status()).toBe(410);
+    await capture(shared, `04-informe-revocado-${project}.png`);
+  } finally {
+    await anonymous.close();
+  }
+
+  // Un enlace inventado: 404 de la plataforma, sin pistas.
+  const probe = await apiRequest.newContext();
+  const fake = new URL(url);
+  fake.pathname = `/informe/${"A".repeat(43)}`;
+  expect((await probe.get(fake.toString())).status()).toBe(404);
+  await probe.dispose();
+});
+

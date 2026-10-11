@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  REPORT_SHARE_TOKEN_PATTERN,
+  createReportShareSchema,
   compareTotals,
   compareValue,
   conversionRate,
@@ -106,5 +108,29 @@ describe("reportCsv", () => {
     expect(lines.find((line) => line.startsWith("Ventas pagadas;45000"))).toBeDefined();
     expect(lines.some((line) => line.startsWith("'+cmd"))).toBe(true);
     expect(csv.startsWith("﻿")).toBe(true);
+  });
+});
+
+describe("createReportShareSchema", () => {
+  it("usa 14 días por defecto y normaliza la etiqueta", () => {
+    const parsed = createReportShareSchema.parse({ from: "2026-10-01", to: "2026-10-31", label: "  Octubre  " });
+    expect(parsed).toEqual({ from: "2026-10-01", to: "2026-10-31", label: "Octubre", expiresInDays: 14 });
+    expect(createReportShareSchema.parse({ from: "2026-10-01", to: "2026-10-31", label: "   " }).label).toBeNull();
+  });
+
+  it("acota el vencimiento y reutiliza las reglas del periodo", () => {
+    const base = { from: "2026-10-01", to: "2026-10-31" };
+    expect(createReportShareSchema.safeParse({ ...base, expiresInDays: 0 }).success).toBe(false);
+    expect(createReportShareSchema.safeParse({ ...base, expiresInDays: 91 }).success).toBe(false);
+    expect(createReportShareSchema.safeParse({ ...base, expiresInDays: 1.5 }).success).toBe(false);
+    expect(createReportShareSchema.safeParse({ ...base, expiresInDays: 90 }).success).toBe(true);
+    expect(createReportShareSchema.safeParse({ from: "2026-10-31", to: "2026-10-01" }).success).toBe(false);
+  });
+
+  it("solo reconoce tokens de 43 caracteres base64url", () => {
+    expect(REPORT_SHARE_TOKEN_PATTERN.test("A".repeat(43))).toBe(true);
+    expect(REPORT_SHARE_TOKEN_PATTERN.test("A".repeat(42))).toBe(false);
+    expect(REPORT_SHARE_TOKEN_PATTERN.test(`${"A".repeat(42)}/`)).toBe(false);
+    expect(REPORT_SHARE_TOKEN_PATTERN.test("../".repeat(15))).toBe(false);
   });
 });

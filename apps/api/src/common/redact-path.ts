@@ -7,6 +7,7 @@
  * - Token de gestión de reserva (`/public/bookings/<token>[/cancel|/reschedule]`)
  * - Token de visualización de pedido (`/public/orders/<token>`)
  * - Token de descargas digitales (`/public/downloads/<token>[/url]`)
+ * - Token del enlace compartido de un informe (`/public/reports/<token>[/csv]`, F9.8b)
  * - Parámetros de consulta sensibles (`token`, `code`, `secret`, `key`, `state`)
  */
 export function redactPath(path: string | undefined): string | undefined {
@@ -18,5 +19,6 @@ export function redactPath(path: string | undefined): string | undefined {
     .replace(/(\/public\/bookings\/)(?!calendar-feed\/)[^/?#]+(?=[/?#]|$)/g, "$1[redactado]")
     .replace(/(\/public\/orders\/)[^/?#]+/g, "$1[redactado]")
     .replace(/(\/public\/downloads\/)[^/?#]+(?=[/?#]|$)/g, "$1[redactado]")
+    .replace(/(\/public\/reports\/)[^/?#]+(?=[/?#]|$)/g, "$1[redactado]")
     .replace(/([?&](?:token|code|secret|key|state)=)[^&#]+/gi, "$1[redactado]");
 }

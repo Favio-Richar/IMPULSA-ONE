@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { analyticsSeriesPoint, analyticsSubjectRow } from "./analytics.js";
-import { isoDateTime } from "./primitives.js";
+import { isoDateTime, uuid } from "./primitives.js";
 
 // ---- informe por cliente (F9.8, ADR-028 §6) ----------------------------------------------------------------------------
 // Los parámetros de consulta viven en `@impulza/validation` (`reports/`). Solo cifras agregadas: ningún dato personal de contactos.
@@ -42,3 +42,32 @@ export const reportResponse = z.object({
 });
 export type ReportResponse = z.infer<typeof reportResponse>;
 export type ReportMetricResponse = z.infer<typeof reportMetricResponse>;
+
+// ---- enlace compartido (F9.8b) ---------------------------------------------------------------------------------------------
+
+export const reportShareLinkResponse = z.object({
+  id: uuid,
+  label: z.string().nullable(),
+  period,
+  expiresAt: isoDateTime,
+  revokedAt: isoDateTime.nullable(),
+  /** Vigente = ni vencido ni revocado. */
+  active: z.boolean(),
+  createdAt: isoDateTime,
+  lastAccessedAt: isoDateTime.nullable(),
+  accessCount: z.number().int().nonnegative(),
+});
+export type ReportShareLinkResponse = z.infer<typeof reportShareLinkResponse>;
+
+/** Al crear: el enlace completo viaja SOLO en esta respuesta; después ya no se puede recuperar (solo se guarda su hash). */
+export const createdReportShareLinkResponse = reportShareLinkResponse.extend({ token: z.string() });
+export type CreatedReportShareLinkResponse = z.infer<typeof createdReportShareLinkResponse>;
+
+/** Lo que ve quien abre un enlace: el informe (cifras agregadas) y la marca pública de quien lo comparte. Sin ids internos. */
+export const publicReportResponse = z.object({
+  report: reportResponse,
+  brand: z.object({ displayName: z.string(), logoLightUrl: z.string().nullable(), primaryColor: z.string() }),
+  expiresAt: isoDateTime,
+});
+export type PublicReportResponse = z.infer<typeof publicReportResponse>;
+

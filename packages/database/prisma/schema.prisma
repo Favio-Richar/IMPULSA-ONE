@@ -3066,6 +3066,9 @@ model MembershipPurchase {
   paidAt               DateTime?                @map("paid_at") @db.Timestamptz(6)
   periodStart          DateTime?                @map("period_start") @db.Timestamptz(6)
   periodEnd            DateTime?                @map("period_end") @db.Timestamptz(6)
+  // F10.2b: avisos de renovacion y de vencimiento, una sola vez por compra (se reclaman de forma condicional).
+  renewalReminderSentAt DateTime?               @map("renewal_reminder_sent_at") @db.Timestamptz(6)
+  expiryNoticeSentAt   DateTime?                @map("expiry_notice_sent_at") @db.Timestamptz(6)
   createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 

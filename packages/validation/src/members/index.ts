@@ -168,6 +168,38 @@ export function paidUntil(purchases: PurchaseForAccess[], now: Date): Date | nul
   return ends.length === 0 ? null : new Date(Math.max(...ends.map((date) => date.getTime())));
 }
 
+/** Cuántos días antes del vencimiento se avisa para renovar. */
+export const MEMBERSHIP_RENEWAL_REMINDER_DAYS = 7;
+/** Un aviso de vencimiento solo se manda si el periodo terminó hace poco: no se avisa de lo que venció hace meses. */
+export const MEMBERSHIP_EXPIRY_NOTICE_WINDOW_DAYS = 3;
+
+/**
+ * Qué aviso corresponde a una compra pagada AHORA, o `null`. Solo para el ÚLTIMO periodo del miembro: si ya renovó (otra compra
+ * vigente termina después), esta no avisa nada. `memberPurchases` son todas las compras pagadas del miembro.
+ */
+export function membershipNoticeDue(
+  purchase: PurchaseForAccess & { renewalReminderSentAt: Date | null; expiryNoticeSentAt: Date | null },
+  memberPurchases: PurchaseForAccess[],
+  now: Date,
+): "renewal_reminder" | "expiry_notice" | null {
+  if (purchase.status !== "PAID" || purchase.paymentStatus !== "approved" || purchase.refundedAmount >= purchase.amount || purchase.periodEnd === null) return null;
+  const end = purchase.periodEnd.getTime();
+  const dayMs = 86_400_000;
+  const laterEnd = paidUntil(memberPurchases, now);
+  if (end > now.getTime()) {
+    // Vigente: avisa en la última semana, y solo si es el periodo que más lejos llega (si no, ya renovó).
+    if (purchase.renewalReminderSentAt !== null) return null;
+    if (end - now.getTime() > MEMBERSHIP_RENEWAL_REMINDER_DAYS * dayMs) return null;
+    if (laterEnd !== null && laterEnd.getTime() > end) return null;
+    return "renewal_reminder";
+  }
+  // Vencido: avisa una vez, poco después, y solo si no tiene ningún periodo vigente (si renovó, no hay nada que avisar).
+  if (purchase.expiryNoticeSentAt !== null) return null;
+  if (now.getTime() - end > MEMBERSHIP_EXPIRY_NOTICE_WINDOW_DAYS * dayMs) return null;
+  if (laterEnd !== null) return null;
+  return "expiry_notice";
+}
+
 /**
  * Inicio del periodo que se compra: si ya hay uno vigente, el nuevo empieza donde termina (los periodos se apilan y no se
  * pierde nada al renovar antes); si no, empieza ahora.

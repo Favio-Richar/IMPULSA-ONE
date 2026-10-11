@@ -11,6 +11,8 @@ import {
   PublicMembershipStatusController,
 } from "./membership.controllers.js";
 import { MembershipCheckoutService } from "./membership-checkout.service.js";
+import { MembershipLifecycleRunner } from "./membership-lifecycle.runner.js";
+import { MembershipLifecycleService } from "./membership-lifecycle.service.js";
 import { MembershipPlansService } from "./membership-plans.service.js";
 import { PublicMembersController } from "./public-members.controller.js";
 
@@ -29,6 +31,6 @@ import { PublicMembersController } from "./public-members.controller.js";
     MembershipPlansController,
     MembersController,
   ],
-  providers: [MembersService, MembershipPlansService, MembershipCheckoutService],
+  providers: [MembersService, MembershipPlansService, MembershipCheckoutService, MembershipLifecycleService, MembershipLifecycleRunner],
 })
 export class MembersModule {}

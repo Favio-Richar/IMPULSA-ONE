@@ -7,7 +7,7 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 | Historia | Título | Estado |
 |---|---|---|
 | F10.1 | Miembros de sitio y contenido protegido (enlace mágico) | **Hecha** (2026-10-11): API 12/12, suite 74/74 (API 1035), Playwright 4/4; reservas en el detalle |
-| F10.2 | Planes de membresía y cobro por la cuenta del negocio | **Hecha la parte (a)** (2026-10-11): planes, compra, acceso por vigencia, reembolsos; falta (b) avisos de renovación y vencimiento |
+| F10.2 | Planes de membresía y cobro por la cuenta del negocio | **Hecha** (2026-10-11): (a) planes, compra, acceso por vigencia y reembolsos; (b) avisos de renovación y de vencimiento; reservas en el detalle |
 | F10.3 | Cursos: módulos, lecciones y progreso | Pendiente |
 | F10.4 | Tarjeta digital, vCard y pases de wallet | Pendiente |
 | F10.5 | PWA: instalación y modo sin conexión acotado | Pendiente |
@@ -83,6 +83,20 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 - **Reservas honestas:** (1) **sin cobro recurrente automático** (Mercado Pago permite preaprobaciones en la cuenta del vendedor, pero exige otro permiso OAuth y credenciales reales para probarse); (2) **aún sin
   recordatorios de renovación ni aviso de vencimiento** (F10.2b); (3) la compra real contra Mercado Pago se prueba con la pasarela simulada: Playwright no tiene la aplicación configurada, así que el botón de pago no se
   ejerce contra Mercado Pago; (4) solo CLP; (5) la devolución se hace desde Mercado Pago (no desde el panel): el aviso la registra y corta el acceso.
+
+**Hecha — F10.2b (2026-10-11): avisos de renovación y de vencimiento.**
+
+- **Qué avisa:** un recordatorio en la última semana antes de que termine el periodo y un aviso poco después de que termina (hasta 3 días; no de lo que venció hace tiempo). Cada uno se manda **una sola vez por
+  compra**: la marca (`renewal_reminder_sent_at`, `expiry_notice_sent_at`, migración reversible `20261011210000_f102b_membership_notices`) se reclama de forma condicional antes de enviar, así que varias réplicas o
+  pasadas no duplican nada.
+- **A quién NO avisa:** a quien ya renovó (otro periodo vigente termina después), a un miembro revocado o invitado, de un pago reembolsado, en disputa o sin aprobar, ni en un sitio despublicado o de una
+  organización bloqueada. El correo lleva la marca del negocio, el enlace al sitio (donde la puerta ofrece renovar) y dice expresamente que no se cobra nada automáticamente.
+- **Cola** `membership-lifecycle` (BullMQ en la API, `tick` cada hora; registrada en el panel de operaciones; `MEMBERSHIP_SCHEDULER_DISABLED=true` la apaga; no arranca bajo Vitest). Un fallo de correo se
+  registra y no se reintenta a ciegas (a lo más una vez por compra, nunca en bucle).
+- **Pruebas:** 5 de reglas puras (ventanas, una vez, renovó, no avisa lo reembolsado/en disputa) y 6 de integración (recordatorio, vencimiento, exclusiones, sitio oculto/bloqueado, 6 pasadas simultáneas, fallo
+  de correo); **3 mutaciones atrapadas** (sin reclamo condicional —la primera versión de la prueba de carrera no la detectaba y se endureció—, sin filtrar revocados, sin mirar si ya renovó).
+- **Reserva:** el «período de gracia configurable» del backlog **no aplica** al modelo prepagado (el acceso termina con el periodo pagado); si el negocio quiere dar días extra, puede invitar al miembro. La
+  «cancelación por el miembro» tampoco aplica: no hay cobro automático que cancelar.
 
 ## F10.3 — Cursos
 

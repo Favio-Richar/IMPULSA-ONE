@@ -19,6 +19,7 @@ export const BULLMQ_QUEUES = [
   "page-campaign-boundaries",
   "payment-accounts-refresh",
   "report-schedules",
+  "membership-lifecycle",
   "sequence-dispatch",
 ] as const;
 

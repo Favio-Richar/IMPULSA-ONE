@@ -658,3 +658,4 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - **MembershipPurchase** (`membership_purchases`): copia del plan (`plan_name`, `amount`, `currency`, `period_days`), `status` (`PENDING`|`PAID`|`EXPIRED`), cobro (`checkout_preference_id`, `checkout_url`,
   `checkout_expires_at`), `status_token_hash` (único; el enlace no se guarda), `provider_payment_id` (único, asignado de forma condicional), `payment_status`, `refunded_amount`, y `paid_at`/`period_start`/`period_end`
   (`CHECK`: una compra pagada tiene periodo). Migración reversible `20261011200000_f102_membership_plans`.
+- **MembershipPurchase.renewal_reminder_sent_at / expiry_notice_sent_at** (F10.2b): marcas de «ya se avisó», reclamadas de forma condicional. Migración reversible `20261011210000_f102b_membership_notices`.

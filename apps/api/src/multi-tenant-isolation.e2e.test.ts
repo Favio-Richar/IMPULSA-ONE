@@ -2418,4 +2418,35 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("F9.7c Plantillas privadas: nunca se cruzan (ADR-002, ADR-028)", () => {
+    it("B no ve, aplica ni borra una plantilla privada de A, y no está en la galería pública", async () => {
+      const template = await prisma.template.create({
+        data: {
+          organizationId: orgA.id,
+          code: `p-aislada-${Date.now().toString(36)}`,
+          name: "Plantilla privada de A",
+          description: "Solo para la organización A",
+          industryTags: ["emprendimiento"],
+          objectiveTags: ["mostrar"],
+          themeCode: "claro-profesional",
+          family: "minimal",
+          blocksSeed: [],
+        },
+      });
+      try {
+        await orgB.ownerAgent.get(`/api/v1/organizations/${orgA.id}/private-templates`).expect(403);
+        const own = await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/private-templates`).expect(200);
+        expect(JSON.stringify(own.body)).not.toContain(template.code);
+        await orgB.ownerAgent.delete(`/api/v1/organizations/${orgB.id}/private-templates/${template.id}`).set(CSRF_HEADERS).expect(404);
+        await orgB.ownerAgent.delete(`/api/v1/organizations/${orgA.id}/private-templates/${template.id}`).set(CSRF_HEADERS).expect(403);
+        const pub = await request(httpServer).get("/api/v1/templates").expect(200);
+        expect(JSON.stringify(pub.body)).not.toContain(template.code);
+        await request(httpServer).get(`/api/v1/templates/${template.code}`).expect(404);
+        expect(await prisma.template.count({ where: { id: template.id } })).toBe(1);
+      } finally {
+        await prisma.template.deleteMany({ where: { id: template.id } });
+      }
+    });
+  });
+
 });

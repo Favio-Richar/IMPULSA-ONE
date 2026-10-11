@@ -4559,6 +4559,531 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/private-templates": {
+      "get": {
+        "description": "Las propias y, si quien consulta trabaja aquí con acceso delegado de una agencia, las de esa agencia (`fromAgency`). Nunca las de otra organización ni las del catálogo público. Basta ser miembro activo.",
+        "operationId": "PrivateTemplatesController_list",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plantillas privadas, de la más reciente a la más antigua.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "industryTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "profesional",
+                            "servicios-locales",
+                            "belleza-bienestar",
+                            "salud",
+                            "gastronomia",
+                            "turismo",
+                            "eventos",
+                            "comercio",
+                            "creador",
+                            "emprendimiento",
+                            "educacion"
+                          ]
+                        }
+                      },
+                      "objectiveTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "captar",
+                            "vender",
+                            "reservar",
+                            "mostrar",
+                            "compartir"
+                          ]
+                        }
+                      },
+                      "family": {
+                        "type": "string",
+                        "enum": [
+                          "oscuro",
+                          "minimal",
+                          "ejecutivo",
+                          "vibrante",
+                          "clasico"
+                        ]
+                      },
+                      "theme": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "tokens": {}
+                        },
+                        "required": [
+                          "code",
+                          "name",
+                          "tokens"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "background": {
+                        "nullable": true
+                      },
+                      "previewImageUrl": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "blocks": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string"
+                            },
+                            "configSchemaVersion": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "isPrimary": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            },
+                            "config": {}
+                          },
+                          "required": [
+                            "type",
+                            "configSchemaVersion",
+                            "config"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "ownerOrganizationId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "fromAgency": {
+                        "type": "boolean"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "code",
+                      "name",
+                      "description",
+                      "industryTags",
+                      "objectiveTags",
+                      "family",
+                      "theme",
+                      "background",
+                      "previewImageUrl",
+                      "blocks",
+                      "ownerOrganizationId",
+                      "fromAgency",
+                      "createdAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Plantillas privadas disponibles en esta organización",
+        "tags": [
+          "templates"
+        ]
+      },
+      "post": {
+        "description": "Copia los bloques visibles de una página de esta organización (sin referencias a sus formularios, servicios ni productos) y, si se pide, su tema y fondo del catálogo. Hasta 50 por organización. Requiere `page.manage`.",
+        "operationId": "PrivateTemplatesController_create",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 300
+                  },
+                  "siteId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "pageId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "includeAppearance": {
+                    "default": true,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "description",
+                  "siteId",
+                  "pageId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Plantilla guardada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "industryTags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "profesional",
+                          "servicios-locales",
+                          "belleza-bienestar",
+                          "salud",
+                          "gastronomia",
+                          "turismo",
+                          "eventos",
+                          "comercio",
+                          "creador",
+                          "emprendimiento",
+                          "educacion"
+                        ]
+                      }
+                    },
+                    "objectiveTags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "captar",
+                          "vender",
+                          "reservar",
+                          "mostrar",
+                          "compartir"
+                        ]
+                      }
+                    },
+                    "family": {
+                      "type": "string",
+                      "enum": [
+                        "oscuro",
+                        "minimal",
+                        "ejecutivo",
+                        "vibrante",
+                        "clasico"
+                      ]
+                    },
+                    "theme": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "tokens": {}
+                      },
+                      "required": [
+                        "code",
+                        "name",
+                        "tokens"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "background": {
+                      "nullable": true
+                    },
+                    "previewImageUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "blocks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string"
+                          },
+                          "configSchemaVersion": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "isPrimary": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "config": {}
+                        },
+                        "required": [
+                          "type",
+                          "configSchemaVersion",
+                          "config"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "ownerOrganizationId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "fromAgency": {
+                      "type": "boolean"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "code",
+                    "name",
+                    "description",
+                    "industryTags",
+                    "objectiveTags",
+                    "family",
+                    "theme",
+                    "background",
+                    "previewImageUrl",
+                    "blocks",
+                    "ownerOrganizationId",
+                    "fromAgency",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio o página no encontrados, o de otra organización (ADR-002)."
+          },
+          "409": {
+            "description": "Página vacía (`EMPTY_PAGE`) o tope alcanzado (`TEMPLATE_LIMIT`)."
+          },
+          "422": {
+            "description": "Un bloque de la página no cumple el esquema de plantillas."
+          },
+          "429": {
+            "description": "Más de 20 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Guardar una página como plantilla privada",
+        "tags": [
+          "templates"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/private-templates/{templateId}": {
+      "delete": {
+        "description": "Solo las de esta organización; las de una agencia las borra la agencia. Los sitios que ya la usaron no cambian. Requiere `page.manage`.",
+        "operationId": "PrivateTemplatesController_remove",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "templateId",
+            "required": true,
+            "in": "path",
+            "description": "Plantilla privada de esta organización.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Plantilla borrada."
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "No existe, o es de otra organización (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Borrar una plantilla privada propia",
+        "tags": [
+          "templates"
+        ]
+      }
+    },
     "/api/v1/organizations/{organizationId}/sites/{siteId}/pages/{pageId}/blocks": {
       "get": {
         "description": "En orden de `position`, con la configuración de su versión vigente. Un bloque que no se puede renderizar viene con `degraded` en vez de romper la respuesta: el render lo omite y el constructor puede avisar. Solo pide membresía activa.",

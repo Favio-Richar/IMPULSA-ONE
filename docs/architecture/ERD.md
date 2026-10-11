@@ -598,3 +598,8 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - **WhiteLabelSettings** (`white_label_settings`): una fila por agencia (`agency_organization_id` único, `CASCADE`): `display_name`, `logo_light_url`, `logo_dark_url`, `favicon_url`, `primary_color`, `secondary_color`,
   `support_email`, `footer_text`. Migración reversible `20261011100000_f97a_white_label`.
 - **AgencyClient.white_label_enabled** (`BOOLEAN`, por defecto `false`): la agencia la activa por cliente. Aplica solo con la relación vigente; no se persiste ningún «estado resuelto».
+
+## 9zd. Plantillas privadas (F9.7c, BACKLOG_FASE_9.md, ADR-028)
+
+- **Template.organization_id** (`UUID` nullable, `CASCADE`, índice): `NULL` = plantilla del catálogo de la plataforma (pública); con valor = privada, visible solo para esa organización y, si es una agencia, para quien trabaja en sus
+  clientes con acceso delegado. `code` sigue siendo único global (las privadas llevan `p-<8 del id>-…`). Migración reversible `20261011110000_f97c_private_templates` (la reversa borra las privadas).

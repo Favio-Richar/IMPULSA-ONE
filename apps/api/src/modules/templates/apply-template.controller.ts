@@ -61,6 +61,6 @@ export class ApplyTemplateController {
     @Req() request: RequestWithMembership,
     @Body(new ZodValidationPipe(applyTemplateSchema)) body: ApplyTemplateInput,
   ) {
-    return this.applyTemplateService.applyTemplate(organizationId, user.id, request.membership.roleId, siteId, pageId, body);
+    return this.applyTemplateService.applyTemplate(organizationId, user.id, request.membership.roleId, siteId, pageId, body, request.membership);
   }
 }

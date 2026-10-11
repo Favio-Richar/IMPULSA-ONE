@@ -370,6 +370,8 @@ export class AdminOperationsService {
    */
   async listTemplates(): Promise<AdminTemplateListResponse> {
     const templates = await this.prisma.template.findMany({
+      // Las plantillas privadas (F9.7c) son de cada organización: no se listan ni se editan desde el catálogo de la plataforma.
+      where: { organizationId: null },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     });
 
@@ -402,8 +404,8 @@ export class AdminOperationsService {
     dto: UpdateTemplateAdminDto,
     adminId: string,
   ): Promise<AdminTemplateSummaryResponse> {
-    const existing = await this.prisma.template.findUnique({
-      where: { id },
+    const existing = await this.prisma.template.findFirst({
+      where: { id, organizationId: null },
     });
     if (!existing) {
       throw new NotFoundException(`Plantilla no encontrada: ${id}`);

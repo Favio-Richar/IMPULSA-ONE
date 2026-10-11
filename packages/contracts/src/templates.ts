@@ -77,3 +77,16 @@ export const applyTemplateResponse = z.object({
 
 export type ApplyTemplateResponse = z.infer<typeof applyTemplateResponse>;
 export type TemplateBlockSeedResponse = z.infer<typeof templateBlockSeedResponse>;
+
+// ---- plantillas privadas (F9.7c, ADR-028) -------------------------------------------------------------------------------
+// Los cuerpos de petición viven en `@impulza/validation` (`templates/private`).
+
+export const privateTemplateResponse = templateResponse.extend({
+  /** La organización dueña (una agencia o el propio negocio). */
+  ownerOrganizationId: uuid,
+  /** `true` si la plantilla es de la agencia con la que se trabaja este negocio (no del negocio). */
+  fromAgency: z.boolean(),
+  createdAt: z.iso.datetime({ offset: true }),
+});
+export type PrivateTemplateResponse = z.infer<typeof privateTemplateResponse>;
+

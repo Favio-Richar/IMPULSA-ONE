@@ -7,6 +7,7 @@ import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import { applyTemplate } from "../../lib/api/templates";
+import { PrivateTemplatesSection } from "./private-templates";
 import { TemplateGallery } from "./template-gallery";
 
 type Step = "gallery" | "confirm" | "unpublished";
@@ -114,13 +115,22 @@ export function ApplyTemplateDialog({
       }
     >
       {step === "gallery" ? (
-        <TemplateGallery
-          onUse={(template) => {
-            setChosen(template);
-            setStep("confirm");
-          }}
-          useLabel="Elegir"
-        />
+        <>
+          <PrivateTemplatesSection
+            organizationId={organizationId}
+            onUse={(template) => {
+              setChosen(template);
+              setStep("confirm");
+            }}
+          />
+          <TemplateGallery
+            onUse={(template) => {
+              setChosen(template);
+              setStep("confirm");
+            }}
+            useLabel="Elegir"
+          />
+        </>
       ) : step === "confirm" ? (
         <div className="flex flex-col gap-4 text-sm text-foreground">
           <p>

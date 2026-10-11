@@ -47,6 +47,12 @@ export class TemplatesService {
     return parsed.data;
   }
 
+  /** La fila como respuesta, validada; `null` si ya no cumple el esquema. Lo usa también el listado de plantillas privadas. */
+  toResponseFromRow(row: Template): TemplateResponse | null {
+    const template = this.parseRow(row);
+    return template ? this.toResponse(row.id, template) : null;
+  }
+
   private toResponse(id: string, template: TemplateDefinition): TemplateResponse {
     // `templateSchema` ya garantizó que el tema existe en el catálogo.
     const theme = getCatalogTheme(template.themeCode)!;
@@ -74,6 +80,8 @@ export class TemplatesService {
   async listTemplates(filters: ListTemplatesQueryDto): Promise<TemplateResponse[]> {
     const rows = await this.prisma.template.findMany({
       where: {
+        // Solo el catálogo de la plataforma: una plantilla privada (F9.7c) nunca está en la galería pública.
+        organizationId: null,
         // Una plantilla que el superadministrador oculta (F7.11) deja de verse en la galería pública.
         isActive: true,
         ...(filters.industry ? { industryTags: { has: filters.industry } } : {}),
@@ -96,7 +104,8 @@ export class TemplatesService {
    * lo que se copia a la página es siempre lo que acaba de pasar por el esquema.
    */
   async getTemplate(code: string): Promise<TemplateResponse> {
-    const found = await this.prisma.template.findUnique({ where: { code } });
+    // Solo el catálogo: una plantilla privada responde 404 aquí, igual que una inexistente (F9.7c).
+    const found = await this.prisma.template.findFirst({ where: { code, organizationId: null } });
     // Oculta = no disponible, tampoco para aplicarla a un sitio nuevo (los sitios ya creados no cambian).
     const row = found?.isActive ? found : null;
     const template = row ? this.parseRow(row) : null;
@@ -106,5 +115,33 @@ export class TemplatesService {
     }
 
     return this.toResponse(row.id, template);
+  }
+
+  /**
+   * De quién son las plantillas privadas que se pueden ver y aplicar desde esta organización (F9.7c): las de la propia
+   * organización y, si quien actúa entra con acceso delegado de una agencia, las de ESA agencia. Un integrante directo del
+   * negocio nunca ve las plantillas de la agencia: pueden llevar el trabajo de otros clientes.
+   */
+  async visibleOwnerIds(organizationId: string, membership: { source: string; agencyClientId: string | null }): Promise<string[]> {
+    if (membership.source !== "AGENCY" || membership.agencyClientId === null) return [organizationId];
+    const relation = await this.prisma.agencyClient.findUnique({
+      where: { id: membership.agencyClientId },
+      select: { agencyOrganizationId: true, clientOrganizationId: true },
+    });
+    // La relación debe ser de ESTA organización (defensa en profundidad: la membresía ya la fija el guard).
+    if (!relation || relation.clientOrganizationId !== organizationId) return [organizationId];
+    return [organizationId, relation.agencyOrganizationId];
+  }
+
+  /** Plantilla del catálogo o privada de uno de los dueños dados; si no, 404 (no se distingue «no existe» de «no es tuya»). */
+  async getTemplateForOwners(code: string, ownerIds: readonly string[]): Promise<TemplateResponse> {
+    const found = await this.prisma.template.findFirst({
+      where: { code, isActive: true, OR: [{ organizationId: null }, { organizationId: { in: [...ownerIds] } }] },
+    });
+    const template = found ? this.parseRow(found) : null;
+    if (!found || !template) {
+      throw new NotFoundException(TEMPLATE_NOT_FOUND);
+    }
+    return this.toResponse(found.id, template);
   }
 }

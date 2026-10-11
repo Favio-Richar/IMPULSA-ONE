@@ -480,6 +480,20 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
 - **Pruebas:** reglas puras de remitente y cabecera legal (incluida inyección de cabeceras) y una de integración del aviso con y sin marca blanca; verificadas contra el código roto.
 - **Reserva:** el dominio verificado llega con F9.7d; hasta entonces `senderEmail` es siempre `null`.
 
+#### F9.7c — Plantillas privadas (criterio 5) — hecha (2026-10-11)
+
+- **Modelo:** `Template.organizationId` opcional (migración reversible, `down.sql` verificada). Toda lectura del catálogo filtra `organizationId: null`: galería pública, plantilla por código y administración de la plataforma;
+  aplicar una plantilla acepta el catálogo o una privada de la organización (o de su agencia, con acceso delegado) y responde 404 para cualquier otra.
+- **Qué se copia:** los bloques visibles de una página propia (cadena organización → sitio → página), **sin** referencias a formularios, servicios ni productos (`formId` pasa a `null`; listas y categoría se quitan), y, si se
+  pide, el tema y el fondo del catálogo. Pasa por el mismo `templateSchema` que el catálogo. Tope de 50 por organización.
+- **Quién ve qué:** la organización dueña ve las suyas; el equipo de una agencia que trabaja en un cliente ve además las de la agencia (marcadas «De tu agencia») y puede aplicarlas allí; el equipo directo del cliente **no** las ve ni las
+  usa; nadie borra desde un cliente una plantilla de la agencia.
+- **API:** `GET/POST …/private-templates`, `DELETE …/private-templates/:templateId` (`page.manage`; auditado: `template.private_created/deleted`).
+- **UI:** «Guardar como plantilla» en el constructor y «Tus plantillas» al elegir una plantilla (con borrado de las propias).
+- **Pruebas:** 5 de integración (`private-templates.e2e.test.ts`) + caso transversal de aislamiento, reglas puras, Playwright móvil/escritorio (`plantillas-privadas.spec.ts`, capturas `05`–`06` en `f97/`) y 7 mutaciones atrapadas.
+- **Reservas honestas:** las imágenes subidas por la organización de origen se conservan en la plantilla pero **no** se pueden aplicar en otra organización (la comprobación de medios propios las rechaza con 422): una plantilla de
+  agencia para clientes debe usar bloques sin medios propios; copiar medios entre organizaciones no se hace. Las etiquetas de rubro/objetivo de una privada son neutras (no se filtra por ellas); no hay vista previa renderizada.
+
 ---
 
 ### F9.8 — Reportes por cliente

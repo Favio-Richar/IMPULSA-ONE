@@ -234,6 +234,7 @@ model Organization {
   customRoles         CustomRole[]
   publishRequests     PublishRequest[]
   whiteLabel          WhiteLabelSettings?
+  privateTemplates    Template[]
   agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
@@ -1068,6 +1069,9 @@ model Theme {
 // eso no hay FK desde `Site`/`Page`.
 model Template {
   id              String   @id @default(uuid()) @db.Uuid
+  // F9.7c (ADR-028): NULL = plantilla del catálogo de la plataforma (pública); con valor = privada, visible solo para esa
+  // organización (y, para una agencia, para quien trabaja en sus clientes con acceso delegado). Nunca en la galería pública.
+  organizationId  String?  @map("organization_id") @db.Uuid
   // Identificador estable (`profesional-servicios`, …): hace idempotente el seed.
   code            String   @unique
   name            String
@@ -1092,6 +1096,9 @@ model Template {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
   @@index([sortOrder])
   @@index([isActive])
   @@map("templates")

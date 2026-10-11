@@ -4,11 +4,12 @@ import type { ApplyTemplateResponse, BlockResponse } from "@impulza/contracts";
 import { type BlockType } from "@impulza/validation";
 import { Button, EmptyState, ErrorState, LoadingState } from "@impulza/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, LayoutTemplate, Redo2, Undo2 } from "lucide-react";
+import { Check, LayoutTemplate, Redo2, Save, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ApplyTemplateDialog } from "../../../../../../../components/templates/apply-template-dialog";
+import { SaveAsTemplateDialog } from "../../../../../../../components/templates/private-templates";
 import { assignSiteTheme, setSiteBackground } from "../../../../../../../lib/api/sites";
 import { BlockCanvas } from "../../../../../../../components/block-editor/block-canvas";
 import { BlockConfigPanel } from "../../../../../../../components/block-editor/block-config-panel";
@@ -79,6 +80,7 @@ function BlockEditor({
   const [newBlockId, setNewBlockId] = useState<string | null>(null);
   const [togglingBlockId, setTogglingBlockId] = useState<string | null>(null);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   // Última plantilla aplicada (PL4): el aviso de éxito y, si cambió la apariencia, cómo deshacerla.
   const [applied, setApplied] = useState<{ name: string; result: ApplyTemplateResponse } | null>(null);
   const queryClient = useQueryClient();
@@ -280,6 +282,10 @@ function BlockEditor({
             <LayoutTemplate className="size-4" aria-hidden="true" />
             Usar una plantilla
           </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setSaveTemplateOpen(true)}>
+            <Save className="size-4" aria-hidden="true" />
+            Guardar como plantilla
+          </Button>
           <div className="flex items-center gap-2 border-l border-border pl-3">
             <span className="text-sm text-muted-foreground">
               {page.status === "PUBLISHED" ? "Publicada" : "Borrador — nunca publicada"}
@@ -342,6 +348,13 @@ function BlockEditor({
           ) : null}
         </div>
       ) : null}
+      <SaveAsTemplateDialog
+        organizationId={organizationId}
+        siteId={siteId}
+        pageId={pageId}
+        open={saveTemplateOpen}
+        onOpenChange={setSaveTemplateOpen}
+      />
       <ApplyTemplateDialog
         organizationId={organizationId}
         siteId={siteId}

@@ -48,6 +48,7 @@ export class ApplyTemplateService {
     siteId: string,
     pageId: string,
     input: ApplyTemplateInput,
+    membership: { source: string; agencyClientId: string | null },
   ): Promise<ApplyTemplateResponse> {
     // Organización → sitio → página, antes de mirar nada más (ADR-002): el sitio o la página de otra
     // organización responden 404, igual que en el resto de la API.
@@ -68,7 +69,11 @@ export class ApplyTemplateService {
       }
     }
 
-    const template = await this.templatesService.getTemplate(input.templateCode);
+    // F9.7c: el catálogo, o una plantilla privada de esta organización o de la agencia con la que se trabaja (nunca de otra).
+    const template = await this.templatesService.getTemplateForOwners(
+      input.templateCode,
+      await this.templatesService.visibleOwnerIds(organizationId, membership),
+    );
 
     if (hasUnpublishedChanges && !input.discardUnpublishedChanges) {
       throw new ConflictException({

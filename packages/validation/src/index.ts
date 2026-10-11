@@ -64,3 +64,4 @@ export * from "./team/index.js";
 export * from "./team/agency-scope.js";
 export * from "./publish/index.js";
 export * from "./audit/index.js";
+export * from "./templates/private.js";

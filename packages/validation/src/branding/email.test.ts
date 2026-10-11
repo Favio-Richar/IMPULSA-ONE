@@ -107,8 +107,9 @@ describe("brandEmail con una agencia detrás (F9.7b)", () => {
     const hostile = { ...AGENCY, agencyName: "Norte\r\nBcc: victima@x.test\u0000 Ñandú" };
     const branded = brandEmail(mail, cascadeBrand(null, PLATFORM, hostile, "team"));
     const value = branded.headers!["X-Sent-On-Behalf-Of"]!;
-    expect(value).not.toMatch(/[\r\n\u0000]/);
-    expect(value).toMatch(/^[\x20-\x7e]*$/);
+    // Solo caracteres ASCII imprimibles: sin saltos de línea ni caracteres de control.
+    expect([...value].every((char) => char.charCodeAt(0) >= 0x20 && char.charCodeAt(0) <= 0x7e)).toBe(true);
+    expect(value).toContain("Norte");
   });
 
   it("conserva las cabeceras del correo (baja con un clic) y no marca nada cuando no hay agencia", () => {

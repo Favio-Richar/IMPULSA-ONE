@@ -77,6 +77,7 @@ describe("resolvedBrandSchema", () => {
       contactEmail: null,
       senderName: "Impulza One",
       senderEmail: null,
+      whiteLabel: null,
     });
     expect(result.success).toBe(true);
   });

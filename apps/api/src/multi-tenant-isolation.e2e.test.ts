@@ -2395,4 +2395,27 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("F9.7a Marca blanca de la agencia: nunca se cruza (ADR-002, ADR-028 §4)", () => {
+    it("B no lee ni cambia la marca blanca de A, ni la activa en un cliente de A, ni ve el panel de ese cliente", async () => {
+      const before = await prisma.organization.findUniqueOrThrow({ where: { id: orgA.id }, select: { planId: true, kind: true } });
+      await assignRoomyPlan(prisma, orgA.id);
+      await prisma.organization.update({ where: { id: orgA.id }, data: { kind: "AGENCY" } });
+      try {
+        const url = `/api/v1/organizations/${orgA.id}/agency/white-label`;
+        await orgA.ownerAgent.put(url).set(CSRF_HEADERS).send({ displayName: `Marca iso ${Date.now()}` }).expect(200);
+
+        await orgB.ownerAgent.get(url).expect(403);
+        await orgB.ownerAgent.put(url).set(CSRF_HEADERS).send({ displayName: "Intento cruzado" }).expect(403);
+        await orgB.ownerAgent.put(`${url}/clients/${orgB.id}`).set(CSRF_HEADERS).send({ enabled: true }).expect(403);
+        // El panel de una organización solo lo consultan sus miembros.
+        await orgB.ownerAgent.get(`/api/v1/organizations/${orgA.id}/panel-brand`).expect(403);
+        const mine = await orgA.ownerAgent.get(url).expect(200);
+        expect(mine.body.displayName).not.toBe("Intento cruzado");
+      } finally {
+        await prisma.whiteLabelSettings.deleteMany({ where: { agencyOrganizationId: orgA.id } });
+        await prisma.organization.update({ where: { id: orgA.id }, data: { planId: before.planId, kind: before.kind } });
+      }
+    });
+  });
+
 });

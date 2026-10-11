@@ -54825,6 +54825,28 @@
                     "senderEmail": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "whiteLabel": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "agencyOrganizationId": {
+                          "type": "string"
+                        },
+                        "agencyName": {
+                          "type": "string"
+                        },
+                        "footerText": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "agencyOrganizationId",
+                        "agencyName",
+                        "footerText"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -54836,7 +54858,8 @@
                     "secondaryColor",
                     "contactEmail",
                     "senderName",
-                    "senderEmail"
+                    "senderEmail",
+                    "whiteLabel"
                   ],
                   "additionalProperties": false
                 }
@@ -56713,6 +56736,9 @@
                           "AGENCY_PAYS"
                         ]
                       },
+                      "whiteLabelEnabled": {
+                        "type": "boolean"
+                      },
                       "createdAt": {
                         "type": "string",
                         "format": "date-time",
@@ -56751,6 +56777,7 @@
                       "readOnly",
                       "publicHidden",
                       "pendingBillingMode",
+                      "whiteLabelEnabled",
                       "createdAt",
                       "acceptedAt",
                       "pausedAt",
@@ -56923,6 +56950,9 @@
                         "AGENCY_PAYS"
                       ]
                     },
+                    "whiteLabelEnabled": {
+                      "type": "boolean"
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -56961,6 +56991,7 @@
                     "readOnly",
                     "publicHidden",
                     "pendingBillingMode",
+                    "whiteLabelEnabled",
                     "createdAt",
                     "acceptedAt",
                     "pausedAt",
@@ -57129,6 +57160,9 @@
                         "AGENCY_PAYS"
                       ]
                     },
+                    "whiteLabelEnabled": {
+                      "type": "boolean"
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -57167,6 +57201,7 @@
                     "readOnly",
                     "publicHidden",
                     "pendingBillingMode",
+                    "whiteLabelEnabled",
                     "createdAt",
                     "acceptedAt",
                     "pausedAt",
@@ -57348,6 +57383,9 @@
                         "AGENCY_PAYS"
                       ]
                     },
+                    "whiteLabelEnabled": {
+                      "type": "boolean"
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -57386,6 +57424,7 @@
                     "readOnly",
                     "publicHidden",
                     "pendingBillingMode",
+                    "whiteLabelEnabled",
                     "createdAt",
                     "acceptedAt",
                     "pausedAt",
@@ -59333,6 +59372,9 @@
                             "AGENCY_PAYS"
                           ]
                         },
+                        "whiteLabelEnabled": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -59371,6 +59413,7 @@
                         "readOnly",
                         "publicHidden",
                         "pendingBillingMode",
+                        "whiteLabelEnabled",
                         "createdAt",
                         "acceptedAt",
                         "pausedAt",
@@ -61728,6 +61771,653 @@
         "summary": "Aceptar la invitación a ser propietario",
         "tags": [
           "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/agency/white-label": {
+      "get": {
+        "description": "Lo que la agencia configuró y en cuántos clientes está activa. Requiere `agency.manage`.",
+        "operationId": "AgencyWhiteLabelController_get",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Marca blanca actual (vacía si aún no se configuró).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "logoLightUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "logoDarkUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "faviconUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "primaryColor": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "secondaryColor": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "supportEmail": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "footerText": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "enabledClients": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "logoLightUrl",
+                    "logoDarkUrl",
+                    "faviconUrl",
+                    "primaryColor",
+                    "secondaryColor",
+                    "supportEmail",
+                    "footerText",
+                    "updatedAt",
+                    "enabledClients"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Falta el permiso, o la organización no es una agencia (`NOT_AN_AGENCY`)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Marca blanca de la agencia",
+        "tags": [
+          "agency"
+        ]
+      },
+      "put": {
+        "description": "Nombre, logos subidos desde esta pantalla, colores con contraste WCAG 2.2 AA, correo de soporte y pie. El nombre no puede ser el de la plataforma, el de otra marca blanca ni el de un negocio ajeno (`BRAND_NAME_TAKEN`). No se puede quitar el nombre mientras esté activa en algún cliente (`WHITE_LABEL_IN_USE`). Requiere `agency.manage`.",
+        "operationId": "AgencyWhiteLabelController_update",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "displayName": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100
+                  },
+                  "logoLightUrl": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 2048
+                  },
+                  "logoDarkUrl": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 2048
+                  },
+                  "faviconUrl": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 2048
+                  },
+                  "primaryColor": {
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  "secondaryColor": {
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  "supportEmail": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "footerText": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Marca blanca guardada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "displayName": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "logoLightUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "logoDarkUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "faviconUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "primaryColor": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "secondaryColor": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "supportEmail": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "footerText": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "enabledClients": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "displayName",
+                    "logoLightUrl",
+                    "logoDarkUrl",
+                    "faviconUrl",
+                    "primaryColor",
+                    "secondaryColor",
+                    "supportEmail",
+                    "footerText",
+                    "updatedAt",
+                    "enabledClients"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validación fallida (contraste, enlaces externos, formato)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "409": {
+            "description": "Nombre ajeno (`BRAND_NAME_TAKEN`) o marca en uso (`WHITE_LABEL_IN_USE`)."
+          },
+          "429": {
+            "description": "Más de 30 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Configurar la marca blanca",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/agency/white-label/upload": {
+      "post": {
+        "description": "PNG, JPG, WebP o SVG saneado, con las mismas reglas que la marca de la plataforma. Requiere `agency.manage`.",
+        "operationId": "AgencyWhiteLabelController_upload",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "target": {
+                    "type": "string",
+                    "enum": [
+                      "logo_light",
+                      "logo_dark",
+                      "favicon"
+                    ]
+                  },
+                  "fileName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "enum": [
+                      "image/png",
+                      "image/jpeg",
+                      "image/webp",
+                      "image/svg+xml"
+                    ]
+                  },
+                  "sizeBytes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "base64Data": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "target",
+                  "fileName",
+                  "contentType",
+                  "sizeBytes",
+                  "base64Data"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "URL pública del archivo subido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Formato inválido, SVG con scripts o tamaño excedido."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "429": {
+            "description": "Más de 30 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Subir un logo o favicon de la marca blanca",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/agency/white-label/clients/{relationId}": {
+      "put": {
+        "description": "Solo con la relación activa y con la marca configurada (`CLIENT_NOT_ACTIVE`, `WHITE_LABEL_NOT_CONFIGURED`). Queda en la auditoría de la agencia y en la del cliente. Requiere `agency.manage`.",
+        "operationId": "AgencyWhiteLabelController_setForClient",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "relationId",
+            "required": true,
+            "in": "path",
+            "description": "Relación con el cliente (`AgencyClient`).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado de la marca blanca en ese cliente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "whiteLabelEnabled": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "whiteLabelEnabled"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "El cliente no existe o es de otra agencia."
+          },
+          "409": {
+            "description": "Relación no activa o marca sin configurar."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Activar o desactivar la marca blanca para un cliente",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/panel-brand": {
+      "get": {
+        "description": "Si la organización es cliente de una agencia con la marca blanca activa y la relación vigente, la marca de esa agencia (con el nombre de la agencia y el pie); si no, `brand: null` y el panel usa la de la plataforma. Basta ser miembro activo.",
+        "operationId": "PanelBrandController_get",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Marca del panel, o `null`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brand": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "logoLightUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "logoDarkUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "faviconUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "primaryColor": {
+                          "type": "string"
+                        },
+                        "secondaryColor": {
+                          "type": "string"
+                        },
+                        "supportEmail": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "footerText": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "agencyName": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "displayName",
+                        "logoLightUrl",
+                        "logoDarkUrl",
+                        "faviconUrl",
+                        "primaryColor",
+                        "secondaryColor",
+                        "supportEmail",
+                        "footerText",
+                        "agencyName"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "brand"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Marca del panel de la organización",
+        "tags": [
+          "organizations"
         ]
       }
     },

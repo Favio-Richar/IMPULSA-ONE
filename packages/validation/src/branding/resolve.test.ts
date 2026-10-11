@@ -42,6 +42,7 @@ describe("cascadeBrand", () => {
       contactEmail: null,
       senderName: "Plataforma",
       senderEmail: null,
+      whiteLabel: null,
     });
   });
 

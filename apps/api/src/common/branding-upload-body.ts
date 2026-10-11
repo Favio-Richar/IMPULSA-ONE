@@ -6,7 +6,7 @@ import { SESSION_COOKIE_NAME } from "../modules/auth/session-cookie.js";
 
 /** Rutas que reciben un archivo en base64 dentro de un JSON: logo/favicon de la plataforma (F9.1) y de cada organización (F9.2). */
 export const PLATFORM_BRANDING_UPLOAD_PATH = "/api/v1/admin/platform/branding/upload";
-const ORGANIZATION_BRANDING_UPLOAD_PATH = /^\/api\/v1\/organizations\/[0-9a-f-]{36}\/brand-profile\/upload$/i;
+const ORGANIZATION_BRANDING_UPLOAD_PATH = /^\/api\/v1\/organizations\/[0-9a-f-]{36}\/(?:brand-profile|agency\/white-label)\/upload$/i;
 
 /** 2 MB de archivo en base64 (+33 %) más el sobre JSON. */
 export const BRANDING_UPLOAD_BODY_LIMIT_BYTES = Math.ceil((MAX_BRANDING_LOGO_BYTES * 4) / 3) + 4096;

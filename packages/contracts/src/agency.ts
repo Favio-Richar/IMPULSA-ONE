@@ -29,6 +29,8 @@ export const agencyClientResponse = z.object({
   publicHidden: z.boolean(),
   /** Modo de facturación que la agencia propuso y el propietario aún no decide (F9.5a). */
   pendingBillingMode: agencyBillingMode.nullable(),
+  /** La agencia activó su marca blanca para este cliente (F9.7a). */
+  whiteLabelEnabled: z.boolean(),
   createdAt: isoDateTime,
   acceptedAt: isoDateTime.nullable(),
   pausedAt: isoDateTime.nullable(),
@@ -351,3 +353,43 @@ export const agencyTeamResponse = z.object({
 export type AgencyMemberScopeResponse = z.infer<typeof agencyMemberScopeResponse>;
 export type AgencyTeamMemberResponse = z.infer<typeof agencyTeamMemberResponse>;
 export type AgencyTeamResponse = z.infer<typeof agencyTeamResponse>;
+
+// ---- marca blanca (F9.7a, ADR-028 §4) ----------------------------------------------------------------------------------
+// Los cuerpos de petición viven en `@impulza/validation` (`branding/white-label`).
+
+export const whiteLabelSettingsResponse = z.object({
+  displayName: z.string().nullable(),
+  logoLightUrl: z.string().nullable(),
+  logoDarkUrl: z.string().nullable(),
+  faviconUrl: z.string().nullable(),
+  primaryColor: z.string().nullable(),
+  secondaryColor: z.string().nullable(),
+  supportEmail: z.string().nullable(),
+  footerText: z.string().nullable(),
+  updatedAt: isoDateTime.nullable(),
+  /** En cuántos clientes está activa hoy. */
+  enabledClients: z.number().int().nonnegative(),
+});
+export type WhiteLabelSettingsResponse = z.infer<typeof whiteLabelSettingsResponse>;
+
+export const setClientWhiteLabelResponse = z.object({ id: uuid, whiteLabelEnabled: z.boolean() });
+export type SetClientWhiteLabelResponse = z.infer<typeof setClientWhiteLabelResponse>;
+
+/** La marca del panel de una organización: la de su agencia si la tiene activa, o `null` (usa la de la plataforma). */
+export const panelBrandResponse = z.object({
+  brand: z
+    .object({
+      displayName: z.string(),
+      logoLightUrl: z.string().nullable(),
+      logoDarkUrl: z.string().nullable(),
+      faviconUrl: z.string().nullable(),
+      primaryColor: z.string(),
+      secondaryColor: z.string(),
+      supportEmail: z.string().nullable(),
+      footerText: z.string().nullable(),
+      agencyName: z.string(),
+    })
+    .nullable(),
+});
+export type PanelBrandResponse = z.infer<typeof panelBrandResponse>;
+

@@ -165,3 +165,4 @@ export {
   type UpdateBrandProfileDto,
   type ResolvedBrandDto,
 } from "./brand-profile.js";
+export * from "./white-label.js";

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, ErrorState, LoadingState } from "@impulza/ui";
+import { brandCssVariables } from "@impulza/validation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -15,6 +16,7 @@ import { listMyOrganizations } from "../../lib/api/organizations";
 import { useActiveOrgStore } from "../../lib/active-org-store";
 import { useMe } from "../../lib/hooks/use-me";
 import { usePlatformBranding } from "../../lib/hooks/use-platform-branding";
+import { usePanelBrand } from "../../lib/hooks/use-white-label";
 
 export default function PanelLayout({ children }: { children: React.ReactNode }): React.JSX.Element | null {
   const router = useRouter();
@@ -24,7 +26,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const activeOrganizationId = useActiveOrgStore((state) => state.activeOrganizationId);
   const meQuery = useMe();
   const brandingQuery = usePlatformBranding();
-  const brandName = brandingQuery.data?.name ?? "Impulza One";
+  // F9.7a: si la organización activa es cliente de una agencia con marca blanca, el panel lleva la marca de la agencia.
+  const panelBrandQuery = usePanelBrand(activeOrganizationId);
+  const panelBrand = panelBrandQuery.data?.brand ?? null;
+  const brandName = panelBrand?.displayName ?? brandingQuery.data?.name ?? "Impulza One";
+  const brandLogo = panelBrand ? panelBrand.logoLightUrl : (brandingQuery.data?.logoLightUrl ?? null);
+  // `brandCssVariables` valida cada color como hexadecimal: nada sin validar llega a un <style>.
+  const brandCss = panelBrand ? brandCssVariables(panelBrand.primaryColor, panelBrand.secondaryColor) : null;
   const orgsQuery = useQuery({
     queryKey: ["organizations"],
     queryFn: listMyOrganizations,
@@ -71,12 +79,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background" data-testid="panel-root" data-brand={panelBrand ? "white-label" : "platform"}>
+      {brandCss ? <style>{brandCss}</style> : null}
       <aside className="hidden w-56 shrink-0 border-r border-border md:block">
         <div className="flex h-14 items-center border-b border-border px-4 text-sm font-semibold text-foreground">
-          {brandingQuery.data?.logoLightUrl ? (
+          {brandLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={brandingQuery.data.logoLightUrl} alt={brandName} className="h-6 max-w-[140px] object-contain" />
+            <img src={brandLogo} alt={brandName} className="h-6 max-w-[140px] object-contain" />
           ) : (
             brandName
           )}
@@ -95,9 +104,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           <aside className="absolute inset-y-0 left-0 w-64 bg-background shadow-md">
             <div className="flex h-14 items-center justify-between border-b border-border px-4">
               <span className="text-sm font-semibold text-foreground">
-                {brandingQuery.data?.logoLightUrl ? (
+                {brandLogo ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={brandingQuery.data.logoLightUrl} alt={brandName} className="h-6 max-w-[140px] object-contain" />
+                  <img src={brandLogo} alt={brandName} className="h-6 max-w-[140px] object-contain" />
                 ) : (
                   brandName
                 )}
@@ -151,6 +160,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         {orgsQuery.data ? <DelegatedAccessBanner organizations={orgsQuery.data} /> : null}
 
         <main className="flex-1 p-4 md:p-6">{children}</main>
+
+        {panelBrand?.footerText || panelBrand?.supportEmail ? (
+          <footer className="border-t border-border px-4 py-3 text-xs text-muted-foreground" data-testid="panel-brand-footer">
+            {panelBrand.footerText}
+            {panelBrand.footerText && panelBrand.supportEmail ? " · " : ""}
+            {panelBrand.supportEmail ? <a href={`mailto:${panelBrand.supportEmail}`} className="underline underline-offset-2">{panelBrand.supportEmail}</a> : null}
+          </footer>
+        ) : null}
       </div>
     </div>
   );

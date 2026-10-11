@@ -151,6 +151,7 @@ export class AgencyService {
       readOnly: relation.status === AgencyClientStatus.PAUSED,
       publicHidden: relation.clientOrganization.publicHiddenAt !== null,
       pendingBillingMode: relation.billingChanges[0]?.toMode ?? null,
+      whiteLabelEnabled: relation.whiteLabelEnabled,
       createdAt: relation.createdAt.toISOString(),
       acceptedAt: relation.acceptedAt?.toISOString() ?? null,
       pausedAt: relation.pausedAt?.toISOString() ?? null,

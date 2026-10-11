@@ -456,6 +456,19 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
    verificado cae al remitente de plataforma, plantilla privada invisible para terceros. Playwright
    móvil/escritorio, capturas en `f97/`.
 
+#### F9.7a — Marca blanca de la agencia y cascada (criterios 1 y 6) — hecha (2026-10-11)
+
+- **Modelo:** `WhiteLabelSettings` (una por agencia) + `AgencyClient.whiteLabelEnabled`. Migración reversible `20261011100000_f97a_white_label` (`down.sql` verificada).
+- **Cascada** en un solo lugar (`cascadeBrand`) con dos audiencias (`team` y `customer`; ver nota en ADR-028) y un cargador compartido por la API y el worker. Aplica al panel del cliente y a lo que envía su negocio;
+  la agencia, el cliente y el público ven cada uno lo que corresponde.
+- **API:** `GET/PUT …/agency/white-label`, `POST …/upload`, `PUT …/clients/:relationId`, y `GET …/panel-brand` (cualquier miembro). Validación de contraste AA, logos solo propios, nombre sin suplantación
+  (`BRAND_NAME_TAKEN`), no se activa sin marca ni en relaciones no vigentes ni de otra agencia, y no se quita el nombre en uso. Auditoría en la agencia y en el cliente.
+- **UI:** Agencia › Marca blanca (formulario con vista previa y aviso de contraste; activación por cliente) y el panel del cliente se viste con la marca (nombre, logo, color, pie y correo de soporte).
+- **Pruebas:** 7 de integración (`white-label.e2e.test.ts`) + caso transversal de aislamiento, cascada y esquemas (unitarias), Playwright móvil/escritorio (`marca-blanca.spec.ts`, capturas en `f97/`), y 6 mutaciones atrapadas
+  (activación, estado de la relación, suplantación, filtro por agencia, logos externos, nombre en uso).
+- **Reservas honestas:** el favicon y el título de la pestaña del panel siguen siendo los de la plataforma; las pantallas de acceso (login) y el dominio propio llegan con F9.7d/e; el remitente y la cabecera legal
+  de los correos con F9.7b; el color se aplica a los controles principales del panel (no a todo el sistema de diseño).
+
 ---
 
 ### F9.8 — Reportes por cliente

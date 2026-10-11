@@ -592,3 +592,9 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 
 - Sin tablas nuevas: se consulta `audit_logs` (índices por `organization_id` y `actor_id`). La vista de agencia filtra por la marca `metadata.delegatedBy.agencyOrganizationId` y por las organizaciones de sus clientes (y, si la persona
   está acotada por F9.6b, solo las de su alcance). Permiso nuevo `audit.view` (OWNER, ADMIN); `AGENCY_DELEGATE` no lo tiene y `audit-logs` es un segmento que el cliente nunca delega.
+
+## 9zc. Marca blanca de la agencia (F9.7a, BACKLOG_FASE_9.md, ADR-028 §4)
+
+- **WhiteLabelSettings** (`white_label_settings`): una fila por agencia (`agency_organization_id` único, `CASCADE`): `display_name`, `logo_light_url`, `logo_dark_url`, `favicon_url`, `primary_color`, `secondary_color`,
+  `support_email`, `footer_text`. Migración reversible `20261011100000_f97a_white_label`.
+- **AgencyClient.white_label_enabled** (`BOOLEAN`, por defecto `false`): la agencia la activa por cliente. Aplica solo con la relación vigente; no se persiste ningún «estado resuelto».

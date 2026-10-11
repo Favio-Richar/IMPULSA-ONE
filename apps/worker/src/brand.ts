@@ -1,3 +1,4 @@
+import { loadWhiteLabelBrand } from "@impulza/agency";
 import type { PrismaClient } from "@impulza/database";
 import {
   brandEmail,
@@ -16,7 +17,7 @@ import { logger } from "./observability/logger.js";
  * dejar a un cliente sin su recordatorio.
  */
 export async function brandOrganizationEmail<T extends BrandableEmail>(
-  prisma: Pick<PrismaClient, "brandProfile" | "platformBranding">,
+  prisma: Pick<PrismaClient, "brandProfile" | "platformBranding" | "agencyClient">,
   organizationId: string,
   message: T,
 ): Promise<T> {
@@ -36,6 +37,7 @@ export async function brandOrganizationEmail<T extends BrandableEmail>(
               contactEmail: true,
             },
           }),
+        whiteLabel: (id) => loadWhiteLabelBrand(prisma as PrismaClient, id),
         platform: async (): Promise<PlatformBrandRow | null> =>
           prisma.platformBranding.findFirst({
             orderBy: { createdAt: "asc" },

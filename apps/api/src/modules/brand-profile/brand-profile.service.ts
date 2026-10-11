@@ -1,9 +1,11 @@
 import { BadRequestException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
 import type { PrismaClient, BrandProfile } from "@impulza/database";
+import { loadWhiteLabelBrand } from "@impulza/agency";
 import type { BrandProfileResponse, ResolvedBrandResponse, UploadBrandProfileAssetResponse } from "@impulza/contracts";
 import {
   brandEmail,
   resolveOrganizationBrand,
+  type BrandAudience,
   type BrandableEmail,
   type OrganizationBrandRow,
   type UpdateBrandProfileDto,
@@ -70,13 +72,16 @@ export class BrandProfileService {
    * Marca efectiva de la organización (ADR-028 §4). La regla de la cascada vive en `@impulza/validation`
    * (`cascadeBrand`) y la comparten la API y el worker: acá solo se aportan los datos. Nunca lanza.
    */
-  async resolveBrand(organizationId: string): Promise<ResolvedBrandResponse> {
+  async resolveBrand(organizationId: string, audience: BrandAudience = "customer"): Promise<ResolvedBrandResponse> {
     return resolveOrganizationBrand(
       {
         organization: (id) => this.getOwnBrand(id),
         platform: () => this.platformBrandingService.getPublic(),
+        // F9.7a: la marca blanca de la agencia, solo mientras la relación esté activa y activada para este cliente.
+        whiteLabel: (id) => loadWhiteLabelBrand(this.prisma, id),
       },
       organizationId,
+      audience,
     );
   }
 

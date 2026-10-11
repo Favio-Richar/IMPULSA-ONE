@@ -211,3 +211,15 @@ con motivo y vía de apelación. Nada se borra; todo es reversible y queda audit
 - **Una sola lectura:** `loadMemberScope` vive en `@impulza/agency` y la usan la API (sincronización y puerta de entrada) y el worker (importación y altas): una regla.
 - **Módulos por ruta:** `agencyModuleOfSegments` (pura, probada contra rutas reales) agrupa las rutas en 11 módulos; lo que no es módulo no se acota.
 - **Sin escalada:** `scopeChangeVerdict` — nadie cambia su propio acceso, el propietario no se acota y nadie da más alcance del que tiene (`scopeWithin`).
+
+## Notas de implementación de F9.7a (2026-10-11)
+
+- **Cascada con dos audiencias.** El ADR dice a la vez que la marca blanca «reemplaza a la de la plataforma» y que el orden es «marca blanca → organización → plataforma». Aplicado al pie de la letra, la
+  agencia taparía la marca propia del negocio en los correos que **él** envía a **sus** clientes (una confirmación de reserva saldría con el nombre de la agencia). Se resolvió con una sola función
+  (`cascadeBrand`, `@impulza/validation`) y dos audiencias: **`team`** (panel y avisos que ve el equipo del cliente): marca blanca → organización → plataforma; **`customer`** (lo que el negocio envía a su
+  público): organización → marca blanca → plataforma. Cada campo se resuelve por separado.
+- **Cuándo aplica:** solo mientras la relación esté ACTIVE (o creada por la agencia y aún sin aceptar el propietario) **y** la agencia la haya activado para ese cliente. Si la relación termina, se pausa o se archiva,
+  el panel vuelve solo a la marca de la plataforma. Una sola lectura (`loadWhiteLabelBrand`, `@impulza/agency`) la comparten la API y el worker.
+- **Suplantación:** el nombre no puede ser el de la plataforma, el de otra marca blanca ni el de un negocio que no es cliente de la agencia (comparación sin tildes, mayúsculas ni signos); los logos solo pueden
+  ser archivos subidos por la propia agencia a su espacio (`branding/agency/<id>/`).
+- **Pendiente de F9.7b–e:** remitente y cabecera legal de los correos (b), plantillas privadas (c), dominio de agencia (d) y portal del cliente (e).

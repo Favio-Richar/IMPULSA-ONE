@@ -10,3 +10,4 @@ export {
   type AgencyImportJob,
   type AgencyImportOptions,
 } from "./import.js";
+export { loadWhiteLabelBrand } from "./white-label.js";

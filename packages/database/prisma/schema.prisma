@@ -233,6 +233,7 @@ model Organization {
   agencyImports       AgencyImport[]       @relation("AgencyImports")
   customRoles         CustomRole[]
   publishRequests     PublishRequest[]
+  whiteLabel          WhiteLabelSettings?
   agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
@@ -504,6 +505,9 @@ model AgencyClient {
   // acepta su invitación). false = solicitud sobre una organización que ya existía: sin acceso hasta que el
   // propietario acepte (consentimiento del cliente).
   agencyCreated        Boolean            @map("agency_created")
+  // F9.7a (ADR-028 s4): la agencia activa su marca blanca para ESTE cliente (panel y correos del equipo del cliente). Se aplica solo
+  // mientras la relacion este ACTIVE; si termina, la marca vuelve sola a la de la plataforma.
+  whiteLabelEnabled    Boolean            @default(false) @map("white_label_enabled")
   requestedById        String?            @map("requested_by_id") @db.Uuid
   // Invitación al propietario del cliente (solo en altas nuevas): hash del token, nunca el token.
   ownerInviteEmail     String?            @map("owner_invite_email")
@@ -2675,4 +2679,24 @@ model AgencyMemberScopeClient {
   @@id([scopeId, agencyClientId])
   @@index([agencyClientId])
   @@map("agency_member_scope_clients")
+}
+
+// F9.7a (ADR-028 s4): marca blanca de una agencia. La marca que ve el equipo de cada cliente que la tiene activada (AgencyClient.whiteLabelEnabled).
+model WhiteLabelSettings {
+  id                   String   @id @default(uuid()) @db.Uuid
+  agencyOrganizationId String   @unique @map("agency_organization_id") @db.Uuid
+  displayName          String?  @map("display_name")
+  logoLightUrl         String?  @map("logo_light_url")
+  logoDarkUrl          String?  @map("logo_dark_url")
+  faviconUrl           String?  @map("favicon_url")
+  primaryColor         String?  @map("primary_color")
+  secondaryColor       String?  @map("secondary_color")
+  supportEmail         String?  @map("support_email")
+  footerText           String?  @map("footer_text")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  agencyOrganization Organization @relation(fields: [agencyOrganizationId], references: [id], onDelete: Cascade)
+
+  @@map("white_label_settings")
 }

@@ -2,10 +2,10 @@ import { z } from "zod";
 import { AA_NORMAL_TEXT, contrastRatio } from "../contrast.js";
 import { hexColorSchema, isSafeAssetUrl } from "./common.js";
 
-const emptyToNull = (value: unknown): unknown =>
+export const emptyToNull = (value: unknown): unknown =>
   typeof value === "string" && value.trim() === "" ? null : value;
 
-const assetUrlSchema = z.preprocess(
+export const assetUrlSchema = z.preprocess(
   emptyToNull,
   z
     .string()
@@ -16,7 +16,7 @@ const assetUrlSchema = z.preprocess(
     .optional(),
 );
 
-const linkEmailSchema = z.preprocess(
+export const linkEmailSchema = z.preprocess(
   emptyToNull,
   z.string().trim().email("Debe ser un correo electrónico válido.").max(254).nullable().optional(),
 );
@@ -103,6 +103,10 @@ export const resolvedBrandSchema = z.object({
   contactEmail: z.string().nullable(),
   senderName: z.string(),
   senderEmail: z.string().nullable(),
+  /** Si parte de la marca viene de una agencia con marca blanca: cuál (F9.7a). */
+  whiteLabel: z
+    .object({ agencyOrganizationId: z.string(), agencyName: z.string(), footerText: z.string().nullable() })
+    .nullable(),
 });
 
 export type ResolvedBrandDto = z.infer<typeof resolvedBrandSchema>;

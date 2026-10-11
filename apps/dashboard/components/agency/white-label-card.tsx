@@ -7,6 +7,7 @@ import type { WhiteLabelSettingsResponse } from "@impulza/contracts";
 import { useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import { useAgencyClients } from "../../lib/hooks/use-agency";
+import { PortalDomainsCard } from "./portal-domains-card";
 import { useSetClientWhiteLabel, useUpdateWhiteLabel, useUploadWhiteLabelAsset, useWhiteLabel } from "../../lib/hooks/use-white-label";
 
 type Target = "logo_light" | "logo_dark" | "favicon";
@@ -265,6 +266,7 @@ function WhiteLabelEditor({ organizationId, initial }: { organizationId: string;
           ) : null}
         </CardContent>
       </Card>
+      <PortalDomainsCard organizationId={organizationId} />
     </div>
   );
 }

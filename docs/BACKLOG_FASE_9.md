@@ -494,6 +494,20 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
 - **Reservas honestas:** las imágenes subidas por la organización de origen se conservan en la plantilla pero **no** se pueden aplicar en otra organización (la comprobación de medios propios las rechaza con 422): una plantilla de
   agencia para clientes debe usar bloques sin medios propios; copiar medios entre organizaciones no se hace. Las etiquetas de rubro/objetivo de una privada son neutras (no se filtra por ellas); no hay vista previa renderizada.
 
+#### F9.7d — Dominio de la agencia para el portal (criterio 2) — hecha (2026-10-11)
+
+- **Modelo:** `AgencyDomain` (mismos estados y token que los dominios de sitio; índice parcial de un dominio verificado por agencia). Migración reversible (`down.sql` verificada).
+- **Reutiliza la infraestructura de dominios:** el mismo resolvedor DNS (solo consultas TXT a nombres públicos ya validados, sin HTTP), `customDomainSchema`, el registro `_impulza.<dominio>` y el tope por sitio. Un dominio
+  queda verificado en **un solo lugar**: índice parcial propio + comprobación cruzada con `site_domains` en ambos sentidos, bajo un candado por nombre (también al agregar).
+- **Un dominio no verificado nunca sirve el portal:** `GET /public/portal/:hostname` solo resuelve un dominio `VERIFIED` de una agencia activa con su marca configurada; en cualquier otro caso, el mismo 404 sin pistas.
+  Devuelve solo la marca pública (sin ids ni datos de clientes) y tiene límite de peticiones.
+- **API:** `GET/POST …/agency/portal-domains`, `POST …/:domainId/verify`, `DELETE …/:domainId` (`agency.manage`; auditado: `agency.portal_domain_added/verified/removed`).
+- **UI:** «Dominio del portal» en Agencia › Marca blanca (agregar, instrucciones del TXT, verificar, quitar).
+- **Pruebas:** 6 de integración (`agency-domains.e2e.test.ts`, con DNS falso) + caso transversal de aislamiento + Playwright móvil/escritorio (capturas `07`–`08` en `f97/`) y 5 mutaciones (4 atrapadas por la integración; la de
+  «agencia sin marca» la cubre una segunda capa del servicio que descarta una marca sin nombre).
+- **Reservas honestas:** el certificado https depende del hosting (igual que los dominios de sitio: `sslStatus` queda `PENDING`); el CNAME de destino se define con el dominio definitivo de la plataforma; el portal en sí
+  (pantallas del cliente) es F9.7e.
+
 ---
 
 ### F9.8 — Reportes por cliente

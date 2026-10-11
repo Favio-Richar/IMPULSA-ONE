@@ -234,6 +234,7 @@ model Organization {
   customRoles         CustomRole[]
   publishRequests     PublishRequest[]
   whiteLabel          WhiteLabelSettings?
+  agencyDomains       AgencyDomain[]
   privateTemplates    Template[]
   agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
@@ -2706,4 +2707,27 @@ model WhiteLabelSettings {
   agencyOrganization Organization @relation(fields: [agencyOrganizationId], references: [id], onDelete: Cascade)
 
   @@map("white_label_settings")
+}
+
+// F9.7d (ADR-028 s5): dominio propio del portal de una agencia. Misma verificacion por DNS que `SiteDomain` (TXT `_impulza.<dominio>`); un dominio
+// no verificado nunca sirve el portal. Un dominio queda verificado en UN solo lugar: indice parcial aqui y comprobacion cruzada con `site_domains`.
+model AgencyDomain {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  agencyOrganizationId String                   @map("agency_organization_id") @db.Uuid
+  domain               String
+  verificationStatus   DomainVerificationStatus @default(PENDING) @map("verification_status")
+  verificationToken    String                   @map("verification_token")
+  verifiedAt           DateTime?                @map("verified_at") @db.Timestamptz(6)
+  lastCheckedAt        DateTime?                @map("last_checked_at") @db.Timestamptz(6)
+  lastCheckError       String?                  @map("last_check_error")
+  sslStatus            DomainSslStatus          @default(PENDING) @map("ssl_status")
+  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  agencyOrganization Organization @relation(fields: [agencyOrganizationId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyOrganizationId, domain])
+  @@index([agencyOrganizationId])
+  @@index([domain])
+  @@map("agency_domains")
 }

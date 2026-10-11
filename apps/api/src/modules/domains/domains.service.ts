@@ -88,7 +88,9 @@ export class DomainsService {
       where: { domain, verificationStatus: "VERIFIED", NOT: { siteId } },
       select: { id: true },
     });
-    if (verifiedElsewhere) {
+    // F9.7d: tampoco si ya es el dominio verificado del portal de una agencia.
+    const verifiedAsPortal = verifiedElsewhere ? null : await this.prisma.agencyDomain.findFirst({ where: { domain, verificationStatus: "VERIFIED" }, select: { id: true } });
+    if (verifiedElsewhere || verifiedAsPortal) {
       throw new ConflictException(DOMAIN_TAKEN);
     }
     const count = await this.prisma.siteDomain.count({ where: { siteId } });
@@ -152,9 +154,17 @@ export class DomainsService {
 
     let verified: SiteDomain;
     try {
-      verified = await this.prisma.siteDomain.update({
-        where: { id: domain.id },
-        data: { verificationStatus: "VERIFIED", verifiedAt: now, lastCheckedAt: now, lastCheckError: null },
+      verified = await this.prisma.$transaction(async (tx) => {
+        // F9.7d: la verificación de un dominio (de sitio o de portal) es de a una por nombre; así no pueden verificarse a la vez en los
+        // dos lados (el índice parcial de cada tabla no ve la otra).
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`domain:${domain.domain}`}, 0))`;
+        if (await tx.agencyDomain.findFirst({ where: { domain: domain.domain, verificationStatus: "VERIFIED" }, select: { id: true } })) {
+          throw new ConflictException(DOMAIN_TAKEN);
+        }
+        return tx.siteDomain.update({
+          where: { id: domain.id },
+          data: { verificationStatus: "VERIFIED", verifiedAt: now, lastCheckedAt: now, lastCheckError: null },
+        });
       });
     } catch (error) {
       // Otro sitio lo verificó primero (el índice parcial rechaza el segundo).

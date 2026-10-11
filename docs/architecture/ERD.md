@@ -603,3 +603,9 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 
 - **Template.organization_id** (`UUID` nullable, `CASCADE`, índice): `NULL` = plantilla del catálogo de la plataforma (pública); con valor = privada, visible solo para esa organización y, si es una agencia, para quien trabaja en sus
   clientes con acceso delegado. `code` sigue siendo único global (las privadas llevan `p-<8 del id>-…`). Migración reversible `20261011110000_f97c_private_templates` (la reversa borra las privadas).
+
+## 9ze. Dominio del portal de la agencia (F9.7d, BACKLOG_FASE_9.md, ADR-028 §5)
+
+- **AgencyDomain** (`agency_domains`): `agency_organization_id` (`CASCADE`), `domain`, `verification_status` (`PENDING`/`VERIFIED`/`FAILED`, mismo enum que `site_domains`), `verification_token`, `verified_at`, `last_checked_at`,
+  `last_check_error`, `ssl_status`. Único `(agency_organization_id, domain)` y **índice parcial** `agency_domains_one_verified_per_domain` (un dominio verificado en una sola agencia). La exclusión con `site_domains` se aplica
+  en la verificación, bajo un candado por nombre. Migración reversible `20261011120000_f97d_agency_domains`.

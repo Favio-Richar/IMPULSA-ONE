@@ -26,3 +26,26 @@ export type SiteDomainResponse = z.infer<typeof siteDomainResponse>;
 /** Resolución pública de un dominio verificado (la usa el `proxy` de `apps/web`): solo el slug. */
 export const publicDomainResolution = z.object({ siteSlug: z.string() });
 export type PublicDomainResolution = z.infer<typeof publicDomainResolution>;
+
+// ---- dominio del portal de una agencia (F9.7d, ADR-028 §5) ---------------------------------------------------------------
+export const agencyPortalDomainResponse = siteDomainResponse.omit({ siteId: true });
+export type AgencyPortalDomainResponse = z.infer<typeof agencyPortalDomainResponse>;
+
+/**
+ * Lo que el portal (F9.7e) necesita saber de un host verificado de agencia: solo su marca pública. Nunca ids internos ni nada de los
+ * clientes de la agencia.
+ */
+export const publicPortalResolution = z.object({
+  brand: z.object({
+    displayName: z.string(),
+    logoLightUrl: z.string().nullable(),
+    logoDarkUrl: z.string().nullable(),
+    faviconUrl: z.string().nullable(),
+    primaryColor: z.string(),
+    secondaryColor: z.string(),
+    supportEmail: z.string().nullable(),
+    footerText: z.string().nullable(),
+  }),
+});
+export type PublicPortalResolution = z.infer<typeof publicPortalResolution>;
+

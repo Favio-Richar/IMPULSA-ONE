@@ -26,6 +26,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   await prisma.agencyClient.deleteMany({ where: { agencyOrganizationId: fixture.organizationId } });
   await prisma.whiteLabelSettings.deleteMany({ where: { agencyOrganizationId: fixture.organizationId } });
+  await prisma.agencyDomain.deleteMany({ where: { agencyOrganizationId: fixture.organizationId } });
   await prisma.organization.deleteMany({ where: { slug: { startsWith: `wl-pw-${suffix}` } } });
   await prisma.organization.update({ where: { id: fixture.organizationId }, data: { planId: previousPlanId, kind: "BUSINESS" } });
   await prisma.$disconnect();
@@ -118,3 +119,45 @@ test("la agencia configura su marca, la activa en un cliente y el panel del clie
   await expect(page.getByTestId("panel-brand-footer")).toHaveCount(0);
   await owner.dispose();
 });
+
+test("el dominio del portal queda pendiente con su TXT, no verifica sin el registro y se puede quitar", async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  const project = testInfo.project.name;
+  const domain = `portal-${project}-${suffix}.impulza-e2e.cl`;
+  const owner = await apiRequest.newContext({ storageState: "./.playwright/session.json", extraHTTPHeaders: CSRF });
+  await prisma.organization.update({ where: { id: fixture.organizationId }, data: { kind: "BUSINESS" } });
+  expect((await owner.post(`${API_BASE_URL}/organizations/${fixture.organizationId}/agency/enable`)).status()).toBe(200);
+
+  await activateOrg(page, fixture.organizationId);
+  await page.goto("/agencia/marca");
+  const card = page.getByTestId("portal-domains");
+  await expect(card).toBeVisible();
+
+  // Un dominio inválido lo rechaza el servidor y la pantalla lo dice.
+  await card.getByLabel("Dominio", { exact: true }).fill("127.0.0.1");
+  await card.getByRole("button", { name: "Agregar dominio" }).click();
+  await expect(card.getByText(/dominio|host|válido|IP/i).first()).toBeVisible();
+
+  await card.getByLabel("Dominio", { exact: true }).fill(domain);
+  await card.getByRole("button", { name: "Agregar dominio" }).click();
+  const item = card.locator(`[data-domain="${domain}"]`);
+  await expect(item).toBeVisible();
+  await expect(item).toContainText("Pendiente de verificar");
+  await expect(item).toContainText(`_impulza.${domain}`);
+  await expectNoHorizontalScroll(page);
+  await capture(page, `07-dominio-portal-pendiente-${project}.png`);
+
+  // Sin el registro TXT no verifica: queda sin verificar con su motivo, y el portal no resuelve.
+  await item.getByRole("button", { name: "Verificar ahora" }).click();
+  await expect(item).toContainText("Sin verificar", { timeout: 20_000 });
+  const anonymous = await apiRequest.newContext();
+  expect((await anonymous.get(`${API_BASE_URL}/public/portal/${domain}`)).status()).toBe(404);
+  await anonymous.dispose();
+  await capture(page, `08-dominio-portal-sin-verificar-${project}.png`);
+
+  await item.getByRole("button", { name: "Quitar" }).click();
+  await item.getByRole("button", { name: "Sí" }).click();
+  await expect(item).toHaveCount(0);
+  await owner.dispose();
+});
+

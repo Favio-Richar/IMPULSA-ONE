@@ -62950,6 +62950,658 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/agency/portal-domains": {
+      "get": {
+        "description": "Del más antiguo al más reciente, con el TXT que hay que crear. Requiere `agency.manage`.",
+        "operationId": "AgencyPortalDomainsController_list",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dominios del portal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "domain": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "PENDING",
+                          "VERIFIED",
+                          "FAILED"
+                        ]
+                      },
+                      "sslStatus": {
+                        "type": "string",
+                        "enum": [
+                          "PENDING",
+                          "ACTIVE",
+                          "FAILED"
+                        ]
+                      },
+                      "verification": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "cnameTarget": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "lastCheckError": {
+                        "nullable": true,
+                        "type": "string",
+                        "enum": [
+                          "TXT_NOT_FOUND",
+                          "TXT_MISMATCH",
+                          "DNS_TIMEOUT",
+                          "DNS_ERROR"
+                        ]
+                      },
+                      "lastCheckedAt": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "verifiedAt": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "domain",
+                      "status",
+                      "sslStatus",
+                      "verification",
+                      "cnameTarget",
+                      "lastCheckError",
+                      "lastCheckedAt",
+                      "verifiedAt",
+                      "createdAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Dominios del portal de la agencia",
+        "tags": [
+          "agency"
+        ]
+      },
+      "post": {
+        "description": "Solo nombres de host públicos; el dominio de la plataforma no se puede reclamar. Queda `PENDING` hasta verificar el TXT `_impulza.<dominio>`: un dominio sin verificar nunca sirve el portal. Requiere `agency.manage`.",
+        "operationId": "AgencyPortalDomainsController_create",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "domain": {
+                    "type": "string",
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "domain"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Dominio agregado, pendiente de verificación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "PENDING",
+                        "VERIFIED",
+                        "FAILED"
+                      ]
+                    },
+                    "sslStatus": {
+                      "type": "string",
+                      "enum": [
+                        "PENDING",
+                        "ACTIVE",
+                        "FAILED"
+                      ]
+                    },
+                    "verification": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "cnameTarget": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "lastCheckError": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "TXT_NOT_FOUND",
+                        "TXT_MISMATCH",
+                        "DNS_TIMEOUT",
+                        "DNS_ERROR"
+                      ]
+                    },
+                    "lastCheckedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "verifiedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "domain",
+                    "status",
+                    "sslStatus",
+                    "verification",
+                    "cnameTarget",
+                    "lastCheckError",
+                    "lastCheckedAt",
+                    "verifiedAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "409": {
+            "description": "Ese dominio ya está verificado en otro sitio o agencia."
+          },
+          "422": {
+            "description": "Dominio de la plataforma, o tope de dominios alcanzado."
+          },
+          "429": {
+            "description": "Más de 20 peticiones en 3600 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Agregar un dominio para el portal",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/agency/portal-domains/{domainId}/verify": {
+      "post": {
+        "description": "Consulta el TXT por DNS (nunca una petición HTTP al dominio). Requiere `agency.manage`.",
+        "operationId": "AgencyPortalDomainsController_verify",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "domainId",
+            "required": true,
+            "in": "path",
+            "description": "Dominio de portal de esta agencia.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado tras verificar (`VERIFIED` o `FAILED` con su código).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "PENDING",
+                        "VERIFIED",
+                        "FAILED"
+                      ]
+                    },
+                    "sslStatus": {
+                      "type": "string",
+                      "enum": [
+                        "PENDING",
+                        "ACTIVE",
+                        "FAILED"
+                      ]
+                    },
+                    "verification": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "cnameTarget": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "lastCheckError": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "TXT_NOT_FOUND",
+                        "TXT_MISMATCH",
+                        "DNS_TIMEOUT",
+                        "DNS_ERROR"
+                      ]
+                    },
+                    "lastCheckedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "verifiedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "domain",
+                    "status",
+                    "sslStatus",
+                    "verification",
+                    "cnameTarget",
+                    "lastCheckError",
+                    "lastCheckedAt",
+                    "verifiedAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Dominio no encontrado: no existe, o es de otra agencia (ADR-002)."
+          },
+          "409": {
+            "description": "Ese dominio ya está verificado en otro sitio o agencia."
+          },
+          "429": {
+            "description": "Más de 30 peticiones en 3600 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Verificar un dominio del portal",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/agency/portal-domains/{domainId}": {
+      "delete": {
+        "description": "El portal deja de servirse en él. Requiere `agency.manage`.",
+        "operationId": "AgencyPortalDomainsController_remove",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "domainId",
+            "required": true,
+            "in": "path",
+            "description": "Dominio de portal de esta agencia.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Dominio quitado."
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Dominio no encontrado: no existe, o es de otra agencia (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Quitar un dominio del portal",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/api/v1/public/portal/{hostname}": {
+      "get": {
+        "operationId": "PublicPortalController_resolve",
+        "parameters": [
+          {
+            "name": "hostname",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La marca pública de la agencia que sirve ese dominio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brand": {
+                      "type": "object",
+                      "properties": {
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "logoLightUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "logoDarkUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "faviconUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "primaryColor": {
+                          "type": "string"
+                        },
+                        "secondaryColor": {
+                          "type": "string"
+                        },
+                        "supportEmail": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "footerText": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "displayName",
+                        "logoLightUrl",
+                        "logoDarkUrl",
+                        "faviconUrl",
+                        "primaryColor",
+                        "secondaryColor",
+                        "supportEmail",
+                        "footerText"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "brand"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Dominio no encontrado."
+          },
+          "429": {
+            "description": "Límite de peticiones superado (600 por minuto y origen)."
+          }
+        },
+        "summary": "Resolver el dominio de un portal de agencia verificado",
+        "tags": [
+          "public-domains"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "description": "Sin sesión ni CSRF: lo consume infraestructura. Fuera de `/api/v1` porque no es un endpoint de negocio. Una dependencia caída degrada el reporte, no tumba el endpoint.",

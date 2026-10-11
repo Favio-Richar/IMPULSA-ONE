@@ -2449,4 +2449,31 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("F9.7d Dominio del portal de la agencia: nunca se cruza (ADR-002, ADR-028 §5)", () => {
+    it("B no lista, verifica ni quita el dominio de portal de A, y un dominio pendiente no resuelve", async () => {
+      const before = await prisma.organization.findUniqueOrThrow({ where: { id: orgA.id }, select: { planId: true, kind: true } });
+      await assignRoomyPlan(prisma, orgA.id);
+      await prisma.organization.update({ where: { id: orgA.id }, data: { kind: "AGENCY" } });
+      const domain = await prisma.agencyDomain.create({
+        data: { agencyOrganizationId: orgA.id, domain: `portal-${Date.now().toString(36)}.impulza-iso.cl`, verificationToken: "a".repeat(32) },
+      });
+      try {
+        const base = `/api/v1/organizations/${orgA.id}/agency/portal-domains`;
+        await orgB.ownerAgent.get(base).expect(403);
+        await orgB.ownerAgent.post(`${base}/${domain.id}/verify`).set(CSRF_HEADERS).expect(403);
+        await orgB.ownerAgent.delete(`${base}/${domain.id}`).set(CSRF_HEADERS).expect(403);
+        // Por su propia ruta, el id de A es un 404 (o 403 si B no es una agencia): nunca lo toca.
+        const own = `/api/v1/organizations/${orgB.id}/agency/portal-domains`;
+        const verify = await orgB.ownerAgent.post(`${own}/${domain.id}/verify`).set(CSRF_HEADERS);
+        expect([403, 404]).toContain(verify.status);
+        // Pendiente: el portal no resuelve ni confirma que exista.
+        await request(httpServer).get(`/api/v1/public/portal/${domain.domain}`).expect(404);
+        expect(await prisma.agencyDomain.count({ where: { id: domain.id } })).toBe(1);
+      } finally {
+        await prisma.agencyDomain.deleteMany({ where: { id: domain.id } });
+        await prisma.organization.update({ where: { id: orgA.id }, data: { planId: before.planId, kind: before.kind } });
+      }
+    });
+  });
+
 });

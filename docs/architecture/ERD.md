@@ -640,3 +640,5 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   equipo, nunca se muestra al propietario), `status` (`OPEN`|`DISMISSED`|`WARNED`|`SITE_UNPUBLISHED`|`ORG_SUSPENDED`|`APPEALED`), `resolution`, `resolved_by_id`/`resolved_at`, `appeal_text`/`appealed_by_id`/`appealed_at`.
   Índices `(status, created_at)` y `(site_id, status)`. No hay IP del denunciante.
 - **Site.moderation_hidden_at** (nulo = visible): despublicación por moderación, reversible, independiente de `status`. Migración reversible `20261011170000_f99a_abuse_reports`.
+- **AbuseReport.status_before_appeal** (F9.9c, nulo salvo en `APPEALED`): estado que tenía el caso al apelar; la medida sigue vigente durante la revisión y las decisiones se toman sobre él. Migración reversible
+  `20261011180000_f99c_abuse_appeal`. Permiso nuevo `moderation.appeal` (OWNER y ADMIN).

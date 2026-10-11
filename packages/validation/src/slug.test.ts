@@ -36,7 +36,7 @@ describe("slugs reservados", () => {
   });
 
   it("cubre infraestructura, superficies de la plataforma y archivos especiales", () => {
-    for (const reserved of ["www", "api", "admin", "panel", "checkout", "sitemap", "robots", "health"]) {
+    for (const reserved of ["www", "api", "admin", "panel", "checkout", "sitemap", "robots", "health", "reportar"]) {
       expect(isReservedSlug(reserved), `${reserved} debería estar reservado`).toBe(true);
     }
   });

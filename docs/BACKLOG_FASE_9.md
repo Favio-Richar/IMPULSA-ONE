@@ -25,7 +25,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados**, **F9.6b acceso por cliente y módulo** **F9.6c aprobación antes de publicar** y **F9.6d auditoría navegable** hechas (2026-10-04/11): **F9.6 completa** |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | **Hecha** (2026-10-11): **a** marca y cascada, **b** correos, **c** plantillas privadas, **d** dominio de agencia, **e** portal del cliente (los reportes del portal llegan con F9.8) |
 | F9.8 | Reportes por cliente | **Hecha** (2026-10-11): **a** informe y CSV, **b** enlace compartido, **c** programación por cola, **d** comentarios |
-| F9.9 | Moderación y reportes de abuso | En progreso: **a** reporte público y modelo, **b** cola y acciones de admin hechas (2026-10-11); faltan **c** aviso y apelación, **d** pantallas y Playwright |
+| F9.9 | Moderación y reportes de abuso | **Hecha con reservas** (2026-10-11): **a** reporte público y modelo, **b** cola y acciones de admin, **c** aviso y apelación, **d** pantallas y Playwright; reservas en el detalle de la historia |
 | F9.10 | Aislamiento, seguridad y cierre de la fase | Pendiente |
 
 Una historia no empieza si la anterior no cumple su Definición de Terminado. F9.1 y F9.2 son la base de
@@ -652,7 +652,44 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
   `/admin`.
 - **Pruebas:** 7 de validación (transiciones y entradas) y 10 de integración (solo superadmin, prioridad/filtros/paginación, detalle auditado, motivo obligatorio, advertir/despublicar/restaurar, dos reportes sobre un sitio,
   suspender/restaurar con solo-lectura del panel, carrera, compensación, «nada despublica solo»); **2 mutaciones atrapadas** (sin compensación, restaurar sin mirar otros reportes). OpenAPI: 296 rutas.
-- **Reserva:** «advertir» ya cambia el estado pero el correo al propietario con la vía de apelación llega en F9.9c; hasta entonces el propietario no se entera.
+
+**Avance — F9.9c (aviso al propietario y apelación, 2026-10-11):**
+
+- **Aviso por correo** a los propietarios activos (rol `OWNER`, membresía directa) al advertir, despublicar, suspender, restaurar o mantener la medida tras una apelación: categoría del reporte, **explicación escrita por el equipo**
+  y cómo apelar. **Nunca** el texto del reporte ni datos de quien denunció. Descartar un reporte no avisa (no hubo medida). Un correo que falla se registra y no deshace la decisión (que ya está guardada y auditada).
+- **Panel del propietario** (API): `GET /organizations/:id/moderation/cases` (medidas vigentes, apelaciones abiertas y resueltas, con su explicación; sin datos del reporte ni del denunciante ni de quién decidió) y
+  `POST …/cases/:caseId/appeal` (texto plano de 20 a 1000, saneado; **una apelación por decisión**; límite de tasa; `@AllowWhenOrganizationBlocked`: una organización suspendida puede apelar). Permiso nuevo
+  **`moderation.appeal`** (OWNER y ADMIN), incluido en el catálogo de roles personalizados («Moderación»).
+- **La apelación reabre el caso:** pasa a `APPEALED` y vuelve a la cola, pero **la medida sigue vigente** mientras se revisa (`status_before_appeal`, migración reversible `20261011180000_f99c_abuse_appeal`). El equipo decide
+  sobre el estado de antes: **restaurar** (retira la medida y cierra), **mantener** (`uphold`: la medida sigue, se explica y ya no se puede volver a apelar) o escalar (suspender). Se alerta al equipo por
+  `SUPPORT_NOTIFICATION_EMAIL`.
+- **Aislamiento:** el caso se busca siempre por `organizationId` (otra organización → 404); la apelación se reclama con una actualización condicional (dos envíos simultáneos: uno prospera y otro recibe 409).
+- **Pruebas:** 13 de validación (reglas con estado efectivo, `uphold`, `canAppeal`, saneamiento) y 10 de integración (aviso sin datos del reporte, vista del propietario con claves exactas, apelar con medida vigente,
+  mantener, restaurar tras apelar, organización suspendida que apela, 401/403/404/409/400, carrera); **2 mutaciones atrapadas** (sin `AllowWhenOrganizationBlocked`, sin filtro de organización).
+- **Reservas honestas:** los avisos van solo al propietario directo (no a la agencia que gestiona al cliente); no hay plazo de respuesta automatizado; el panel y las pantallas llegan en F9.9d, así que el enlace
+  `/configuracion/moderacion` del correo aún no tiene página hasta cerrar esa parte.
+
+**Avance — F9.9d (pantallas y pruebas de navegador, 2026-10-11):**
+
+- **Página pública:** enlace discreto «Reportar esta página» en el pie de todo sitio (apunta al origen de la plataforma, también desde un dominio propio) → `/reportar/:siteSlug` (ruta fija, ahora **reservada** como slug de sitio;
+  `noindex`, 404 si el sitio no se sirve). Formulario con motivo de catálogo cerrado, texto y correo opcionales, errores junto al campo, confirmación con foco y mensajes para 429/404/502. Proxy `POST /api/abuse-reports/:siteSlug`
+  (reenvía la IP real; no registra el cuerpo).
+- **Administración:** `/moderacion` (cola por prioridad, filtros de motivo y orden, contador de la cola, estados de carga/vacío/error) y `/moderacion/:id` (lo que dijo quien reportó con su correo, apelación, acciones según
+  `availableActions` con motivo obligatorio, **segunda confirmación** en despublicar y suspender, historial). Entrada «Moderación» en el menú.
+- **Panel del propietario:** `/configuracion/moderacion` (medidas con la explicación del equipo, apelación en línea con validación, estado «en revisión» con la medida aún vigente); oculto para agencias delegadas y visor.
+- **Hallazgos corregidos al probar:** el nombre accesible de cada acción incluía su texto de ayuda (ambigüedad con «Motivo»): ahora título y descripción van separados (`aria-describedby`).
+- **Playwright** (`moderacion.spec.ts`, móvil y escritorio, 6/6): visitante reporta desde el pie con errores de validación → equipo despublica con motivo y confirmación (el sitio responde 404) → propietario ve la medida, apela
+  y la medida sigue vigente → equipo restaura (el sitio vuelve) → propietario ve la medida retirada. Sin desborde horizontal; 20 capturas en `docs/design/capturas/f99/`.
+- **Verificación global:** API completa 1020/1021 (la restante, `sites.e2e`, pasa aislada: falla solo bajo carga), `next build` de `admin`, `dashboard` y `web` (este dentro de Playwright), lint y typecheck de todos los paquetes tocados.
+
+**Reservas honestas de F9.9:**
+1. **Falta el texto legal:** no existe todavía una política de contenido / términos de uso publicados que respalden las medidas (decisión del propietario con revisión de un abogado, ver «Decisiones pendientes»). El mecanismo
+   está listo; la base legal de qué se puede publicar no.
+2. **Retención del correo del denunciante:** se conserva mientras exista el caso; no hay purga automática ni plazo definido (falta decidir el plazo con la política de privacidad).
+3. Los avisos van solo al propietario directo (no a la agencia que gestiona al cliente) y no hay plazo de respuesta automatizado para las apelaciones.
+4. No hay denuncias de derechos de autor con procedimiento propio (notificación/contranotificación): hoy entran como «Otro motivo».
+5. Los enlaces cortos y QR no se despublican por sitio (son de la organización): quedan cubiertos solo por la suspensión de la organización.
+6. Revisión con `design:accessibility-review`/`design-critique` formal: se hizo una revisión visual de las capturas y un barrido de nombres accesibles; el barrido completo de F9.10 las cubrirá.
 
 ---
 

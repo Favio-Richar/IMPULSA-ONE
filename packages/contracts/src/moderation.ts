@@ -10,7 +10,7 @@ export const abuseReportAckResponse = z.object({
 
 export const abuseReportReasonResponse = z.enum(["SPAM", "IMPERSONATION", "ILLEGAL_CONTENT", "FRAUD", "OTHER"]);
 export const abuseReportStatusResponse = z.enum(["OPEN", "DISMISSED", "WARNED", "SITE_UNPUBLISHED", "ORG_SUSPENDED", "APPEALED"]);
-export const moderationActionResponse = z.enum(["dismiss", "warn", "unpublish", "suspend", "restore"]);
+export const moderationActionResponse = z.enum(["dismiss", "warn", "unpublish", "suspend", "restore", "uphold"]);
 
 /** Lo que ve el equipo de superadministración. El correo del denunciante solo aparece acá, nunca en lo que ve el propietario. */
 export const adminAbuseReportResponse = z.object({
@@ -22,6 +22,8 @@ export const adminAbuseReportResponse = z.object({
   resolution: z.string().nullable(),
   appealText: z.string().nullable(),
   appealedAt: isoDateTime.nullable(),
+  /** Medida vigente mientras la apelación está abierta (el estado que tenía el caso al apelar). */
+  appealedFrom: abuseReportStatusResponse.nullable(),
   resolvedAt: isoDateTime.nullable(),
   createdAt: isoDateTime,
   site: z.object({ id: uuid, name: z.string(), slug: z.string(), hidden: z.boolean() }),
@@ -53,6 +55,30 @@ export const adminAbuseReportDetailResponse = adminAbuseReportResponse.extend({
   history: z.array(adminAbuseReportHistoryEntry),
 });
 
+/**
+ * Lo que ve el PROPIETARIO sobre una medida de moderación (F9.9c). A propósito no incluye el texto del reporte, el correo ni
+ * ningún dato de quien denunció, ni quién del equipo decidió: solo el motivo de la categoría, la medida y la explicación.
+ */
+export const moderationCaseResponse = z.object({
+  id: uuid,
+  reason: abuseReportReasonResponse,
+  /** Estado del caso: la medida vigente, `APPEALED` mientras se revisa, o `DISMISSED` si la apelación prosperó. */
+  status: abuseReportStatusResponse,
+  /** Medida que rige hoy sobre el negocio (`null` si ya no hay ninguna). */
+  measure: z.enum(["WARNED", "SITE_UNPUBLISHED", "ORG_SUSPENDED"]).nullable(),
+  /** Explicación escrita por el equipo al decidir. */
+  statement: z.string().nullable(),
+  site: z.object({ id: uuid, name: z.string() }),
+  decidedAt: isoDateTime.nullable(),
+  canAppeal: z.boolean(),
+  appealText: z.string().nullable(),
+  appealedAt: isoDateTime.nullable(),
+  createdAt: isoDateTime,
+});
+
+export const moderationCaseListResponse = z.array(moderationCaseResponse);
+
+export type ModerationCaseResponse = z.infer<typeof moderationCaseResponse>;
 export type AbuseReportAckResponse = z.infer<typeof abuseReportAckResponse>;
 export type AdminAbuseReportResponse = z.infer<typeof adminAbuseReportResponse>;
 export type AdminAbuseReportListResponse = z.infer<typeof adminAbuseReportListResponse>;

@@ -1,4 +1,6 @@
 import type {
+  AdminAbuseReportDetailResponse,
+  AdminAbuseReportListResponse,
   AdminAiConnectionResponse,
   AdminAiConnectionTestResponse,
   AdminAiRoutesResponse,
@@ -30,6 +32,7 @@ import type {
 } from "@impulza/contracts";
 import type {
   AiRoutesInput,
+  ModerationAction,
   CreateAiConnectionInput,
   UpdateAiConnectionInput,
   UpdateFeatureFlagDto,
@@ -135,6 +138,20 @@ export const adminApi = {
   templates: () => apiFetch<AdminTemplateListResponse>("/admin/templates"),
   updateTemplate: (id: string, body: UpdateTemplateAdminDto) =>
     apiFetch<AdminTemplateSummaryResponse>(`/admin/templates/${id}`, { method: "PATCH", body }),
+
+  // Moderación y reportes de abuso (F9.9, ADR-028 §7)
+  abuseReports: (params: {
+    status?: string;
+    reason?: string;
+    sort?: "priority" | "oldest" | "newest";
+    organizationId?: string;
+    siteId?: string;
+    page: number;
+    pageSize: number;
+  }) => apiFetch<AdminAbuseReportListResponse>(`/admin/abuse-reports${query(params)}`),
+  abuseReport: (id: string) => apiFetch<AdminAbuseReportDetailResponse>(`/admin/abuse-reports/${id}`),
+  moderate: (id: string, action: ModerationAction, reason: string) =>
+    apiFetch<AdminAbuseReportDetailResponse>(`/admin/abuse-reports/${id}/${action}`, { method: "POST", body: { reason } }),
 
   // Marca de la plataforma (F9.1, ADR-028 §4)
   getPlatformBranding: () => apiFetch<PlatformBrandingResponse>("/admin/platform/branding"),

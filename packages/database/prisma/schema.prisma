@@ -2903,6 +2903,8 @@ model AbuseReport {
   resolution     String?
   resolvedById   String?           @map("resolved_by_id") @db.Uuid
   resolvedAt     DateTime?         @map("resolved_at") @db.Timestamptz(6)
+  // Estado que tenia el caso al apelar: durante la apelacion la medida sigue vigente (F9.9c).
+  statusBeforeAppeal AbuseReportStatus? @map("status_before_appeal")
   appealText     String?           @map("appeal_text")
   appealedById   String?           @map("appealed_by_id") @db.Uuid
   appealedAt     DateTime?         @map("appealed_at") @db.Timestamptz(6)

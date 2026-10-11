@@ -4,7 +4,9 @@ import { AbuseReportStatus, OrganizationStatus, Prisma, type PrismaClient } from
 import {
   QUEUE_STATUSES,
   availableModerationActions,
+  effectiveStatus,
   moderationTransition,
+  type AbuseReportStatusValue,
   type ListAbuseReportsQueryDto,
   type ModerationAction,
 } from "@impulza/validation";
@@ -13,6 +15,7 @@ import { logger } from "../../observability/logger.js";
 import { AdminService } from "../admin/admin.service.js";
 import { AuditService } from "../audit/audit.service.js";
 import { RevalidateWebService } from "../public-sites/revalidate-web.service.js";
+import { ModerationNotifier } from "./moderation-notifier.js";
 
 const REPORT_NOT_FOUND = "Reporte no encontrado.";
 const VIEWED_ACTION = "admin.abuse_report_viewed";
@@ -36,6 +39,7 @@ export class ModerationAdminService {
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(AdminService) private readonly adminService: AdminService,
     @Inject(RevalidateWebService) private readonly revalidateWeb: RevalidateWebService,
+    @Inject(ModerationNotifier) private readonly notifier: ModerationNotifier,
   ) {}
 
   private toResponse(row: ReportRow, siteOpenReports: number): AdminAbuseReportResponse {
@@ -48,12 +52,13 @@ export class ModerationAdminService {
       resolution: row.resolution,
       appealText: row.appealText,
       appealedAt: row.appealedAt?.toISOString() ?? null,
+      appealedFrom: row.statusBeforeAppeal,
       resolvedAt: row.resolvedAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
       site: { id: row.site.id, name: row.site.name, slug: row.site.slug, hidden: row.site.moderationHiddenAt !== null },
       organization: { id: row.organization.id, name: row.organization.name, blocked: row.organization.status === OrganizationStatus.BLOCKED },
       siteOpenReports,
-      availableActions: availableModerationActions(row.status),
+      availableActions: availableModerationActions(row.status, row.statusBeforeAppeal),
     };
   }
 
@@ -165,7 +170,7 @@ export class ModerationAdminService {
 
   async apply(adminId: string, reportId: string, action: ModerationAction, reason: string): Promise<AdminAbuseReportDetailResponse> {
     const report = await this.getRowOrThrow(reportId);
-    const next = moderationTransition(report.status, action);
+    const next = moderationTransition(report.status, action, report.statusBeforeAppeal);
     if (!next) {
       throw new ConflictException("Esta acción no corresponde al estado actual del reporte.");
     }
@@ -174,7 +179,8 @@ export class ModerationAdminService {
     //    equipo decidió mientras tanto, esta no la pisa y, sobre todo, no llega a aplicar ningún efecto sobre el sitio.
     const claimed = await this.prisma.abuseReport.updateMany({
       where: { id: reportId, status: report.status },
-      data: { status: next, resolution: reason, resolvedById: adminId, resolvedAt: new Date() },
+      // Al decidir una apelación el caso deja de estar «apelado»: el estado previo ya cumplió su función.
+      data: { status: next, resolution: reason, resolvedById: adminId, resolvedAt: new Date(), statusBeforeAppeal: null },
     });
     if (claimed.count === 0) {
       throw new ConflictException("Otra persona del equipo ya resolvió este reporte. Revisa su estado actual.");
@@ -183,11 +189,17 @@ export class ModerationAdminService {
     // 2) El efecto (ocultar el sitio, bloquear o restaurar). Si falla, se deshace la reclamación: el caso nunca queda
     //    marcado con una medida que no se aplicó.
     try {
-      await this.applySideEffect(adminId, report, action, reason);
+      await this.applySideEffect(adminId, report, effectiveStatus(report.status, report.statusBeforeAppeal), action, reason);
     } catch (error) {
       await this.prisma.abuseReport.updateMany({
         where: { id: reportId, status: next },
-        data: { status: report.status, resolution: report.resolution, resolvedById: report.resolvedById, resolvedAt: report.resolvedAt },
+        data: {
+          status: report.status,
+          statusBeforeAppeal: report.statusBeforeAppeal,
+          resolution: report.resolution,
+          resolvedById: report.resolvedById,
+          resolvedAt: report.resolvedAt,
+        },
       });
       throw error;
     }
@@ -202,10 +214,16 @@ export class ModerationAdminService {
     });
     logger.warn("decisión de moderación aplicada", { reportId, action, from: report.status, to: next, adminId });
 
+    await this.notifier.decision(
+      { id: report.id, organizationId: report.organizationId, organizationName: report.organization.name, siteName: report.site.name, reason: report.reason },
+      action,
+      reason,
+    );
+
     return this.buildDetail(reportId);
   }
 
-  private async applySideEffect(adminId: string, report: ReportRow, action: ModerationAction, reason: string): Promise<void> {
+  private async applySideEffect(adminId: string, report: ReportRow, current: AbuseReportStatusValue, action: ModerationAction, reason: string): Promise<void> {
     if (action === "unpublish") {
       await this.prisma.site.update({ where: { id: report.siteId }, data: { moderationHiddenAt: report.site.moderationHiddenAt ?? new Date() } });
       await this.revalidateWeb.revalidateSite(report.siteId);
@@ -220,10 +238,10 @@ export class ModerationAdminService {
       return;
     }
 
-    if (action !== "restore") return;
+    if (action !== "restore") return; // `warn`, `dismiss` y `uphold` no tocan el sitio ni la organización.
 
     // Se deshace solo lo que ESTE caso aplicó, y solo si ningún otro reporte vigente lo sigue necesitando.
-    if (report.status === AbuseReportStatus.ORG_SUSPENDED && report.organization.status === OrganizationStatus.BLOCKED) {
+    if (current === AbuseReportStatus.ORG_SUSPENDED && report.organization.status === OrganizationStatus.BLOCKED) {
       const others = await this.prisma.abuseReport.count({
         where: { organizationId: report.organizationId, id: { not: report.id }, status: AbuseReportStatus.ORG_SUSPENDED },
       });
@@ -231,7 +249,7 @@ export class ModerationAdminService {
         await this.adminService.unblockOrganization(adminId, report.organizationId, `Moderación (reporte ${report.id}): ${reason}`);
       }
     }
-    if (report.status === AbuseReportStatus.SITE_UNPUBLISHED || report.status === AbuseReportStatus.ORG_SUSPENDED) {
+    if (current === AbuseReportStatus.SITE_UNPUBLISHED || current === AbuseReportStatus.ORG_SUSPENDED) {
       const others = await this.prisma.abuseReport.count({
         where: { siteId: report.siteId, id: { not: report.id }, status: AbuseReportStatus.SITE_UNPUBLISHED },
       });

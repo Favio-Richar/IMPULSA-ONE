@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Container, SiteBackdrop } from "@impulza/blocks-renderer";
 import type { PublicSiteResponse } from "@impulza/contracts";
 import { resolvedSiteBackgroundSchema, themeTokensSchema } from "@impulza/validation";
+import { env } from "../lib/env";
 
 /**
  * Envoltorio de todo sitio público: inyecta el tema del tenant como propiedades custom de CSS
@@ -47,6 +48,18 @@ export function SiteShell({ site, children }: { site: PublicSiteResponse; childr
       ) : null}
 
       <main>{children}</main>
+
+      {/* F9.9d: vía de reporte de abuso, discreta pero siempre presente. Apunta al origen de la plataforma (no al
+          dominio propio del sitio): el formulario es de Impulza One y el reporte lo revisa su equipo. */}
+      <footer className="pb-6 pt-2 text-center">
+        <a
+          href={`${env.PUBLIC_WEB_BASE_URL}/reportar/${encodeURIComponent(site.slug)}`}
+          rel="nofollow noopener"
+          className="text-xs text-[var(--site-color-muted-foreground)] underline underline-offset-2 hover:text-[var(--site-color-foreground)]"
+        >
+          Reportar esta página
+        </a>
+      </footer>
     </SiteBackdrop>
   );
 }

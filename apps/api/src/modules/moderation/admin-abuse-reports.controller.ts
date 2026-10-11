@@ -125,4 +125,20 @@ export class AdminAbuseReportsController {
   restore(@Req() req: RequestWithUser, @Param("reportId", uuidParam) reportId: string, @Body(new ZodValidationPipe(moderationActionSchema)) body: ModerationActionDto) {
     return this.act(req, reportId, "restore", body);
   }
+
+  @Post(":reportId/uphold")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Mantener la medida tras una apelación",
+    description: "Solo sobre un caso apelado: la medida sigue vigente, el motivo se le explica al propietario y el caso vuelve a su estado. No se puede volver a apelar.",
+  })
+  @ApiUuidParam("reportId", "Reporte apelado.")
+  @ApiZodBody(moderationActionSchema)
+  @ApiZodResponse(200, adminAbuseReportDetailResponse, "El reporte actualizado.")
+  @ApiResponse({ status: 400, description: "Entrada inválida (detalle en `issues`)." })
+  @ApiResponse({ status: 404, description: "Reporte no encontrado." })
+  @ApiResponse({ status: 409, description: "El caso no está apelado." })
+  uphold(@Req() req: RequestWithUser, @Param("reportId", uuidParam) reportId: string, @Body(new ZodValidationPipe(moderationActionSchema)) body: ModerationActionDto) {
+    return this.act(req, reportId, "uphold", body);
+  }
 }

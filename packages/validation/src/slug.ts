@@ -54,6 +54,8 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   // Baja de campañas (F5.6): `/baja/:token` es una ruta fija de apps/web.
   "baja",
   "campanas",
+  // Reporte de abuso (F9.9d): `/reportar/:siteSlug` es una ruta fija de apps/web.
+  "reportar",
   // Superficies propias de la plataforma.
   "admin",
   "app",

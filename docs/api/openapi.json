@@ -2626,7 +2626,7 @@
                   },
                   "permissions": {
                     "minItems": 1,
-                    "maxItems": 31,
+                    "maxItems": 32,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -2657,6 +2657,7 @@
                         "report.share",
                         "report.comment",
                         "audit.view",
+                        "moderation.appeal",
                         "publish.approve",
                         "publish.configure",
                         "publish.comment",
@@ -2811,7 +2812,7 @@
                   },
                   "permissions": {
                     "minItems": 1,
-                    "maxItems": 31,
+                    "maxItems": 32,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -2842,6 +2843,7 @@
                         "report.share",
                         "report.comment",
                         "audit.view",
+                        "moderation.appeal",
                         "publish.approve",
                         "publish.configure",
                         "publish.comment",
@@ -21637,6 +21639,365 @@
         "summary": "Reportar una página pública",
         "tags": [
           "public-moderation"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/moderation/cases": {
+      "get": {
+        "description": "Advertencias, despublicaciones y suspensiones vigentes, apelaciones abiertas y las ya resueltas, con la explicación del equipo. No incluye el texto del reporte ni datos de quien denunció.",
+        "operationId": "ModerationCasesController_list",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Casos que afectan al negocio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "reason": {
+                        "type": "string",
+                        "enum": [
+                          "SPAM",
+                          "IMPERSONATION",
+                          "ILLEGAL_CONTENT",
+                          "FRAUD",
+                          "OTHER"
+                        ]
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "OPEN",
+                          "DISMISSED",
+                          "WARNED",
+                          "SITE_UNPUBLISHED",
+                          "ORG_SUSPENDED",
+                          "APPEALED"
+                        ]
+                      },
+                      "measure": {
+                        "nullable": true,
+                        "type": "string",
+                        "enum": [
+                          "WARNED",
+                          "SITE_UNPUBLISHED",
+                          "ORG_SUSPENDED"
+                        ]
+                      },
+                      "statement": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "site": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "decidedAt": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "canAppeal": {
+                        "type": "boolean"
+                      },
+                      "appealText": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "appealedAt": {
+                        "nullable": true,
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "reason",
+                      "status",
+                      "measure",
+                      "statement",
+                      "site",
+                      "decidedAt",
+                      "canAppeal",
+                      "appealText",
+                      "appealedAt",
+                      "createdAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Medidas de moderación del negocio",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/moderation/cases/{caseId}/appeal": {
+      "post": {
+        "description": "Una vez por decisión. La medida sigue vigente mientras el equipo revisa, el caso vuelve a la cola y se avisa al equipo. Funciona con la organización bloqueada.",
+        "operationId": "ModerationCasesController_appeal",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "description": "Caso a apelar.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "El caso, ahora en revisión.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "SPAM",
+                        "IMPERSONATION",
+                        "ILLEGAL_CONTENT",
+                        "FRAUD",
+                        "OTHER"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "DISMISSED",
+                        "WARNED",
+                        "SITE_UNPUBLISHED",
+                        "ORG_SUSPENDED",
+                        "APPEALED"
+                      ]
+                    },
+                    "measure": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "WARNED",
+                        "SITE_UNPUBLISHED",
+                        "ORG_SUSPENDED"
+                      ]
+                    },
+                    "statement": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "site": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "decidedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "canAppeal": {
+                      "type": "boolean"
+                    },
+                    "appealText": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "appealedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "reason",
+                    "status",
+                    "measure",
+                    "statement",
+                    "site",
+                    "decidedAt",
+                    "canAppeal",
+                    "appealText",
+                    "appealedAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Texto inválido (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Caso no encontrado en esta organización."
+          },
+          "409": {
+            "description": "El caso no tiene una medida apelable o ya fue apelado."
+          },
+          "429": {
+            "description": "Más de 10 peticiones en 3600 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Apelar una medida",
+        "tags": [
+          "moderation"
         ]
       }
     },
@@ -57131,6 +57492,18 @@
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                           },
+                          "appealedFrom": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "OPEN",
+                              "DISMISSED",
+                              "WARNED",
+                              "SITE_UNPUBLISHED",
+                              "ORG_SUSPENDED",
+                              "APPEALED"
+                            ]
+                          },
                           "resolvedAt": {
                             "nullable": true,
                             "type": "string",
@@ -57204,7 +57577,8 @@
                                 "warn",
                                 "unpublish",
                                 "suspend",
-                                "restore"
+                                "restore",
+                                "uphold"
                               ]
                             }
                           }
@@ -57218,6 +57592,7 @@
                           "resolution",
                           "appealText",
                           "appealedAt",
+                          "appealedFrom",
                           "resolvedAt",
                           "createdAt",
                           "site",
@@ -57366,6 +57741,18 @@
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     },
+                    "appealedFrom": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "DISMISSED",
+                        "WARNED",
+                        "SITE_UNPUBLISHED",
+                        "ORG_SUSPENDED",
+                        "APPEALED"
+                      ]
+                    },
                     "resolvedAt": {
                       "nullable": true,
                       "type": "string",
@@ -57439,7 +57826,8 @@
                           "warn",
                           "unpublish",
                           "suspend",
-                          "restore"
+                          "restore",
+                          "uphold"
                         ]
                       }
                     },
@@ -57490,6 +57878,7 @@
                     "resolution",
                     "appealText",
                     "appealedAt",
+                    "appealedFrom",
                     "resolvedAt",
                     "createdAt",
                     "site",
@@ -57629,6 +58018,18 @@
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     },
+                    "appealedFrom": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "DISMISSED",
+                        "WARNED",
+                        "SITE_UNPUBLISHED",
+                        "ORG_SUSPENDED",
+                        "APPEALED"
+                      ]
+                    },
                     "resolvedAt": {
                       "nullable": true,
                       "type": "string",
@@ -57702,7 +58103,8 @@
                           "warn",
                           "unpublish",
                           "suspend",
-                          "restore"
+                          "restore",
+                          "uphold"
                         ]
                       }
                     },
@@ -57753,6 +58155,7 @@
                     "resolution",
                     "appealText",
                     "appealedAt",
+                    "appealedFrom",
                     "resolvedAt",
                     "createdAt",
                     "site",
@@ -57898,6 +58301,18 @@
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     },
+                    "appealedFrom": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "DISMISSED",
+                        "WARNED",
+                        "SITE_UNPUBLISHED",
+                        "ORG_SUSPENDED",
+                        "APPEALED"
+                      ]
+                    },
                     "resolvedAt": {
                       "nullable": true,
                       "type": "string",
@@ -57971,7 +58386,8 @@
                           "warn",
                           "unpublish",
                           "suspend",
-                          "restore"
+                          "restore",
+                          "uphold"
                         ]
                       }
                     },
@@ -58022,6 +58438,7 @@
                     "resolution",
                     "appealText",
                     "appealedAt",
+                    "appealedFrom",
                     "resolvedAt",
                     "createdAt",
                     "site",
@@ -58167,6 +58584,18 @@
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     },
+                    "appealedFrom": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "DISMISSED",
+                        "WARNED",
+                        "SITE_UNPUBLISHED",
+                        "ORG_SUSPENDED",
+                        "APPEALED"
+                      ]
+                    },
                     "resolvedAt": {
                       "nullable": true,
                       "type": "string",
@@ -58240,7 +58669,8 @@
                           "warn",
                           "unpublish",
                           "suspend",
-                          "restore"
+                          "restore",
+                          "uphold"
                         ]
                       }
                     },
@@ -58291,6 +58721,7 @@
                     "resolution",
                     "appealText",
                     "appealedAt",
+                    "appealedFrom",
                     "resolvedAt",
                     "createdAt",
                     "site",
@@ -58436,6 +58867,18 @@
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     },
+                    "appealedFrom": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "DISMISSED",
+                        "WARNED",
+                        "SITE_UNPUBLISHED",
+                        "ORG_SUSPENDED",
+                        "APPEALED"
+                      ]
+                    },
                     "resolvedAt": {
                       "nullable": true,
                       "type": "string",
@@ -58509,7 +58952,8 @@
                           "warn",
                           "unpublish",
                           "suspend",
-                          "restore"
+                          "restore",
+                          "uphold"
                         ]
                       }
                     },
@@ -58560,6 +59004,7 @@
                     "resolution",
                     "appealText",
                     "appealedAt",
+                    "appealedFrom",
                     "resolvedAt",
                     "createdAt",
                     "site",
@@ -58705,6 +59150,18 @@
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                     },
+                    "appealedFrom": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "DISMISSED",
+                        "WARNED",
+                        "SITE_UNPUBLISHED",
+                        "ORG_SUSPENDED",
+                        "APPEALED"
+                      ]
+                    },
                     "resolvedAt": {
                       "nullable": true,
                       "type": "string",
@@ -58778,7 +59235,8 @@
                           "warn",
                           "unpublish",
                           "suspend",
-                          "restore"
+                          "restore",
+                          "uphold"
                         ]
                       }
                     },
@@ -58829,6 +59287,7 @@
                     "resolution",
                     "appealText",
                     "appealedAt",
+                    "appealedFrom",
                     "resolvedAt",
                     "createdAt",
                     "site",
@@ -58864,6 +59323,289 @@
           }
         ],
         "summary": "Restaurar",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/abuse-reports/{reportId}/uphold": {
+      "post": {
+        "description": "Solo sobre un caso apelado: la medida sigue vigente, el motivo se le explica al propietario y el caso vuelve a su estado. No se puede volver a apelar.",
+        "operationId": "AdminAbuseReportsController_uphold",
+        "parameters": [
+          {
+            "name": "reportId",
+            "required": true,
+            "in": "path",
+            "description": "Reporte apelado.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "El reporte actualizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "SPAM",
+                        "IMPERSONATION",
+                        "ILLEGAL_CONTENT",
+                        "FRAUD",
+                        "OTHER"
+                      ]
+                    },
+                    "details": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "reporterEmail": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "DISMISSED",
+                        "WARNED",
+                        "SITE_UNPUBLISHED",
+                        "ORG_SUSPENDED",
+                        "APPEALED"
+                      ]
+                    },
+                    "resolution": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "appealText": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "appealedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "appealedFrom": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "OPEN",
+                        "DISMISSED",
+                        "WARNED",
+                        "SITE_UNPUBLISHED",
+                        "ORG_SUSPENDED",
+                        "APPEALED"
+                      ]
+                    },
+                    "resolvedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "site": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "hidden": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "slug",
+                        "hidden"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "organization": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "blocked": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "blocked"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "siteOpenReports": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "availableActions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "dismiss",
+                          "warn",
+                          "unpublish",
+                          "suspend",
+                          "restore",
+                          "uphold"
+                        ]
+                      }
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "actorEmail": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "reason": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "action",
+                          "actorEmail",
+                          "reason",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "reason",
+                    "details",
+                    "reporterEmail",
+                    "status",
+                    "resolution",
+                    "appealText",
+                    "appealedAt",
+                    "appealedFrom",
+                    "resolvedAt",
+                    "createdAt",
+                    "site",
+                    "organization",
+                    "siteOpenReports",
+                    "availableActions",
+                    "history"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión de administración válida."
+          },
+          "403": {
+            "description": "Petición que modifica estado sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Reporte no encontrado."
+          },
+          "409": {
+            "description": "El caso no está apelado."
+          }
+        },
+        "security": [
+          {
+            "sesionAdmin": []
+          }
+        ],
+        "summary": "Mantener la medida tras una apelación",
         "tags": [
           "admin"
         ]

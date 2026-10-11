@@ -39,6 +39,8 @@ export const PERMISSIONS = {
   // F9.8b (ADR-028 s6): enlaces compartidos de solo lectura del informe.
   REPORT_SHARE: "report.share",
   REPORT_COMMENT: "report.comment",
+  // F9.9c (ADR-028 s7): ver las medidas de moderacion sobre el negocio y apelarlas (tambien con la organizacion bloqueada).
+  MODERATION_APPEAL: "moderation.appeal",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -173,6 +175,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.REPORT_COMMENT,
     description: "Comentar el informe de un periodo: la agencia o el equipo anota y el cliente responde desde su portal (F9.8d, ADR-028 §6).",
   },
+  {
+    key: PERMISSIONS.MODERATION_APPEAL,
+    description: "Ver las medidas de moderación aplicadas al negocio (advertencia, sitio despublicado, suspensión) y apelarlas (F9.9c, ADR-028 §7).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -223,6 +229,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.PUBLISH_COMMENT,
     PERMISSIONS.REPORT_SHARE,
     PERMISSIONS.REPORT_COMMENT,
+    // Quien responde por el negocio es quien puede apelar una medida de moderacion (F9.9c).
+    PERMISSIONS.MODERATION_APPEAL,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -252,6 +260,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.PUBLISH_COMMENT,
     PERMISSIONS.REPORT_SHARE,
     PERMISSIONS.REPORT_COMMENT,
+    PERMISSIONS.MODERATION_APPEAL,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y

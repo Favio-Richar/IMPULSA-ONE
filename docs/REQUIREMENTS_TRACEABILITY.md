@@ -120,7 +120,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Marca blanca: logo/colores, dominio de agencia, portal cliente, correos con marca, plantillas privadas | PM §11.4 | Fase 9 (F9.7, ADR-028) — **hecha** (a marca y cascada, b correos con cabecera legal, c plantillas privadas, d dominio de agencia, e portal del cliente); el portal de reportes llega con F9.8 |
 | Reportes por cliente: comparación de periodos, programación, comentarios, exportación, enlace compartido | PM §11.5 | Fase 9 (F9.8, ADR-028) — **hecha** (a informe y CSV, b enlace compartido, c programación por cola, d comentarios) |
 | Marca configurable: el dueño de la plataforma (logo, nombre, colores, correos) y cada organización (logo, colores, datos) desde la interfaz | PM §11.4, §12 | Fase 9 (F9.1–F9.2, ADR-028) — Pendiente |
-| Moderación con reportes de abuso (decisión #9) | PM §12 | Fase 9 (F9.9, ADR-028) — Pendiente |
+| Moderación con reportes de abuso (decisión #9) | PM §12 | Fase 9 (F9.9, ADR-028) — **hecha con reservas** (a reporte público, b cola y acciones, c aviso y apelación, d pantallas); falta el texto legal de contenido, decisión del propietario |
 
 ## 12. IA
 
@@ -140,7 +140,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 (usuarios, organizaciones, sitios publicados, bloqueadas, altas de 30 días y distribución por plan),
 buscar organizaciones y usuarios, ver plan y uso, cambiar plan a mano, bloquear y restaurar, editar
 el catálogo de planes y ver la auditoría. Soporte mínimo (F4.5): el cliente abre solicitudes desde el panel y el equipo las responde y
-cierra desde `apps/admin`, con aviso por correo. MRR/ARR y bajas: hechos en F4.6d (`/facturacion`). Operación técnica, colas BullMQ, feature flags y CMS/plantillas implementados en F7.11 (ADR-026, en revisión, `/operacion` y `/plantillas`). Pendiente: moderación con reportes de abuso (decisión #9).
+cierra desde `apps/admin`, con aviso por correo. MRR/ARR y bajas: hechos en F4.6d (`/facturacion`). Operación técnica, colas BullMQ, feature flags y CMS/plantillas implementados en F7.11 (ADR-026, en revisión, `/operacion` y `/plantillas`). Moderación con reportes de abuso hecha en F9.9 (ADR-028 §7), con reservas.
 
 ## 14. Requisitos técnicos transversales (ST)
 

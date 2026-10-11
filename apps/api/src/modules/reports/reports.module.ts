@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { AnalyticsModule } from "../analytics/analytics.module.js";
 import { AuthModule } from "../auth/auth.module.js";
 import { PlansModule } from "../plans/plans.module.js";
+import { ReportCommentsController } from "./report-comments.controller.js";
+import { ReportCommentsService } from "./report-comments.service.js";
 import { ReportSchedulesController } from "./report-schedule.controller.js";
 import { ReportScheduleRunner } from "./report-schedule.runner.js";
 import { ReportScheduleService } from "./report-schedule.service.js";
@@ -14,8 +16,8 @@ import { ReportsService } from "./reports.service.js";
 // correo con que salen los informes programados (F9.8c).
 @Module({
   imports: [AnalyticsModule, PlansModule, AuthModule],
-  controllers: [ReportsController, ReportShareLinksController, ReportSchedulesController, PublicReportsController],
-  providers: [ReportsService, ReportShareService, ReportScheduleService, ReportScheduleRunner],
+  controllers: [ReportsController, ReportShareLinksController, ReportSchedulesController, ReportCommentsController, PublicReportsController],
+  providers: [ReportsService, ReportShareService, ReportScheduleService, ReportScheduleRunner, ReportCommentsService],
   exports: [ReportsService],
 })
 export class ReportsModule {}

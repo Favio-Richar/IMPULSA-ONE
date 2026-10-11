@@ -2533,4 +2533,23 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("F9.8d Comentarios del informe: nunca se cruzan (ADR-002, ADR-028 §6)", () => {
+    it("B no lee ni escribe el hilo de A, y el mismo periodo en B es otro hilo", async () => {
+      const comment = await prisma.reportComment.create({
+        data: { organizationId: orgA.id, periodFrom: "2026-01-01", periodTo: "2026-01-31", body: "Solo de A" },
+      });
+      try {
+        const period = "from=2026-01-01&to=2026-01-31";
+        const a = `/api/v1/organizations/${orgA.id}/reports/comments?${period}`;
+        await orgB.ownerAgent.get(a).expect(403);
+        await orgB.ownerAgent.post(a).set(CSRF_HEADERS).send({ body: "intruso" }).expect(403);
+        const own = await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/reports/comments?${period}`).expect(200);
+        expect(own.body).toEqual([]);
+        expect(await prisma.reportComment.count({ where: { organizationId: orgA.id } })).toBe(1);
+      } finally {
+        await prisma.reportComment.deleteMany({ where: { id: comment.id } });
+      }
+    });
+  });
+
 });

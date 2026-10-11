@@ -94,8 +94,10 @@ test("el visor del portal revisa, comenta y aprueba; no ve nada más; el editor 
     await expect(page.getByRole("heading", { name: "Aprobaciones", level: 1 })).toBeVisible();
     if (project === "escritorio") {
       const nav = page.getByRole("navigation", { name: "Navegación principal" }).first();
-      await expect(nav.getByRole("link")).toHaveCount(1);
+      // Aprobaciones y, desde F9.8, Reportes (el informe y sus comentarios).
+      await expect(nav.getByRole("link")).toHaveCount(2);
       await expect(nav.getByRole("link", { name: "Aprobaciones" })).toBeVisible();
+      await expect(nav.getByRole("link", { name: "Reportes" })).toBeVisible();
     }
     await expectNoHorizontalScroll(page);
     await capture(page, `09-portal-visor-cola-${project}.png`);
@@ -116,6 +118,22 @@ test("el visor del portal revisa, comenta y aprueba; no ve nada más; el editor 
     // El visor no puede publicar: aprueba y listo.
     await dialog.getByRole("button", { name: "Aprobar" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    // --- Reportes: ve el informe, lee la nota del equipo y responde (F9.8d) ---
+    const day = (offset: number) => new Date(Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`) + offset * 86_400_000).toISOString().slice(0, 10);
+    const period = `from=${day(-29)}&to=${day(0)}`;
+    expect((await owner.post(`${orgPath}/reports/comments?${period}`, { data: { body: `Nota del equipo ${suffix}` } })).status()).toBe(201);
+    await page.goto("/reportes");
+    const thread = page.getByTestId("report-comments");
+    await expect(thread.getByTestId("report-comment").filter({ hasText: `Nota del equipo ${suffix}` })).toHaveAttribute("data-from-client", "false");
+    await thread.getByLabel("Escribe un comentario").fill(`Gracias, recibido ${suffix}`);
+    await thread.getByRole("button", { name: "Comentar" }).click();
+    await expect(thread.getByTestId("report-comment").filter({ hasText: `Gracias, recibido ${suffix}` })).toHaveAttribute("data-from-client", "true");
+    // Los enlaces compartidos y las programaciones no son del visor.
+    await expect(page.getByTestId("share-links")).toHaveCount(0);
+    await expect(page.getByTestId("scheduled-reports")).toHaveCount(0);
+    await expectNoHorizontalScroll(page);
+    await capture(page, `11-portal-visor-reportes-${project}.png`);
 
     // --- Lo demás está cerrado: el servidor niega con un código estable ---
     const denied = await viewerApi.get(`${orgPath}/members`);

@@ -167,6 +167,7 @@ model User {
   publishRequestComments  PublishRequestComment[]
   reportShareLinksCreated ReportShareLink[]
   reportSchedulesCreated  ReportSchedule[]
+  reportComments          ReportComment[]
   contactsAssigned     Contact[]           @relation("ContactAssignee")
   supportTicketsOpened SupportTicket[]     @relation("SupportTicketOpener")
   supportMessages      SupportMessage[]    @relation("SupportMessageAuthor")
@@ -242,6 +243,7 @@ model Organization {
   reportShareLinks    ReportShareLink[]
   reportSchedules     ReportSchedule[]
   reportRuns          ReportRun[]
+  reportComments      ReportComment[]
   agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
@@ -2836,4 +2838,23 @@ model ReportRun {
   @@index([organizationId, createdAt])
   @@index([status, createdAt])
   @@map("report_runs")
+}
+
+/// Comentario sobre el informe de un periodo (F9.8d): la agencia o el equipo anota y el cliente responde desde su portal.
+/// `fromClient` fija quien escribio en ese momento (rol CLIENT_VIEWER), para mostrar el hilo sin consultar su rol actual.
+model ReportComment {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  periodFrom     String   @map("period_from")
+  periodTo       String   @map("period_to")
+  authorId       String?  @map("author_id") @db.Uuid
+  fromClient     Boolean  @default(false) @map("from_client")
+  body           String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, periodFrom, periodTo, createdAt], map: "report_comments_org_period_idx")
+  @@map("report_comments")
 }

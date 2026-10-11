@@ -24,7 +24,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.5 | Gestión de clientes: importar, duplicar, transferir, facturación | Hecho con reservas (2026-10-04): F9.5a facturación, F9.5b transferir, F9.5c duplicar y F9.5d importar CSV; reservas en cada sub-historia y en `CONTINUIDAD.md` §0 |
 | F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados**, **F9.6b acceso por cliente y módulo** **F9.6c aprobación antes de publicar** y **F9.6d auditoría navegable** hechas (2026-10-04/11): **F9.6 completa** |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | **Hecha** (2026-10-11): **a** marca y cascada, **b** correos, **c** plantillas privadas, **d** dominio de agencia, **e** portal del cliente (los reportes del portal llegan con F9.8) |
-| F9.8 | Reportes por cliente | Pendiente |
+| F9.8 | Reportes por cliente | **Hecha** (2026-10-11): **a** informe y CSV, **b** enlace compartido, **c** programación por cola, **d** comentarios |
 | F9.9 | Moderación y reportes de abuso | Pendiente |
 | F9.10 | Aislamiento, seguridad y cierre de la fase | Pendiente |
 
@@ -559,7 +559,7 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
 - **UI:** «Reportes» en el menú: periodos rápidos y fechas libres, tabla con variaciones, conversión, barras por día, ranking, **Descargar CSV** e **Imprimir** (la hoja de impresión oculta menú y controles).
 - **Pruebas:** 5 de integración (cifras conocidas, aislamiento por organización, validación, historial del plan, CSV), reglas puras (9), Playwright móvil/escritorio (`reportes.spec.ts`, capturas en `f98/`) y 4 mutaciones
   atrapadas tras fortalecer dos pruebas que no las atrapaban (la mezcla de ventas entre organizaciones se comprobaba con «no contiene un número», que una suma puede esquivar: ahora son valores exactos).
-- **Pendiente de F9.8:** **d** comentarios de la agencia y respuesta del cliente.
+- **F9.8 cerrada** con la subhistoria **d** (comentarios de la agencia y respuesta del cliente).
 
 #### F9.8b — Enlace compartido de solo lectura (criterio 5) — hecha (2026-10-11)
 
@@ -590,6 +590,19 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
 - **Pruebas:** 10 de integración (`report-schedule.e2e.test.ts`: CRUD y auditoría, tope, una ejecución por periodo, concurrencia, envío con enlace que sirve el mismo periodo, reintentos sin duplicar, atraso largo, pausa, fallos definitivos,
   aislamiento) + caso transversal de aislamiento + 12 de reglas puras + Playwright móvil/escritorio; 3 mutaciones atrapadas (sin `delivered_to`, plan reintentable, reanudar sin mover la fecha).
 - **Reservas honestas:** el consumidor vive en la API (si se escala, conviene extraerlo a `@impulza/reports` para el worker); la hora es UTC fija (sin zona horaria por negocio); la cola `report-schedules` ya aparece en el panel de operaciones de admin.
+
+#### F9.8d — Comentarios de la agencia y respuesta del cliente (criterio 3) — hecha (2026-10-11)
+
+- **Hilo por organización y periodo:** el equipo o la agencia anota sobre el informe de un periodo y el cliente responde desde su portal. Cada comentario guarda `from_client` (el rol `CLIENT_VIEWER` al escribir), para
+  distinguir quién habló sin consultar su rol actual. Texto plano (nunca HTML), hasta 1000 caracteres y hasta 100 por periodo (`COMMENT_LIMIT`).
+- **Permiso `report.comment`** (OWNER, ADMIN, AGENCY_DELEGATE, CLIENT_VIEWER); el ANALYST y el EDITOR no comentan. **Puerta única:** el visor solo gana `reports/comments` (GET y POST); `share-links` y `schedules` siguen cerrados
+  y se verifica con `CLIENT_VIEWER_LIMIT`.
+- **API:** `GET/POST …/reports/comments?from=&to=` (auditado: `report.commented`, con el periodo y **sin el texto**). Los comentarios no se editan ni se borran.
+- **UI:** «Comentarios» bajo el informe (carga/vacío/error, contador de caracteres, hilo con «Equipo» / «Cliente»); desaparece para quien no tiene el permiso. Corrección de paso: «Compartir este informe» también se oculta
+  para el visor (antes mostraba un formulario que el servidor negaba) y la prueba del portal ya cuenta el enlace «Reportes» de F9.8a.
+- **Pruebas:** 6 de integración (`report-comments.e2e.test.ts`: hilo agencia↔cliente, periodos separados, validación y texto sin interpretar, permisos y límites del visor, tope, aislamiento) + caso transversal + reglas de la
+  puerta + Playwright del portal (el visor lee la nota del equipo y responde; captura `f97/11`); 3 mutaciones atrapadas (sin filtro de organización, `fromClient` fijo, sin tope).
+- **Reservas honestas:** sin avisos por correo al comentar (se verá en el informe); no hay edición ni borrado; el hilo es por periodo exacto (`from`–`to`), no por informe «equivalente».
 
 ---
 

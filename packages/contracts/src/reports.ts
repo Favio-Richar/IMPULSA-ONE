@@ -101,3 +101,17 @@ export const reportRunResponse = z.object({
   createdAt: isoDateTime,
 });
 export type ReportRunResponse = z.infer<typeof reportRunResponse>;
+
+// ---- comentarios del informe (F9.8d) ---------------------------------------------------------------------------------------
+
+export const reportCommentResponse = z.object({
+  id: uuid,
+  period,
+  body: z.string(),
+  /** Quien escribió, o `null` si esa cuenta ya no existe. Solo el correo: nada más de la persona. */
+  author: z.object({ id: uuid, email: z.string() }).nullable(),
+  /** `true` si lo escribió el cliente desde su portal (rol de solo revisión); `false` si fue la agencia o el equipo. */
+  fromClient: z.boolean(),
+  createdAt: isoDateTime,
+});
+export type ReportCommentResponse = z.infer<typeof reportCommentResponse>;

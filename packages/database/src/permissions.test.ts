@@ -104,7 +104,7 @@ describe("catálogo de permisos (F1.6)", () => {
   });
 
   it("el visor del portal aprueba y comenta, pero no puede gestionar páginas ni nada más", () => {
-    expect([...ROLE_PERMISSIONS.CLIENT_VIEWER!].sort()).toEqual([PERMISSIONS.PUBLISH_APPROVE, PERMISSIONS.PUBLISH_COMMENT].sort());
+    expect([...ROLE_PERMISSIONS.CLIENT_VIEWER!].sort()).toEqual([PERMISSIONS.PUBLISH_APPROVE, PERMISSIONS.PUBLISH_COMMENT, PERMISSIONS.REPORT_COMMENT].sort());
     expect(ROLE_PERMISSIONS.CLIENT_VIEWER).not.toContain(PERMISSIONS.PAGE_MANAGE);
   });
 
@@ -114,5 +114,13 @@ describe("catálogo de permisos (F1.6)", () => {
       .map(([role]) => role)
       .sort();
     expect(holders).toEqual(["ADMIN", "AGENCY_DELEGATE", "OWNER"]);
+  });
+
+  it("comentar el informe es de quien lo administra, de la agencia delegada y del visor del portal (que responde)", () => {
+    const holders = Object.entries(ROLE_PERMISSIONS)
+      .filter(([, keys]) => keys.includes(PERMISSIONS.REPORT_COMMENT))
+      .map(([role]) => role)
+      .sort();
+    expect(holders).toEqual(["ADMIN", "AGENCY_DELEGATE", "CLIENT_VIEWER", "OWNER"]);
   });
 });

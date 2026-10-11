@@ -34,7 +34,7 @@ function dateText(iso: string): string {
   return new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export function ShareLinks({ organizationId, from, to }: { organizationId: string; from: string; to: string }): React.JSX.Element {
+export function ShareLinks({ organizationId, from, to }: { organizationId: string; from: string; to: string }): React.JSX.Element | null {
   const queryClient = useQueryClient();
   const [label, setLabel] = useState("");
   const [days, setDays] = useState("14");
@@ -59,6 +59,9 @@ export function ShareLinks({ organizationId, from, to }: { organizationId: strin
     mutationFn: (id: string) => apiFetch<ReportShareLinkResponse>(`${base(organizationId)}/${id}`, { method: "DELETE" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key(organizationId) }),
   });
+
+  // Quien no puede compartir informes (p. ej. el cliente en su portal) no ve esta sección: no es un error, es que no le corresponde.
+  if (list.isError && list.error instanceof ApiError && list.error.status === 403) return null;
 
   // El enlace completo (con el token) solo existe en esta respuesta.
   const url = created ? `${env.NEXT_PUBLIC_WEB_BASE_URL.replace(/\/$/, "")}/informe/${created.token}` : null;

@@ -627,3 +627,9 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   `created_by_id` (`SET NULL`). Máximo 5 por organización.
 - **ReportRun** (`report_runs`): `schedule_id` (`CASCADE`), `organization_id`, `period_from`/`period_to`, `scheduled_for`, `status` (`PENDING`|`SENT`|`FAILED`), `attempts`, `error_code`, `delivered_to` (a quién ya llegó; evita duplicar en
   un reintento), `sent_at`. **`UNIQUE (schedule_id, period_from)`** es la idempotencia: un periodo se envía una sola vez. Migración reversible `20261011150000_f98c_report_schedules`.
+
+## 9zi. Comentarios del informe (F9.8d, BACKLOG_FASE_9.md, ADR-028 §6)
+
+- **ReportComment** (`report_comments`): `organization_id` (`CASCADE`), `period_from`/`period_to` (el hilo es de una organización y un periodo), `author_id` (`SET NULL`), `from_client` (fijado al escribir: el autor tenía el rol
+  `CLIENT_VIEWER`), `body` (texto plano, hasta 1000; hasta 100 por periodo). Índice `report_comments_org_period_idx`. Migración reversible `20261011160000_f98d_report_comments`. Permiso nuevo `report.comment`
+  (OWNER, ADMIN, AGENCY_DELEGATE y CLIENT_VIEWER).

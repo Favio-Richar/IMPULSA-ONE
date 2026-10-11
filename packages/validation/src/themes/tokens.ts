@@ -56,6 +56,14 @@ export const SHADOW_SCALES = ["none", "subtle"] as const;
  */
 export const BUTTON_STYLES = ["solid", "outline", "glass", "mono"] as const;
 
+/**
+ * Movimiento de la página pública (F10): `elegant` hace que cada bloque aparezca con un desplazamiento suave al entrar en
+ * pantalla (animación guiada por el scroll, solo CSS, sin JavaScript). Es opcional y sin la clave vale `none`: un tema o
+ * un sitio guardado antes se lee exactamente igual. Con «reducir movimiento» del sistema no se anima nada.
+ */
+export const MOTION_STYLES = ["none", "elegant"] as const;
+export type MotionStyle = (typeof MOTION_STYLES)[number];
+
 /** Opacidad del tinte de un botón "glass": el color del texto de la página al 12 % sobre el fondo. */
 export const GLASS_ALPHA = 0.12;
 
@@ -67,6 +75,7 @@ export const themeTokensSchema = z
     density: z.enum(DENSITY_SCALES),
     shadow: z.enum(SHADOW_SCALES),
     buttonStyle: z.enum(BUTTON_STYLES),
+    motion: z.enum(MOTION_STYLES).optional(),
   })
   // Sin esto, un tema válido "de forma" podría ser ilegible. El objetivo WCAG 2.2 AA del proyecto
   // no puede depender de que el usuario elija bien: se verifica al guardar, en el servidor.

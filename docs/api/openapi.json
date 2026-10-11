@@ -5328,7 +5328,9 @@
                       "music",
                       "events",
                       "newsletter",
-                      "works_wheel"
+                      "works_wheel",
+                      "marquee",
+                      "showcase"
                     ]
                   },
                   "config": {},

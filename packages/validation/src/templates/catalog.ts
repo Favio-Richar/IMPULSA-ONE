@@ -248,6 +248,55 @@ function newsletter(title: string, description: string, buttonLabel = "Suscribir
   };
 }
 
+/** Foto de ejemplo (Unsplash, licencia libre): el negocio la reemplaza por las suyas desde su biblioteca. */
+const STOCK = (id: string, alt: string) => ({ url: `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=80`, alt });
+
+function profileWithCover(name: string, headline: string, bio: string, cover: { url: string; alt: string }): TemplateBlockSeed {
+  return {
+    type: "profile",
+    configSchemaVersion: 1,
+    config: { name, headline, bio: `<p>${bio}</p>`, verified: false, shareButton: true, cover, layout: "hero" },
+  };
+}
+
+function marquee(items: string[], speed: "slow" | "normal" | "fast" = "normal"): TemplateBlockSeed {
+  return { type: "marquee", configSchemaVersion: 1, config: { items, speed } };
+}
+
+function worksWheel(label: string, items: Array<{ title: string; image: { url: string; alt: string }; path?: string }>): TemplateBlockSeed {
+  return {
+    type: "works_wheel",
+    configSchemaVersion: 1,
+    config: {
+      label,
+      actionLabel: "Ver",
+      items: items.map((item) => ({ title: item.title, image: item.image, ...(item.path ? { link: `https://example.com/${item.path}` } : {}) })),
+    },
+  };
+}
+
+function showcase(
+  title: string,
+  items: Array<{ title: string; subtitle: string; badge?: string; image: { url: string; alt: string }; path: string }>,
+): TemplateBlockSeed {
+  return {
+    type: "showcase",
+    configSchemaVersion: 1,
+    config: {
+      title,
+      layout: "stack",
+      actionLabel: "Ver",
+      items: items.map((item) => ({
+        title: item.title,
+        subtitle: item.subtitle,
+        ...(item.badge ? { badge: item.badge } : {}),
+        image: item.image,
+        link: `https://example.com/${item.path}`,
+      })),
+    },
+  };
+}
+
 const EXAMPLE_BIO = "Texto de ejemplo: reemplázalo por";
 
 export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
@@ -426,6 +475,75 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
         ["¿Hay cupos para niños?", "Respuesta de ejemplo: sí, desde los 8 años."],
       ]),
       social(["instagram", "facebook", "youtube"]),
+    ],
+  },
+  {
+    // F10: portal futurista y elegante para fotógrafos, modelos y marcas de moda y belleza. Cinta de texto, rueda de
+    // trabajos, colecciones (álbumes y segundos perfiles), servicios, reseñas y animaciones suaves al desplazarse.
+    code: "fotografia-moda",
+    name: "Fotógrafo, modelo y moda",
+    description: "Portal editorial oscuro con rueda de trabajos, álbumes y animaciones elegantes. Para fotógrafos, modelos, maquillaje y marcas de moda y belleza.",
+    industryTags: ["creador", "belleza-bienestar"],
+    objectiveTags: ["mostrar", "captar", "reservar"],
+    themeCode: "oscuro-atelier",
+    family: "oscuro",
+    background: { kind: "color", color: "#0b0a0a" },
+    previewImageUrl: null,
+    sortOrder: 65,
+    blocksSeed: [
+      profileWithCover(
+        "Tu Nombre Artístico",
+        "Fotografía de moda · Editorial · Retrato",
+        `${EXAMPLE_BIO} tu estilo, tu trayectoria y con qué marcas o personas has trabajado.`,
+        STOCK("photo-1445205170230-053b83016050", "Foto de ejemplo: perchero de una boutique"),
+      ),
+      marquee(["Fotografía", "Moda", "Editorial", "Retrato", "Belleza"]),
+      whatsapp("Reserva tu sesión", "Hola, quiero reservar una sesión de fotos."),
+      worksWheel("Portafolio 2026", [
+        { title: "Editorial Otoño", image: STOCK("photo-1558769132-cb1aea458c5e", "Foto de ejemplo: prendas de otoño en un perchero"), path: "editorial-otono" },
+        { title: "Retrato", image: STOCK("photo-1531746020798-e6953c6e8e04", "Foto de ejemplo: retrato sobre fondo rosado"), path: "retrato" },
+        { title: "Campaña urbana", image: STOCK("photo-1523381210434-271e8be1f52b", "Foto de ejemplo: camisetas verdes en perchas"), path: "campana-urbana" },
+        { title: "Belleza", image: STOCK("photo-1596462502278-27bfdc403348", "Foto de ejemplo: productos de maquillaje sobre fondo beige"), path: "belleza" },
+        { title: "Estudio", image: STOCK("photo-1490481651871-ab68de25d43d", "Foto de ejemplo: vestidos blancos en un perchero"), path: "estudio" },
+        { title: "Backstage", image: STOCK("photo-1558171813-4c088753af8f", "Foto de ejemplo: camisa sobre una silla en un estudio"), path: "backstage" },
+      ]),
+      showcase("Álbumes y perfiles", [
+        {
+          title: "Álbum completo",
+          subtitle: "Todas las series en alta resolución",
+          badge: "120 fotos",
+          image: STOCK("photo-1445205170230-053b83016050", "Foto de ejemplo: perchero de una boutique"),
+          path: "album",
+        },
+        {
+          title: "Mi perfil de modelo",
+          subtitle: "Medidas, experiencia y comp card",
+          badge: "Book",
+          image: STOCK("photo-1531746020798-e6953c6e8e04", "Foto de ejemplo: retrato para book de modelo"),
+          path: "perfil-modelo",
+        },
+        {
+          title: "Mi sitio web",
+          subtitle: "Proyectos, prensa y contacto",
+          image: STOCK("photo-1490481651871-ab68de25d43d", "Foto de ejemplo: vestidos blancos en un perchero"),
+          path: "sitio",
+        },
+      ]),
+      service("Sesión de retrato (ejemplo)", "60 minutos, 15 fotos editadas. Precio de ejemplo.", 90000, "Reservar", "retrato"),
+      service("Book de modelo (ejemplo)", "Tres looks y entrega en 7 días. Precio de ejemplo.", 180000, "Reservar", "book"),
+      service("Campaña o cobertura de evento (ejemplo)", "Cotización según proyecto. Precio de ejemplo.", 350000, "Cotizar", "campana"),
+      testimonials([
+        ["Entendió la marca desde la primera reunión. Reseña de ejemplo.", "Directora creativa de ejemplo"],
+        ["Las fotos superaron lo que imaginaba. Reseña de ejemplo.", "Modelo de ejemplo"],
+      ]),
+      faq([
+        ["¿En cuánto tiempo entregas las fotos?", "Respuesta de ejemplo: entre 5 y 10 días hábiles, según el proyecto."],
+        ["¿Qué derechos de uso incluyen?", "Respuesta de ejemplo: uso personal y en redes; el uso comercial se cotiza aparte."],
+        ["¿Viajas para sesiones?", "Respuesta de ejemplo: sí, dentro del país y al extranjero con viáticos."],
+      ]),
+      newsletter("Lookbook mensual", "Recibe mis nuevas series y fechas disponibles. Un correo al mes, sin spam."),
+      map("Av. Providencia 1234, Providencia, Santiago", "Estudio (ejemplo)", "Sesiones solo con reserva previa."),
+      social(["instagram", "tiktok", "youtube"]),
     ],
   },
   {

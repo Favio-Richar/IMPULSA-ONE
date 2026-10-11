@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { worksWheelSchema, WORKS_WHEEL_MAX_ITEMS, WORKS_WHEEL_MIN_ITEMS } from "./catalog.js";
+import { marqueeSchema, showcaseSchema, worksWheelSchema, WORKS_WHEEL_MAX_ITEMS, WORKS_WHEEL_MIN_ITEMS } from "./catalog.js";
 
 // Rueda de trabajos: el negocio administra piezas (imagen, nombre y enlace opcional); el esquema acota
 // cuántas, exige descripción de imagen y rechaza enlaces peligrosos.
@@ -35,5 +35,32 @@ describe("bloque rueda de trabajos", () => {
     expect(worksWheelSchema.safeParse({ items: [piece(1, { link: "https://ejemplo.cl/caso" }), items[1], items[2]] }).success).toBe(true);
     expect(worksWheelSchema.safeParse({ items: [piece(1, { link: "javascript:alert(1)" }), items[1], items[2]] }).success).toBe(false);
     expect(worksWheelSchema.safeParse({ items: [piece(1, { image: { url: "data:text/html,x", alt: "x" } }), items[1], items[2]] }).success).toBe(false);
+  });
+});
+
+describe("bloque cinta de texto", () => {
+  it("acepta de 2 a 12 textos cortos y fija la velocidad por defecto", () => {
+    expect(marqueeSchema.parse({ items: ["Fotografía", "Moda"] }).speed).toBe("normal");
+    expect(marqueeSchema.safeParse({ items: ["Uno"] }).success).toBe(false);
+    expect(marqueeSchema.safeParse({ items: Array.from({ length: 13 }, (_, i) => `T${i}`) }).success).toBe(false);
+    expect(marqueeSchema.safeParse({ items: ["a".repeat(41), "b"] }).success).toBe(false);
+  });
+});
+
+describe("bloque colecciones", () => {
+  const item = (extra: Record<string, unknown> = {}) => ({ title: "Álbum", image: { url: "https://cdn.ejemplo.cl/a.jpg", alt: "Portada" }, link: "https://ejemplo.cl/album", ...extra });
+
+  it("acepta de 1 a 12 colecciones con enlace obligatorio y completa los textos por defecto", () => {
+    const parsed = showcaseSchema.parse({ items: [item()] });
+    expect(parsed.layout).toBe("stack");
+    expect(parsed.actionLabel).toBe("Ver");
+    expect(showcaseSchema.safeParse({ items: [] }).success).toBe(false);
+    expect(showcaseSchema.safeParse({ items: Array.from({ length: 13 }, () => item()) }).success).toBe(false);
+    expect(showcaseSchema.safeParse({ items: [{ title: "Sin enlace", image: { url: "https://cdn.ejemplo.cl/a.jpg", alt: "x" } }] }).success).toBe(false);
+  });
+
+  it("rechaza enlaces que no sean http(s) y portadas sin descripción", () => {
+    expect(showcaseSchema.safeParse({ items: [item({ link: "javascript:alert(1)" })] }).success).toBe(false);
+    expect(showcaseSchema.safeParse({ items: [item({ image: { url: "https://cdn.ejemplo.cl/a.jpg" } })] }).success).toBe(false);
   });
 });

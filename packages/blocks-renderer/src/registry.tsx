@@ -15,6 +15,8 @@ import {
   faqSchema,
   gallerySchema,
   worksWheelSchema,
+  marqueeSchema,
+  showcaseSchema,
   heroSchema,
   imageBlockSchema,
   linkSchema,
@@ -41,6 +43,8 @@ import { DividerBlock } from "./blocks/divider.js";
 import { FaqBlock } from "./blocks/faq.js";
 import { GalleryBlock } from "./blocks/gallery.js";
 import { WorksWheelBlock } from "./blocks/works-wheel.js";
+import { MarqueeBlock } from "./blocks/marquee.js";
+import { ShowcaseBlock } from "./blocks/showcase.js";
 import { HeroBlock } from "./blocks/hero.js";
 import { ImageBlock } from "./blocks/image.js";
 import { LinkBlock } from "./blocks/link.js";
@@ -112,6 +116,14 @@ export function RenderBlock({
     case "gallery": {
       const parsed = gallerySchema.safeParse(block.config);
       return parsed.success ? <GalleryBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
+    }
+    case "marquee": {
+      const parsed = marqueeSchema.safeParse(block.config);
+      return parsed.success ? <MarqueeBlock config={parsed.data} /> : null;
+    }
+    case "showcase": {
+      const parsed = showcaseSchema.safeParse(block.config);
+      return parsed.success ? <ShowcaseBlock config={parsed.data} /> : null;
     }
     case "works_wheel": {
       const parsed = worksWheelSchema.safeParse(block.config);

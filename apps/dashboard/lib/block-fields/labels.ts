@@ -7,6 +7,8 @@ import {
   MapPin,
   Music,
   Orbit,
+  ArrowLeftRight,
+  GalleryVertical,
   Briefcase,
   CalendarCheck,
   Contact,
@@ -52,6 +54,8 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   events: "Eventos",
   newsletter: "Newsletter",
   works_wheel: "Rueda de trabajos",
+  marquee: "Cinta de texto",
+  showcase: "Colecciones",
 };
 
 /** Un ícono lineal por tipo (no-negociable de UI/UX del proyecto) — la misma biblioteca
@@ -81,4 +85,6 @@ export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   events: CalendarDays,
   newsletter: MailPlus,
   works_wheel: Orbit,
+  marquee: ArrowLeftRight,
+  showcase: GalleryVertical,
 };

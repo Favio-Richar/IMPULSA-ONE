@@ -44,6 +44,9 @@ export const BLOCK_TYPES = [
   "newsletter",
   // F10: rueda de trabajos (portafolio que se hace girar)
   "works_wheel",
+  // F10: cinta de texto en movimiento y colecciones (álbumes / segundos perfiles)
+  "marquee",
+  "showcase",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -132,6 +135,39 @@ export const worksWheelSchema = z.object({
   /** Texto accesible del enlace de cada pieza («Ver»). */
   actionLabel: plainTextSchema(24).default("Ver"),
   items: z.array(worksWheelItemSchema).min(WORKS_WHEEL_MIN_ITEMS).max(WORKS_WHEEL_MAX_ITEMS),
+});
+
+/**
+ * Cinta de texto en movimiento (F10): palabras o frases que se desplazan sin parar (por ejemplo «FOTOGRAFÍA · MODA ·
+ * EDITORIAL»). Texto plano; con «reducir movimiento» queda quieta. Es decorativa: el lector de pantalla la lee una vez.
+ */
+export const MARQUEE_SPEEDS = ["slow", "normal", "fast"] as const;
+export const marqueeSchema = z.object({
+  items: z.array(plainTextSchema(40)).min(2).max(12),
+  speed: z.enum(MARQUEE_SPEEDS).default("normal"),
+});
+
+/**
+ * Colecciones (F10): tarjetas grandes con portada, título y un enlace a donde el negocio quiera — su página web, un álbum,
+ * una galería completa u otro perfil biográfico. Es el «botón con diseño propio» de un portal profesional: en vez de una
+ * línea de texto, una portada que invita a entrar.
+ */
+export const SHOWCASE_MAX_ITEMS = 12;
+export const showcaseItemSchema = z.object({
+  title: plainTextSchema(60),
+  subtitle: plainTextSchema(100).optional(),
+  /** Insignia corta sobre la portada: «24 fotos», «Nuevo», «2026». */
+  badge: plainTextSchema(24).optional(),
+  image: imageSchema,
+  link: safeUrlSchema,
+});
+export const showcaseSchema = z.object({
+  title: plainTextSchema(80).optional(),
+  /** `stack`: una tarjeta por fila, ancha y cinematográfica. `grid`: dos por fila en pantallas medianas y grandes. */
+  layout: z.enum(["stack", "grid"]).default("stack"),
+  /** Texto accesible y visible de la flecha de cada tarjeta. */
+  actionLabel: plainTextSchema(24).default("Ver"),
+  items: z.array(showcaseItemSchema).min(1).max(SHOWCASE_MAX_ITEMS),
 });
 
 export const videoSchema = z.object({
@@ -396,6 +432,8 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
   events: { type: "events", version: 1, schema: eventsSchema, richTextPaths: [] },
   newsletter: { type: "newsletter", version: 1, schema: newsletterBlockSchema, richTextPaths: [] },
   works_wheel: { type: "works_wheel", version: 1, schema: worksWheelSchema, richTextPaths: [] },
+  marquee: { type: "marquee", version: 1, schema: marqueeSchema, richTextPaths: [] },
+  showcase: { type: "showcase", version: 1, schema: showcaseSchema, richTextPaths: [] },
 };
 
 /**
@@ -433,6 +471,9 @@ export type ImageBlockConfig = z.infer<typeof imageBlockSchema>;
 export type GalleryBlockConfig = z.infer<typeof gallerySchema>;
 export type WorksWheelBlockConfig = z.infer<typeof worksWheelSchema>;
 export type WorksWheelItem = z.infer<typeof worksWheelItemSchema>;
+export type MarqueeBlockConfig = z.infer<typeof marqueeSchema>;
+export type ShowcaseBlockConfig = z.infer<typeof showcaseSchema>;
+export type ShowcaseItem = z.infer<typeof showcaseItemSchema>;
 export type VideoBlockConfig = z.infer<typeof videoSchema>;
 export type WhatsappBlockConfig = z.infer<typeof whatsappSchema>;
 export type ContactActionsBlockConfig = z.infer<typeof contactActionsSchema>;

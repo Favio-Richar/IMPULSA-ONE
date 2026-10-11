@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { worksWheelSchema } from "@impulza/validation";
+import { marqueeSchema, showcaseSchema, worksWheelSchema } from "@impulza/validation";
 import { describe, expect, it } from "vitest";
+import { MarqueeBlock } from "./marquee.js";
+import { ShowcaseBlock } from "./showcase.js";
 import { WorksWheelBlock } from "./works-wheel.js";
 
 // El servidor pinta la estructura accesible (lista de piezas, enlaces, controles); la animación
@@ -56,5 +58,41 @@ describe("rueda de trabajos (render del servidor)", () => {
     const markup = renderToStaticMarkup(<WorksWheelBlock config={hostile} />);
     expect(markup).not.toContain("<img src=x");
     expect(markup).toContain("&lt;img src=x");
+  });
+});
+
+describe("cinta de texto (render del servidor)", () => {
+  const config = marqueeSchema.parse({ items: ["Fotografía", "Moda"], speed: "fast" });
+  const html = renderToStaticMarkup(<MarqueeBlock config={config} />);
+
+  it("repite los textos hasta llenar el ancho y deja una sola copia para el lector de pantalla", () => {
+    // 2 textos → se repiten 3 veces en cada copia (≥ 6): 6 apariciones visibles + 6 decorativas.
+    expect(html.match(/Fotografía/g)).toHaveLength(6);
+    expect(html.match(/<ul aria-hidden="true"/g)).toHaveLength(1);
+    expect(html).toContain("--site-marquee-duration");
+  });
+});
+
+describe("colecciones (render del servidor)", () => {
+  const config = showcaseSchema.parse({
+    title: "Álbumes",
+    actionLabel: "Abrir",
+    items: [
+      { title: "Álbum completo", subtitle: "120 fotos", badge: "Nuevo", image: { url: "https://cdn.ejemplo.cl/a.jpg", alt: "Portada del álbum" }, link: "https://ejemplo.cl/album" },
+      { title: "Perfil", image: { url: "https://cdn.ejemplo.cl/b.jpg", alt: "", decorative: true }, link: "https://ejemplo.cl/perfil" },
+    ],
+  });
+  const html = renderToStaticMarkup(<ShowcaseBlock config={config} />);
+
+  it("cada tarjeta es un solo enlace con nombre accesible claro", () => {
+    expect(html.match(/<a /g)).toHaveLength(2);
+    expect(html).toContain('aria-label="Álbum completo, 120 fotos: Abrir"');
+    expect(html).toContain('href="https://ejemplo.cl/album"');
+    expect(html).toContain('rel="nofollow"');
+  });
+
+  it("el texto va sobre un velo oscuro sólido para no depender de la foto", () => {
+    expect(html).toContain("from-black/90");
+    expect(html).toContain("text-white");
   });
 });

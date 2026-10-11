@@ -5,6 +5,8 @@ export {
   DENSITY_SCALES,
   SHADOW_SCALES,
   BUTTON_STYLES,
+  MOTION_STYLES,
+  type MotionStyle,
   GLASS_ALPHA,
   type ThemeTokens,
 } from "./tokens.js";

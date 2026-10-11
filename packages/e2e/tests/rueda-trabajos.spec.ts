@@ -50,7 +50,7 @@ test("en el constructor se agrega la rueda con piezas de muestra y el negocio ed
 
 test.describe("página publicada", () => {
   let api: APIRequestContext;
-  let blockId = "";
+  const blockIds: string[] = [];
 
   async function revalidate(): Promise<void> {
     const response = await api.post(`${PUBLIC_WEB_URL}/api/revalidate`, { headers: { "x-revalidate-secret": PUBLIC_WEB_REVALIDATE_SECRET }, data: { siteSlug: fixture.siteSlug } });
@@ -65,13 +65,33 @@ test.describe("página publicada", () => {
       data: { type: "works_wheel", config: { label: "Obras destacadas", actionLabel: "Abrir", items: [piece(1, { link: "https://ejemplo.cl/obra-1" }), piece(2), piece(3), piece(4)] } },
     });
     expect(response.status(), await response.text()).toBe(201);
-    blockId = ((await response.json()) as { id: string }).id;
+    blockIds.push(((await response.json()) as { id: string }).id);
+    // Cinta de texto y colecciones (álbum + segundo perfil), los otros dos bloques de un portal de portafolio.
+    const extra = [
+      { type: "marquee", config: { items: ["Fotografía", "Moda", "Editorial"], speed: "normal" } },
+      {
+        type: "showcase",
+        config: {
+          title: "Álbumes y perfiles",
+          actionLabel: "Abrir",
+          items: [
+            { title: "Álbum completo", subtitle: "120 fotos", badge: "Nuevo", image: { url: "https://cdn.ejemplo.cl/album.jpg", alt: "Portada del álbum" }, link: "https://ejemplo.cl/album" },
+            { title: "Mi perfil de modelo", image: { url: "https://cdn.ejemplo.cl/perfil.jpg", alt: "Retrato para el book" }, link: "https://ejemplo.cl/perfil-modelo" },
+          ],
+        },
+      },
+    ];
+    for (const block of extra) {
+      const created = await api.post(blocksPath, { headers: CSRF, data: block });
+      expect(created.status(), await created.text()).toBe(201);
+      blockIds.push(((await created.json()) as { id: string }).id);
+    }
     expect((await api.post(`${site}/pages/${fixture.pageId}/publish`, { headers: CSRF })).status()).toBe(201);
     await revalidate();
   });
 
   test.afterAll(async () => {
-    if (blockId) await api.delete(`${blocksPath}/${blockId}`, { headers: CSRF });
+    for (const id of blockIds) await api.delete(`${blocksPath}/${id}`, { headers: CSRF });
     await api.post(`${site}/pages/${fixture.pageId}/publish`, { headers: CSRF });
     await revalidate();
     await api.dispose();
@@ -110,6 +130,16 @@ test.describe("página publicada", () => {
     await expect(section.getByText(/^3 \/ 4 · Obra 3/)).toBeVisible();
     await section.getByRole("button", { name: "Pieza anterior" }).click();
     await expect(section.getByText(/^2 \/ 4 · Obra 2/)).toBeVisible();
+
+    // Cinta de texto: el lector de pantalla la lee una vez (la segunda copia es decorativa).
+    const marquee = page.locator("[data-block-type='marquee']");
+    await expect(marquee).toContainText("Fotografía");
+    expect(await marquee.locator("ul[aria-hidden='true']").count()).toBe(1);
+
+    // Colecciones: cada tarjeta es un solo enlace con su nombre accesible, a donde apunta (otro perfil, un álbum…).
+    const showcase = page.getByRole("region", { name: "Álbumes y perfiles" });
+    await expect(showcase.getByRole("link", { name: "Álbum completo, 120 fotos: Abrir" })).toHaveAttribute("href", "https://ejemplo.cl/album");
+    await expect(showcase.getByRole("link", { name: /Mi perfil de modelo/ })).toHaveAttribute("href", "https://ejemplo.cl/perfil-modelo");
 
     await expectNoHorizontalScroll(page);
     expect(await page.evaluate(() => (window as unknown as { __csp: string[] }).__csp)).toEqual([]);

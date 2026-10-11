@@ -336,6 +336,75 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
     }),
   },
 
+  // Cinta de texto en movimiento: palabras que se desplazan sin parar. Solo texto plano.
+  marquee: {
+    fields: [
+      {
+        name: "items",
+        label: "Textos (uno por línea)",
+        helperText: "Palabras cortas o frases: «Fotografía», «Moda», «Editorial»… Mínimo 2. Se repiten en bucle.",
+        control: { kind: "lines", maxItems: 12, maxLength: 40 },
+      },
+      {
+        name: "speed",
+        label: "Velocidad",
+        control: {
+          kind: "select",
+          options: [
+            { value: "slow", label: "Lenta" },
+            { value: "normal", label: "Normal" },
+            { value: "fast", label: "Rápida" },
+          ],
+        },
+      },
+    ],
+    seedConfig: () => ({ items: ["Fotografía", "Moda", "Editorial"], speed: "normal" }),
+  },
+
+  // Colecciones: tarjetas grandes con portada que llevan al álbum, la galería, la web o a otro perfil.
+  showcase: {
+    fields: [
+      { name: "title", label: "Título de la sección", optional: true, control: { kind: "text", maxLength: 80 } },
+      {
+        name: "layout",
+        label: "Diseño",
+        control: {
+          kind: "select",
+          options: [
+            { value: "stack", label: "Una tarjeta por fila (ancha)" },
+            { value: "grid", label: "Dos por fila (en pantallas medianas)" },
+          ],
+        },
+      },
+      {
+        name: "items",
+        label: "Colecciones",
+        helperText: "Cada una lleva a donde quieras: tu página web, un álbum completo u otro perfil biográfico tuyo.",
+        control: {
+          kind: "array",
+          min: 1,
+          max: 12,
+          itemLabel: "Colección",
+          fields: [
+            { name: "title", label: "Título", control: { kind: "text", maxLength: 60 } },
+            { name: "subtitle", label: "Subtítulo", optional: true, control: { kind: "text", maxLength: 100 } },
+            { name: "badge", label: "Insignia", optional: true, helperText: "Por ejemplo «24 fotos» o «Nuevo».", control: { kind: "text", maxLength: 24 } },
+            imageField("image", "Portada", false, "wide"),
+            { name: "link", label: "Enlace", helperText: "La dirección completa, con https://.", control: { kind: "url" } },
+          ],
+        },
+      },
+      { name: "actionLabel", label: "Texto de la flecha", optional: true, helperText: "Si lo dejas vacío: «Ver».", control: { kind: "text", maxLength: 24 } },
+    ],
+    seedConfig: () => ({
+      layout: "stack",
+      actionLabel: "Ver",
+      items: [
+        { title: "Colección de ejemplo", subtitle: "Escribe aquí de qué trata", image: { url: "https://ejemplo.com/coleccion-1.jpg", alt: "Portada de la colección" }, link: "https://ejemplo.com/coleccion-1" },
+      ],
+    }),
+  },
+
   video: {
     fields: [
       { name: "video", label: "Video", control: { kind: "video" } },

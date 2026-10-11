@@ -36,4 +36,6 @@ export { MapBlock, mapLinks } from "./blocks/map.js";
 export { MusicBlock } from "./blocks/music.js";
 export { EventsBlock } from "./blocks/events.js";
 export { WorksWheelBlock } from "./blocks/works-wheel.js";
+export { MarqueeBlock } from "./blocks/marquee.js";
+export { ShowcaseBlock } from "./blocks/showcase.js";
 export { NewsletterBlock } from "./blocks/newsletter.js";

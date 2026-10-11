@@ -65,6 +65,8 @@ export function SiteBackdrop({
       // Ancla de `styles/site.css`: los títulos usan `--site-font-heading` (PP4).
       data-site-root=""
       data-background={background?.kind ?? "theme"}
+      // F10: movimiento elegante del tema (aparición de los bloques guiada por el scroll, solo CSS).
+      data-site-motion={theme.motion ?? "none"}
       className={`relative isolate bg-[var(--site-color-background)] text-[var(--site-color-foreground)] ${className}`}
     >
       {background ? (

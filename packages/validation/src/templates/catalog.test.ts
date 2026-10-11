@@ -93,7 +93,7 @@ describe("TEMPLATE_CATALOG (PL3)", () => {
 
     it("no trae formularios sin conectar ni imágenes de terceros", () => {
       expect(types).not.toContain("contact_form");
-      expect(JSON.stringify(template.blocksSeed)).not.toMatch(/"(url|src)":"https?:\/\/(?!example\.com\/|www\.(instagram|facebook|tiktok|youtube|linkedin)\.com\/"|open\.spotify\.com\/")/);
+      expect(JSON.stringify(template.blocksSeed)).not.toMatch(/"(url|src)":"https?:\/\/(?!example\.com\/|www\.(instagram|facebook|tiktok|youtube|linkedin)\.com\/"|open\.spotify\.com\/"|images\.unsplash\.com\/photo-)/);
     });
 
     it("no nombra a Linktree, Beacons ni Stan", () => {

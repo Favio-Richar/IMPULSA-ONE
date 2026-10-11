@@ -11,6 +11,7 @@ import { HeroScene } from "../components/marketing/hero-scene";
 import { TemplateMosaic } from "../components/marketing/template-mosaic";
 import { TemplateCarousel } from "../components/marketing/template-carousel";
 import { CorridorHero } from "../components/marketing/corridor-hero";
+import { RubrosWheel } from "../components/marketing/rubros-wheel";
 import { FEATURES, FeatureIcon, STEPS, PlanCard } from "../components/marketing/shared";
 
 export default async function MarketingHomePage() {
@@ -137,6 +138,19 @@ export default async function MarketingHomePage() {
           <Link href="/producto" className="text-sm font-semibold text-[#0f6f6b] hover:underline">
             Ver todas las funcionalidades →
           </Link>
+        </Reveal>
+      </section>
+
+      {/* Rubros: la rueda de trabajos, el mismo bloque que cada negocio agrega a su página. */}
+      <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <h2 className="text-3xl font-semibold tracking-tight text-[#0f172a]">Hecho para tu rubro</h2>
+          <p className="mt-3 text-[#475569]">
+            Gira la rueda con tu mouse, las flechas o deslizando: así de vivo se ve un portal de Impulza One. Cada pieza lleva a una plantilla pensada para ese oficio.
+          </p>
+        </Reveal>
+        <Reveal className="mt-10" delayMs={80}>
+          <RubrosWheel />
         </Reveal>
       </section>
 

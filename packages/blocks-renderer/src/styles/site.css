@@ -70,3 +70,68 @@
   outline-offset: 2px;
 }
 
+/*
+ * Movimiento elegante (F10): con un tema de `motion: "elegant"`, cada bloque aparece mientras entra en pantalla,
+ * guiado por el scroll (animación `view()`, solo CSS). Mejora progresiva: un navegador sin `animation-timeline`
+ * muestra todo normal, y con «reducir movimiento» no se anima nada.
+ */
+@keyframes site-scroll-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(2.75rem) scale(0.96);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    [data-site-motion="elegant"] [data-block-type] {
+      animation: site-scroll-reveal 1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+  }
+}
+
+/* Cinta de texto en movimiento (F10): dos copias que se desplazan un 100 % de su ancho; se detiene al pasar el mouse. */
+@keyframes site-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+.site-marquee-track {
+  flex-wrap: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-marquee-track {
+    animation: site-marquee var(--site-marquee-duration, 30s) linear infinite;
+  }
+  .site-marquee:hover .site-marquee-track {
+    animation-play-state: paused;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Sin movimiento: el texto queda quieto y se parte en líneas, sin cortarse; la copia decorativa se oculta. */
+  .site-marquee {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .site-marquee-track {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .site-marquee-track[aria-hidden="true"] {
+    display: none;
+  }
+}

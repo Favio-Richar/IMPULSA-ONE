@@ -194,3 +194,19 @@ Pedido del propietario: un efecto de portafolio que gira (anillo que se abre en 
 - **Seguridad:** imágenes y enlaces pasan por `safeUrlSchema`; nombres como texto plano (React los escapa); nada de `dangerouslySetInnerHTML`.
 - **Pruebas:** esquema (6), render del servidor (6), API de bloques, catálogo de bloques (24 tipos) y Playwright (constructor + página publicada, teléfono y escritorio, sin desbordes ni violaciones de CSP). Corregido de paso un desborde horizontal de 9 px en el editor móvil cuando un arreglo tiene imágenes (`fieldset` sin `min-w-0`).
 - **Dónde conviene usarlo:** portafolio/«trabajos» en el sitio del negocio (fotografía, arquitectura, diseño, tatuajes, repostería), catálogo visual de servicios, y como bloque de apertura de una plantilla creativa. Con muchos productos con precio sigue siendo mejor el bloque Tienda.
+
+## Extra F10 — Portal para fotógrafos, modelos y moda y belleza (2026-10-11)
+
+Pedido del propietario: una plantilla completa, elegante y «futurista» para fotógrafos, modelos y rubros de moda y belleza, con animaciones finas, botones/tarjetas de diseño propio que lleven a su sitio web o a un segundo perfil (álbum), y la rueda de trabajos visible en el sitio comercial.
+
+- **Tema nuevo `oscuro-atelier`** (línea oscura): negro profundo, texto marfil, acento champán, tipografía editorial (Fraunces), botones translúcidos y `motion: "elegant"`. AA verificado por la misma matriz de contraste que el resto del catálogo.
+- **Movimiento elegante** (`motion` en los tokens del tema, opcional: lo guardado antes se lee igual): cada bloque aparece mientras entra en pantalla con una animación guiada por el scroll (`animation-timeline: view()`), **solo CSS, sin JavaScript**. Mejora progresiva: navegadores sin esa función (Firefox por ahora) muestran todo normal; con «reducir movimiento» no se anima nada.
+- **Dos bloques nuevos** (catálogo cerrado, texto plano, enlaces http/https): `marquee` (cinta de texto en movimiento, pausa al pasar el mouse, quieta con «reducir movimiento») y `showcase` («Colecciones»: tarjetas grandes con portada, insignia y enlace a un álbum, a la web o a **otro perfil biográfico**; el texto va sobre un velo oscuro sólido para no depender de la foto).
+- **Plantilla `fotografia-moda`** («Fotógrafo, modelo y moda»): portada a sangre, cinta de texto, acción principal por WhatsApp, rueda de trabajos (6 piezas), álbumes y perfiles (álbum completo, perfil de modelo, sitio web), 3 servicios con precio, reseñas, preguntas frecuentes, newsletter «Lookbook», mapa del estudio y redes. Fondo `#0b0a0a`.
+- **Sitio comercial:** la rueda aparece en la portada de Impulza One («Hecho para tu rubro»), con los rubros como piezas que llevan a la galería de plantillas.
+- **Pruebas:** esquemas, render del servidor, API de bloques y de plantillas, Playwright (constructor + página publicada, teléfono y escritorio).
+- **Reservas honestas:**
+  1. Las fotos de la plantilla son de Unsplash (licencia libre de uso comercial), elegidas **sin marcas visibles**, y están marcadas «Foto de ejemplo»; el negocio debe reemplazarlas por las suyas. Unsplash no garantiza autorización de las personas retratadas (sale en el retrato del «perfil de modelo»): por eso son solo ejemplo.
+  2. El «segundo perfil» es un **enlace**: el negocio pega la dirección de su otra página (hoy cada sitio tiene su propia página; enlazar páginas internas con selector llega con F10.3+).
+  3. La regla de «sin imágenes de terceros en plantillas» (ADR-008) se amplió solo a `images.unsplash.com/photo-…`; sigue prohibido todo lo demás.
+  4. Competencia (Linktree, Beacons, Stan, Carrd): ya cubrimos enlaces, formularios, mini-CRM, reservas, tienda, membresías, QR y analítica; lo que este portal suma es composición visual (rueda, colecciones, cinta) y movimiento. Lo que sigue pendiente de la fase: tarjeta digital/vCard y PWA (F10.4/F10.5).

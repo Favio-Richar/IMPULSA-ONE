@@ -44,3 +44,6 @@ apps/*/CLAUDE.md
 # Registro del arranque de sesiones en la nube (scripts/cloud-session-setup.sh) y ajustes locales.
 .claude/cloud-setup.log
 .claude/settings.local.json
+
+# Configuracion local del MCP de 21st.dev (usa la variable API_KEY_21ST; la clave nunca va en el repo)
+.mcp.json

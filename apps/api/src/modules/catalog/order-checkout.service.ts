@@ -3,7 +3,7 @@ import { Inject, Injectable, NotFoundException, UnauthorizedException } from "@n
 import type { PublicOrderStatusResponse } from "@impulza/contracts";
 import type { Order, PrismaClient } from "@impulza/database";
 import { type CheckoutPayment, checkoutPaymentMismatches, checkoutSupportsCurrency, PaymentGatewayError, verifyMercadoPagoSignature } from "@impulza/payments";
-import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
+import { SERVED_SITE } from "../../common/active-organization.js";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
@@ -238,7 +238,7 @@ export class OrderCheckoutService {
   async publicStatus(token: string, returnedPaymentId?: string): Promise<PublicOrderStatusResponse> {
     if (!token || token.length > 100) throw new NotFoundException(ORDER_STATUS_NOT_FOUND);
     let order = await this.prisma.order.findFirst({
-      where: { statusTokenHash: hashToken(token), site: { status: { not: "ARCHIVED" }, ...ACTIVE_ORGANIZATION } },
+      where: { statusTokenHash: hashToken(token), site: SERVED_SITE },
     });
     if (!order) throw new NotFoundException(ORDER_STATUS_NOT_FOUND);
 

@@ -3,7 +3,7 @@ import { verifyBookingLinkToken } from "@impulza/auth";
 import type { PublicManagedBookingResponse } from "@impulza/contracts";
 import type { Booking, PrismaClient } from "@impulza/database";
 import { localDateOf, type RescheduleBookingInput } from "@impulza/validation";
-import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
+import { SERVED_SITE } from "../../common/active-organization.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
@@ -48,7 +48,7 @@ export class BookingManageService {
       throw new NotFoundException(MANAGE_NOT_FOUND);
     }
     const booking = await this.prisma.booking.findFirst({
-      where: { id: bookingId, site: { status: { not: "ARCHIVED" }, ...ACTIVE_ORGANIZATION } },
+      where: { id: bookingId, site: SERVED_SITE },
       include: { site: { select: { slug: true, name: true } }, service: { select: { id: true, active: true } } },
     });
     if (!booking) {

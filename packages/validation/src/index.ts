@@ -69,3 +69,4 @@ export * from "./portal/index.js";
 export * from "./reports/index.js";
 export * from "./reports/comments.js";
 export * from "./reports/schedule.js";
+export * from "./moderation/abuse-report.js";

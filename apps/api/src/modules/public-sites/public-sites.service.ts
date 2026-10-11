@@ -21,7 +21,7 @@ import { PRISMA } from "../../database/prisma.module.js";
 import { pageContentSnapshotSchema } from "../pages/page-content-snapshot.js";
 import { ThemesService } from "../themes/themes.service.js";
 import { resolveSeo, type ResolvedSeo } from "./seo-resolver.js";
-import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
+import { SERVED_SITE } from "../../common/active-organization.js";
 
 export interface PublicSiteView {
   name: string;
@@ -80,7 +80,7 @@ export class PublicSitesService {
    */
   private async getReachableSiteOrThrow(siteSlug: string) {
     const site = await this.prisma.site.findFirst({
-      where: { slug: siteSlug, status: { not: "ARCHIVED" }, ...ACTIVE_ORGANIZATION },
+      where: { slug: siteSlug, ...SERVED_SITE },
     });
 
     if (!site) {

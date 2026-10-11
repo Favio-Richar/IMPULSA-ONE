@@ -25,7 +25,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados**, **F9.6b acceso por cliente y módulo** **F9.6c aprobación antes de publicar** y **F9.6d auditoría navegable** hechas (2026-10-04/11): **F9.6 completa** |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | **Hecha** (2026-10-11): **a** marca y cascada, **b** correos, **c** plantillas privadas, **d** dominio de agencia, **e** portal del cliente (los reportes del portal llegan con F9.8) |
 | F9.8 | Reportes por cliente | **Hecha** (2026-10-11): **a** informe y CSV, **b** enlace compartido, **c** programación por cola, **d** comentarios |
-| F9.9 | Moderación y reportes de abuso | Pendiente |
+| F9.9 | Moderación y reportes de abuso | En progreso: **a** reporte público y modelo hechos (2026-10-11); faltan **b** cola y acciones de admin, **c** aviso y apelación, **d** pantallas y Playwright |
 | F9.10 | Aislamiento, seguridad y cierre de la fase | Pendiente |
 
 Una historia no empieza si la anterior no cumple su Definición de Terminado. F9.1 y F9.2 son la base de
@@ -623,6 +623,21 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
    muchos reportes sube de prioridad, pero **nunca se despublica automáticamente**.
 6. **Pruebas:** límite de tasa, sanitización, solo superadmin modera, despublicar/restaurar, apelación.
    Playwright (admin y página pública, móvil/escritorio), capturas en `f99/`.
+
+**Avance — F9.9a (reporte público y modelo de datos, 2026-10-11):**
+
+- **Modelo:** `AbuseReport` (`abuse_reports`: motivo del catálogo cerrado, texto opcional, correo opcional que nunca se muestra al propietario, estado, motivo de la resolución, datos de apelación) y `Site.moderation_hidden_at`
+  (despublicación reversible por moderación). **No** se guarda la IP del denunciante. Migración reversible `20261011170000_f99a_abuse_reports`.
+- **Decisión de diseño:** despublicar **no** es `ARCHIVED` (archivar libera cupo del plan y el propietario podría recrear el sitio y quitarlo). Es una bandera propia, filtrada por una **única constante `SERVED_SITE`**
+  (`apps/api/src/common/active-organization.ts`) que ya usan sitio, formularios, reservas, catálogo/pedidos, newsletter, analítica y resolución de dominios, y que también cubre las descargas pagadas. Los enlaces cortos y
+  los QR son de la organización (no de un sitio) y quedan cubiertos por la suspensión de la organización.
+- **API:** `POST /api/v1/public/sites/:siteSlug/abuse-reports` (sin sesión; `CsrfGuard`; 5 por IP cada 10 min, contando también las peticiones inválidas). Responde siempre `{ received: true }`.
+- **Anti-abuso del mecanismo:** un visitante no reporta el mismo sitio dos veces en 24 h (clave HMAC con vencimiento en Redis; se confirma sin guardar); un sitio con 200 reportes abiertos deja de guardar más; **nada se
+  despublica automáticamente**.
+- **Pruebas:** 6 de validación (catálogo, «otro» con mínimo, límites, correo, caracteres de control/direccionales, HTML como texto) y 9 de integración (guardado mínimo, sin datos personales, validación y CSRF, sanitización,
+  404 para archivado/bloqueado/despublicado, repetición por visitante, 429, tope y «nunca se despublica solo», clave sin IP); **2 mutaciones atrapadas** (sin filtro de moderación, sin repetición por visitante). Las 23 suites
+  de las superficies públicas tocadas (171 pruebas) siguen en verde.
+- **Falta (b a d):** cola de moderación en `apps/admin` con acciones auditadas y reversibles, aviso al propietario con apelación, formulario y enlace discreto en la página pública, Playwright y capturas en `f99/`.
 
 ---
 

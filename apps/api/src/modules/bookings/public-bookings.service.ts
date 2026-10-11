@@ -8,7 +8,7 @@ import {
   type BookingAvailabilityQuery,
 } from "@impulza/validation";
 import type { Request } from "express";
-import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
+import { SERVED_SITE } from "../../common/active-organization.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AnalyticsService } from "../analytics/analytics.service.js";
@@ -54,7 +54,7 @@ export class PublicBookingsService {
 
   private async enabledSiteOrThrow(siteSlug: string) {
     const site = await this.prisma.site.findFirst({
-      where: { slug: siteSlug, status: { not: "ARCHIVED" }, ...ACTIVE_ORGANIZATION },
+      where: { slug: siteSlug, ...SERVED_SITE },
       select: { id: true, organizationId: true, name: true },
     });
     if (!site) {
@@ -132,7 +132,7 @@ export class PublicBookingsService {
    */
   async hasAvailability(siteSlug: string, now = new Date()): Promise<{ available: boolean }> {
     const site = await this.prisma.site.findFirst({
-      where: { slug: siteSlug, status: { not: "ARCHIVED" }, ...ACTIVE_ORGANIZATION },
+      where: { slug: siteSlug, ...SERVED_SITE },
       select: { id: true },
     });
     if (!site) {

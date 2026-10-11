@@ -633,3 +633,10 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - **ReportComment** (`report_comments`): `organization_id` (`CASCADE`), `period_from`/`period_to` (el hilo es de una organización y un periodo), `author_id` (`SET NULL`), `from_client` (fijado al escribir: el autor tenía el rol
   `CLIENT_VIEWER`), `body` (texto plano, hasta 1000; hasta 100 por periodo). Índice `report_comments_org_period_idx`. Migración reversible `20261011160000_f98d_report_comments`. Permiso nuevo `report.comment`
   (OWNER, ADMIN, AGENCY_DELEGATE y CLIENT_VIEWER).
+
+## 9zj. Reportes de abuso (F9.9a, BACKLOG_FASE_9.md, ADR-028 §7)
+
+- **AbuseReport** (`abuse_reports`): `organization_id` y `site_id` (`CASCADE`), `reason` (`SPAM`|`IMPERSONATION`|`ILLEGAL_CONTENT`|`FRAUD`|`OTHER`), `details` (texto plano, hasta 500), `reporter_email` (opcional; solo para el
+  equipo, nunca se muestra al propietario), `status` (`OPEN`|`DISMISSED`|`WARNED`|`SITE_UNPUBLISHED`|`ORG_SUSPENDED`|`APPEALED`), `resolution`, `resolved_by_id`/`resolved_at`, `appeal_text`/`appealed_by_id`/`appealed_at`.
+  Índices `(status, created_at)` y `(site_id, status)`. No hay IP del denunciante.
+- **Site.moderation_hidden_at** (nulo = visible): despublicación por moderación, reversible, independiente de `status`. Migración reversible `20261011170000_f99a_abuse_reports`.

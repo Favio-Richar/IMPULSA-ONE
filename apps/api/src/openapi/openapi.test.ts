@@ -93,6 +93,8 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/sites/{siteSlug}/forms/{formId}",
       "POST /api/v1/public/sites/{siteSlug}/forms/{formId}/submissions",
       "POST /api/v1/public/sites/{siteSlug}/events",
+      // Reporte de abuso (F9.9a): lo envía un visitante anónimo; CSRF + límite de tasa por IP + repetición por visitante.
+      "POST /api/v1/public/sites/{siteSlug}/abuse-reports",
       "GET /api/v1/public/short-links/{slug}",
       "GET /api/v1/public/qr/{qrCodeId}",
       // Catálogo de planes (F4.1): los precios de un SaaS son públicos (página de precios).

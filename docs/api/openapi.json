@@ -2626,7 +2626,7 @@
                   },
                   "permissions": {
                     "minItems": 1,
-                    "maxItems": 30,
+                    "maxItems": 31,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -2655,6 +2655,7 @@
                         "payments.refund",
                         "webhooks.manage",
                         "report.share",
+                        "report.comment",
                         "audit.view",
                         "publish.approve",
                         "publish.configure",
@@ -2810,7 +2811,7 @@
                   },
                   "permissions": {
                     "minItems": 1,
-                    "maxItems": 30,
+                    "maxItems": 31,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -2839,6 +2840,7 @@
                         "payments.refund",
                         "webhooks.manage",
                         "report.share",
+                        "report.comment",
                         "audit.view",
                         "publish.approve",
                         "publish.configure",
@@ -21536,6 +21538,105 @@
         "summary": "Enviar un formulario",
         "tags": [
           "public-forms"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/abuse-reports": {
+      "post": {
+        "description": "Motivo de un catálogo cerrado, texto opcional (hasta 500 caracteres, texto plano) y correo opcional que nunca se muestra al propietario. No exige cuenta. Responde igual si el visitante ya reportó el sitio hoy. Un reporte nunca despublica nada por sí solo: lo revisa una persona del equipo.",
+        "operationId": "PublicAbuseReportsController_create",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "SPAM",
+                      "IMPERSONATION",
+                      "ILLEGAL_CONTENT",
+                      "FRAUD",
+                      "OTHER"
+                    ]
+                  },
+                  "details": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reporte recibido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "received": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "received"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Motivo inválido o texto fuera de límites (detalle en `issues`)."
+          },
+          "404": {
+            "description": "El sitio no existe o no está publicado."
+          },
+          "429": {
+            "description": "Más de 5 peticiones en 600 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Reportar una página pública",
+        "tags": [
+          "public-moderation"
         ]
       }
     },

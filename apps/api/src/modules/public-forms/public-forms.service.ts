@@ -10,7 +10,7 @@ import type { Request } from "express";
 import { PRISMA } from "../../database/prisma.module.js";
 import { AnalyticsService } from "../analytics/analytics.service.js";
 import { ContactsService } from "../contacts/contacts.service.js";
-import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
+import { SERVED_SITE } from "../../common/active-organization.js";
 
 type FormWithFields = Form & { fields: FormField[]; site: { organizationId: string } };
 
@@ -58,7 +58,7 @@ export class PublicFormsService {
    */
   private async getFormOrThrow(siteSlug: string, formId: string): Promise<FormWithFields> {
     const form = await this.prisma.form.findFirst({
-      where: { id: formId, site: { slug: siteSlug, status: { not: "ARCHIVED" }, ...ACTIVE_ORGANIZATION } },
+      where: { id: formId, site: { slug: siteSlug, ...SERVED_SITE } },
       include: {
         fields: { orderBy: { position: "asc" } },
         site: { select: { organizationId: true } },

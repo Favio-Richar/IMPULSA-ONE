@@ -9,7 +9,7 @@ import {
   type CreateSiteDomainInput,
   type DomainCheckError,
 } from "@impulza/validation";
-import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
+import { SERVED_SITE } from "../../common/active-organization.js";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
@@ -205,7 +205,7 @@ export class DomainsService {
    */
   async resolvePublic(hostname: string): Promise<{ siteSlug: string } | null> {
     const domain = await this.prisma.siteDomain.findFirst({
-      where: { domain: hostname, verificationStatus: "VERIFIED", site: { status: { not: "ARCHIVED" }, ...ACTIVE_ORGANIZATION } },
+      where: { domain: hostname, verificationStatus: "VERIFIED", site: SERVED_SITE },
       select: { site: { select: { slug: true } } },
     });
     return domain ? { siteSlug: domain.site.slug } : null;

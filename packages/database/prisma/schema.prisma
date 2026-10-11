@@ -244,6 +244,7 @@ model Organization {
   reportSchedules     ReportSchedule[]
   reportRuns          ReportRun[]
   reportComments      ReportComment[]
+  abuseReports        AbuseReport[]
   agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
@@ -809,6 +810,9 @@ model Site {
   // cargan en la página pública únicamente con el consentimiento del visitante.
   ga4MeasurementId String?  @map("ga4_measurement_id")
   metaPixelId      String?  @map("meta_pixel_id")
+  // F9.9 (ADR-028 §7): superadministración despublicó el sitio por un reporte de abuso. Reversible; NULL = visible. No es
+  // `ARCHIVED` a propósito: archivar libera cupo del plan y el propietario podría recrearlo. Ver `SERVED_SITE`.
+  moderationHiddenAt DateTime? @map("moderation_hidden_at") @db.Timestamptz(6)
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -836,6 +840,7 @@ model Site {
   funnels             Funnel[]
   pageCampaigns       PageCampaign[]
   newsletterConfirmations NewsletterConfirmation[]
+  abuseReports        AbuseReport[]
 
   @@index([organizationId])
   @@map("sites")
@@ -2857,4 +2862,58 @@ model ReportComment {
 
   @@index([organizationId, periodFrom, periodTo, createdAt], map: "report_comments_org_period_idx")
   @@map("report_comments")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fase 9 — Moderación y reportes de abuso (F9.9, ADR-028 §7).
+// ---------------------------------------------------------------------------------------------
+
+enum AbuseReportReason {
+  SPAM
+  IMPERSONATION
+  ILLEGAL_CONTENT
+  FRAUD
+  OTHER
+}
+
+// OPEN = sin atender; DISMISSED = descartado; WARNED = se advirtió al propietario; SITE_UNPUBLISHED / ORG_SUSPENDED =
+// medida vigente (reversible); APPEALED = el propietario apeló y el caso volvió a la cola.
+enum AbuseReportStatus {
+  OPEN
+  DISMISSED
+  WARNED
+  SITE_UNPUBLISHED
+  ORG_SUSPENDED
+  APPEALED
+}
+
+// Reporte de un visitante sobre un sitio público. Guarda lo mínimo del denunciante: un correo OPCIONAL y nunca la IP
+// (el control de inundación vive en Redis, con clave de un solo sentido y vencimiento). Nada se borra: cada decisión
+// queda además en `audit_logs` con quien la tomó y su motivo.
+model AbuseReport {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  siteId         String            @map("site_id") @db.Uuid
+  reason         AbuseReportReason
+  details        String?
+  // Solo para que el equipo pida contexto. Nunca se muestra al propietario del sitio.
+  reporterEmail  String?           @map("reporter_email")
+  status         AbuseReportStatus @default(OPEN)
+  // Motivo de la última decisión (lo ve el propietario en su aviso y en su panel).
+  resolution     String?
+  resolvedById   String?           @map("resolved_by_id") @db.Uuid
+  resolvedAt     DateTime?         @map("resolved_at") @db.Timestamptz(6)
+  appealText     String?           @map("appeal_text")
+  appealedById   String?           @map("appealed_by_id") @db.Uuid
+  appealedAt     DateTime?         @map("appealed_at") @db.Timestamptz(6)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt], map: "abuse_reports_status_created_idx")
+  @@index([siteId, status], map: "abuse_reports_site_status_idx")
+  @@index([organizationId], map: "abuse_reports_org_idx")
+  @@map("abuse_reports")
 }

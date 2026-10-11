@@ -14,7 +14,7 @@ import {
   newsletterConsentSource,
   newsletterSignupSchema,
 } from "@impulza/validation";
-import { ACTIVE_ORGANIZATION } from "../../common/active-organization.js";
+import { ACTIVE_ORGANIZATION, SERVED_SITE } from "../../common/active-organization.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { BrandProfileService } from "../brand-profile/brand-profile.service.js";
 import { env } from "../../env.js";
@@ -58,7 +58,7 @@ export class NewsletterService {
       });
     }
     const site = await this.prisma.site.findFirst({
-      where: { slug: siteSlug, status: { not: "ARCHIVED" }, ...ACTIVE_ORGANIZATION },
+      where: { slug: siteSlug, ...SERVED_SITE },
       select: { id: true, name: true, organizationId: true },
     });
     // Solo sitios que ofrecen la newsletter en una página publicada: el formulario no sirve para

@@ -40,7 +40,7 @@ export class DownloadsService {
     if (!orderId) throw new NotFoundException(DOWNLOAD_NOT_FOUND);
     // Una organización suspendida no entrega archivos; un sitio archivado sí (el comprador ya pagó).
     const order = await this.prisma.order.findFirst({
-      where: { id: orderId, site: ACTIVE_ORGANIZATION },
+      where: { id: orderId, site: { moderationHiddenAt: null, ...ACTIVE_ORGANIZATION } },
       include: { site: { select: { slug: true, name: true } } },
     });
     if (!order) throw new NotFoundException(DOWNLOAD_NOT_FOUND);

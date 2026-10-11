@@ -42,6 +42,8 @@ export const BLOCK_TYPES = [
   "events",
   // F7.4 (ADR-019)
   "newsletter",
+  // F10: rueda de trabajos (portafolio que se hace girar)
+  "works_wheel",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -110,6 +112,26 @@ export const imageBlockSchema = z.object({
 export const gallerySchema = z.object({
   images: z.array(imageSchema).min(1).max(24),
   layout: z.enum(["grid", "carousel"]).default("grid"),
+});
+
+/**
+ * Rueda de trabajos (F10): un portafolio que gira en 3D. Cada pieza es una imagen con su nombre y, si el negocio
+ * quiere, un enlace; todo lo administra el negocio. Mínimo 3 piezas (con menos, un anillo no se lee como rueda) y
+ * máximo 16 (más allá, el tambor se vuelve ilegible en un teléfono). Texto plano: nada de HTML.
+ */
+export const WORKS_WHEEL_MIN_ITEMS = 3;
+export const WORKS_WHEEL_MAX_ITEMS = 16;
+export const worksWheelItemSchema = z.object({
+  title: plainTextSchema(60),
+  image: imageSchema,
+  link: safeUrlSchema.optional(),
+});
+export const worksWheelSchema = z.object({
+  /** Va al centro del anillo y es el nombre accesible de la sección. */
+  label: plainTextSchema(40).default("Mis trabajos"),
+  /** Texto accesible del enlace de cada pieza («Ver»). */
+  actionLabel: plainTextSchema(24).default("Ver"),
+  items: z.array(worksWheelItemSchema).min(WORKS_WHEEL_MIN_ITEMS).max(WORKS_WHEEL_MAX_ITEMS),
 });
 
 export const videoSchema = z.object({
@@ -373,6 +395,7 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
   music: { type: "music", version: 1, schema: musicSchema, richTextPaths: [] },
   events: { type: "events", version: 1, schema: eventsSchema, richTextPaths: [] },
   newsletter: { type: "newsletter", version: 1, schema: newsletterBlockSchema, richTextPaths: [] },
+  works_wheel: { type: "works_wheel", version: 1, schema: worksWheelSchema, richTextPaths: [] },
 };
 
 /**
@@ -408,6 +431,8 @@ export type LinkBlockConfig = z.infer<typeof linkSchema>;
 export type SocialBlockConfig = z.infer<typeof socialSchema>;
 export type ImageBlockConfig = z.infer<typeof imageBlockSchema>;
 export type GalleryBlockConfig = z.infer<typeof gallerySchema>;
+export type WorksWheelBlockConfig = z.infer<typeof worksWheelSchema>;
+export type WorksWheelItem = z.infer<typeof worksWheelItemSchema>;
 export type VideoBlockConfig = z.infer<typeof videoSchema>;
 export type WhatsappBlockConfig = z.infer<typeof whatsappSchema>;
 export type ContactActionsBlockConfig = z.infer<typeof contactActionsSchema>;

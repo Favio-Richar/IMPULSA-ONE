@@ -293,6 +293,49 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
     }),
   },
 
+  // Rueda de trabajos: un portafolio que gira. Las piezas (imagen, nombre y enlace opcional) las administra el negocio.
+  works_wheel: {
+    fields: [
+      {
+        name: "label",
+        label: "Título de la rueda",
+        helperText: "Va al centro del anillo. Por ejemplo «Mis trabajos» o «Portafolio 2026».",
+        control: { kind: "text", maxLength: 40 },
+      },
+      {
+        name: "items",
+        label: "Piezas",
+        helperText: "Mínimo 3, máximo 16. Usa imágenes horizontales de buena calidad: se muestran en formato 3:2.",
+        control: {
+          kind: "array",
+          min: 3,
+          max: 16,
+          itemLabel: "Pieza",
+          fields: [
+            { name: "title", label: "Nombre", control: { kind: "text", maxLength: 60 } },
+            imageField("image", "Imagen", false, "wide"),
+            { name: "link", label: "Enlace al tocarla", optional: true, helperText: "Opcional: una página, un caso de estudio o una red.", control: { kind: "url" } },
+          ],
+        },
+      },
+      {
+        name: "actionLabel",
+        label: "Texto del enlace (para lectores de pantalla)",
+        optional: true,
+        helperText: "Si lo dejas vacío: «Ver».",
+        control: { kind: "text", maxLength: 24 },
+      },
+    ],
+    seedConfig: () => ({
+      label: "Mis trabajos",
+      actionLabel: "Ver",
+      items: [1, 2, 3, 4].map((n) => ({
+        title: `Trabajo ${n}`,
+        image: { url: `https://ejemplo.com/trabajo-${n}.jpg`, alt: `Imagen del trabajo ${n}` },
+      })),
+    }),
+  },
+
   video: {
     fields: [
       { name: "video", label: "Video", control: { kind: "video" } },

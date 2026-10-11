@@ -161,6 +161,11 @@ function collectLinkUrls(type: string, config: Record<string, unknown>): string[
         push(item.ticketUrl);
       }
       break;
+    case "works_wheel":
+      for (const item of (config.items as Array<Record<string, unknown>> | undefined) ?? []) {
+        push(item.link);
+      }
+      break;
     default:
       break;
   }
@@ -170,6 +175,9 @@ function collectLinkUrls(type: string, config: Record<string, unknown>): string[
 function countImages(type: string, config: Record<string, unknown>): number {
   if (type === "gallery") {
     return Array.isArray(config.images) ? config.images.length : 0;
+  }
+  if (type === "works_wheel") {
+    return Array.isArray(config.items) ? config.items.length : 0;
   }
   return ["image", "background", "avatar", "cover"].filter((key) => readString(config[key], "url") !== undefined).length;
 }

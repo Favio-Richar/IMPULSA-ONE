@@ -184,3 +184,13 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 3. OpenAPI, ERD, ARCHITECTURE, README, CONTINUIDAD y trazabilidad actualizados.
 4. Suite completa, builds y Playwright completo en verde; barrido de accesibilidad y de consistencia visual.
 5. Lista final de reservas, escrita con honestidad.
+
+## Extra F10 — Bloque «Rueda de trabajos» (2026-10-11)
+
+Pedido del propietario: un efecto de portafolio que gira (anillo que se abre en tambor 3D) en una sección de la página pública, **administrable** por el negocio.
+
+- **Bloque nuevo `works_wheel`** (catálogo cerrado, sin HTML libre): título central, texto accesible del enlace y de 3 a 16 piezas (nombre de hasta 60 caracteres, imagen con descripción o marcada decorativa, enlace opcional http/https). Se agrega desde la biblioteca del constructor y se edita con el mismo motor declarativo de campos que el resto de los bloques (selector de imágenes de la biblioteca propia).
+- **Render (`packages/blocks-renderer`)**: componente cliente adaptado al sistema (tokens `--site-*` del tema, no clases del demo). Cambios respecto del componente de referencia: el gesto en teléfono es el **deslizamiento horizontal** (`touch-action: pan-y`, no atrapa el scroll vertical de la página), el mouse captura el puntero solo al arrastrar de verdad (un clic simple abre el enlace de la pieza) y un arrastre no dispara el enlace; botones anterior/siguiente de 44 px y título activo visibles fuera de la escena 3D; teclado (flechas); `prefers-reduced-motion` sin suavizado; textos con tamaño mínimo legible; en pantallas anchas se sale de la columna (hasta 56 rem), en la vista previa del constructor se queda dentro de su marco.
+- **Seguridad:** imágenes y enlaces pasan por `safeUrlSchema`; nombres como texto plano (React los escapa); nada de `dangerouslySetInnerHTML`.
+- **Pruebas:** esquema (6), render del servidor (6), API de bloques, catálogo de bloques (24 tipos) y Playwright (constructor + página publicada, teléfono y escritorio, sin desbordes ni violaciones de CSP). Corregido de paso un desborde horizontal de 9 px en el editor móvil cuando un arreglo tiene imágenes (`fieldset` sin `min-w-0`).
+- **Dónde conviene usarlo:** portafolio/«trabajos» en el sitio del negocio (fotografía, arquitectura, diseño, tatuajes, repostería), catálogo visual de servicios, y como bloque de apertura de una plantilla creativa. Con muchos productos con precio sigue siendo mejor el bloque Tienda.

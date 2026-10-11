@@ -14,6 +14,7 @@ import {
   dividerSchema,
   faqSchema,
   gallerySchema,
+  worksWheelSchema,
   heroSchema,
   imageBlockSchema,
   linkSchema,
@@ -39,6 +40,7 @@ import { ContactFormBlock } from "./blocks/contact-form.js";
 import { DividerBlock } from "./blocks/divider.js";
 import { FaqBlock } from "./blocks/faq.js";
 import { GalleryBlock } from "./blocks/gallery.js";
+import { WorksWheelBlock } from "./blocks/works-wheel.js";
 import { HeroBlock } from "./blocks/hero.js";
 import { ImageBlock } from "./blocks/image.js";
 import { LinkBlock } from "./blocks/link.js";
@@ -110,6 +112,10 @@ export function RenderBlock({
     case "gallery": {
       const parsed = gallerySchema.safeParse(block.config);
       return parsed.success ? <GalleryBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
+    }
+    case "works_wheel": {
+      const parsed = worksWheelSchema.safeParse(block.config);
+      return parsed.success ? <WorksWheelBlock config={parsed.data} mode={mode} /> : null;
     }
     case "video": {
       const parsed = videoSchema.safeParse(block.config);

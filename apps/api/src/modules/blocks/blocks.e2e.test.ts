@@ -197,6 +197,21 @@ describe("Blocks (e2e) — F2.4", () => {
       await reject("map", { address: "" });
     });
 
+    it("rueda de trabajos: guarda piezas con imagen y enlace, rellena los textos y rechaza lo que no sirve", async () => {
+      const { agent, basePath } = await createPageWithOwner();
+      const piece = (n: number, extra: Record<string, unknown> = {}) => ({ title: `Trabajo ${n}`, image: { url: `https://cdn.ejemplo.cl/${n}.jpg`, alt: `Imagen ${n}` }, ...extra });
+      const created = await agent.post(basePath).set(CSRF_HEADERS).send({ type: "works_wheel", config: { items: [piece(1, { link: "https://ejemplo.cl/caso" }), piece(2), piece(3)] } }).expect(201);
+      expect(created.body.degraded).toBeNull();
+      expect(created.body.config).toMatchObject({ label: "Mis trabajos", actionLabel: "Ver" });
+      expect(created.body.config.items).toHaveLength(3);
+
+      const reject = async (config: unknown) => (await agent.post(basePath).set(CSRF_HEADERS).send({ type: "works_wheel", config }).expect(422)).body.issues as Array<{ path: string; message: string }>;
+      await reject({ items: [piece(1), piece(2)] });
+      await reject({ items: [piece(1, { link: "javascript:alert(1)" }), piece(2), piece(3)] });
+      const noAlt = await reject({ items: [piece(1, { image: { url: "https://cdn.ejemplo.cl/1.jpg" } }), piece(2), piece(3)] });
+      expect(noAlt.map((issue) => issue.path).join()).toContain("items.0.image");
+    });
+
     it("rechaza un tipo que no está en el catálogo", async () => {
       const { agent, basePath } = await createPageWithOwner();
 

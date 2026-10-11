@@ -197,7 +197,7 @@ export function ImageField({
     return body;
   }
   return (
-    <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3">
+    <fieldset className="flex min-w-0 flex-col gap-2 rounded-md border border-border p-3">
       <legend className="px-1 text-sm font-medium text-foreground">
         {label}
         {optional ? " (opcional)" : ""}

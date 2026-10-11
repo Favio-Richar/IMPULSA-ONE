@@ -263,7 +263,7 @@ function MultiSelectFieldView({
           }
         }
         return (
-          <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3">
+          <fieldset className="flex min-w-0 flex-col gap-2 rounded-md border border-border p-3">
             <legend className="px-1 text-sm font-medium text-foreground">{label}</legend>
             {msControl.options.map((option) => (
               <label key={option.value} className="flex items-center gap-2 text-sm text-foreground">

@@ -19,6 +19,8 @@ describe("clientViewerVerdict — lo que un visor del portal puede hacer", () =>
     ["GET", `/sites/${ID}/pages/${ID}/versions`],
     ["GET", `/sites/${ID}/pages/${ID}/versions/${ID}`],
     ["GET", `/sites/${ID}/pages/${ID}/blocks`],
+    ["GET", "/reports/summary?from=2026-10-01&to=2026-10-31"],
+    ["GET", "/reports/summary.csv?from=2026-10-01&to=2026-10-31"],
     ["GET", "/publish-requests"],
     ["GET", "/publish-requests?status=PENDING&limit=10"],
     ["GET", `/publish-requests/${ID}`],
@@ -72,6 +74,9 @@ describe("clientViewerVerdict — lo que un visor del portal puede hacer", () =>
     ["PATCH", ""],
     ["DELETE", ""],
     // Rutas que no existen todavía: cerradas por defecto.
+    ["POST", "/reports/summary"],
+    ["GET", "/reports"],
+    ["GET", "/reports/summary/otra"],
     ["GET", "/algo-nuevo"],
     ["GET", `/publish-requests/${ID}/otra/cosa`],
   ])("niega %s %s", (method, path) => {

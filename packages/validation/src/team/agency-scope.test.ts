@@ -29,6 +29,8 @@ describe("agencyModuleOfSegments", () => {
     ["brand-profile", "marca"],
     ["ai", "ia"],
     ["publish-requests", "sitios"],
+    ["reports/summary", "analitica"],
+    ["reports/summary.csv", "analitica"],
     ["publish-requests/abc/approve", "sitios"],
     ["sites/x/ai", "ia"],
   ])("la ruta %s es del módulo %s", (path, module) => {

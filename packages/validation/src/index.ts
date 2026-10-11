@@ -66,3 +66,4 @@ export * from "./publish/index.js";
 export * from "./audit/index.js";
 export * from "./templates/private.js";
 export * from "./portal/index.js";
+export * from "./reports/index.js";

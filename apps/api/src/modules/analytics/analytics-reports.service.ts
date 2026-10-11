@@ -119,8 +119,18 @@ export class AnalyticsReportsService {
     }
   }
 
-  async overview(organizationId: string, query: AnalyticsOverviewQuery): Promise<AnalyticsOverviewResponse> {
-    await this.assertWithinHistoryLimit(organizationId, query.from);
+  /**
+   * `skipHistoryLimit` es solo para quien ya aplicó el límite por su cuenta (el informe por cliente, F9.8, que decide qué comparaciones
+   * caen dentro del historial del plan). Nunca lo pasa una ruta con la petición del usuario sin esa comprobación.
+   */
+  async overview(
+    organizationId: string,
+    query: AnalyticsOverviewQuery,
+    options: { skipHistoryLimit?: boolean } = {},
+  ): Promise<AnalyticsOverviewResponse> {
+    if (!options.skipHistoryLimit) {
+      await this.assertWithinHistoryLimit(organizationId, query.from);
+    }
     if (query.siteId) {
       const site = await this.prisma.site.findFirst({
         where: { id: query.siteId, organizationId },

@@ -32,6 +32,7 @@ const PAGE_READ_SEGMENTS = new Set(["publish-status", "versions", "blocks", "hea
  * ¿Puede un `CLIENT_VIEWER` hacer esta petición? Permitido:
  * - leer la organización misma y su marca de panel (`panel-brand`), y la opción de aprobación (`publish-settings`, solo lectura);
  * - leer los sitios y las páginas (lista, detalle, estado de publicación, versiones y bloques) para ver lo que se le pide aprobar;
+ * - leer el informe del cliente (`reports/summary`, solo cifras agregadas);
  * - ver solicitudes de publicación, aprobarlas o rechazarlas, y leer y escribir sus comentarios.
  * Todo lo demás (equipo, facturación, contactos, analítica, configuración, medios, cobros…) se niega. Los permisos del rol
  * (`publish.approve`, `publish.comment`) siguen aplicándose en cada ruta: esta es una barrera previa, no la única.
@@ -47,6 +48,11 @@ export function clientViewerVerdict(input: { method: string; path: string }): Cl
 
   if (first === "panel-brand" || first === "publish-settings") {
     return read && second === undefined ? { allowed: true } : DENIED;
+  }
+
+  // Informe del cliente (F9.8): solo lectura de cifras agregadas.
+  if (first === "reports") {
+    return read && (second === "summary" || second === "summary.csv") && third === undefined ? { allowed: true } : DENIED;
   }
 
   if (first === "sites") {

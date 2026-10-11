@@ -85,7 +85,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-screen bg-background" data-testid="panel-root" data-brand={panelBrand ? "white-label" : "platform"}>
       {brandCss ? <style>{brandCss}</style> : null}
-      <aside className="hidden w-56 shrink-0 border-r border-border md:block">
+      <aside className="hidden w-56 shrink-0 border-r border-border md:block print:hidden">
         <div className="flex h-14 items-center border-b border-border px-4 text-sm font-semibold text-foreground">
           {brandLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -143,7 +143,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       {/* `min-w-0`: sin esto el ítem flex crece al ancho de su contenido más ancho (una tabla) y
           toda la página se desplaza de lado en un teléfono, en vez de desplazarse solo la tabla. */}
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between gap-3 border-b border-border px-4">
+        <header className="flex h-14 items-center justify-between gap-3 border-b border-border px-4 print:hidden">
           <Button
             variant="ghost"
             size="sm"
@@ -174,7 +174,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         </main>
 
         {panelBrand?.footerText || panelBrand?.supportEmail ? (
-          <footer className="border-t border-border px-4 py-3 text-xs text-muted-foreground" data-testid="panel-brand-footer">
+          <footer className="border-t border-border px-4 py-3 text-xs text-muted-foreground print:hidden" data-testid="panel-brand-footer">
             {panelBrand.footerText}
             {panelBrand.footerText && panelBrand.supportEmail ? " · " : ""}
             {panelBrand.supportEmail ? <a href={`mailto:${panelBrand.supportEmail}`} className="underline underline-offset-2">{panelBrand.supportEmail}</a> : null}

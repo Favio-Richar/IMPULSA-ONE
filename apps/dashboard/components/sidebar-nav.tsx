@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { Building2, CalendarCheck, ChartColumn, ClipboardCheck, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Palette, ScrollText, Settings, ShieldCheck, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
+import { Building2, CalendarCheck, ChartColumn, ClipboardCheck, FileBarChart, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Palette, ScrollText, Settings, ShieldCheck, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -15,6 +15,8 @@ const NAV_ITEMS = [
   // Cola de solicitudes de publicación (F9.6c, ADR-028 §3).
   { href: "/aprobaciones", label: "Aprobaciones", icon: ClipboardCheck },
   { href: "/analitica", label: "Analítica", icon: ChartColumn },
+  // Informe por cliente con comparación de periodos (F9.8, ADR-028 §6).
+  { href: "/reportes", label: "Reportes", icon: FileBarChart },
   { href: "/contactos", label: "Contactos", icon: Users },
   // Campañas de email (F5.6).
   { href: "/campanas", label: "Campañas", icon: Megaphone },
@@ -62,6 +64,7 @@ const MODULE_OF_HREF: Record<string, string> = {
   "/automatizaciones": "campanas",
   "/medios": "medios",
   "/analitica": "analitica",
+  "/reportes": "analitica",
   "/enlaces": "enlaces",
   "/soporte": "soporte",
   "/configuracion/marca": "marca",
@@ -91,7 +94,7 @@ export function SidebarNav({
       ? { href: "/agencia", label: "Agencia", icon: Building2 }
       : { href: "/configuracion/agencia", label: "Agencia", icon: Building2 },
   ]
-    .filter((item) => !clientViewer || item.href === "/aprobaciones")
+    .filter((item) => !clientViewer || item.href === "/aprobaciones" || item.href === "/reportes")
     .filter((item) => !(delegated && HIDDEN_WHEN_DELEGATED.has(item.href)))
     .filter((item) => {
       const moduleKey = MODULE_OF_HREF[item.href];

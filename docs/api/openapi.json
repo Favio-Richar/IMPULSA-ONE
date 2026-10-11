@@ -17160,6 +17160,510 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/reports/summary": {
+      "get": {
+        "description": "Visitas, clics, contactos, reservas, pedidos y ventas del periodo, comparados con el periodo anterior (misma duración) y con el mismo periodo del año anterior; conversión, serie diaria y rankings. Una comparación fuera del historial del plan se informa como no disponible. Solo cifras agregadas.",
+        "operationId": "ReportsController_summary",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-09-30"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-09-01"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El informe del periodo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "organizationName": {
+                      "type": "string"
+                    },
+                    "period": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "previousPeriod": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "lastYearPeriod": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "to": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "comparison": {
+                      "type": "object",
+                      "properties": {
+                        "previousAvailable": {
+                          "type": "boolean"
+                        },
+                        "lastYearAvailable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "previousAvailable",
+                        "lastYearAvailable"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "metrics": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string",
+                            "enum": [
+                              "pageViews",
+                              "visitors",
+                              "blockClicks",
+                              "whatsappClicks",
+                              "leads",
+                              "newContacts",
+                              "bookings",
+                              "orders",
+                              "revenue"
+                            ]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "number"
+                          },
+                          "previous": {
+                            "type": "object",
+                            "properties": {
+                              "base": {
+                                "nullable": true,
+                                "type": "number"
+                              },
+                              "change": {
+                                "nullable": true,
+                                "type": "number"
+                              },
+                              "ratio": {
+                                "nullable": true,
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "base",
+                              "change",
+                              "ratio"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "lastYear": {
+                            "type": "object",
+                            "properties": {
+                              "base": {
+                                "nullable": true,
+                                "type": "number"
+                              },
+                              "change": {
+                                "nullable": true,
+                                "type": "number"
+                              },
+                              "ratio": {
+                                "nullable": true,
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "base",
+                              "change",
+                              "ratio"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "label",
+                          "value",
+                          "previous",
+                          "lastYear"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "conversion": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "previous": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "lastYear": {
+                          "nullable": true,
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "previous",
+                        "lastYear"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "currency": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "series": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "date": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          "pageViews": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "visitors": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "clicks": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "leads": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "date",
+                          "pageViews",
+                          "visitors",
+                          "clicks",
+                          "leads"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "topBlocks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "label": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "detail": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "secondaryValue": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "deleted": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "label",
+                          "kind",
+                          "detail",
+                          "value",
+                          "secondaryValue",
+                          "deleted"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "topPages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "label": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "kind": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "detail": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "secondaryValue": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "deleted": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "label",
+                          "kind",
+                          "detail",
+                          "value",
+                          "secondaryValue",
+                          "deleted"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "generatedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "organizationName",
+                    "period",
+                    "previousPeriod",
+                    "lastYearPeriod",
+                    "comparison",
+                    "metrics",
+                    "conversion",
+                    "currency",
+                    "series",
+                    "topBlocks",
+                    "topPages",
+                    "generatedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fechas inválidas, invertidas o periodo mayor a 366 días."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "402": {
+            "description": "Límite de plan alcanzado (`analyticsHistoryDays`). Cuerpo: `{ code: \"PLAN_LIMIT_REACHED\", message, limit: { key, max, used }, plan: { code, name } }`."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Informe del cliente con comparación de periodos",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/reports/summary.csv": {
+      "get": {
+        "description": "Mismas cifras y comparaciones que el informe, con las celdas que una hoja de cálculo ejecutaría como fórmula neutralizadas.",
+        "operationId": "ReportsController_summaryCsv",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-09-30"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-09-01"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Un CSV (UTF-8 con BOM, separado por punto y coma).",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "429": {
+            "description": "Más de 20 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "El informe en CSV",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/api/v1/plans": {
       "get": {
         "operationId": "PlansCatalogController_list",

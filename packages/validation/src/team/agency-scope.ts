@@ -37,6 +37,8 @@ const ROOT_SEGMENT_MODULE: Record<string, AgencyModuleKey> = {
   automations: "campanas",
   media: "medios",
   analytics: "analitica",
+  // Informe por cliente (F9.8): es analítica, y el módulo permitido a quien lo genera lo decide (ADR-028 §6).
+  reports: "analitica",
   "short-links": "enlaces",
   "qr-codes": "enlaces",
   "support-tickets": "soporte",

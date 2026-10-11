@@ -546,6 +546,21 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
    de un cliente no sirve datos de otro, programación idempotente. Playwright móvil/escritorio,
    capturas en `f98/`.
 
+#### F9.8a — Informe por cliente con comparación, CSV e imprimible (criterios 1, 4 y 6) — hecha (2026-10-11)
+
+- **Informe:** visitas, visitantes, clics en bloques y WhatsApp, contactos por formulario y nuevos, reservas, pedidos, ventas pagadas y conversión (contactos / visitantes), con serie diaria y ranking de bloques y páginas.
+  Cada cifra se compara con el **periodo anterior** (misma duración, contiguo) y con el **mismo periodo del año anterior** (el 29 de febrero cae al 28). Una base de 0 o ausente no inventa una variación relativa.
+- **Reglas puras** (`@impulza/validation`, `reports/`): `previousPeriod`, `sameWindowLastYear`, `compareValue`, `compareTotals`, `conversionRate`, `reportCsv` — probadas con valores conocidos.
+- **Respeta el plan:** el periodo pedido obedece al historial de analítica del plan (402); una comparación que cae fuera de él se informa como **no disponible** y no se calcula (los datos viejos no se muestran, ADR-004).
+- **Datos solo de la organización de la ruta** y solo cifras agregadas (ningún dato personal de contactos, ni en el JSON ni en el CSV). Para una agencia con acceso delegado, `reports` cuenta como el módulo «Analítica»
+  (F9.6b); el visor del portal (F9.7e) lo ve en solo lectura.
+- **API:** `GET …/reports/summary?from&to` y `…/summary.csv` (con límite de peticiones; el CSV pasa por `toCsv`/`csvCell`: nombres que empiecen por `=`, `+`, `-` o `@` salen neutralizados; la ruta evita la palabra
+  «export», que la agencia delegada tiene vedada).
+- **UI:** «Reportes» en el menú: periodos rápidos y fechas libres, tabla con variaciones, conversión, barras por día, ranking, **Descargar CSV** e **Imprimir** (la hoja de impresión oculta menú y controles).
+- **Pruebas:** 5 de integración (cifras conocidas, aislamiento por organización, validación, historial del plan, CSV), reglas puras (9), Playwright móvil/escritorio (`reportes.spec.ts`, capturas en `f98/`) y 4 mutaciones
+  atrapadas tras fortalecer dos pruebas que no las atrapaban (la mezcla de ventas entre organizaciones se comprobaba con «no contiene un número», que una suma puede esquivar: ahora son valores exactos).
+- **Pendiente de F9.8:** **b** enlace compartido de solo lectura (token, vencimiento, revocable), **c** programación semanal/mensual por cola con correo, **d** comentarios de la agencia y respuesta del cliente.
+
 ---
 
 ### F9.9 — Moderación y reportes de abuso

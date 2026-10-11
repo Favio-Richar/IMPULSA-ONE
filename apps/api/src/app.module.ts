@@ -8,6 +8,7 @@ import { FeatureFlagsModule } from "./modules/feature-flags/feature-flags.module
 import { PrismaModule } from "./database/prisma.module.js";
 import { AnalyticsModule } from "./modules/analytics/analytics.module.js";
 import { PlansModule } from "./modules/plans/plans.module.js";
+import { ReportsModule } from "./modules/reports/reports.module.js";
 import { AuditModule } from "./modules/audit/audit.module.js";
 import { BlocksModule } from "./modules/blocks/blocks.module.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
@@ -64,6 +65,7 @@ import { PageCampaignsModule } from "./modules/page-campaigns/page-campaigns.mod
     ContactsModule,
     FormsModule,
     AnalyticsModule,
+    ReportsModule,
     PlansModule,
     ShortLinksModule,
     QrCodesModule,

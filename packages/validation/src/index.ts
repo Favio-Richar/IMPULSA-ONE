@@ -70,3 +70,4 @@ export * from "./reports/index.js";
 export * from "./reports/comments.js";
 export * from "./reports/schedule.js";
 export * from "./moderation/abuse-report.js";
+export * from "./moderation/moderation-actions.js";

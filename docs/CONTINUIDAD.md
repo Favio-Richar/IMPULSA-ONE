@@ -5,12 +5,11 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-11) — **F9.6, F9.7 y F9.8 completas** en la rama `fase-9/f9-6-equipo-avanzado`; **F9.9 en progreso: hecha la parte (a)**
+## 0. RETOMAR AQUÍ (2026-10-11) — **F9.6, F9.7 y F9.8 completas** en la rama `fase-9/f9-6-equipo-avanzado`; **F9.9 en progreso: hechas (a) y (b)**
 
-**F9.9 (moderación y abuso) — hecha (a): modelo + reporte público** (detalle en `docs/BACKLOG_FASE_9.md`). **Faltan b** (cola de moderación en `apps/admin` y acciones auditadas: descartar, advertir, despublicar, suspender
-—suspender reutiliza `AdminService.blockOrganization`—; todas reversibles y con motivo), **c** (correo al propietario con vía de apelación; la apelación va desde el panel con `@AllowWhenOrganizationBlocked()` para que
+**F9.9 (moderación y abuso) — hechas (a) modelo + reporte público y (b) API de la cola con acciones auditadas** (detalle en `docs/BACKLOG_FASE_9.md`; la API está en `modules/moderation`, registrada en `AdminModule`). **Faltan: c** (correo al propietario con vía de apelación; la apelación va desde el panel con `@AllowWhenOrganizationBlocked()` para que
 una organización bloqueada pueda apelar, y reabre el caso: `APPEALED`), **d** (formulario + enlace discreto en la página pública de `apps/web`, pantallas de `apps/admin`, Playwright móvil/escritorio, capturas `f99/`,
-revisión con `design:*`). **Reglas ya fijadas:** despublicar = `Site.moderationHiddenAt` (no `ARCHIVED`), siempre filtrado por la constante `SERVED_SITE`: **toda superficie pública nueva por sitio debe usarla**; el
+revisión con `design:*`; (d) incluye la pantalla de `apps/admin`, que aún NO existe: la API de (b) ya está lista). **Reglas ya fijadas:** despublicar = `Site.moderationHiddenAt` (no `ARCHIVED`), siempre filtrado por la constante `SERVED_SITE`: **toda superficie pública nueva por sitio debe usarla**; el
 correo del denunciante nunca se muestra al propietario; **nada se despublica solo**. **Trampas nuevas:** el `Write`/heredoc convierte `\\uXXXX` y `\\r\\n` del fuente en caracteres reales (rompe regex): construir
 con `String.fromCharCode` y escanear; `prisma migrate diff` en esta versión usa `--from-url`/`--to-schema-datamodel` (la deriva de `brand_profiles`, `feature_flags` y `platform_branding` es anterior y conocida);
 el límite de tasa cuenta también las peticiones inválidas (en pruebas, una IP por petición vía `x-impulza-visitor-ip` + secreto).

@@ -25,7 +25,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.6 | Equipo avanzado: roles personalizados, acceso por cliente y módulo, aprobación antes de publicar | En progreso: **F9.6a roles personalizados**, **F9.6b acceso por cliente y módulo** **F9.6c aprobación antes de publicar** y **F9.6d auditoría navegable** hechas (2026-10-04/11): **F9.6 completa** |
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | **Hecha** (2026-10-11): **a** marca y cascada, **b** correos, **c** plantillas privadas, **d** dominio de agencia, **e** portal del cliente (los reportes del portal llegan con F9.8) |
 | F9.8 | Reportes por cliente | **Hecha** (2026-10-11): **a** informe y CSV, **b** enlace compartido, **c** programación por cola, **d** comentarios |
-| F9.9 | Moderación y reportes de abuso | En progreso: **a** reporte público y modelo hechos (2026-10-11); faltan **b** cola y acciones de admin, **c** aviso y apelación, **d** pantallas y Playwright |
+| F9.9 | Moderación y reportes de abuso | En progreso: **a** reporte público y modelo, **b** cola y acciones de admin hechas (2026-10-11); faltan **c** aviso y apelación, **d** pantallas y Playwright |
 | F9.10 | Aislamiento, seguridad y cierre de la fase | Pendiente |
 
 Una historia no empieza si la anterior no cumple su Definición de Terminado. F9.1 y F9.2 son la base de
@@ -638,6 +638,21 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
   404 para archivado/bloqueado/despublicado, repetición por visitante, 429, tope y «nunca se despublica solo», clave sin IP); **2 mutaciones atrapadas** (sin filtro de moderación, sin repetición por visitante). Las 23 suites
   de las superficies públicas tocadas (171 pruebas) siguen en verde.
 - **Falta (b a d):** cola de moderación en `apps/admin` con acciones auditadas y reversibles, aviso al propietario con apelación, formulario y enlace discreto en la página pública, Playwright y capturas en `f99/`.
+
+**Avance — F9.9b (cola de moderación y acciones de superadministración, 2026-10-11):**
+
+- **API** (`/api/v1/admin/abuse-reports`, misma puerta `AdminSessionGuard` + CSRF que el resto de `/admin`): `GET` cola (por defecto abiertos y apelados; filtros por estado, motivo, sitio y organización; orden `priority` = sitios con
+  más reportes abiertos primero, luego el más antiguo; paginación en el servidor; `queueSize`), `GET :id` con historial y `POST :id/{dismiss,warn,unpublish,suspend,restore}` con **motivo obligatorio** (5 a 500 caracteres).
+- **Máquina de estados** pura y probada (`moderationTransition`): nada vuelve a «abierto» por esta vía, descartado es terminal y toda medida vigente se puede restaurar. Suspender reutiliza `AdminService.blockOrganization`
+  (mismo bloqueo, mismo 404 público y mismo solo-lectura de ADR-005); despublicar usa `Site.moderationHiddenAt`.
+- **Concurrencia:** la decisión se reclama primero con una actualización condicional sobre el estado exacto leído (la segunda persona recibe 409) y el efecto sobre el sitio se aplica después, con compensación si falla. Una
+  carrera encontrada al probar (efecto aplicado antes de reclamar) quedó corregida y cubierta por prueba.
+- **Restaurar** deshace solo lo que ese caso aplicó y únicamente si ningún otro reporte vigente del sitio u organización lo sigue necesitando.
+- **Privacidad y trazabilidad:** abrir un reporte (muestra el correo del denunciante) y cada decisión quedan en la auditoría (`admin.abuse_report_*`) con el actor real y el motivo. El correo del denunciante solo se expone en
+  `/admin`.
+- **Pruebas:** 7 de validación (transiciones y entradas) y 10 de integración (solo superadmin, prioridad/filtros/paginación, detalle auditado, motivo obligatorio, advertir/despublicar/restaurar, dos reportes sobre un sitio,
+  suspender/restaurar con solo-lectura del panel, carrera, compensación, «nada despublica solo»); **2 mutaciones atrapadas** (sin compensación, restaurar sin mirar otros reportes). OpenAPI: 296 rutas.
+- **Reserva:** «advertir» ya cambia el estado pero el correo al propietario con la vía de apelación llega en F9.9c; hasta entonces el propietario no se entera.
 
 ---
 

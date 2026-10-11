@@ -13,6 +13,7 @@ export const ORDER_NOT_FOUND = "Pedido no encontrado: no existe, o pertenece a o
 export const ORDER_CHANGED = "El pedido cambió mientras lo editabas. Recarga e inténtalo de nuevo.";
 export const ORDER_NO_STOCK = "No quedan unidades suficientes para reabrir el pedido.";
 export const NOTHING_TO_REFUND = "Este pedido no tiene un pago en línea que se pueda devolver.";
+export const WEBPAY_REFUND_IN_TRANSBANK = "Este pedido se pagó con Webpay Plus: la devolución se hace desde tu portal de Transbank, no desde acá.";
 export const REFUND_TOO_HIGH = "No puedes devolver más de lo que queda del pago.";
 export const ONLINE_PAYMENT_UNDO = "Este pago lo confirmó Mercado Pago: no se puede deshacer desde aquí. Si debes devolver el dinero, hazlo desde tu cuenta de Mercado Pago.";
 
@@ -101,9 +102,10 @@ export class OrdersService {
         quantity: item.quantity,
         lineTotalAmount: item.lineTotalAmount,
       })),
-      onlinePayment: order.checkoutPreferenceId
-        ? { status: order.paymentStatus, paymentId: order.providerPaymentId, refundedAmount: order.refundedAmount }
-        : null,
+      onlinePayment:
+        order.checkoutPreferenceId || order.webpayBuyOrder
+          ? { status: order.paymentStatus, paymentId: order.providerPaymentId, refundedAmount: order.refundedAmount, provider: order.paymentProvider === "MERCADO_PAGO" || order.paymentProvider === "WEBPAY_PLUS" ? order.paymentProvider : null }
+          : null,
       downloadCount: order.downloadCount,
       paidAt: order.paidAt?.toISOString() ?? null,
       deliveredAt: order.deliveredAt?.toISOString() ?? null,
@@ -231,6 +233,8 @@ export class OrdersService {
     // Validación temprana (sin candado) para responder rápido; se repite bajo el candado.
     const order = await this.getOrThrow(organizationId, orderId);
     const refundable = (current: OrderWithItems) => {
+      // Webpay Plus no pasa por la API de Mercado Pago: la devolución se hace en el portal de Transbank y se registra a mano.
+      if (current.paymentProvider === "WEBPAY_PLUS") throw new UnprocessableEntityException(WEBPAY_REFUND_IN_TRANSBANK);
       if (!current.providerPaymentId || (current.paymentStatus !== "approved" && current.paymentStatus !== "refunded")) {
         throw new UnprocessableEntityException(NOTHING_TO_REFUND);
       }

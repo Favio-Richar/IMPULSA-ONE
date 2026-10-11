@@ -35,3 +35,11 @@ Hoy el negocio cobra a **sus** clientes (pedidos F5.9, señas de reservas F5.10,
 - Credenciales reales de Transbank las pone el propietario al final; todo se prueba con el adaptador simulado y el ambiente de
   integración público de Transbank.
 - Cada negocio debe contratar Webpay Plus con Transbank (proceso comercial suyo, fuera del producto); la pantalla de Cobros lo explica.
+
+## Addendum — pedidos de la tienda (F10.2d, 2026-10-11)
+
+- La transacción de un pedido se crea **al pulsar «Pagar»** (no al hacer el pedido): cada intento necesita la suya y solo la última se confirma al volver; Transbank revierte sola la que nunca se confirma.
+- Pedido y membresía comparten el criterio: monto y orden de compra salen de lo guardado, el servidor confirma, asignar el pago es condicional.
+- **Devolución:** un pedido pagado con Webpay no pasa por la API de Mercado Pago; la API lo rechaza con 422 y el panel indica hacerlo en Transbank. La acción «anular compra» desde el panel (API de reversa/anulación
+  de Transbank) queda como seguimiento de este ADR.
+- **CSP:** `form-action` de `apps/web` debe incluir `https://*.transbank.cl`; sin eso el navegador bloquea el envío a Webpay.

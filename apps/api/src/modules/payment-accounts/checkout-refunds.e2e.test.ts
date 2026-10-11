@@ -171,7 +171,7 @@ describe("Reembolsos y contracargos (e2e) — F5.11a, ADR-013", () => {
     const { orderId, paymentId, customerEmail } = await paidOrder(b);
 
     const partial = orderResponse.parse((await b.owner.post(`${b.orders}/${orderId}/refund`).set(CSRF).send({ amount: 15_000 }).expect(200)).body);
-    expect(partial.onlinePayment).toEqual({ status: "approved", paymentId, refundedAmount: 15_000 });
+    expect(partial.onlinePayment).toEqual({ status: "approved", paymentId, refundedAmount: 15_000, provider: "MERCADO_PAGO" });
     const refund = checkout.refunds.find((item) => item.paymentId === paymentId)!;
     expect(refund).toMatchObject({ accessToken: b.account.accessToken, amount: 15_000, idempotencyKey: `refund-order-${orderId}-0-15000` });
     expect(emailAdapter.messages.find((m) => m.to === customerEmail)?.subject).toContain("Te devolvimos parte del pago");
@@ -180,7 +180,7 @@ describe("Reembolsos y contracargos (e2e) — F5.11a, ADR-013", () => {
     await b.owner.post(`${b.orders}/${orderId}/refund`).set(CSRF).send({ amount: 25_001 }).expect(422);
 
     const rest = orderResponse.parse((await b.owner.post(`${b.orders}/${orderId}/refund`).set(CSRF).send({}).expect(200)).body);
-    expect(rest.onlinePayment).toEqual({ status: "refunded", paymentId, refundedAmount: 40_000 });
+    expect(rest.onlinePayment).toEqual({ status: "refunded", paymentId, refundedAmount: 40_000, provider: "MERCADO_PAGO" });
     expect(checkout.refunds.filter((item) => item.paymentId === paymentId).map((item) => item.amount)).toEqual([15_000, 25_000]);
     expect(await prisma.auditLog.count({ where: { organizationId: b.organizationId, action: "order.refunded", targetId: orderId } })).toBe(2);
     // Ya no queda nada por devolver.

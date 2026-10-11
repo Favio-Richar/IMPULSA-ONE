@@ -105,6 +105,8 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/sites/{siteSlug}/members/plans",
       "POST /api/v1/public/sites/{siteSlug}/members/plans/{planId}/checkout",
       "GET /api/v1/public/memberships/purchases/{token}",
+      // Pedido con Webpay Plus (F10.2d): el enlace del pedido es la credencial; crea una transacción por el total guardado.
+      "POST /api/v1/public/orders/{token}/webpay",
       "GET /api/v1/public/short-links/{slug}",
       "GET /api/v1/public/qr/{qrCodeId}",
       // Catálogo de planes (F4.1): los precios de un SaaS son públicos (página de precios).

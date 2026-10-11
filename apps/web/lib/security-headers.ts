@@ -23,6 +23,12 @@ export const FRAME_ORIGINS = [
   "https://www.google.com",
 ] as const;
 
+/**
+ * Webpay Plus (F10.2c/F10.2d, ADR-030) recibe al comprador por un formulario POST con `token_ws`: sin su origen en `form-action` el
+ * navegador bloquea el envío (y el comprador nunca llega a pagar). Solo el dominio de Transbank, que cubre integración y producción.
+ */
+export const WEBPAY_FORM_ORIGINS = ["https://*.transbank.cl"] as const;
+
 export interface SecurityHeaderOptions {
   /** `true` en `next dev`: Next necesita `eval` y su WebSocket de recarga. */
   development: boolean;
@@ -66,7 +72,7 @@ export function contentSecurityPolicy(options: SecurityHeaderOptions): string {
     "frame-ancestors": ["'self'"],
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
-    "form-action": ["'self'", ...(storage ? [storage] : [])],
+    "form-action": ["'self'", ...WEBPAY_FORM_ORIGINS, ...(storage ? [storage] : [])],
     "manifest-src": ["'self'"],
     "worker-src": ["'self'", "blob:"],
   };

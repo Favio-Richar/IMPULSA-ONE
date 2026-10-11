@@ -39144,6 +39144,10 @@
                     "checkoutUrl": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "webpayUrl": {
+                      "nullable": true,
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -39155,7 +39159,8 @@
                     "discountAmount",
                     "couponCode",
                     "paymentUrl",
-                    "checkoutUrl"
+                    "checkoutUrl",
+                    "webpayUrl"
                   ],
                   "additionalProperties": false
                 }
@@ -39482,6 +39487,10 @@
                     "checkoutUrl": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "webpayUrl": {
+                      "nullable": true,
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -39493,7 +39502,8 @@
                     "discountAmount",
                     "couponCode",
                     "paymentUrl",
-                    "checkoutUrl"
+                    "checkoutUrl",
+                    "webpayUrl"
                   ],
                   "additionalProperties": false
                 }
@@ -39757,12 +39767,21 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991
+                              },
+                              "provider": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "MERCADO_PAGO",
+                                  "WEBPAY_PLUS"
+                                ]
                               }
                             },
                             "required": [
                               "status",
                               "paymentId",
-                              "refundedAmount"
+                              "refundedAmount",
+                              "provider"
                             ],
                             "additionalProperties": false
                           },
@@ -40115,12 +40134,21 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "provider": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "MERCADO_PAGO",
+                            "WEBPAY_PLUS"
+                          ]
                         }
                       },
                       "required": [
                         "status",
                         "paymentId",
-                        "refundedAmount"
+                        "refundedAmount",
+                        "provider"
                       ],
                       "additionalProperties": false
                     },
@@ -40441,12 +40469,21 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "provider": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "MERCADO_PAGO",
+                            "WEBPAY_PLUS"
+                          ]
                         }
                       },
                       "required": [
                         "status",
                         "paymentId",
-                        "refundedAmount"
+                        "refundedAmount",
+                        "provider"
                       ],
                       "additionalProperties": false
                     },
@@ -40768,12 +40805,21 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
+                        },
+                        "provider": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "MERCADO_PAGO",
+                            "WEBPAY_PLUS"
+                          ]
                         }
                       },
                       "required": [
                         "status",
                         "paymentId",
-                        "refundedAmount"
+                        "refundedAmount",
+                        "provider"
                       ],
                       "additionalProperties": false
                     },
@@ -40954,6 +41000,9 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "webpayAvailable": {
+                      "type": "boolean"
+                    },
                     "downloadUrl": {
                       "nullable": true,
                       "type": "string"
@@ -40969,6 +41018,7 @@
                     "status",
                     "paymentStatus",
                     "checkoutUrl",
+                    "webpayAvailable",
                     "downloadUrl"
                   ],
                   "additionalProperties": false
@@ -40981,6 +41031,82 @@
           }
         },
         "summary": "Estado de un pedido con su enlace",
+        "tags": [
+          "public-catalog"
+        ]
+      }
+    },
+    "/api/v1/public/orders/{token}/webpay": {
+      "post": {
+        "description": "Crea una transacción de Webpay Plus en el comercio del propio negocio por el total guardado del pedido (nunca un monto enviado por el visitante) y devuelve a dónde enviar al comprador por POST con `token_ws`. Cada intento crea una transacción nueva; al volver, el servidor confirma la última.",
+        "operationId": "PublicOrderStatusController_startWebpay",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A dónde enviar al comprador.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "checkoutUrl": {
+                      "type": "string"
+                    },
+                    "method": {
+                      "type": "string",
+                      "enum": [
+                        "POST"
+                      ]
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "checkoutUrl",
+                    "method",
+                    "fields"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El enlace no es válido o el pedido ya no existe."
+          },
+          "409": {
+            "description": "El pedido ya no se puede pagar en línea."
+          },
+          "503": {
+            "description": "Webpay no está disponible ahora."
+          }
+        },
+        "summary": "Empezar a pagar un pedido con Webpay Plus",
         "tags": [
           "public-catalog"
         ]

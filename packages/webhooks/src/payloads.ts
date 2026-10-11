@@ -56,7 +56,9 @@ export function orderPayload(order: Order & { items?: OrderItem[] }) {
       couponCode: order.couponCode,
       status: order.status,
       paidAt: iso(order.paidAt),
-      onlinePayment: order.providerPaymentId ? { provider: "MERCADO_PAGO", paymentId: order.providerPaymentId } : null,
+      onlinePayment: order.providerPaymentId
+        ? { provider: order.paymentProvider === "WEBPAY_PLUS" ? "WEBPAY_PLUS" : "MERCADO_PAGO", paymentId: order.providerPaymentId }
+        : null,
       customer: { name: order.customerName, email: order.customerEmail, phone: order.customerPhone },
       deliveryAddress: order.deliveryAddress,
       note: order.note,

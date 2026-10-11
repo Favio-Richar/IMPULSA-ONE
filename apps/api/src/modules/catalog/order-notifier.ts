@@ -11,6 +11,7 @@ import {
   ownerNewOrderEmail,
   ownerOrderPaidOnlineEmail,
   type OrderEmailContent,
+  type OrderGateway,
   type OrderMessageData,
   type OrderStatusNotice,
 } from "@impulza/validation";
@@ -25,6 +26,11 @@ import { downloadState, orderDownloadPageUrl } from "./download-access.js";
  * Correos de pedidos (F5.5): al cliente (recibido, pagado, entregado, cancelado) y a los dueños.
  * Nunca hacen fallar la operación que los dispara: se registra el error y se sigue.
  */
+/** Pasarela que cobró el pedido (F10.2d): para que los correos nombren la correcta. */
+function gatewaysOf(order: Order): OrderGateway[] {
+  return [order.paymentProvider === "WEBPAY_PLUS" ? "WEBPAY_PLUS" : "MERCADO_PAGO"];
+}
+
 @Injectable()
 export class OrderNotifier {
   constructor(
@@ -45,7 +51,12 @@ export class OrderNotifier {
   }
 
   /** Datos del correo, con las líneas del pedido (F7.8c) aunque quien llama no las haya traído. */
-  private async messageData(order: Order & { items?: OrderItem[] }, siteName: string, statusUrl?: string | null): Promise<OrderMessageData> {
+  private async messageData(
+    order: Order & { items?: OrderItem[] },
+    siteName: string,
+    statusUrl?: string | null,
+    gateways?: OrderGateway[],
+  ): Promise<OrderMessageData> {
     const items = order.items ?? (await this.prisma.orderItem.findMany({ where: { orderId: order.id }, orderBy: { position: "asc" } }));
     return {
       items,
@@ -57,6 +68,7 @@ export class OrderNotifier {
       priceCurrency: order.priceCurrency,
       paymentUrl: order.paymentUrl,
       statusUrl: statusUrl ?? null,
+      ...(gateways && gateways.length > 0 ? { gateways } : {}),
       discountAmount: order.discountAmount,
       couponCode: order.couponCode,
     };
@@ -74,21 +86,22 @@ export class OrderNotifier {
   }
 
   /** `statusUrl`: enlace "Tu pedido" cuando se cobra con Mercado Pago (F5.9); solo existe al crearlo. */
-  async notifyReceived(order: Order, siteName: string, statusUrl?: string | null): Promise<void> {
-    await this.send(order.customerEmail, orderReceivedEmail(await this.messageData(order, siteName, statusUrl)), { orderId: order.id, kind: "received", to: "customer", organizationId: order.organizationId });
+  async notifyReceived(order: Order, siteName: string, statusUrl?: string | null, gateways?: OrderGateway[]): Promise<void> {
+    await this.send(order.customerEmail, orderReceivedEmail(await this.messageData(order, siteName, statusUrl, gateways)), { orderId: order.id, kind: "received", to: "customer", organizationId: order.organizationId });
   }
 
   /** Mercado Pago confirmó el pago (F5.9): al comprador y a los dueños. */
   async notifyPaidOnline(order: Order, siteName: string, paymentId: string): Promise<void> {
-    const data = { ...await this.messageData(order, siteName), downloadUrl: await this.downloadUrlFor(order) };
+    const gateways = gatewaysOf(order);
+    const data = { ...await this.messageData(order, siteName, null, gateways), downloadUrl: await this.downloadUrlFor(order) };
     await this.send(order.customerEmail, orderPaidOnlineEmail(data), { orderId: order.id, kind: "paid_online", to: "customer", organizationId: order.organizationId });
-    const content = ownerOrderPaidOnlineEmail({ ...await this.messageData(order, siteName), customerName: order.customerName, paymentId, ordersUrl: this.ordersUrl() });
+    const content = ownerOrderPaidOnlineEmail({ ...await this.messageData(order, siteName, null, gateways), customerName: order.customerName, paymentId, ordersUrl: this.ordersUrl() });
     await this.sendToOwners(order, content, "paid_online");
   }
 
   /** Pagaron un pedido que estaba cancelado (F5.9): el negocio decide si lo reactiva o devuelve el dinero. */
   async notifyCancelledOrderPaid(order: Order, siteName: string, paymentId: string): Promise<void> {
-    const content = ownerCancelledOrderPaidEmail({ ...await this.messageData(order, siteName), customerName: order.customerName, paymentId, ordersUrl: this.ordersUrl() });
+    const content = ownerCancelledOrderPaidEmail({ ...await this.messageData(order, siteName, null, gatewaysOf(order)), customerName: order.customerName, paymentId, ordersUrl: this.ordersUrl() });
     await this.sendToOwners(order, content, "cancelled_paid");
   }
 

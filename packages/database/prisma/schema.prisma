@@ -1861,6 +1861,12 @@ model Order {
   paymentStatus        String?  @map("payment_status")
   // F5.11a: cuánto se devolvió del pago (leído de Mercado Pago; `CHECK` ≤ total).
   refundedAmount       Int      @default(0) @map("refunded_amount")
+  // F10.2d (ADR-030): Webpay Plus. `webpayToken` / `webpayBuyOrder`: la ultima transaccion creada para el pedido (cada
+  // intento crea una nueva; Transbank no admite pagar dos veces la misma); `paymentProvider`: la pasarela del ultimo intento
+  // o la que cobro (se corrige al asignar el pago).
+  paymentProvider      PaymentGateway? @map("payment_provider")
+  webpayToken          String?  @map("webpay_token")
+  webpayBuyOrder       String?  @unique @map("webpay_buy_order")
   // SHA-256 del enlace "Tu pedido" que recibe el comprador (el enlace en sí nunca se guarda).
   statusTokenHash      String?  @unique @map("status_token_hash")
   // F5.11b (ADR-015): descargas entregadas del archivo en venta (tope por pedido) y la última.

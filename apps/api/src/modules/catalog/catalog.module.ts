@@ -10,7 +10,7 @@ import { CouponsController } from "./coupons.controller.js";
 import { CouponsService } from "./coupons.service.js";
 import { ProductFilesController, PublicDownloadsController } from "./downloads.controller.js";
 import { DownloadsService } from "./downloads.service.js";
-import { OrderPaymentWebhookController, PublicOrderStatusController } from "./order-checkout.controller.js";
+import { OrderPaymentWebhookController, OrderWebpayReturnController, PublicOrderStatusController } from "./order-checkout.controller.js";
 import { OrderCheckoutService } from "./order-checkout.service.js";
 import { OrderNotifier } from "./order-notifier.js";
 import { OrdersController } from "./orders.controller.js";
@@ -32,6 +32,7 @@ import { PublicCatalogService } from "./public-catalog.service.js";
     OrdersController,
     OrderPaymentWebhookController,
     PublicOrderStatusController,
+    OrderWebpayReturnController,
     ProductFilesController,
     PublicDownloadsController,
   ],

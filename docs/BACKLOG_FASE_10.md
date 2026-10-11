@@ -8,7 +8,8 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 |---|---|---|
 | F10.1 | Miembros de sitio y contenido protegido (enlace mágico) | **Hecha** (2026-10-11): API 12/12, suite 74/74 (API 1035), Playwright 4/4; reservas en el detalle |
 | F10.2 | Planes de membresía y cobro por la cuenta del negocio | **Hecha** (2026-10-11): (a) planes, compra, acceso por vigencia y reembolsos; (b) avisos de renovación y de vencimiento; reservas en el detalle |
-| F10.2c | Webpay Plus como medio de cobro del negocio (ADR-030): cuenta propia + membresías | **Hecha** (2026-10-11); falta F10.2d pedidos y F10.2e señas de reservas |
+| F10.2c | Webpay Plus como medio de cobro del negocio (ADR-030): cuenta propia + membresías | **Hecha** (2026-10-11) |
+| F10.2d | Webpay Plus en los pedidos de la tienda (ADR-030) | **Hecha** (2026-10-11); falta F10.2e señas de reservas |
 | F10.3 | Cursos: módulos, lecciones y progreso | Pendiente |
 | F10.4 | Tarjeta digital, vCard y pases de wallet | Pendiente |
 | F10.5 | PWA: instalación y modo sin conexión acotado | Pendiente |
@@ -118,8 +119,29 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
   se confirma ese token; queda documentado y probado que una transacción ajena NO se consume).
 - **Reservas honestas:** (1) **Webpay Plus no avisa reembolsos ni contracargos**: a diferencia de Mercado Pago, la devolución no se detecta sola; el negocio puede revocar al miembro y queda pendiente una acción
   «anular compra» en el panel; (2) **no se ejerció contra Transbank real**: se probó con el simulador y con las credenciales públicas de integración documentadas; el propietario debe probar con su código de
-  comercio al conectar; (3) **pedidos de la tienda y señas de reservas aún no ofrecen Webpay** (F10.2d y F10.2e); (4) solo CLP; (5) cada negocio debe contratar Webpay Plus con Transbank (trámite suyo, fuera del
+  comercio al conectar; (3) **las señas de reservas aún no ofrecen Webpay** (F10.2e; los pedidos sí, F10.2d); (4) solo CLP; (5) cada negocio debe contratar Webpay Plus con Transbank (trámite suyo, fuera del
   producto: la pantalla de Cobros lo explica).
+
+**Hecha — F10.2d (2026-10-11): Webpay Plus en los pedidos de la tienda (ADR-030).**
+
+- **Cómo se ofrece:** con Mercado Pago y/o Webpay Plus conectados, el pedido guarda el plazo de pago y el enlace «Tu pedido» (de siempre) y la confirmación ofrece los medios disponibles. Con Webpay solo, el enlace
+  externo de pago del producto deja de mostrarse (igual que con Mercado Pago). Sin ninguno, nada cambia.
+- **La transacción se crea al pulsar «Pagar con Webpay» en «Tu pedido»** (`POST /public/orders/:token/webpay`, con límite de tasa): cada intento necesita la suya (Transbank no admite pagar dos veces la misma) y
+  así un intento rechazado o abandonado se reintenta sin pedir otra vez el pedido. El monto es el **total guardado del pedido** (cupón y líneas incluidos), nunca uno enviado por el visitante; `sessionId` = pedido.
+- **Regreso y confirmación** (`/payments/webpay/orders/:orderId/return`, GET y POST, 303 a «Tu pedido»): el servidor confirma la transacción **guardada** (la última creada; una anterior de otra pestaña no se
+  confirma y Transbank la revierte sola) y solo marca pagado si queda autorizada y coinciden orden de compra y monto. Marcar pagado es condicional (6 regresos simultáneos: un solo pago, un solo aviso). Pedido ya
+  cancelado → se registra el pago y se avisa al negocio, igual que con Mercado Pago. Tarjeta rechazada → queda `rejected` y se reintenta.
+- **Datos:** `orders.payment_provider` (último intento / pasarela que cobró), `webpay_token`, `webpay_buy_order` (única); migración reversible `20261011240000_f102d_order_webpay`. El pago se identifica como
+  `webpay:<orden de compra>` en `provider_payment_id` (única: un pago nunca paga dos pedidos).
+- **Lo que cambia en el resto del sistema:** correos del comprador y del negocio nombran la pasarela correcta (antes decían siempre «Mercado Pago»); el webhook saliente `order.*` informa `provider: WEBPAY_PLUS`;
+  el panel de pedidos muestra «Pagado con Webpay Plus · orden …» y **no ofrece «Devolver dinero»** (la API devuelve 422 con la explicación): la devolución se hace en el portal de Transbank.
+- **Defecto encontrado y corregido en la prueba de navegador:** la CSP de `apps/web` tenía `form-action 'self'`, que **bloqueaba el envío del formulario a Webpay** (también el de F10.2c). Ahora `form-action`
+  incluye `https://*.transbank.cl`; con prueba unitaria de la política y prueba de navegador que ejerce el envío real.
+- **Pruebas:** 13 de integración (solo Webpay, monto/comercio/sessionId, confirmación única y avisos, regresos simultáneos, rechazo y reintento, monto distinto, token ajeno, abandono, vencido/cancelado,
+  Transbank caído, dos medios, devolución bloqueada, aislamiento entre negocios) + las 8 de pedidos con Mercado Pago sin cambios; Playwright (4 × 2 viewports); **4 mutaciones** todas atrapadas (sin verificar
+  monto/orden, asignación no condicional, sin guarda de devolución, sin vigencia).
+- **Reservas honestas:** misma lista de F10.2c (sin avisos de devolución/contracargo de Webpay, no ejercido contra Transbank real, solo CLP). Además: la **devolución de un pedido pagado con Webpay es manual**
+  hasta que exista la acción «anular compra» en el panel (se anota como siguiente paso del propio ADR-030).
 
 ## F10.3 — Cursos
 

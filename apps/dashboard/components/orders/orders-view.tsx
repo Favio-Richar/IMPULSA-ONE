@@ -27,6 +27,17 @@ const STATUS_STYLES: Record<OrderStatusValue, string> = {
 
 /** Cobro con la cuenta de Mercado Pago del negocio (F5.9, F5.11a), en palabras del negocio. */
 export function onlinePaymentText(payment: NonNullable<OrderResponse["onlinePayment"]>, status: OrderStatusValue, currency: string): string {
+  if (payment.provider === "WEBPAY_PLUS") {
+    // Webpay Plus (F10.2d): no avisa devoluciones ni contracargos; el dinero se devuelve desde el portal de Transbank.
+    if (payment.paymentId) {
+      const order = payment.paymentId.replace(/^webpay:/, "");
+      return status === "CANCELLED"
+        ? `Pagado con Webpay Plus después de cancelarlo (orden ${order}): reactívalo o devuelve el dinero desde tu portal de Transbank.`
+        : `Pagado con Webpay Plus · orden ${order}. Para devolver el dinero, hazlo desde tu portal de Transbank.`;
+    }
+    if (payment.status === "rejected") return "Webpay rechazó un intento de pago";
+    return status === "NEW" ? "Esperando el pago con Webpay" : "Cobro con Webpay sin pagar";
+  }
   if (payment.paymentId) {
     if (payment.status === "charged_back") return `Contracargo en Mercado Pago (pago ${payment.paymentId}): el comprador desconoció el pago. Respóndelo desde tu cuenta de Mercado Pago.`;
     if (payment.status === "in_mediation") return `Reclamo abierto en Mercado Pago (pago ${payment.paymentId}). Respóndelo desde tu cuenta de Mercado Pago.`;
@@ -177,7 +188,9 @@ function OrderCard({ organizationId, order, siteName }: { organizationId: string
   const refund = useRefundOrder(organizationId);
   // Lo que queda por devolver de un pago en línea aprobado (F5.11a).
   const refundable =
-    order.onlinePayment?.paymentId && order.onlinePayment.status === "approved" ? order.totalAmount - order.onlinePayment.refundedAmount : 0;
+    order.onlinePayment?.paymentId && order.onlinePayment.status === "approved" && order.onlinePayment.provider !== "WEBPAY_PLUS"
+      ? order.totalAmount - order.onlinePayment.refundedAmount
+      : 0;
   // Un pago confirmado por Mercado Pago no se deshace a mano (el servidor también lo impide).
   const actions = ACTIONS[order.status].filter((action) => !(action.to === "NEW" && order.status === "PAID" && order.onlinePayment?.paymentId));
 

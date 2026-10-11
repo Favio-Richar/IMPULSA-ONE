@@ -1,5 +1,9 @@
 // Correos de pedidos (F5.5), en texto plano como los de reservas. Asuntos sin saltos de línea.
 
+/** Pasarelas con que un pedido se puede pagar o se pagó (F10.2d, ADR-030). */
+export type OrderGateway = "MERCADO_PAGO" | "WEBPAY_PLUS";
+const GATEWAY_NAMES: Record<OrderGateway, string> = { MERCADO_PAGO: "Mercado Pago", WEBPAY_PLUS: "Webpay Plus" };
+
 export interface OrderMessageData {
   siteName: string;
   productName: string;
@@ -15,8 +19,21 @@ export interface OrderMessageData {
   /** Descuento de un cupón (F7.8b), ya restado de `totalAmount`. */
   discountAmount?: number;
   couponCode?: string | null;
+  /** Pasarela(s) del cobro: las que ofrece el pedido o la que lo cobró. Sin dato, Mercado Pago (como antes de Webpay). */
+  gateways?: ReadonlyArray<OrderGateway>;
   /** Líneas del pedido (F7.8c): con más de una, el correo las detalla en vez del resumen. */
   items?: ReadonlyArray<{ productName: string; variantName: string | null; quantity: number; lineTotalAmount: number }>;
+}
+
+/** «Mercado Pago», «Webpay Plus» o «Mercado Pago o Webpay Plus». */
+function gatewayNames(data: OrderMessageData): string {
+  const gateways = data.gateways && data.gateways.length > 0 ? data.gateways : (["MERCADO_PAGO"] as const);
+  return gateways.map((gateway) => GATEWAY_NAMES[gateway]).join(" o ");
+}
+
+/** Dónde queda el dinero del negocio, según la pasarela que cobró. */
+function businessAccount(data: OrderMessageData): string {
+  return data.gateways?.[0] === "WEBPAY_PLUS" ? "tu comercio de Webpay Plus (Transbank)" : "tu cuenta de Mercado Pago";
 }
 
 function isMultiLine(data: OrderMessageData): boolean {
@@ -67,7 +84,7 @@ export function orderReceivedEmail(data: OrderMessageData): OrderEmailContent {
       ...lines(data),
       "",
       ...(data.statusUrl
-        ? ["Puedes pagarlo con Mercado Pago y ver su estado aquí (el pago lo recibe directamente el negocio):", data.statusUrl, ""]
+        ? [`Puedes pagarlo con ${gatewayNames(data)} y ver su estado aquí (el pago lo recibe directamente el negocio):`, data.statusUrl, ""]
         : data.paymentUrl
           ? ["Puedes pagarlo aquí (el pago lo recibe directamente el negocio):", data.paymentUrl, ""]
           : ["El negocio te contactará para coordinar el pago y la entrega.", ""]),
@@ -97,7 +114,7 @@ export function orderPaidOnlineEmail(data: OrderMessageData): OrderEmailContent 
   return {
     subject: oneLine(`Recibimos el pago de tu pedido en ${data.siteName}`),
     text: [
-      "Mercado Pago confirmó el pago de tu pedido. El negocio ya fue avisado:",
+      `${gatewayNames(data)} confirmó el pago de tu pedido. El negocio ya fue avisado:`,
       "",
       ...lines(data),
       "",
@@ -147,12 +164,12 @@ export function ownerOrderPaidOnlineEmail(data: OwnerOrderPaymentData): OrderEma
   return {
     subject: oneLine(`Pago recibido: ${data.quantity} × ${data.productName} de ${data.customerName}`),
     text: [
-      `Mercado Pago confirmó el pago de un pedido en ${data.siteName}. El dinero está en tu cuenta de Mercado Pago.`,
+      `${gatewayNames(data)} confirmó el pago de un pedido en ${data.siteName}. El dinero está en ${businessAccount(data)}.`,
       "",
       ...lines(data),
       "",
       `Cliente: ${data.customerName}`,
-      `Pago en Mercado Pago: ${data.paymentId}`,
+      `Pago en ${gatewayNames(data)}: ${data.paymentId}`,
       "Recuerda emitir la boleta de esta venta: la relación con el comprador es de tu negocio.",
       ...(data.ordersUrl ? ["", `Tus pedidos: ${data.ordersUrl}`] : []),
     ].join("\n"),
@@ -164,13 +181,13 @@ export function ownerCancelledOrderPaidEmail(data: OwnerOrderPaymentData): Order
   return {
     subject: oneLine(`Atención: pagaron un pedido cancelado (${data.productName}, ${data.customerName})`),
     text: [
-      `Mercado Pago confirmó el pago de un pedido que estaba cancelado en ${data.siteName}.`,
+      `${gatewayNames(data)} confirmó el pago de un pedido que estaba cancelado en ${data.siteName}.`,
       "",
       ...lines(data),
       "",
       `Cliente: ${data.customerName}`,
-      `Pago en Mercado Pago: ${data.paymentId}`,
-      "Reactiva el pedido si puedes entregarlo, o devuelve el dinero desde tu cuenta de Mercado Pago.",
+      `Pago en ${gatewayNames(data)}: ${data.paymentId}`,
+      `Reactiva el pedido si puedes entregarlo, o devuelve el dinero desde ${businessAccount(data)}.`,
       ...(data.ordersUrl ? ["", `Tus pedidos: ${data.ordersUrl}`] : []),
     ].join("\n"),
   };

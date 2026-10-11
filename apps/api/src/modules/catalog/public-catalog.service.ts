@@ -11,6 +11,7 @@ import {
   publicCouponCheckSchema,
   publicOrderRequestSchema,
   type CartLine,
+  type OrderGateway,
   type PublicCartOrderRequest,
 } from "@impulza/validation";
 import type { Request } from "express";
@@ -193,6 +194,7 @@ export class PublicCatalogService {
       // Un pedido gratis (cupón del 100 %) no tiene nada que pagar.
       paymentUrl: total > 0 ? product.paymentUrl : null,
       checkoutUrl: null,
+      webpayUrl: null,
     };
 
     // Antispam (mismo criterio que formularios y reservas): a un bot se le responde como si hubiera
@@ -342,9 +344,11 @@ export class PublicCatalogService {
     const charge = await this.checkout.startFor(linked);
     if (charge) {
       confirmation.checkoutUrl = charge.checkoutUrl;
+      confirmation.webpayUrl = charge.webpayUrl;
       confirmation.paymentUrl = null;
     }
-    await this.notifier.notifyReceived(charge ? { ...linked, paymentUrl: null } : linked, site.name, charge?.statusUrl);
+    const gateways: OrderGateway[] = charge ? [...(charge.checkoutUrl ? (["MERCADO_PAGO"] as const) : []), ...(charge.webpayUrl ? (["WEBPAY_PLUS"] as const) : [])] : [];
+    await this.notifier.notifyReceived(charge ? { ...linked, paymentUrl: null } : linked, site.name, charge?.statusUrl, gateways);
     await this.notifier.notifyOwners(linked, site.name);
     await this.automationEvents.emit({ organizationId: site.organizationId, trigger: "order_created", subjectId: order.id, contactId: contactResult.contact.id });
     await this.webhookEvents.emit({ organizationId: site.organizationId, type: "order.created", subjectId: order.id });
@@ -426,6 +430,7 @@ export class PublicCatalogService {
       couponCode: applied?.coupon.code ?? null,
       paymentUrl,
       checkoutUrl: null,
+      webpayUrl: null,
     };
     const honeypot = input[ORDER_HONEYPOT_FIELD];
     if (typeof honeypot === "string" && honeypot.length > 0) {

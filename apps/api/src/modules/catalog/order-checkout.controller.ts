@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Headers, HttpCode, HttpStatus, NotFoundException, Param, Post, Query, Res, UseGuards } from "@nestjs/common";
 import { ApiExcludeEndpoint, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { publicOrderStatusResponse } from "@impulza/contracts";
+import { orderWebpayStartResponse, publicOrderStatusResponse } from "@impulza/contracts";
+import type { Response } from "express";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { RateLimit } from "../../common/rate-limit.decorator.js";
 import { RateLimitGuard } from "../../common/rate-limit.guard.js";
@@ -58,5 +59,63 @@ export class PublicOrderStatusController {
   @ApiResponse({ status: 404, description: ORDER_STATUS_NOT_FOUND })
   status(@Param("token") token: string, @Query("paymentId") paymentId: unknown) {
     return this.checkout.publicStatus(token, typeof paymentId === "string" ? paymentId : undefined);
+  }
+
+  @Post("webpay")
+  @HttpCode(HttpStatus.OK)
+  @RateLimit({ limit: 20, windowSeconds: 60, keyPrefix: "public-order-webpay" })
+  @ApiOperation({
+    summary: "Empezar a pagar un pedido con Webpay Plus",
+    description:
+      "Crea una transacción de Webpay Plus en el comercio del propio negocio por el total guardado del pedido (nunca un monto enviado por el visitante) y devuelve a dónde enviar al comprador por POST con `token_ws`. Cada intento crea una transacción nueva; al volver, el servidor confirma la última.",
+  })
+  @ApiZodResponse(200, orderWebpayStartResponse, "A dónde enviar al comprador.")
+  @ApiResponse({ status: 404, description: ORDER_STATUS_NOT_FOUND })
+  @ApiResponse({ status: 409, description: "El pedido ya no se puede pagar en línea." })
+  @ApiResponse({ status: 503, description: "Webpay no está disponible ahora." })
+  startWebpay(@Param("token") token: string) {
+    return this.checkout.startWebpay(token);
+  }
+}
+
+/**
+ * Regreso del comprador desde Webpay Plus (F10.2d, ADR-030). Webpay no manda webhooks: Transbank redirige al comprador acá, con
+ * `token_ws` (pagó o lo intentó) o `TBK_TOKEN` (abandonó), por GET o POST. Sin sesión ni CSRF (lo dispara el navegador del comprador
+ * desde Transbank): el servidor confirma la transacción con las credenciales del negocio y siempre redirige a «Tu pedido».
+ */
+@ApiTags("public-catalog")
+@Controller("payments/webpay/orders/:orderId")
+export class OrderWebpayReturnController {
+  constructor(private readonly checkout: OrderCheckoutService) {}
+
+  private async finish(orderId: string, source: Record<string, unknown>, res: Response): Promise<void> {
+    const text = (value: unknown) => (typeof value === "string" && value.length <= 200 ? value : undefined);
+    const target = await this.checkout.handleWebpayReturn({
+      orderId,
+      statusToken: text(source.t),
+      tokenWs: text(source.token_ws),
+      tbkToken: text(source.TBK_TOKEN),
+    });
+    if (!target) throw new NotFoundException();
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    res.redirect(HttpStatus.SEE_OTHER, target);
+  }
+
+  @Get("return")
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ limit: 120, windowSeconds: 60, keyPrefix: "orders-webpay-return" })
+  @ApiExcludeEndpoint()
+  async returnGet(@Param("orderId") orderId: string, @Query() query: Record<string, unknown>, @Res() res: Response) {
+    await this.finish(orderId, query, res);
+  }
+
+  @Post("return")
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ limit: 120, windowSeconds: 60, keyPrefix: "orders-webpay-return" })
+  @ApiExcludeEndpoint()
+  async returnPost(@Param("orderId") orderId: string, @Query() query: Record<string, unknown>, @Body() body: Record<string, unknown> | undefined, @Res() res: Response) {
+    // `t` va en la URL que pusimos; `token_ws` / `TBK_TOKEN` llegan en el cuerpo del formulario de Transbank.
+    await this.finish(orderId, { ...query, ...(body ?? {}) }, res);
   }
 }

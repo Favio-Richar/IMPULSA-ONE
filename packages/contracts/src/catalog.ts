@@ -129,6 +129,8 @@ export const publicOrderConfirmationResponse = z.object({
   paymentUrl: z.string().nullable(),
   /** Pago con Checkout Pro en la cuenta de Mercado Pago del negocio (F5.9, ADR-013). */
   checkoutUrl: z.string().nullable(),
+  /** «Tu pedido», donde se paga con Webpay Plus del propio negocio (F10.2d, ADR-030); `null` sin cuenta de Webpay conectada. */
+  webpayUrl: z.string().nullable(),
 });
 export type PublicOrderConfirmationResponse = z.infer<typeof publicOrderConfirmationResponse>;
 
@@ -148,9 +150,18 @@ export const publicOrderStatusResponse = z.object({
   paymentStatus: z.string().nullable(),
   /** Dónde pagar, solo mientras el pedido espera pago y el cobro no venció. */
   checkoutUrl: z.string().nullable(),
+  /** ¿Se puede pagar ahora con Webpay Plus? (el pedido espera pago, no venció y el negocio tiene Webpay conectado). */
+  webpayAvailable: z.boolean(),
   /** Página de descarga del archivo comprado (F5.11b), si el pedido ya lo entrega. */
   downloadUrl: z.string().nullable(),
 });
+/** Empezar a pagar un pedido con Webpay Plus: a dónde enviar al comprador (con `token_ws` por POST). */
+export const orderWebpayStartResponse = z.object({
+  checkoutUrl: z.string(),
+  method: z.literal("POST"),
+  fields: z.record(z.string(), z.string()),
+});
+export type OrderWebpayStartResponse = z.infer<typeof orderWebpayStartResponse>;
 export type PublicOrderStatusResponse = z.infer<typeof publicOrderStatusResponse>;
 
 /** Línea de un pedido (F7.8a, ADR-023): copia de lo pedido al momento de pedir. */
@@ -196,6 +207,8 @@ export const orderResponse = z.object({
       paymentId: z.string().nullable(),
       /** Cuánto se devolvió ya (F5.11a), según Mercado Pago. */
       refundedAmount: z.number().int(),
+      /** Pasarela que cobró (F10.2d); `null` mientras el pedido no se paga. Una devolución de Webpay se hace en Transbank. */
+      provider: z.enum(["MERCADO_PAGO", "WEBPAY_PLUS"]).nullable(),
     })
     .nullable(),
   /** Descargas entregadas del archivo en venta (F5.11b); 0 si el producto no tiene archivo. */

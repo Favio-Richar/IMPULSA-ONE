@@ -38,7 +38,7 @@ export default async function PedidoPage({ params, searchParams }: { params: Pro
   const site = await getPublicSite(order.siteSlug);
   const content = (
     <Container className="py-10">
-      <OrderStatus order={order} refreshHref={refreshHref} />
+      <OrderStatus order={order} refreshHref={refreshHref} payToken={token} />
     </Container>
   );
   return site ? <SiteShell site={site}>{content}</SiteShell> : <main>{content}</main>;

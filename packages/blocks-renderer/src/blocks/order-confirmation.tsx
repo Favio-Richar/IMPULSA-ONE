@@ -37,15 +37,27 @@ export function OrderConfirmation({
         ) : null}
         . Total: <span className="font-semibold">{formatPrice(confirmation.totalAmount, confirmation.priceCurrency)}</span>. Te enviamos el detalle por correo.
       </p>
-      {confirmation.checkoutUrl ? (
+      {confirmation.checkoutUrl || confirmation.webpayUrl ? (
         <>
-          {/* Misma pestaña: Mercado Pago devuelve al comprador a "Tu pedido" con el estado del pago. */}
-          <a href={confirmation.checkoutUrl} rel="noopener noreferrer" className={PRIMARY_BUTTON}>
-            <CreditCard className="h-4 w-4" aria-hidden="true" />
-            Pagar con Mercado Pago
-          </a>
+          {/* Misma pestaña: la pasarela devuelve al comprador a "Tu pedido" con el estado del pago. */}
+          {confirmation.checkoutUrl ? (
+            <a href={confirmation.checkoutUrl} rel="noopener noreferrer" className={PRIMARY_BUTTON}>
+              <CreditCard className="h-4 w-4" aria-hidden="true" />
+              Pagar con Mercado Pago
+            </a>
+          ) : null}
+          {/* Webpay se paga desde "Tu pedido": ahí se crea la transacción en el momento de pagar. */}
+          {confirmation.webpayUrl ? (
+            <a href={confirmation.webpayUrl} rel="noopener noreferrer" className={PRIMARY_BUTTON}>
+              <CreditCard className="h-4 w-4" aria-hidden="true" />
+              Pagar con Webpay
+            </a>
+          ) : null}
           <p className="text-xs text-[var(--site-color-muted-foreground)]">
-            Pagas en el sitio de Mercado Pago y el dinero lo recibe directamente el negocio. También te enviamos el enlace por correo.
+            {confirmation.webpayUrl
+              ? "Pagas en el sitio de la pasarela y el dinero lo recibe directamente el negocio."
+              : "Pagas en el sitio de Mercado Pago y el dinero lo recibe directamente el negocio."}{" "}
+            También te enviamos el enlace por correo.
           </p>
         </>
       ) : confirmation.paymentUrl ? (

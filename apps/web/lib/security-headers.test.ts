@@ -34,10 +34,10 @@ describe("cabeceras de seguridad de apps/web (ADR-016)", () => {
     expect(csp.has("upgrade-insecure-requests")).toBe(true);
   });
 
-  it("la descarga pagada puede redirigir al almacenamiento tras el formulario; nada más", () => {
+  it("los formularios solo envían a sí mismos, a Webpay (Transbank) y, en la descarga pagada, al almacenamiento; nada más", () => {
     const csp = directives(contentSecurityPolicy(production));
-    expect(csp.get("form-action")).toEqual(["'self'", "https://acct.r2.cloudflarestorage.com"]);
-    expect(directives(contentSecurityPolicy({ development: false, https: true })).get("form-action")).toEqual(["'self'"]);
+    expect(csp.get("form-action")).toEqual(["'self'", "https://*.transbank.cl", "https://acct.r2.cloudflarestorage.com"]);
+    expect(directives(contentSecurityPolicy({ development: false, https: true })).get("form-action")).toEqual(["'self'", "https://*.transbank.cl"]);
   });
 
   it("los medios servidos por http en local se permiten por su origen exacto, sin abrir http en general", () => {

@@ -1,4 +1,5 @@
 import type { PublicOrderStatusResponse } from "@impulza/contracts";
+import { OrderWebpayButton } from "./order-webpay-button";
 
 // Íconos en línea (trazo de 24 px, como el resto de la página pública): sin dependencia extra.
 const ICON_PATHS = {
@@ -55,13 +56,21 @@ export function orderStatusView(order: PublicOrderStatusResponse): View {
     return {
       icon: "cross",
       title: "El pago no se completó",
-      text: order.checkoutUrl ? "Mercado Pago no aprobó el pago. Puedes intentarlo de nuevo con otro medio." : "Mercado Pago no aprobó el pago. Contacta al negocio para coordinarlo.",
+      text: order.webpayAvailable
+        ? "El pago no fue aprobado. Puedes intentarlo de nuevo con otra tarjeta u otro medio."
+        : order.checkoutUrl
+          ? "Mercado Pago no aprobó el pago. Puedes intentarlo de nuevo con otro medio."
+          : "El pago no fue aprobado. Contacta al negocio para coordinarlo.",
     };
   }
   return {
     icon: "card",
     title: "Pedido pendiente de pago",
-    text: order.checkoutUrl ? "Tu pedido está reservado. Págalo con Mercado Pago para confirmarlo." : "El plazo para pagar en línea venció. Contacta al negocio para coordinar el pago.",
+    text: order.webpayAvailable
+      ? "Tu pedido está reservado. Elige cómo pagar para confirmarlo."
+      : order.checkoutUrl
+        ? "Tu pedido está reservado. Págalo con Mercado Pago para confirmarlo."
+        : "El plazo para pagar en línea venció. Contacta al negocio para coordinar el pago.",
   };
 }
 
@@ -69,7 +78,7 @@ export function orderStatusView(order: PublicOrderStatusResponse): View {
  * "Tu pedido" (F5.9): lo que ve el comprador al volver de Mercado Pago o con el enlace de su correo,
  * con el tema del negocio. Solo lectura: el estado lo confirma el servidor consultando el pago.
  */
-export function OrderStatus({ order, refreshHref }: { order: PublicOrderStatusResponse; refreshHref: string }) {
+export function OrderStatus({ order, refreshHref, payToken }: { order: PublicOrderStatusResponse; refreshHref: string; payToken?: string }) {
   const view = orderStatusView(order);
   const waiting = order.status === "NEW" && order.paymentStatus !== null && PROCESSING.has(order.paymentStatus);
   return (
@@ -99,6 +108,7 @@ export function OrderStatus({ order, refreshHref }: { order: PublicOrderStatusRe
           <p className="text-xs text-[var(--site-color-muted-foreground)]">Pagas en el sitio de Mercado Pago y el dinero lo recibe directamente el negocio.</p>
         </>
       ) : null}
+      {order.webpayAvailable && payToken ? <OrderWebpayButton token={payToken} /> : null}
       {order.downloadUrl ? (
         // Archivo comprado (F5.11b): lleva a la página de descarga, que es la que cuenta cada descarga.
         <a href={order.downloadUrl} className={PRIMARY}>

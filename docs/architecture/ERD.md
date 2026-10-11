@@ -663,3 +663,5 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   `expires_at` queda en 2999 para que ningún proceso de renovación la considere. Una suscripción de Impulza nunca usa este valor.
 - **MembershipPurchase.payment_provider / provider_order_ref** (F10.2c): con qué pasarela se pagó y, en Webpay Plus, la orden de compra (única) que se compara al confirmar; `checkout_preference_id` guarda el token de la
   transacción. Migraciones `20261011220000_f102c_webpay_plus_account` y `20261011230000_f102c_membership_provider`.
+- **Order.payment_provider / webpay_token / webpay_buy_order** (F10.2d): pasarela del último intento o que cobró; token de la última transacción de Webpay Plus y su orden de compra (única). Con Webpay, `provider_payment_id`
+  guarda `webpay:<orden de compra>`. Migración reversible `20261011240000_f102d_order_webpay`.

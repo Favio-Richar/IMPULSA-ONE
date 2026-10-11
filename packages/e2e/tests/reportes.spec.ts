@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { PrismaClient } from "@impulza/database";
 import { expect, request as apiRequest, test, type Page } from "@playwright/test";
 import { FIXTURE_PATH, type SeededFixture } from "../global-setup.js";
+import { PUBLIC_WEB_URL } from "../playwright.config.js";
 
 // F9.8a — informe por cliente (ADR-028 §6), en teléfono y escritorio: cifras conocidas, comparación con el periodo anterior, CSV sin
 // fórmulas y vista imprimible sin la navegación.
@@ -123,8 +124,11 @@ test("un enlace compartido se abre sin sesión, muestra el informe sin datos per
   await panel.getByRole("button", { name: "Crear enlace" }).click();
   const created = page.getByTestId("share-link-created");
   await expect(created).toBeVisible();
-  const url = await created.getByLabel("Enlace del informe").inputValue();
-  expect(url).toMatch(/\/informe\/[A-Za-z0-9_-]{43}$/);
+  const shownUrl = await created.getByLabel("Enlace del informe").inputValue();
+  expect(shownUrl).toMatch(/\/informe\/[A-Za-z0-9_-]{43}$/);
+  // El enlace que muestra el panel apunta a `WEB_APP_URL` (el servidor de desarrollo); la prueba abre la misma ruta en el sitio
+  // público que levanta Playwright, así no depende de un proceso aparte.
+  const url = `${PUBLIC_WEB_URL}${new URL(shownUrl).pathname}`;
   await expectNoHorizontalScroll(page);
   await capture(page, `02-compartir-${project}.png`);
 

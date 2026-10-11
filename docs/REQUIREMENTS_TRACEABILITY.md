@@ -119,7 +119,7 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Equipo con roles personalizados, acceso por cliente/módulo, auditoría, aprobación antes de publicar | PM §11.3 | Fase 9 (F9.6, ADR-028) — **F9.6a hecha** (roles personalizados y reglas contra la escalada) y **F9.6b hecha** (acceso por cliente/módulo); **F9.6c hecha** (aprobación antes de publicar) y **F9.6d hecha** (auditoría navegable) |
 | Marca blanca: logo/colores, dominio de agencia, portal cliente, correos con marca, plantillas privadas | PM §11.4 | Fase 9 (F9.7, ADR-028) — **hecha** (a marca y cascada, b correos con cabecera legal, c plantillas privadas, d dominio de agencia, e portal del cliente); el portal de reportes llega con F9.8 |
 | Reportes por cliente: comparación de periodos, programación, comentarios, exportación, enlace compartido | PM §11.5 | Fase 9 (F9.8, ADR-028) — **hecha** (a informe y CSV, b enlace compartido, c programación por cola, d comentarios) |
-| Marca configurable: el dueño de la plataforma (logo, nombre, colores, correos) y cada organización (logo, colores, datos) desde la interfaz | PM §11.4, §12 | Fase 9 (F9.1–F9.2, ADR-028) — Pendiente |
+| Marca configurable: el dueño de la plataforma (logo, nombre, colores, correos) y cada organización (logo, colores, datos) desde la interfaz | PM §11.4, §12 | Fase 9 (F9.1–F9.2, ADR-028) — **hecha** (F9.1 plataforma, F9.2 organización, cascada única `resolveBrand`) |
 | Moderación con reportes de abuso (decisión #9) | PM §12 | Fase 9 (F9.9, ADR-028) — **hecha con reservas** (a reporte público, b cola y acciones, c aviso y apelación, d pantallas); falta el texto legal de contenido, decisión del propietario |
 
 ## 12. IA
@@ -166,7 +166,7 @@ Del PM §21 — deben resolverse **antes de fases que dependan de ellas** (marca
 6. ~~Responsabilidad de pagos de terceros — antes de Fase 5.~~ **Resuelta 2026-09-30 (ADR-013):** cada negocio conecta su propia cuenta de Mercado Pago; el dinero va directo a él, Impulza no custodia fondos ni cobra comisión.
 7. Cuotas de almacenamiento/tráfico — antes de Fase 4 (límites de plan) y Fase 2 (media).
 8. Alcance inicial de agencia — antes de Fase 6.
-9. Política de moderación — antes de Fase 4 (superadministración/moderación).
+9. Política de moderación — antes de Fase 4. **Mecanismo resuelto en F9.9 (ADR-028 §7)**; **pendiente el texto legal de contenido/términos de uso** (propietario + revisión de un abogado) y el plazo de retención del correo del denunciante.
 10. ~~Condiciones de privacidad y retención — antes de Fase 3 (analítica) y Fase 1 (auth/datos).~~
     **Resuelta a nivel de modelo de datos el 2026-09-22**: ver `docs/decisions/ADR-004-privacidad-
     retencion-datos.md` (Ley 21.719, Chile, vigente desde diciembre de 2026) — minimización en

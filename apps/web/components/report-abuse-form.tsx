@@ -42,6 +42,11 @@ export function ReportAbuseForm({ siteSlug, siteName }: { siteSlug: string; site
       next.email = "Escribe un correo válido o déjalo vacío.";
     }
     setFieldErrors(next);
+    // El foco va al primer campo con error: quien usa teclado o lector de pantalla no tiene que buscarlo.
+    const firstInvalid = next.reason ? "input[name='reason']" : next.details ? "#reporte-detalle" : next.email ? "#reporte-correo" : null;
+    if (firstInvalid) {
+      requestAnimationFrame(() => document.querySelector<HTMLElement>(firstInvalid)?.focus());
+    }
     return Object.keys(next).length === 0;
   }
 
@@ -116,7 +121,7 @@ export function ReportAbuseForm({ siteSlug, siteName }: { siteSlug: string; site
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="reporte-detalle" className="text-sm font-medium text-slate-900">
-            Cuéntanos más {reason === "OTHER" ? "" : <span className="font-normal text-slate-600">(opcional)</span>}
+            Cuéntanos más <span className="font-normal text-slate-600">{reason === "OTHER" ? "(obligatorio)" : "(opcional)"}</span>
           </label>
           <textarea
             id="reporte-detalle"

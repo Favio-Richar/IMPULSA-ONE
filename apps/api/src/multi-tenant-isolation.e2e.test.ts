@@ -2552,4 +2552,74 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("F9.9 Moderación: medidas y apelaciones nunca se cruzan (ADR-002, ADR-028 §7)", () => {
+    it("B no ve ni apela una medida de A, y el caso de A no aparece en la lista de B", async () => {
+      const report = await prisma.abuseReport.create({
+        data: { organizationId: orgA.id, siteId: orgA.siteId, reason: "SPAM", status: "SITE_UNPUBLISHED", resolution: "Solo de A", resolvedAt: new Date() },
+      });
+      try {
+        await orgB.ownerAgent.get(`/api/v1/organizations/${orgA.id}/moderation/cases`).expect(403);
+        await orgB.ownerAgent
+          .post(`/api/v1/organizations/${orgA.id}/moderation/cases/${report.id}/appeal`)
+          .set(CSRF_HEADERS)
+          .send({ text: "Intento de apelar un caso ajeno por completo." })
+          .expect(403);
+        // Con el id de la propia organización en la URL, el caso ajeno no existe para B.
+        await orgB.ownerAgent
+          .post(`/api/v1/organizations/${orgB.id}/moderation/cases/${report.id}/appeal`)
+          .set(CSRF_HEADERS)
+          .send({ text: "Intento de apelar un caso ajeno por completo." })
+          .expect(404);
+        const own = await orgB.ownerAgent.get(`/api/v1/organizations/${orgB.id}/moderation/cases`).expect(200);
+        expect(own.body).toEqual([]);
+        expect((await prisma.abuseReport.findUniqueOrThrow({ where: { id: report.id } })).status).toBe("SITE_UNPUBLISHED");
+      } finally {
+        await prisma.abuseReport.deleteMany({ where: { id: report.id } });
+      }
+    });
+  });
+
+  describe("Barrido de TODAS las rutas de organización (F9.10, ADR-002): ninguna se abre a un tercero", () => {
+    // Las rutas salen del OpenAPI publicado (el mismo que verifica openapi.test): una ruta nueva con `{organizationId}`
+    // queda cubierta sin tocar esta prueba. Si alguna responde distinto de 403 a quien no es miembro, falla con su nombre.
+    function organizationRoutes(targetOrgId: string): Array<{ method: "get" | "post" | "put" | "patch" | "delete"; path: string; label: string }> {
+      const document = JSON.parse(readFileSync(new URL("../../../docs/api/openapi.json", import.meta.url), "utf8")) as {
+        paths: Record<string, Record<string, unknown>>;
+      };
+      return Object.entries(document.paths)
+        .filter(([path]) => path.startsWith("/api/v1/organizations/{organizationId}"))
+        .flatMap(([path, methods]) =>
+          Object.keys(methods)
+            .filter((method) => ["get", "post", "put", "patch", "delete"].includes(method))
+            .map((method) => ({
+              method: method as "get" | "post" | "put" | "patch" | "delete",
+              label: `${method.toUpperCase()} ${path}`,
+              path: path.replace(/\{organizationId\}/g, targetOrgId).replace(/\{[^}]+\}/g, "00000000-0000-4000-8000-000000000000"),
+            })),
+        );
+    }
+
+    it("el propietario y un administrador de A reciben 403 en cada ruta de B, y el propietario de B en cada ruta de A", async () => {
+      const toB = organizationRoutes(orgB.id);
+      const toA = organizationRoutes(orgA.id);
+      // Salvaguarda: si el documento no se leyó bien, la prueba no puede «pasar» sin probar nada.
+      expect(toB.length).toBeGreaterThan(250);
+
+      const failures: string[] = [];
+      const attempt = async (agent: ReturnType<typeof request.agent>, routes: typeof toB, who: string): Promise<void> => {
+        for (const { method, path, label } of routes) {
+          const call = agent[method](path);
+          const response = method === "get" ? await call : await call.set(CSRF_HEADERS).send({});
+          if (response.status !== 403) {
+            failures.push(`${who} → ${label}: ${response.status}`);
+          }
+        }
+      };
+      await attempt(orgA.ownerAgent, toB, "propietario de A");
+      await attempt(orgA.adminAgent, toB, "administrador de A");
+      await attempt(orgB.ownerAgent, toA, "propietario de B");
+      expect(failures).toEqual([]);
+    });
+  });
+
 });

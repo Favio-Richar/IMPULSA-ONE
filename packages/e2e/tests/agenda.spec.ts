@@ -27,7 +27,7 @@ test("anota una reserva, la marca como atendida y lo deshace", async ({ page }, 
     await page.getByRole("button", { name: "Nueva reserva" }).click();
 
     const form = page.getByRole("form", { name: "Nueva reserva" });
-    await form.getByLabel("Servicio").selectOption({ label: `Agenda e2e ${testInfo.project.name} · 30 min` });
+    await form.getByLabel("Servicio").selectOption({ label: `Agenda e2e ${testInfo.project.name} (30 min)` });
     // Una hora distinta por proyecto: las dos corridas no se pisan en la misma agenda.
     await form.getByLabel("Hora").fill(testInfo.project.name === "movil" ? "07:00" : "07:30");
     await form.getByLabel("Nombre del cliente").fill(customer);

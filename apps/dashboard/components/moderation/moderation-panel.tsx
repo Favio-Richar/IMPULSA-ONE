@@ -134,6 +134,7 @@ function CaseCard({ organizationId, item }: { organizationId: string; item: Mode
           <form noValidate onSubmit={submit} className="flex flex-col gap-3">
             <Textarea
               label="¿Por qué crees que la medida no corresponde?"
+              autoFocus
               rows={5}
               maxLength={APPEAL_TEXT_MAX}
               value={text}
@@ -157,7 +158,7 @@ function CaseCard({ organizationId, item }: { organizationId: string; item: Mode
           </form>
         ) : (
           <div>
-            <Button variant="secondary" onClick={() => setOpen(true)}>
+            <Button variant="secondary" aria-expanded={false} onClick={() => setOpen(true)}>
               Apelar esta medida
             </Button>
           </div>

@@ -19,6 +19,8 @@ const REASON = "Verificamos que el sitio ofrece productos inexistentes.";
 const APPEAL = "Los productos existen y tengo las facturas; pido que se revise la medida.";
 
 test.afterAll(async () => {
+  // La organización sembrada la comparten todas las pruebas: se deja como estaba (las de auditoría cuentan sus filas).
+  await prisma.auditLog.deleteMany({ where: { targetType: "AbuseReport", organizationId: fixture.organizationId } });
   await prisma.abuseReport.deleteMany({ where: { organizationId: fixture.organizationId } });
   await prisma.site.update({ where: { id: fixture.siteId }, data: { moderationHiddenAt: null } });
   await prisma.$disconnect();

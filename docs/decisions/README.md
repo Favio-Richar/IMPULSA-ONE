@@ -62,4 +62,4 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 | [ADR-026](./ADR-026-superadministracion-operacion-colas-flags-plantillas.md) | Operación, colas BullMQ, feature flags y CMS de plantillas en la superadministración | Aceptado |
 | [ADR-027](./ADR-027-animaciones-microinteracciones-fase8.md) | Estrategia de animaciones y microinteracciones para la Fase 8 | Aceptado |
 | [ADR-028](./ADR-028-agencias-marca-blanca-y-marca-configurable.md) | Agencias, marca blanca y marca configurable por el dueño de la plataforma y por cada organización (resuelve #8 y #9) | Aceptado |
-
+| [ADR-029](./ADR-029-version-2-membresias-cursos-wallet-pwa-marketplace.md) | Versión 2: membresías y cursos, wallet y tarjeta digital, PWA y marketplace (de integraciones y plantillas, sin custodia de dinero) | Aceptado |

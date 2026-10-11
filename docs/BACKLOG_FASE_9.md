@@ -26,7 +26,7 @@ de escribir código**: fija el modelo, los límites de la delegación y la casca
 | F9.7 | Marca blanca: panel, dominio, portal del cliente, correos y plantillas privadas | **Hecha** (2026-10-11): **a** marca y cascada, **b** correos, **c** plantillas privadas, **d** dominio de agencia, **e** portal del cliente (los reportes del portal llegan con F9.8) |
 | F9.8 | Reportes por cliente | **Hecha** (2026-10-11): **a** informe y CSV, **b** enlace compartido, **c** programación por cola, **d** comentarios |
 | F9.9 | Moderación y reportes de abuso | **Hecha con reservas** (2026-10-11): **a** reporte público y modelo, **b** cola y acciones de admin, **c** aviso y apelación, **d** pantallas y Playwright; reservas en el detalle de la historia |
-| F9.10 | Aislamiento, seguridad y cierre de la fase | Pendiente |
+| F9.10 | Aislamiento, seguridad y cierre de la fase | **Hecha con reservas** (2026-10-11): barrido de aislamiento de todas las rutas, revisión de amenazas (`docs/architecture/THREAT_MODEL_FASE_9.md`), suite completa 74/74 y API 1023/1023, accesibilidad; reservas en el detalle |
 
 Una historia no empieza si la anterior no cumple su Definición de Terminado. F9.1 y F9.2 son la base de
 todo lo demás (la marca en cascada); F9.3 es la base de F9.4 a F9.8.
@@ -724,3 +724,21 @@ Credenciales de proveedores (Mercado Pago real, Google OAuth, correo con dominio
 hosting de producción, política de privacidad revisada por un abogado, staging y backups con prueba de
 restauración. El sistema se **desarrolla sin ellas**: cada integración tiene su estado «sin
 configurar» y su respaldo, y se activan al poner las credenciales.
+
+---
+
+## Cierre de la Fase 9 (F9.10, 2026-10-11)
+
+- **Aislamiento:** la prueba «Barrido de TODAS las rutas de organización» (`multi-tenant-isolation.e2e.test.ts`) lee el OpenAPI y exige 403
+  a quien no es miembro en cada ruta con `{organizationId}` (en ambos sentidos y con un administrador); una ruta nueva queda cubierta sola.
+  Verificada contra una guardia retirada a propósito. Caso transversal de moderación agregado.
+- **Amenazas:** `docs/architecture/THREAT_MODEL_FASE_9.md` (marca blanca, roles, enlaces compartidos, importación CSV, dominios,
+  moderación), cada mitigación con su prueba y 9 riesgos residuales declarados.
+- **Verificación:** `pnpm turbo run typecheck lint test --continue` → 74/74 tareas (API 1023, validación 1013, web 85, worker 65, pagos 58,
+  almacenamiento 37, analítica 35); builds de `web`, `admin` y `dashboard`; Playwright completo (ver resultado en CONTINUIDAD).
+- **Accesibilidad (WCAG 2.1 AA) sobre las pantallas de F9.9:** 4 hallazgos corregidos (área clicable de las acciones del admin, «(obligatorio)»
+  en el formulario, foco al primer error, `aria-expanded` y foco en la apelación). Los tokens de color tienen su propia prueba de contraste.
+  **No** se probó con un lector de pantalla real.
+- **Reservas de la fase:** las de F9.9 (texto legal, retención del correo del denunciante, avisos a la agencia, derechos de autor) y los
+  riesgos residuales del modelo de amenazas; el correo real, el DNS real y las credenciales de proveedores dependen del propietario y se
+  activan al ponerlas.

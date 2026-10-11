@@ -269,7 +269,7 @@ function StaffRow({
             Servicios: {assignedServices.length > 0 ? assignedServices.map((s) => s.name).join(", ") : "Todos los servicios"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {member.calendarFeedUrl ? (
             <Button
               variant="secondary"

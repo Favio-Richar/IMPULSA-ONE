@@ -21,7 +21,7 @@ export function ConfirmButton({ confirmLabel, onConfirm, children, variant, size
 
   if (armed) {
     return (
-      <span className="inline-flex items-center gap-2">
+      <span className="inline-flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">{confirmLabel}</span>
         <Button variant="destructive" size={size} loading={loading} onClick={onConfirm}>
           Sí

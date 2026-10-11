@@ -174,13 +174,17 @@ function ActionPanel({ report }: { report: Detail }): React.JSX.Element {
       <fieldset className="flex flex-col gap-2">
         <legend className="sr-only">Acción a aplicar</legend>
         {report.availableActions.map((candidate) => (
-          <div key={candidate} className="flex items-start gap-3 rounded-md border border-border p-3 text-sm has-[:checked]:border-foreground">
-            {/* El nombre accesible es solo el título; la explicación va aparte (aria-describedby) para no mezclarse con otros campos. */}
+          // Toda la tarjeta es la etiqueta (área clicable completa). El nombre accesible del radio es solo el título
+          // (`aria-labelledby`); la explicación se anuncia como descripción y no se mezcla con otros campos.
+          <label
+            key={candidate}
+            className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 text-sm has-[:checked]:border-foreground"
+          >
             <input
-              id={`action-${candidate}`}
               type="radio"
               name="moderation-action"
               className="mt-1"
+              aria-labelledby={`action-${candidate}-title`}
               aria-describedby={`action-${candidate}-help`}
               checked={action === candidate}
               onChange={() => {
@@ -188,15 +192,15 @@ function ActionPanel({ report }: { report: Detail }): React.JSX.Element {
                 setConfirming(false);
               }}
             />
-            <div className="flex flex-col gap-0.5">
-              <label htmlFor={`action-${candidate}`} className="cursor-pointer font-medium text-foreground">
+            <span className="flex flex-col gap-0.5">
+              <span id={`action-${candidate}-title`} className="font-medium text-foreground">
                 {MODERATION_ACTION_LABELS[candidate]}
-              </label>
+              </span>
               <span id={`action-${candidate}-help`} className="text-muted-foreground">
                 {MODERATION_ACTION_HELP[candidate]}
               </span>
-            </div>
-          </div>
+            </span>
+          </label>
         ))}
       </fieldset>
 

@@ -5,7 +5,18 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-11) — **F9.6 a F9.9 completas** en la rama `fase-9/f9-6-equipo-avanzado`; siguiente: **F9.10** (aislamiento, seguridad y cierre de la fase)
+## 0. RETOMAR AQUÍ (2026-10-11) — **Fases 0 a 9 completas** (F9.10 cerrada) en la rama `fase-9/f9-6-equipo-avanzado`; siguiente: **Fase 10 (versión 2)**, empezar por F10.1
+
+**F9.10 CERRADA (2026-10-11).** Verificado: `pnpm turbo run typecheck lint test --continue` 74/74 (API 1023); Playwright completo con 377 pruebas en verde y las 10
+fallas iniciales corregidas y reejecutadas en verde (3 eran defectos reales: acciones del admin de moderación, fila de acciones del profesional que se salía de la
+tarjeta en 360 px, y una prueba de agenda desactualizada; 2 de reportes apuntaban al servidor de desarrollo `:3300`, ahora usan el sitio público que levanta
+Playwright; el resto, carga). **Trampa:** las pruebas de Playwright comparten la organización sembrada: toda prueba nueva debe dejar auditoría y datos como los
+encontró (las de auditoría cuentan filas). Revisión de amenazas: `docs/architecture/THREAT_MODEL_FASE_9.md`.
+
+**FASE 10 (versión 2) — diseño listo, sin código:** ADR-029 y `docs/BACKLOG_FASE_10.md` (F10.1 miembros y contenido protegido con enlace mágico; F10.2 planes de
+membresía y cobro por la cuenta del negocio; F10.3 cursos; F10.4 tarjeta digital y wallet; F10.5 PWA; F10.6 marketplace de integraciones/plantillas; F10.7
+cierre). Reglas: miembros de sitio con modelo propio (`SiteMember`, nunca `User`), sin custodia de dinero, el service worker nunca cachea la API, todo proveedor por
+adaptador (las credenciales las pone el propietario al final).
 
 **F9.9 (moderación y abuso) — hechas (a) modelo + reporte público, (b) API de la cola con acciones auditadas y (c) aviso por correo + apelación del propietario (permiso `moderation.appeal`, `status_before_appeal`, acción `uphold`)** (detalle en `docs/BACKLOG_FASE_9.md`; la API está en `modules/moderation`, registrada en `AdminModule`). **F9.9 CERRADA con reservas** (a a d; Playwright 6/6, capturas `f99/`; reservas en `docs/BACKLOG_FASE_9.md`). **Pendiente del propietario:** texto legal de contenido/términos de uso que respalde las medidas y plazo de retención del correo del denunciante. **Reglas ya fijadas:** despublicar = `Site.moderationHiddenAt` (no `ARCHIVED`), siempre filtrado por la constante `SERVED_SITE`: **toda superficie pública nueva por sitio debe usarla**; el
 correo del denunciante nunca se muestra al propietario; **nada se despublica solo**. **Trampas nuevas:** el `Write`/heredoc convierte `\\uXXXX` y `\\r\\n` del fuente en caracteres reales (rompe regex): construir

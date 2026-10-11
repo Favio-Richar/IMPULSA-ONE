@@ -589,7 +589,7 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
 - **UI:** «Informes programados» en Reportes (crear, pausar/reanudar, eliminar con confirmación, últimos envíos; estados de carga/vacío/error; se oculta a quien no tiene `report.share`).
 - **Pruebas:** 10 de integración (`report-schedule.e2e.test.ts`: CRUD y auditoría, tope, una ejecución por periodo, concurrencia, envío con enlace que sirve el mismo periodo, reintentos sin duplicar, atraso largo, pausa, fallos definitivos,
   aislamiento) + caso transversal de aislamiento + 12 de reglas puras + Playwright móvil/escritorio; 3 mutaciones atrapadas (sin `delivered_to`, plan reintentable, reanudar sin mover la fecha).
-- **Reservas honestas:** el consumidor vive en la API (si se escala, conviene extraerlo a `@impulza/reports` para el worker); la hora es UTC fija (sin zona horaria por negocio); la cola no figura aún en el panel de operaciones de admin.
+- **Reservas honestas:** el consumidor vive en la API (si se escala, conviene extraerlo a `@impulza/reports` para el worker); la hora es UTC fija (sin zona horaria por negocio); la cola `report-schedules` ya aparece en el panel de operaciones de admin.
 
 ---
 

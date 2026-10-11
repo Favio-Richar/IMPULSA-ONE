@@ -67,6 +67,24 @@ export function getPublicPage(siteSlug: string, pageSlug: string): Promise<Publi
   );
 }
 
+/**
+ * F10.1: contenido de una página «solo miembros». Sin caché a propósito (`no-store`): es contenido de una persona con sesión y
+ * nunca debe compartirse entre visitantes. `null` si la sesión no sirve (vencida, revocada, de otro sitio) o la página no existe.
+ */
+export async function getMemberPage(siteSlug: string, pageSlug: string, sessionToken: string): Promise<PublicPageResponse | null> {
+  const response = await fetch(`${env.API_BASE_URL}/public/sites/${encodeURIComponent(siteSlug)}/members/pages/${encodeURIComponent(pageSlug)}`, {
+    cache: "no-store",
+    headers: { "x-member-session": sessionToken },
+  });
+  if (response.status === 401 || response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`La API pública respondió ${response.status} para la página de miembros de ${siteSlug}`);
+  }
+  return publicPageResponse.parse(await response.json());
+}
+
 /** F3.2: la definición real de un formulario referenciado por un bloque `contact_form`. `null` si
  *  el formulario ya no existe (se borró desde entonces) — el bloque lo trata como "sin configurar",
  *  igual que un `formId` vacío (ver `ContactFormBlock`), nunca como un error de render. */

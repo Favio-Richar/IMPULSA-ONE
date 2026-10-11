@@ -95,6 +95,12 @@ describe("Documento OpenAPI", () => {
       "POST /api/v1/public/sites/{siteSlug}/events",
       // Reporte de abuso (F9.9a): lo envía un visitante anónimo; CSRF + límite de tasa por IP + repetición por visitante.
       "POST /api/v1/public/sites/{siteSlug}/abuse-reports",
+      // Miembros de sitio (F10.1): el visitante pide su enlace, lo canjea y lee las páginas protegidas con su sesión de miembro.
+      "POST /api/v1/public/sites/{siteSlug}/members/access",
+      "POST /api/v1/public/members/verify",
+      "GET /api/v1/public/sites/{siteSlug}/members/me",
+      "GET /api/v1/public/sites/{siteSlug}/members/pages/{pageSlug}",
+      "POST /api/v1/public/sites/{siteSlug}/members/logout",
       "GET /api/v1/public/short-links/{slug}",
       "GET /api/v1/public/qr/{qrCodeId}",
       // Catálogo de planes (F4.1): los precios de un SaaS son públicos (página de precios).

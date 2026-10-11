@@ -101,6 +101,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
       <BookingShortcut siteId={siteId} />
       <CatalogShortcut siteId={siteId} />
       <AbTestsShortcut siteId={siteId} />
+      <MembersShortcut siteId={siteId} />
       <CampaignModeShortcut siteId={siteId} />
       <CustomDomains organizationId={organizationId} siteId={siteId} />
       <MeasurementSettings organizationId={organizationId} siteId={siteId} />
@@ -538,6 +539,23 @@ function BookingShortcut({ siteId }: { siteId: string }): React.JSX.Element {
         <p className="text-sm text-muted-foreground">Horario de atención, servicios con su duración y días bloqueados.</p>
         <Link href={`/sitios/${siteId}/reservas`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
           Configurar reservas
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Acceso a los miembros y páginas protegidas del sitio (F10.1), que tienen su propia pantalla. */
+function MembersShortcut({ siteId }: { siteId: string }): React.JSX.Element {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Miembros</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Páginas solo para tus miembros y quién tiene acceso, sin contraseñas.</p>
+        <Link href={`/sitios/${siteId}/miembros`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+          Gestionar miembros
         </Link>
       </CardContent>
     </Card>

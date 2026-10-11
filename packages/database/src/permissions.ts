@@ -41,6 +41,8 @@ export const PERMISSIONS = {
   REPORT_COMMENT: "report.comment",
   // F9.9c (ADR-028 s7): ver las medidas de moderacion sobre el negocio y apelarlas (tambien con la organizacion bloqueada).
   MODERATION_APPEAL: "moderation.appeal",
+  // F10.1 (ADR-029): miembros de sitio y paginas solo para miembros.
+  MEMBER_MANAGE: "member.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -179,6 +181,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.MODERATION_APPEAL,
     description: "Ver las medidas de moderación aplicadas al negocio (advertencia, sitio despublicado, suspensión) y apelarlas (F9.9c, ADR-028 §7).",
   },
+  {
+    key: PERMISSIONS.MEMBER_MANAGE,
+    description: "Invitar, revocar y quitar a los miembros de un sitio y decidir qué páginas son solo para miembros (F10.1, ADR-029).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -231,6 +237,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.REPORT_COMMENT,
     // Quien responde por el negocio es quien puede apelar una medida de moderacion (F9.9c).
     PERMISSIONS.MODERATION_APPEAL,
+    PERMISSIONS.MEMBER_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -261,6 +268,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.REPORT_SHARE,
     PERMISSIONS.REPORT_COMMENT,
     PERMISSIONS.MODERATION_APPEAL,
+    PERMISSIONS.MEMBER_MANAGE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y

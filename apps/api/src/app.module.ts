@@ -20,6 +20,7 @@ import { PagesModule } from "./modules/pages/pages.module.js";
 import { PublicAnalyticsModule } from "./modules/public-analytics/public-analytics.module.js";
 import { PublicFormsModule } from "./modules/public-forms/public-forms.module.js";
 import { ModerationModule } from "./modules/moderation/moderation.module.js";
+import { MembersModule } from "./modules/members/members.module.js";
 import { PublicLinksModule } from "./modules/public-links/public-links.module.js";
 import { PublicSitesModule } from "./modules/public-sites/public-sites.module.js";
 import { QrCodesModule } from "./modules/qr-codes/qr-codes.module.js";
@@ -73,6 +74,7 @@ import { PageCampaignsModule } from "./modules/page-campaigns/page-campaigns.mod
     PublicSitesModule,
     PublicFormsModule,
     ModerationModule,
+    MembersModule,
     PublicAnalyticsModule,
     PublicLinksModule,
     SupportModule,

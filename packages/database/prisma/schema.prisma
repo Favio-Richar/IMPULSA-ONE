@@ -245,6 +245,7 @@ model Organization {
   reportRuns          ReportRun[]
   reportComments      ReportComment[]
   abuseReports        AbuseReport[]
+  siteMembers         SiteMember[]
   agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
@@ -841,6 +842,7 @@ model Site {
   pageCampaigns       PageCampaign[]
   newsletterConfirmations NewsletterConfirmation[]
   abuseReports        AbuseReport[]
+  members             SiteMember[]
 
   @@index([organizationId])
   @@map("sites")
@@ -914,6 +916,9 @@ model Page {
   // `@impulza/validation`, validado al guardar y otra vez al leer). En vivo, como el tema y las
   // pruebas A/B: no va en la publicación. `null` = sin reglas.
   smartCta   Json?          @map("smart_cta")
+  // F10.1 (ADR-029): solo para miembros del sitio. En vivo (no va en la publicación): activarlo o quitarlo surte efecto al
+  // invalidar la caché, sin republicar. El contenido de una página así NUNCA viaja en la respuesta pública cacheada.
+  membersOnly Boolean       @default(false) @map("members_only")
   // Borrado lógico (F2.3): borrar una página no puede destruir su historial de versiones — es
   // trabajo del usuario (CLAUDE.md). La purga definitiva es una operación aparte y explícita.
   deletedAt  DateTime?      @map("deleted_at") @db.Timestamptz(6)
@@ -2918,4 +2923,66 @@ model AbuseReport {
   @@index([siteId, status], map: "abuse_reports_site_status_idx")
   @@index([organizationId], map: "abuse_reports_org_idx")
   @@map("abuse_reports")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fase 10 — Versión 2: miembros de sitio y contenido protegido (F10.1, ADR-029).
+// ---------------------------------------------------------------------------------------------
+
+enum SiteMemberStatus {
+  ACTIVE
+  REVOKED
+}
+
+// Persona sin cuenta de panel que accede al contenido protegido de UN sitio. Modelo propio: nunca comparte identidad,
+// sesión ni permisos con `User`/`Membership` (un fallo aquí no puede abrir el panel). Correo en minúsculas.
+model SiteMember {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  siteId         String           @map("site_id") @db.Uuid
+  email          String
+  name           String?
+  status         SiteMemberStatus @default(ACTIVE)
+  lastAccessAt   DateTime?        @map("last_access_at") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site         Site                @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  loginTokens  SiteMemberLoginToken[]
+  sessions     SiteMemberSession[]
+
+  @@unique([siteId, email], map: "site_members_site_email_key")
+  @@index([organizationId])
+  @@map("site_members")
+}
+
+// Enlace mágico de un solo uso. Solo se guarda el SHA-256 del token; vence a los minutos y se marca usado al canjearlo.
+model SiteMemberLoginToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  memberId  String    @map("member_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  member SiteMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@map("site_member_login_tokens")
+}
+
+// Sesión del miembro: solo el hash del token, vencimiento y revocación. Cortar a un miembro revoca sus sesiones.
+model SiteMemberSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  memberId  String    @map("member_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  member SiteMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@map("site_member_sessions")
 }

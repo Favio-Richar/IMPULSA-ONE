@@ -24,6 +24,9 @@ export const publicNavPageResponse = z.object({
   /** Cuándo se publicó la versión vigente — el `lastmod` real de `sitemap.xml` (F2.8), no la
    *  última edición del borrador. */
   publishedAt: isoDateTime,
+  /** F10.1: página solo para miembros. Sigue en el menú (los miembros la buscan ahí) pero no entra en `sitemap.xml`. Opcional: una
+   *  respuesta en caché de antes de F10.1 sigue siendo válida. */
+  membersOnly: z.boolean().optional(),
 });
 
 export const publicSiteResponse = z.object({
@@ -110,6 +113,11 @@ export const publicPageResponse = z.object({
    * publicaron.
    */
   blocks: z.array(publicBlockResponse),
+  /**
+   * F10.1: la página es solo para miembros. En la respuesta pública (cacheable) `blocks` viene VACÍO y el SEO sin
+   * descripción ni imagen: el contenido se pide aparte, con sesión de miembro y sin caché.
+   */
+  membersOnly: z.boolean().optional(),
   /**
    * Smart CTA (F6.6): reglas que cambian la acción principal, con el bloque por su `position`
    * publicada (nunca un id), y el horario del sitio para evaluar "fuera de horario". `apps/web` las

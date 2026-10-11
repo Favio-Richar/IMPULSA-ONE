@@ -6,7 +6,7 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 
 | Historia | Título | Estado |
 |---|---|---|
-| F10.1 | Miembros de sitio y contenido protegido (enlace mágico) | Pendiente |
+| F10.1 | Miembros de sitio y contenido protegido (enlace mágico) | **Hecha** (2026-10-11): API 12/12, suite 74/74 (API 1035), Playwright 4/4; reservas en el detalle |
 | F10.2 | Planes de membresía y cobro recurrente por la cuenta del negocio | Pendiente |
 | F10.3 | Cursos: módulos, lecciones y progreso | Pendiente |
 | F10.4 | Tarjeta digital, vCard y pases de wallet | Pendiente |
@@ -28,6 +28,25 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 5. **Privacidad:** correo solo del sitio, baja/eliminación por el propio miembro, sin datos de otros sitios.
 6. **Pruebas:** enlace de un solo uso y vencimiento, sin enumeración, contenido no filtrado sin sesión, aislamiento entre
    organizaciones y entre sitios, revocación inmediata, Playwright (pedir acceso, entrar, ver contenido, salir).
+
+**Hecha — F10.1 (2026-10-11):**
+
+- **Modelo** (migración reversible `20261011190000_f101_site_members`): `SiteMember` (único `(sitio, correo)`, correo en minúsculas con `CHECK`), `SiteMemberLoginToken` y `SiteMemberSession` (solo el
+  SHA-256 del token), y `Page.members_only` (en vivo, no versionado). Sin relación con `User`. **Atención:** revertir la migración vuelve públicas las páginas restringidas (queda escrito en `down.sql`).
+- **La caché pública nunca lleva el contenido:** una página `membersOnly` se devuelve **sin bloques**, con `robots: noindex_nofollow` y sin descripción ni imagen (se corta antes de resolver bloques, A/B o Smart
+  CTA). El contenido sale solo por `GET /public/sites/:slug/members/pages/:page` con sesión de ESE sitio y `Cache-Control: no-store`. La página sigue en el menú, marcada, y se excluye del `sitemap.xml`.
+- **Acceso sin contraseña:** `POST …/members/access` (misma respuesta para cualquiera: sin enumeración; límite por IP y 3 por correo cada 10 min; el correo se envía sin esperar para que el tiempo no delate), enlace de
+  un solo uso que vence en 15 min y se canjea con un clic (`POST /public/members/verify`, también ante dos canjes simultáneos), sesión de 30 días en cookie `HttpOnly` por sitio.
+- **Corte inmediato:** revocar a un miembro revoca sus sesiones e inutiliza sus enlaces pendientes; además cada petición vuelve a comprobar que el miembro siga activo y el sitio servido (moderación, bloqueo,
+  archivo).
+- **Panel:** `/sitios/:id/miembros` (marcar páginas, alta, búsqueda, filtro, paginación, revocar/reactivar/quitar con borrado de datos). Permiso nuevo `member.manage` (OWNER y ADMIN). Todo auditado, sin correos
+  en la auditoría.
+- **Defecto preexistente corregido de paso:** una cookie de sesión de panel con formato inválido producía un 500; ahora es 401 (`SessionAuthGuard`).
+- **Pruebas:** 6 de validación; 12 de integración (puerta, sesión por sitio, sin enumeración, un solo uso, carrera, revocación, defensa en profundidad, moderación/bloqueo, panel, permisos y aislamiento, tope);
+  3 de proxys de `apps/web`; barrido de aislamiento automático con las rutas nuevas (OpenAPI 310 rutas); **3 mutaciones atrapadas** (sin puerta, enlace reutilizable, sesión sin estado — esta última exigió una
+  prueba nueva); Playwright `miembros.spec.ts` móvil y escritorio.
+- **Reservas honestas:** el alta es solo por invitación del propietario (el alta por compra llega con F10.2); sin límite de miembros por plan (solo el tope técnico de 5000 por sitio); el contenido protegido
+  es por **página**, no por bloque; los correos usan el adaptador de consola hasta que el propietario configure el proveedor real.
 
 ## F10.2 — Planes de membresía y cobro recurrente
 

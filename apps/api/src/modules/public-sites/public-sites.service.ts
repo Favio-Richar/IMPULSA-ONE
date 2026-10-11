@@ -28,7 +28,7 @@ export interface PublicSiteView {
   slug: string;
   theme: { tokens: unknown };
   background: ResolvedSiteBackground | null;
-  pages: Array<{ slug: string; isHome: boolean; publishedAt: Date }>;
+  pages: Array<{ slug: string; isHome: boolean; publishedAt: Date; membersOnly: boolean }>;
   /** Medición de terceros (F7.1, ADR-016): la página la usa solo con consentimiento del visitante. */
   measurement: { ga4MeasurementId: string | null; metaPixelId: string | null };
   /** Modo campaña (F7.7, ADR-022): página que muestra la raíz ahora, o `null` = el inicio. */
@@ -49,6 +49,8 @@ export interface PublicPageView {
   isHome: boolean;
   seo: ResolvedSeo;
   blocks: PublicBlockView[];
+  /** F10.1: solo para miembros. Sin acceso de miembro, `blocks` va vacío y el SEO sin descripción ni imagen. */
+  membersOnly?: boolean;
   /** Smart CTA (F6.6): reglas por posición publicada y horario del sitio. */
   smartCta?: { rules: PublicSmartCtaRule[]; hours: { timeZone: string; weeklyHours: WeeklyHours } | null };
 }
@@ -141,6 +143,7 @@ export class PublicSitesService {
         id: true,
         slug: true,
         isHome: true,
+        membersOnly: true,
         // `lastmod` real de F2.8: cuándo se publicó la versión vigente, no cuándo se editó el
         // borrador por última vez (eso puede ser mucho más reciente que lo que el público ve).
         versions: { orderBy: { versionNumber: "desc" }, take: 1, select: { publishedAt: true } },
@@ -164,6 +167,7 @@ export class PublicSitesService {
           slug: page.slug,
           isHome: page.isHome,
           publishedAt: page.versions[0]?.publishedAt ?? new Date(0),
+          membersOnly: page.membersOnly,
         })),
       measurement: { ga4MeasurementId: site.ga4MeasurementId, metaPixelId: site.metaPixelId },
       homePageSlug: await this.campaignHomeSlug(site.id, campaigns.homePageId),
@@ -182,7 +186,11 @@ export class PublicSitesService {
     return page?.slug ?? null;
   }
 
-  async getPage(siteSlug: string, pageSlug: string): Promise<PublicPageView> {
+  /**
+   * `options.memberAccess` solo lo pasa quien YA validó una sesión de miembro de este sitio (`MembersService`). Sin él, una
+   * página `membersOnly` se devuelve sin contenido: esta respuesta se cachea en `apps/web` y se comparte entre visitantes.
+   */
+  async getPage(siteSlug: string, pageSlug: string, options: { memberAccess?: boolean } = {}): Promise<PublicPageView> {
     const site = await this.getReachableSiteOrThrow(siteSlug);
 
     const page = await this.prisma.page.findFirst({
@@ -211,6 +219,25 @@ export class PublicSitesService {
     }
 
     const snapshot = pageContentSnapshotSchema.parse(version.contentSnapshot);
+
+    // F10.1: el contenido de una página solo para miembros NO sale de acá sin una sesión validada. Se corta ANTES de resolver
+    // bloques, pruebas A/B o Smart CTA: nada de esa página puede llegar a la respuesta cacheable.
+    if (page.membersOnly && !options.memberAccess) {
+      return {
+        slug: page.slug,
+        isHome: page.isHome,
+        membersOnly: true,
+        seo: resolveSeo({
+          site: { name: site.name },
+          page: { slug: page.slug, isHome: page.isHome },
+          seoMeta: { title: snapshot.seoMeta?.title, robots: "noindex_nofollow" },
+          blocks: [],
+          canonicalOverridePath: null,
+          selfPath: this.publicPath(site.slug, page),
+        }),
+        blocks: [],
+      };
+    }
     const now = Date.now();
     const experiments = await this.runningExperiments(page.id);
 
@@ -263,6 +290,7 @@ export class PublicSitesService {
         selfPath: this.publicPath(site.slug, page),
       }),
       blocks,
+      ...(page.membersOnly ? { membersOnly: true } : {}),
     };
   }
 

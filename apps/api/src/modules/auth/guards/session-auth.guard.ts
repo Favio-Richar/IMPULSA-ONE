@@ -5,6 +5,8 @@ import { PRISMA } from "../../../database/prisma.module.js";
 import type { RequestWithUser } from "../../../common/request-with-user.js";
 import { SESSION_COOKIE_NAME } from "../session-cookie.js";
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class SessionAuthGuard implements CanActivate {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
@@ -15,6 +17,11 @@ export class SessionAuthGuard implements CanActivate {
 
     if (typeof sessionId !== "string" || sessionId.length === 0) {
       throw new UnauthorizedException("No hay sesión activa.");
+    }
+
+    // Una cookie con cualquier otra forma (basura, el token de otro sistema) no es una sesión: 401, nunca un 500 de la base.
+    if (!UUID_PATTERN.test(sessionId)) {
+      throw new UnauthorizedException("Sesión inválida o expirada.");
     }
 
     const session = await this.prisma.session.findUnique({

@@ -642,3 +642,10 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 - **Site.moderation_hidden_at** (nulo = visible): despublicación por moderación, reversible, independiente de `status`. Migración reversible `20261011170000_f99a_abuse_reports`.
 - **AbuseReport.status_before_appeal** (F9.9c, nulo salvo en `APPEALED`): estado que tenía el caso al apelar; la medida sigue vigente durante la revisión y las decisiones se toman sobre él. Migración reversible
   `20261011180000_f99c_abuse_appeal`. Permiso nuevo `moderation.appeal` (OWNER y ADMIN).
+
+## 9zk. Miembros de sitio y contenido protegido (F10.1, BACKLOG_FASE_10.md, ADR-029)
+
+- **SiteMember** (`site_members`): `organization_id` y `site_id` (`CASCADE`), `email` (minúsculas, `CHECK`), `name`, `status` (`ACTIVE`|`REVOKED`), `last_access_at`. **Único `(site_id, email)`**. Sin relación con `users`.
+- **SiteMemberLoginToken** (`site_member_login_tokens`): `member_id` (`CASCADE`), `token_hash` (único; el token no se guarda), `expires_at`, `used_at`.
+- **SiteMemberSession** (`site_member_sessions`): `member_id` (`CASCADE`), `token_hash` (único), `expires_at`, `revoked_at`.
+- **Page.members_only** (`false` por defecto): en vivo, no va en la publicación. Migración reversible `20261011190000_f101_site_members` (revertirla vuelve públicas las páginas restringidas). Permiso `member.manage`.

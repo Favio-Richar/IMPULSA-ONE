@@ -63,6 +63,7 @@ export const PERMISSION_MODULES = [
   { module: "reportes", label: "Reportes", actions: [{ permission: "report.share", label: "Compartir informes" }, { permission: "report.comment", label: "Comentar informes" }] },
   { module: "auditoria", label: "Auditoría", actions: [{ permission: "audit.view", label: "Ver y exportar" }] },
   { module: "moderacion", label: "Moderación", actions: [{ permission: "moderation.appeal", label: "Ver y apelar medidas" }] },
+  { module: "miembros", label: "Miembros", actions: [{ permission: "member.manage", label: "Gestionar miembros y páginas protegidas" }] },
   {
     module: "publicacion",
     label: "Aprobación de publicaciones",

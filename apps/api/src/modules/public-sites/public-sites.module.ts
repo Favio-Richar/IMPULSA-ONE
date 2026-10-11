@@ -10,6 +10,6 @@ import { RevalidateWebService } from "./revalidate-web.service.js";
   providers: [PublicSitesService, RevalidateWebService],
   // `PageVersionsService` (módulo `pages`) llama a `RevalidateWebService` después de publicar o
   // restaurar — es quien de verdad sabe cuándo el contenido público cambió.
-  exports: [RevalidateWebService],
+  exports: [RevalidateWebService, PublicSitesService],
 })
 export class PublicSitesModule {}

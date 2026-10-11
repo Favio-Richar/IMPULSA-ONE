@@ -3,12 +3,14 @@ import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { PageBlocks } from "@impulza/blocks-renderer";
 import type { PublicFormResponse } from "@impulza/contracts";
-import { AB_BUCKET_COOKIE, parseAbBucket, themeTokensSchema } from "@impulza/validation";
+import { AB_BUCKET_COOKIE, memberCookieName, parseAbBucket, themeTokensSchema } from "@impulza/validation";
 import { hasExperiments, randomAbBucket, resolveExperimentBlocks } from "../lib/ab";
-import { getBookingAvailable, getPublicForm, getPublicPage, getPublicSite } from "../lib/api";
+import { getBookingAvailable, getMemberPage, getPublicForm, getPublicPage, getPublicSite } from "../lib/api";
 import { applySmartCta, smartCtaNeedsBookings } from "../lib/smart-cta";
 import { AbBucketCookie } from "./ab-bucket-cookie";
 import { AnalyticsTracker } from "./analytics-tracker";
+import { MemberGate } from "./member-gate";
+import { MemberSignOut } from "./member-sign-out";
 import { Measurement } from "./measurement";
 
 /** Todo bloque `contact_form` con un `formId` real, sin duplicados: varios bloques pueden apuntar
@@ -44,15 +46,30 @@ export async function SitePage({
   pageSlug: string;
   utm?: { source: string | null; campaign: string | null };
 }) {
-  const [site, page] = await Promise.all([
+  const [site, publicPage] = await Promise.all([
     getPublicSite(siteSlug),
     getPublicPage(siteSlug, pageSlug),
   ]);
 
   // El layout ya llama a `getPublicSite` y hace `notFound()` si el sitio no existe (deduplicado,
   // no es una segunda petición) — acá solo falta comprobar la página en sí.
-  if (!site || !page) {
+  if (!site || !publicPage) {
     notFound();
+  }
+
+  // F10.1: una página «solo miembros» llega sin bloques en la respuesta cacheada. Con una sesión de miembro válida de este
+  // sitio, el contenido se pide aparte y sin caché; sin ella, se muestra la puerta de acceso. Solo estas páginas leen la cookie:
+  // el resto sigue sin depender de la visita.
+  let page = publicPage;
+  let isMember = false;
+  if (publicPage.membersOnly) {
+    const memberToken = (await cookies()).get(memberCookieName(siteSlug))?.value;
+    const memberPage = memberToken ? await getMemberPage(siteSlug, pageSlug, memberToken) : null;
+    if (!memberPage) {
+      return <MemberGate siteSlug={siteSlug} siteName={site.name} />;
+    }
+    page = memberPage;
+    isMember = true;
   }
 
   const tokens = themeTokensSchema.parse(site.theme.tokens);
@@ -89,6 +106,7 @@ export async function SitePage({
   return (
     <>
       {bucket !== null && storedBucket === null ? <AbBucketCookie bucket={bucket} /> : null}
+      {isMember ? <MemberSignOut siteSlug={siteSlug} /> : null}
       <AnalyticsTracker siteSlug={siteSlug} pageSlug={page.slug} />
       <PageBlocks
         blocks={blocks}

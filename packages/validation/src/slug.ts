@@ -56,6 +56,8 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "campanas",
   // Reporte de abuso (F9.9d): `/reportar/:siteSlug` es una ruta fija de apps/web.
   "reportar",
+  // Acceso de miembros (F10.1): `/miembros/:token` es una ruta fija de apps/web.
+  "miembros",
   // Superficies propias de la plataforma.
   "admin",
   "app",

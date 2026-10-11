@@ -31,7 +31,8 @@ export async function GET(_request: Request, { params }: Params): Promise<Respon
     return new Response(null, { status: 404 });
   }
 
-  const entries = site.pages.map((page) => {
+  // F10.1: una página solo para miembros no se anuncia a los buscadores (su contenido no es público).
+  const entries = site.pages.filter((page) => !page.membersOnly).map((page) => {
     const path = page.isHome ? `/${site.slug}` : `/${site.slug}/${page.slug}`;
     const loc = new URL(path, env.PUBLIC_WEB_BASE_URL).toString();
     return `  <url>\n    <loc>${escapeXml(loc)}</loc>\n    <lastmod>${page.publishedAt}</lastmod>\n  </url>`;

@@ -20,6 +20,7 @@ import { env } from "../../env.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
+import { BrandProfileService } from "../brand-profile/brand-profile.service.js";
 import { EMAIL_ADAPTER } from "../auth/email-adapter.token.js";
 import { permissionsOfMembership } from "../organizations/team-permissions.js";
 import {
@@ -96,6 +97,7 @@ export class PublishApprovalService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditService: AuditService,
     @Inject(EMAIL_ADAPTER) private readonly email: EmailAdapter,
+    private readonly brandProfileService: BrandProfileService,
   ) {}
 
   // ---- la compuerta (la usan publicar y restaurar) -----------------------------------------------------------------
@@ -459,7 +461,10 @@ export class PublishApprovalService {
         (request.requestComment ? `\nComentario: ${request.requestComment}\n` : "") +
         `\nRevísala y apruébala o recházala en: ${env.APP_BASE_URL.replace(/\/$/, "")}/aprobaciones`;
       for (const approver of approvers) {
-        await this.email.send({ to: approver.user.email, subject: `Solicitud de publicación: ${request.page.slug}`, text });
+        // Es un aviso para el equipo del negocio: lleva la marca de su agencia (con la cabecera legal) si la tiene activa (F9.7b).
+        await this.email.send(
+          await this.brandProfileService.brandEmail(organizationId, { to: approver.user.email, subject: `Solicitud de publicación: ${request.page.slug}`, text }, "team"),
+        );
       }
     } catch (error) {
       logger.error("publish-approval: no se pudo avisar a quienes aprueban", { error: error instanceof Error ? error.message : String(error) });
@@ -475,11 +480,13 @@ export class PublishApprovalService {
           ? `Tu solicitud para la página «${request.page.slug}» fue aprobada. Ya puedes publicarla desde el editor.`
           : `Tu solicitud para la página «${request.page.slug}» fue rechazada.`) +
         (request.reviewComment ? `\n\nComentario: ${request.reviewComment}` : "");
-      await this.email.send({
-        to: request.requestedBy.email,
-        subject: approved ? `Aprobada: ${request.page.slug}` : `Rechazada: ${request.page.slug}`,
-        text,
-      });
+      await this.email.send(
+        await this.brandProfileService.brandEmail(
+          request.organizationId,
+          { to: request.requestedBy.email, subject: approved ? `Aprobada: ${request.page.slug}` : `Rechazada: ${request.page.slug}`, text },
+          "team",
+        ),
+      );
     } catch (error) {
       logger.error("publish-approval: no se pudo avisar a quien pidió", { error: error instanceof Error ? error.message : String(error) });
     }

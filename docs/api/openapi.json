@@ -54839,12 +54839,16 @@
                         "footerText": {
                           "nullable": true,
                           "type": "string"
+                        },
+                        "platformName": {
+                          "type": "string"
                         }
                       },
                       "required": [
                         "agencyOrganizationId",
                         "agencyName",
-                        "footerText"
+                        "footerText",
+                        "platformName"
                       ],
                       "additionalProperties": false
                     }

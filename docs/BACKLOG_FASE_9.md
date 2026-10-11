@@ -469,6 +469,17 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
 - **Reservas honestas:** el favicon y el título de la pestaña del panel siguen siendo los de la plataforma; las pantallas de acceso (login) y el dominio propio llegan con F9.7d/e; el remitente y la cabecera legal
   de los correos con F9.7b; el color se aplica a los controles principales del panel (no a todo el sistema de diseño).
 
+#### F9.7b — Correos con la marca de la agencia (criterio 4) — hecha (2026-10-11)
+
+- **Cabecera legal mínima**, generada en el único lugar que arma los correos de marca (`brandEmail`): cuando en la marca interviene una agencia, el texto plano y el HTML dicen «Este correo lo envía <agencia> a
+  través de <plataforma>» y el mensaje lleva las cabeceras `X-Sent-On-Behalf-Of` y `X-Sent-Via` (solo ASCII, sin saltos de línea: el nombre de la agencia no puede inyectar cabeceras). El pie de la agencia aparece en el HTML.
+- **Remitente:** `senderEmail` solo viene de un dominio **verificado** (`WhiteLabelBrandRow.senderEmail`, que completa el cargador; hoy siempre `null`). Sin él, el correo sale con el remitente de la plataforma y el nombre
+  de la agencia visible. Y aunque el dominio esté verificado, solo firma la agencia lo que lleva **su** nombre: si el nombre es el del negocio, el remitente de la agencia no se usa.
+- **Dónde aplica hoy:** lo que el negocio envía a su público (por la cascada `customer`; API y worker) y los avisos de aprobación de publicaciones al equipo del cliente (cascada `team`). Los correos de plataforma a
+  la organización (cobros, acceso, soporte) conservan la marca de la plataforma a propósito.
+- **Pruebas:** reglas puras de remitente y cabecera legal (incluida inyección de cabeceras) y una de integración del aviso con y sin marca blanca; verificadas contra el código roto.
+- **Reserva:** el dominio verificado llega con F9.7d; hasta entonces `senderEmail` es siempre `null`.
+
 ---
 
 ### F9.8 — Reportes por cliente

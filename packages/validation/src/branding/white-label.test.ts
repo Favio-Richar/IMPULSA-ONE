@@ -13,6 +13,7 @@ const agency: WhiteLabelBrandRow = {
   footerText: "Hecho con Estudio Norte",
   agencyName: "Estudio Norte SpA",
   agencyOrganizationId: "11111111-1111-4111-8111-111111111111",
+  senderEmail: null,
 };
 
 describe("cascada con marca blanca (F9.7a)", () => {
@@ -28,7 +29,12 @@ describe("cascada con marca blanca (F9.7a)", () => {
     expect(resolved.displayName).toBe("Estudio Norte");
     expect(resolved.primaryColor).toBe("#0f6f6b");
     expect(resolved.logoLightUrl).toBe("https://cdn.example.test/norte.png");
-    expect(resolved.whiteLabel).toEqual({ agencyOrganizationId: agency.agencyOrganizationId, agencyName: "Estudio Norte SpA", footerText: "Hecho con Estudio Norte" });
+    expect(resolved.whiteLabel).toEqual({
+      agencyOrganizationId: agency.agencyOrganizationId,
+      agencyName: "Estudio Norte SpA",
+      footerText: "Hecho con Estudio Norte",
+      platformName: DEFAULT_PLATFORM_BRAND_ROW.name,
+    });
   });
 
   it("para el público del negocio: la marca del negocio manda; la de la agencia solo completa lo que falta", () => {
@@ -98,3 +104,25 @@ describe("nombres y pie", () => {
     expect(setClientWhiteLabelSchema.safeParse({ enabled: "yes" }).success).toBe(false);
   });
 });
+
+describe("remitente de la marca blanca (F9.7b)", () => {
+  const verified = { ...agency, senderEmail: "hola@estudionorte.test" };
+
+  it("sin dominio verificado, el remitente es el de la plataforma (el correo del cargador es null) y el nombre de la agencia queda visible", () => {
+    const resolved = cascadeBrand(null, DEFAULT_PLATFORM_BRAND_ROW, agency, "team");
+    expect(resolved.senderEmail).toBeNull();
+    expect(resolved.senderName).toBe("Estudio Norte");
+  });
+
+  it("con dominio verificado, firma la agencia en lo que lleva SU nombre", () => {
+    expect(cascadeBrand(null, DEFAULT_PLATFORM_BRAND_ROW, verified, "team").senderEmail).toBe("hola@estudionorte.test");
+    expect(cascadeBrand(null, DEFAULT_PLATFORM_BRAND_ROW, verified, "customer").senderEmail).toBe("hola@estudionorte.test");
+  });
+
+  it("si el nombre que firma es el del negocio, el remitente de la agencia no se usa aunque esté verificado", () => {
+    expect(cascadeBrand(business, DEFAULT_PLATFORM_BRAND_ROW, verified, "customer").senderEmail).toBeNull();
+    // Hacia el equipo del cliente sí manda la agencia.
+    expect(cascadeBrand(business, DEFAULT_PLATFORM_BRAND_ROW, verified, "team").senderEmail).toBe("hola@estudionorte.test");
+  });
+});
+

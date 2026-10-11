@@ -23,6 +23,17 @@ function textToHtml(text: string): string {
     .join("");
 }
 
+/** Valor de cabecera seguro: solo ASCII imprimible (sin tildes), sin saltos de línea y acotado. */
+function headerValue(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^\x20-\x7e]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 100);
+}
+
 /**
  * Correo que **una organización** envía a sus propios clientes (confirmaciones de reserva, pedidos,
  * newsletter, secuencias, campañas): firma con el nombre de su marca y, en la versión HTML, encabezado
@@ -48,10 +59,25 @@ export function brandEmail<T extends BrandableEmail>(
   }<span style="font-size:18px;font-weight:bold;color:#1f2933;vertical-align:middle">${name}</span></div>`;
 
   const contact = brand.contactEmail ? ` · ${escapeHtml(brand.contactEmail)}` : "";
-  const footer = `<div style="margin-top:20px;padding-top:12px;border-top:1px solid #e4e7eb;font-size:12px;color:#52606d">Enviado por ${name}${contact}</div>`;
+  // Cabecera legal mínima (ADR-028 §5, F9.7b): si en la marca interviene una agencia, el correo lo dice. Evita la suplantación: quien lo
+  // recibe sabe que lo envía la agencia a través de la plataforma, no la plataforma ni un tercero con su nombre.
+  const via = brand.whiteLabel;
+  const legal = via ? `Este correo lo envía ${via.agencyName} a través de ${via.platformName}.` : null;
+  const agencyFooter = via?.footerText ? `<div style="margin-top:6px;font-size:12px;color:#52606d">${escapeHtml(via.footerText)}</div>` : "";
+  const footer =
+    `<div style="margin-top:20px;padding-top:12px;border-top:1px solid #e4e7eb;font-size:12px;color:#52606d">Enviado por ${name}${contact}</div>` +
+    agencyFooter +
+    (legal ? `<div style="margin-top:6px;font-size:11px;color:#52606d" data-legal="agency">${escapeHtml(legal)}</div>` : "");
+
+  const headers = via
+    ? { ...(message.headers ?? {}), "X-Sent-On-Behalf-Of": headerValue(via.agencyName), "X-Sent-Via": headerValue(via.platformName) }
+    : message.headers;
 
   return {
     ...message,
+    // Con la agencia detrás, el texto plano también lleva la línea legal (no todos los clientes de correo muestran el HTML).
+    text: legal ? `${message.text}\n\n--\n${legal}` : message.text,
+    ...(headers ? { headers } : {}),
     from: { name: brand.senderName, email: brand.senderEmail },
     html: `<div style="max-width:600px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#1f2933">${header}<div style="padding:16px 0">${body}</div>${footer}</div>`,
   };

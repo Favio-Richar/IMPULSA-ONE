@@ -262,6 +262,47 @@ describe("Marca blanca de la agencia (e2e) — F9.7a / ADR-028", () => {
     await prisma.agencyClient.update({ where: { id: client.relationId }, data: { status: "ENDED" } });
   });
 
+  it("los avisos al equipo del cliente salen con el nombre de la agencia y su cabecera legal, y sin agencia salen como siempre (F9.7b)", async () => {
+    const ctx = await agency("Agencia Correo SpA");
+    const client = await newClient(ctx, "Cliente Correo");
+    await ctx.owner.agent.put(ctx.url).set(CSRF).send({ displayName: unique("Marca Correo"), footerText: "Pie de la agencia" }).expect(200);
+
+    // Dos personas del cliente: quien pide publicar (editor) y quien aprueba (administrador); la agencia exige aprobación.
+    const approver = await person("aprobador");
+    const editor = await person("editor");
+    const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: "ADMIN" } });
+    const editorRole = await prisma.role.findUniqueOrThrow({ where: { name: "EDITOR" } });
+    await prisma.membership.createMany({
+      data: [
+        { userId: approver.userId, organizationId: client.orgId, roleId: adminRole.id, status: "ACTIVE", acceptedAt: new Date() },
+        { userId: editor.userId, organizationId: client.orgId, roleId: editorRole.id, status: "ACTIVE", acceptedAt: new Date() },
+      ],
+    });
+    await prisma.organization.update({ where: { id: client.orgId }, data: { requirePublishApproval: true } });
+    const site = await prisma.site.create({ data: { organizationId: client.orgId, name: "Sitio Correo", slug: unique("wl-e2e-site"), status: "DRAFT" } });
+    const page = await prisma.page.create({ data: { siteId: site.id, slug: "inicio", position: 0, isHome: true } });
+    await prisma.block.create({ data: { pageId: page.id, type: "text", position: 0, configSchemaVersion: 1, versions: { create: { versionNumber: 1, config: { html: "<p>Hola</p>", alignment: "left" } } } } });
+    const request = () => editor.agent.post(`/api/v1/organizations/${client.orgId}/sites/${site.id}/pages/${page.id}/publish-requests`).set(CSRF).send({});
+
+    // Sin marca blanca activa: el aviso sale con el nombre del negocio/plataforma y sin cabecera de agencia.
+    emailAdapter.messages.length = 0;
+    await request().expect(201);
+    const plain = emailAdapter.messages.find((message) => message.to === approver.email)!;
+    expect(plain.text).not.toContain("Este correo lo envía");
+    expect(plain.headers?.["X-Sent-On-Behalf-Of"]).toBeUndefined();
+
+    // Con la marca blanca activa, el siguiente aviso lleva a la agencia detrás y la cabecera legal; el remitente real sigue siendo el de la plataforma.
+    await ctx.owner.agent.put(`${ctx.url}/clients/${client.relationId}`).set(CSRF).send({ enabled: true }).expect(200);
+    await prisma.publishRequest.updateMany({ where: { pageId: page.id, status: "PENDING" }, data: { status: "CANCELLED" } });
+    emailAdapter.messages.length = 0;
+    await request().expect(201);
+    const branded = emailAdapter.messages.find((message) => message.to === approver.email)!;
+    expect(branded.text).toContain("Este correo lo envía Agencia Correo SpA a través de");
+    expect(branded.html).toContain("Pie de la agencia");
+    expect(branded.headers).toMatchObject({ "X-Sent-On-Behalf-Of": "Agencia Correo SpA" });
+    expect(branded.from?.email ?? null).toBeNull();
+  });
+
   it("aislamiento: otra agencia ni otra persona ven ni usan la marca blanca ajena", async () => {
     const a = await agency();
     const b = await agency();

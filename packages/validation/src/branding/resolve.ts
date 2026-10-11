@@ -30,6 +30,11 @@ export interface WhiteLabelBrandRow extends OrganizationBrandRow {
   /** Nombre de la agencia que presta la marca (para la cabecera legal de los correos, F9.7b). */
   agencyName: string;
   agencyOrganizationId: string;
+  /**
+   * Remitente propio de la agencia. **Solo** viene con un dominio verificado (ADR-028 §5); mientras no exista uno, `null` y el correo
+   * sale con el remitente de la plataforma y el nombre de la agencia visible. Lo completa el cargador, nunca la configuración a mano.
+   */
+  senderEmail: string | null;
 }
 
 export type BrandAudience = "team" | "customer";
@@ -57,7 +62,7 @@ export interface ResolvedBrand {
   /** Siempre `null` hasta que haya un dominio verificado: un remitente propio lo exige (ADR-028 §5, F9.7b). */
   senderEmail: string | null;
   /** Si la marca viene (en parte) de una agencia con marca blanca: de cuál (pie y cabecera legal). */
-  whiteLabel: { agencyOrganizationId: string; agencyName: string; footerText: string | null } | null;
+  whiteLabel: { agencyOrganizationId: string; agencyName: string; footerText: string | null; platformName: string } | null;
 }
 
 export const DEFAULT_PLATFORM_BRAND_ROW: PlatformBrandRow = {
@@ -86,6 +91,8 @@ export function cascadeBrand(
     first(...order.map((row) => (row ? row[key] : null)));
 
   const displayName = pick("displayName") ?? platform.name;
+  // El remitente propio de la agencia solo firma lo que lleva SU nombre: si el nombre es el del negocio, el correo es del negocio.
+  const nameIsAgencys = whiteLabel !== null && whiteLabel.displayName !== null && displayName === whiteLabel.displayName && pick("displayName") === whiteLabel.displayName;
   const usesWhiteLabel =
     whiteLabel !== null && order.some((row) => row === whiteLabel) &&
     (["displayName", "logoLightUrl", "logoDarkUrl", "faviconUrl", "primaryColor", "secondaryColor"] as const).some(
@@ -100,10 +107,10 @@ export function cascadeBrand(
     secondaryColor: pick("secondaryColor") ?? platform.secondaryColor,
     contactEmail: pick("contactEmail"),
     senderName: displayName,
-    senderEmail: null,
+    senderEmail: nameIsAgencys && whiteLabel ? whiteLabel.senderEmail : null,
     whiteLabel:
       usesWhiteLabel && whiteLabel
-        ? { agencyOrganizationId: whiteLabel.agencyOrganizationId, agencyName: whiteLabel.agencyName, footerText: whiteLabel.footerText }
+        ? { agencyOrganizationId: whiteLabel.agencyOrganizationId, agencyName: whiteLabel.agencyName, footerText: whiteLabel.footerText, platformName: platform.name }
         : null,
   };
 }

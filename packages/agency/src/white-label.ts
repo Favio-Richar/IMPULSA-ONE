@@ -55,5 +55,7 @@ export async function loadWhiteLabelBrand(db: Db, clientOrganizationId: string):
     footerText: settings.footerText,
     agencyName: relation.agencyOrganization.name,
     agencyOrganizationId: relation.agencyOrganization.id,
+    // Un remitente propio exige un dominio verificado (ADR-028 §5); hasta que F9.7d lo aporte, el correo sale con el remitente de la plataforma.
+    senderEmail: null,
   };
 }

@@ -89,9 +89,9 @@ export class BrandProfileService {
    * Correo que la organización envía a sus propios clientes, con su marca (F9.2 criterio 4b). Si resolver la
    * marca falla, el correo sale tal cual: la marca nunca debe impedir una confirmación de reserva.
    */
-  async brandEmail<T extends BrandableEmail>(organizationId: string, message: T): Promise<T> {
+  async brandEmail<T extends BrandableEmail>(organizationId: string, message: T, audience: BrandAudience = "customer"): Promise<T> {
     try {
-      return brandEmail(message, await this.resolveBrand(organizationId));
+      return brandEmail(message, await this.resolveBrand(organizationId, audience));
     } catch (error) {
       logger.warn("brand-profile: no se pudo aplicar la marca a un correo; se envía sin ella", {
         organizationId,

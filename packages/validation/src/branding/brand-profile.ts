@@ -105,7 +105,7 @@ export const resolvedBrandSchema = z.object({
   senderEmail: z.string().nullable(),
   /** Si parte de la marca viene de una agencia con marca blanca: cuál (F9.7a). */
   whiteLabel: z
-    .object({ agencyOrganizationId: z.string(), agencyName: z.string(), footerText: z.string().nullable() })
+    .object({ agencyOrganizationId: z.string(), agencyName: z.string(), footerText: z.string().nullable(), platformName: z.string() })
     .nullable(),
 });
 

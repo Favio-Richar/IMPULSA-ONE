@@ -71,3 +71,33 @@ export const publicReportResponse = z.object({
 });
 export type PublicReportResponse = z.infer<typeof publicReportResponse>;
 
+
+// ---- informes programados (F9.8c) ------------------------------------------------------------------------------------------
+
+export const reportScheduleResponse = z.object({
+  id: uuid,
+  frequency: z.enum(["WEEKLY", "MONTHLY"]),
+  recipients: z.array(z.string()),
+  label: z.string().nullable(),
+  enabled: z.boolean(),
+  /** La siguiente ocurrencia programada (UTC). */
+  nextRunAt: isoDateTime,
+  lastRunAt: isoDateTime.nullable(),
+  createdAt: isoDateTime,
+});
+export type ReportScheduleResponse = z.infer<typeof reportScheduleResponse>;
+
+export const reportRunResponse = z.object({
+  id: uuid,
+  scheduleId: uuid,
+  period,
+  scheduledFor: isoDateTime,
+  status: z.enum(["PENDING", "SENT", "FAILED"]),
+  attempts: z.number().int().nonnegative(),
+  /** Código del último fallo (`SEND_FAILED`, `PLAN_LIMIT`…), nunca un mensaje con datos internos. */
+  errorCode: z.string().nullable(),
+  deliveredCount: z.number().int().nonnegative(),
+  sentAt: isoDateTime.nullable(),
+  createdAt: isoDateTime,
+});
+export type ReportRunResponse = z.infer<typeof reportRunResponse>;

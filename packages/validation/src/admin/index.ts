@@ -18,6 +18,7 @@ export const BULLMQ_QUEUES = [
   "newsletter-maintenance",
   "page-campaign-boundaries",
   "payment-accounts-refresh",
+  "report-schedules",
   "sequence-dispatch",
 ] as const;
 

@@ -46,6 +46,7 @@ const QUEUE_DISPLAY_NAMES: Record<BullMqQueueName, string> = {
   "page-campaign-boundaries": "Vigencia de campañas de página",
   "payment-accounts-refresh": "Renovación de cuentas de pago",
   "sequence-dispatch": "Despacho de secuencias de email",
+  "report-schedules": "Informes programados",
 };
 
 @Injectable()

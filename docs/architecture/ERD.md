@@ -620,3 +620,10 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 
 - **ReportShareLink** (`report_share_links`): `organization_id` (`CASCADE`), `token_hash` (SHA-256 único; **el token nunca se guarda**), `label`, `period_from`/`period_to` (fijos), `expires_at` (obligatorio, hasta 90 días),
   `revoked_at`, `created_by_id` (`SET NULL`), `last_accessed_at`, `access_count`. Sin IP ni agente de usuario. Migración reversible `20261011140000_f98b_report_share_links`. Permiso nuevo `report.share` (OWNER, ADMIN, AGENCY_DELEGATE).
+
+## 9zh. Informes programados (F9.8c, BACKLOG_FASE_9.md, ADR-028 §6)
+
+- **ReportSchedule** (`report_schedules`): `organization_id` (`CASCADE`), `frequency` (`WEEKLY` lunes | `MONTHLY` día 1; 08:00 UTC), `recipients` (hasta 5), `label`, `enabled`, `next_run_at` (siguiente ocurrencia), `last_run_at`,
+  `created_by_id` (`SET NULL`). Máximo 5 por organización.
+- **ReportRun** (`report_runs`): `schedule_id` (`CASCADE`), `organization_id`, `period_from`/`period_to`, `scheduled_for`, `status` (`PENDING`|`SENT`|`FAILED`), `attempts`, `error_code`, `delivered_to` (a quién ya llegó; evita duplicar en
+  un reintento), `sent_at`. **`UNIQUE (schedule_id, period_from)`** es la idempotencia: un periodo se envía una sola vez. Migración reversible `20261011150000_f98c_report_schedules`.

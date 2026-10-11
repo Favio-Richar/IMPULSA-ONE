@@ -2505,4 +2505,32 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("F9.8c Informes programados: nunca se cruzan (ADR-002, ADR-028 §6)", () => {
+    it("B no lista, crea, pausa ni borra las programaciones de A, y no ve sus ejecuciones", async () => {
+      const schedule = await prisma.reportSchedule.create({
+        data: { organizationId: orgA.id, frequency: "WEEKLY", recipients: ["iso@example.test"], nextRunAt: new Date(Date.now() + 86_400_000) },
+      });
+      await prisma.reportRun.create({
+        data: { scheduleId: schedule.id, organizationId: orgA.id, periodFrom: "2026-01-05", periodTo: "2026-01-11", scheduledFor: new Date("2026-01-12T08:00:00Z") },
+      });
+      try {
+        const base = `/api/v1/organizations/${orgA.id}/reports/schedules`;
+        await orgB.ownerAgent.get(base).expect(403);
+        await orgB.ownerAgent.get(`${base}/runs`).expect(403);
+        await orgB.ownerAgent.post(base).set(CSRF_HEADERS).send({ frequency: "WEEKLY", recipients: ["x@example.test"] }).expect(403);
+        await orgB.ownerAgent.patch(`${base}/${schedule.id}`).set(CSRF_HEADERS).send({ enabled: false }).expect(403);
+        await orgB.ownerAgent.delete(`${base}/${schedule.id}`).set(CSRF_HEADERS).expect(403);
+        // Por su propia ruta, el id de A no existe.
+        const own = `/api/v1/organizations/${orgB.id}/reports/schedules`;
+        await orgB.ownerAgent.patch(`${own}/${schedule.id}`).set(CSRF_HEADERS).send({ enabled: false }).expect(404);
+        await orgB.ownerAgent.delete(`${own}/${schedule.id}`).set(CSRF_HEADERS).expect(404);
+        expect((await orgB.ownerAgent.get(own).expect(200)).body).toEqual([]);
+        expect((await orgB.ownerAgent.get(`${own}/runs`).expect(200)).body).toEqual([]);
+        expect((await prisma.reportSchedule.findUniqueOrThrow({ where: { id: schedule.id } })).enabled).toBe(true);
+      } finally {
+        await prisma.reportSchedule.deleteMany({ where: { id: schedule.id } });
+      }
+    });
+  });
+
 });

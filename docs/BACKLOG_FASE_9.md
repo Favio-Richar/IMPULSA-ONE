@@ -559,7 +559,7 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
 - **UI:** «Reportes» en el menú: periodos rápidos y fechas libres, tabla con variaciones, conversión, barras por día, ranking, **Descargar CSV** e **Imprimir** (la hoja de impresión oculta menú y controles).
 - **Pruebas:** 5 de integración (cifras conocidas, aislamiento por organización, validación, historial del plan, CSV), reglas puras (9), Playwright móvil/escritorio (`reportes.spec.ts`, capturas en `f98/`) y 4 mutaciones
   atrapadas tras fortalecer dos pruebas que no las atrapaban (la mezcla de ventas entre organizaciones se comprobaba con «no contiene un número», que una suma puede esquivar: ahora son valores exactos).
-- **Pendiente de F9.8:** **c** programación semanal/mensual por cola con correo, **d** comentarios de la agencia y respuesta del cliente.
+- **Pendiente de F9.8:** **d** comentarios de la agencia y respuesta del cliente.
 
 #### F9.8b — Enlace compartido de solo lectura (criterio 5) — hecha (2026-10-11)
 
@@ -574,6 +574,22 @@ instante; (f) las filas guardan correos de terceros y se borran a los 60 días.
 - **Pruebas:** 5 de integración (`report-share.e2e.test.ts`) + redacción en logs + caso transversal de aislamiento + Playwright móvil/escritorio (enlace sin sesión, CSV, revocación y 404 de uno inventado; capturas `02`–`04`)
   y 6 mutaciones atrapadas (revocado, vencido, filtro por organización, organización bloqueada, token en claro, tope).
 - **Reservas honestas:** el enlace fija el periodo (si termina hoy, cada visita ve cifras actualizadas hasta hoy); no hay contraseña opcional ni lista de correos permitidos; el CSV público lleva los mismos totales del informe.
+
+#### F9.8c — Programación semanal/mensual por cola (criterio 4) — hecha (2026-10-11)
+
+- **Reglas puras** (`@impulza/validation`, `reports/schedule.ts`): `nextScheduledRun` (lunes o día 1, 08:00 UTC, estrictamente futura), `scheduledPeriod` (semana lunes–domingo o mes calendario anterior, **depende de la fecha programada, no de cuándo
+  se procesa**) y `latestOccurrence` (tras un atraso largo salta a la más reciente: no inunda).
+- **Idempotencia:** el avance de `next_run_at` se reclama con un `updateMany` condicionado al valor leído y la ejecución se inserta con `ON CONFLICT DO NOTHING` sobre `UNIQUE (schedule_id, period_from)`; tres ticks simultáneos crean una sola.
+- **Cola BullMQ** `report-schedules` (consumidor en la API, porque el informe se arma con sus servicios): trabajo repetible `tick` cada minuto + una tarea por ejecución con `jobId` = ejecución, 3 intentos con espera exponencial; las PENDING
+  sin avanzar más de 5 min se reencolan. Apagable con `REPORT_SCHEDULER_DISABLED=true`; no arranca bajo Vitest.
+- **Registro de cada ejecución** (`GET …/reports/schedules/runs`): estado, intentos, `errorCode` sin datos internos y a cuántos llegó. Fallos definitivos sin reintento: `PLAN_LIMIT`, `ORGANIZATION_INACTIVE`, `SCHEDULE_DISABLED`.
+  Un reintento solo envía a quien faltaba (`delivered_to`).
+- **Correo:** marca resuelta del negocio (audiencia `customer`, F9.2/F9.7), cifras agregadas y, con `WEB_APP_URL`, un enlace de solo lectura (14 días) generado por el sistema.
+- **API:** `GET/POST …/reports/schedules`, `PATCH/DELETE …/:scheduleId`, `GET …/schedules/runs` (permiso `report.share`; auditado: `report.schedule_created/updated/deleted`). Pausar/reanudar: al reanudar no se envía lo atrasado.
+- **UI:** «Informes programados» en Reportes (crear, pausar/reanudar, eliminar con confirmación, últimos envíos; estados de carga/vacío/error; se oculta a quien no tiene `report.share`).
+- **Pruebas:** 10 de integración (`report-schedule.e2e.test.ts`: CRUD y auditoría, tope, una ejecución por periodo, concurrencia, envío con enlace que sirve el mismo periodo, reintentos sin duplicar, atraso largo, pausa, fallos definitivos,
+  aislamiento) + caso transversal de aislamiento + 12 de reglas puras + Playwright móvil/escritorio; 3 mutaciones atrapadas (sin `delivered_to`, plan reintentable, reanudar sin mover la fecha).
+- **Reservas honestas:** el consumidor vive en la API (si se escala, conviene extraerlo a `@impulza/reports` para el worker); la hora es UTC fija (sin zona horaria por negocio); la cola no figura aún en el panel de operaciones de admin.
 
 ---
 

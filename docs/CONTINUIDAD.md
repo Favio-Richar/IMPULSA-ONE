@@ -5,7 +5,7 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-11) — **F9.6 y F9.7 completas** (a–e) en la rama `fase-9/f9-6-equipo-avanzado`; siguiente: F9.8 (reportes por cliente)
+## 0. RETOMAR AQUÍ (2026-10-11) — **F9.6 y F9.7 completas** (a–e); **F9.8 a, b y c hechas** en la rama `fase-9/f9-6-equipo-avanzado`; siguiente: F9.8d (comentarios de la agencia en el informe y respuesta del cliente)
 
 **F9.7 (marca blanca) cerrada en cinco commits** (detalle y reservas en `docs/BACKLOG_FASE_9.md`): **a** marca blanca de la agencia + cascada con dos audiencias (`team`/`customer`, ver nota en ADR-028); **b** correos con cabecera
 legal y remitente solo con dominio verificado; **c** plantillas privadas (`Template.organizationId`); **d** dominio del portal de la agencia (`AgencyDomain`, `GET /public/portal/:hostname`); **e** portal del cliente (rol
@@ -14,7 +14,7 @@ legal y remitente solo con dominio verificado; **c** plantillas privadas (`Templ
 `ASSIGNABLE_ROLES`; si un módulo usa `PlatformBrandingService` debe importar `PlatformBrandingModule`; `prisma generate` exige parar API y worker; los scripts de edición con `\n` escritos por heredoc se rompen: usar la
 herramienta Write.
 
-**Siguiente — F9.8 (reportes por cliente):** leer el criterio en `docs/BACKLOG_FASE_9.md` (informe por cliente con comparación de periodos, programación por cola, exportación CSV/imprimible, enlace compartido con token de
+**F9.8 (reportes por cliente):** hechas a (informe con comparación y CSV), b (enlace compartido con token que no se guarda) y c (programación por cola BullMQ en la API, idempotente por `(schedule, periodo)`; `prisma generate` exige parar API **y** worker, y un proceso `tsx` huérfano del worker puede retener la DLL). **Siguiente: F9.8d.** Criterio original: leer el criterio en `docs/BACKLOG_FASE_9.md` (informe por cliente con comparación de periodos, programación por cola, exportación CSV/imprimible, enlace compartido con token de
 alta entropía y vencimiento). Cuando exista, abrir `reports` en la lista permitida del visor (`clientViewerVerdict`). **No tocar `apps/api` mientras corre su suite completa.**
 
 **Claude desarrolla F9.3 a F9.10 él mismo** (decisión de Favio, 2026-10-03), una historia por vez, con commit por historia y **push de la rama al cerrar cada una** (autorizado por Favio; ver memoria «Subir cada fase a GitHub»). Fusionar a `master` sigue pidiendo confirmación.

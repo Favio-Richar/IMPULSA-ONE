@@ -166,6 +166,7 @@ model User {
   publishRequestsReviewed PublishRequest[]  @relation("PublishRequestReviewer")
   publishRequestComments  PublishRequestComment[]
   reportShareLinksCreated ReportShareLink[]
+  reportSchedulesCreated  ReportSchedule[]
   contactsAssigned     Contact[]           @relation("ContactAssignee")
   supportTicketsOpened SupportTicket[]     @relation("SupportTicketOpener")
   supportMessages      SupportMessage[]    @relation("SupportMessageAuthor")
@@ -239,6 +240,8 @@ model Organization {
   agencyDomains       AgencyDomain[]
   privateTemplates    Template[]
   reportShareLinks    ReportShareLink[]
+  reportSchedules     ReportSchedule[]
+  reportRuns          ReportRun[]
   agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
   usageCounters       UsageCounter[]
@@ -2775,4 +2778,62 @@ model ReportShareLink {
 
   @@index([organizationId, createdAt])
   @@map("report_share_links")
+}
+
+enum ReportScheduleFrequency {
+  WEEKLY
+  MONTHLY
+}
+
+enum ReportRunStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+/// Informe programado (F9.8c): se envia por correo cada semana o cada mes. `nextRunAt` es la siguiente ocurrencia programada (UTC).
+model ReportSchedule {
+  id             String                  @id @default(uuid()) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  frequency      ReportScheduleFrequency
+  recipients     String[]
+  label          String?
+  enabled        Boolean                 @default(true)
+  nextRunAt      DateTime                @map("next_run_at") @db.Timestamptz(6)
+  lastRunAt      DateTime?               @map("last_run_at") @db.Timestamptz(6)
+  createdById    String?                 @map("created_by_id") @db.Uuid
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  runs         ReportRun[]
+
+  @@index([organizationId, createdAt])
+  @@index([enabled, nextRunAt])
+  @@map("report_schedules")
+}
+
+/// Una ejecucion de una programacion. `@@unique([scheduleId, periodFrom])` es la idempotencia: un periodo se envia una sola vez.
+model ReportRun {
+  id             String          @id @default(uuid()) @db.Uuid
+  scheduleId     String          @map("schedule_id") @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  periodFrom     String          @map("period_from")
+  periodTo       String          @map("period_to")
+  scheduledFor   DateTime        @map("scheduled_for") @db.Timestamptz(6)
+  status         ReportRunStatus @default(PENDING)
+  attempts       Int             @default(0)
+  errorCode      String?         @map("error_code")
+  deliveredTo    String[]        @map("delivered_to")
+  sentAt         DateTime?       @map("sent_at") @db.Timestamptz(6)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  schedule     ReportSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, periodFrom])
+  @@index([organizationId, createdAt])
+  @@index([status, createdAt])
+  @@map("report_runs")
 }

@@ -7,6 +7,7 @@ import { Printer } from "lucide-react";
 import { useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import { getReport, getReportCsv } from "../../lib/api/reports";
+import { ScheduledReports } from "./scheduled-reports";
 import { ShareLinks } from "./share-links";
 
 const number = new Intl.NumberFormat("es-CL");
@@ -123,6 +124,7 @@ export function ReportView({ organizationId }: { organizationId: string }): Reac
         <>
           <ReportBody report={query.data} onCsv={() => csv.mutate()} csvLoading={csv.isPending} csvError={csv.isError} />
           <ShareLinks organizationId={organizationId} from={applied.from} to={applied.to} />
+          <ScheduledReports organizationId={organizationId} />
         </>
       )}
     </div>

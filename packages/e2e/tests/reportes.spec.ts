@@ -41,6 +41,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  await prisma.reportSchedule.deleteMany({ where: { organizationId: fixture.organizationId } });
   await prisma.analyticsAggregate.deleteMany({ where: { organizationId: fixture.organizationId, period: { in: [day(-200), day(-207)] }, siteId: fixture.siteId } });
   await prisma.organization.update({ where: { id: fixture.organizationId }, data: { planId: previousPlanId } });
   await prisma.$disconnect();
@@ -166,5 +167,62 @@ test("un enlace compartido se abre sin sesión, muestra el informe sin datos per
   fake.pathname = `/informe/${"A".repeat(43)}`;
   expect((await probe.get(fake.toString())).status()).toBe(404);
   await probe.dispose();
+});
+
+test("un informe programado se crea, se pausa, se reanuda, muestra su registro de envíos y se elimina", async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  const project = testInfo.project.name;
+  await prisma.reportSchedule.deleteMany({ where: { organizationId: fixture.organizationId } });
+  await page.addInitScript((id) => {
+    window.localStorage.setItem("impulza-active-org", JSON.stringify({ state: { activeOrganizationId: id }, version: 0 }));
+  }, fixture.organizationId);
+  await page.goto("/reportes");
+  const panel = page.getByTestId("scheduled-reports");
+  await expect(panel).toBeVisible();
+  await expect(panel.getByText("Aún no programaste ningún informe.")).toBeVisible();
+
+  // Validación del servidor: sin destinatarios no se programa.
+  await panel.getByRole("button", { name: "Programar" }).click();
+  await expect(panel.getByRole("alert")).toBeVisible();
+
+  await panel.getByLabel("Frecuencia").selectOption("MONTHLY");
+  await panel.getByLabel("Destinatarios (máximo 5, separados por coma)").fill(`cliente-${project}@example.test, socio-${project}@example.test`);
+  await panel.getByLabel("Nombre (opcional)").fill(`Mensual ${project}`);
+  await panel.getByRole("button", { name: "Programar" }).click();
+
+  const row = panel.getByTestId("report-schedule").first();
+  await expect(row).toContainText(`Mensual ${project}`);
+  await expect(row).toContainText(`cliente-${project}@example.test`);
+  await expect(row).toContainText("Próximo envío");
+  await expectNoHorizontalScroll(page);
+  await capture(page, `05-programados-${project}.png`);
+
+  await row.getByRole("button", { name: "Pausar" }).click();
+  await expect(panel.getByTestId("report-schedule").first()).toHaveAttribute("data-enabled", "false");
+  await expect(panel.getByTestId("report-schedule").first()).toContainText("En pausa");
+  await panel.getByTestId("report-schedule").first().getByRole("button", { name: "Reanudar" }).click();
+  await expect(panel.getByTestId("report-schedule").first()).toHaveAttribute("data-enabled", "true");
+
+  // El registro de envíos viene del servidor: se siembra una ejecución enviada y otra fallida.
+  const schedule = await prisma.reportSchedule.findFirstOrThrow({ where: { organizationId: fixture.organizationId } });
+  await prisma.reportRun.createMany({
+    data: [
+      { scheduleId: schedule.id, organizationId: fixture.organizationId, periodFrom: "2026-08-01", periodTo: "2026-08-31", scheduledFor: new Date("2026-09-01T08:00:00Z"), status: "SENT", attempts: 1, deliveredTo: ["a@example.test", "b@example.test"], sentAt: new Date("2026-09-01T08:00:05Z") },
+      { scheduleId: schedule.id, organizationId: fixture.organizationId, periodFrom: "2026-07-01", periodTo: "2026-07-31", scheduledFor: new Date("2026-08-01T08:00:00Z"), status: "FAILED", attempts: 3, errorCode: "SEND_FAILED" },
+    ],
+  });
+  await page.reload();
+  const runs = page.getByTestId("report-runs");
+  await expect(runs.locator('[data-status="SENT"]')).toContainText("2 destinatarios");
+  await expect(runs.locator('[data-status="FAILED"]')).toContainText("No se pudo enviar el correo.");
+  await expectNoHorizontalScroll(page);
+  await capture(page, `06-programados-registro-${project}.png`);
+
+  // Eliminar pide confirmación.
+  const target = page.getByTestId("report-schedule").first();
+  await target.getByRole("button", { name: "Eliminar" }).click();
+  await target.getByRole("button", { name: "Sí" }).click();
+  await expect(page.getByTestId("report-schedule")).toHaveCount(0);
+  await expect(panel.getByText("Aún no programaste ningún informe.")).toBeVisible();
 });
 

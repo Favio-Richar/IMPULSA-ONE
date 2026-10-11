@@ -32,6 +32,7 @@ import {
 import { LEGAL_DOCUMENT_VERSIONS, type StartCheckoutInput } from "@impulza/validation";
 import { isUniqueViolation } from "../../common/prisma-errors.js";
 import { PRISMA } from "../../database/prisma.module.js";
+import { subscriptionGateway } from "./subscription-gateway.js";
 import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
@@ -700,7 +701,7 @@ export class BillingService {
       planCode: subscription.plan.code,
       planName: subscription.plan.name,
       status: subscription.status,
-      gateway: subscription.gateway,
+      gateway: subscription.gateway ? subscriptionGateway(subscription.gateway) : null,
       cycle: subscription.billingCycle,
       amount: priceFor(subscription.plan, subscription.billingCycle),
       currency: subscription.plan.currency,

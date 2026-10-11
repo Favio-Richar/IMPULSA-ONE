@@ -1,7 +1,7 @@
 "use client";
 
 import type { PublicMembershipPlanResponse } from "@impulza/contracts";
-import { MEMBERSHIP_PERIOD_LABELS } from "@impulza/validation";
+import { MEMBERSHIP_PERIOD_LABELS, MEMBERSHIP_PROVIDER_LABELS, type MembershipCheckoutProvider } from "@impulza/validation";
 import { useState } from "react";
 import { formatPlanPrice } from "../lib/plan-price";
 
@@ -18,11 +18,14 @@ export function MemberGate({
   siteSlug,
   siteName,
   plans = [],
+  providers = [],
   inactive = false,
 }: {
   siteSlug: string;
   siteName: string;
   plans?: PublicMembershipPlanResponse[];
+  /** Medios de pago que el negocio tiene conectados. */
+  providers?: MembershipCheckoutProvider[];
   inactive?: boolean;
 }) {
   const [email, setEmail] = useState("");
@@ -110,12 +113,46 @@ export function MemberGate({
         )}
       </div>
 
-      {plans.length > 0 ? <PlanList siteSlug={siteSlug} plans={plans} renew={inactive} /> : null}
+      {plans.length > 0 && providers.length > 0 ? <PlanList siteSlug={siteSlug} plans={plans} providers={providers} renew={inactive} /> : null}
     </section>
   );
 }
 
-function PlanList({ siteSlug, plans, renew }: { siteSlug: string; plans: PublicMembershipPlanResponse[]; renew: boolean }) {
+/**
+ * Mercado Pago se abre con un GET; Webpay Plus exige un POST con el token (`token_ws`): se arma un formulario efímero y se envía. El
+ * comprador sale del sitio hacia la pasarela; al volver lo recibe «Tu membresía».
+ */
+function goToCheckout(url: string, method: "GET" | "POST", fields: Record<string, string>): void {
+  if (method === "GET") {
+    window.location.assign(url);
+    return;
+  }
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = url;
+  for (const [name, value] of Object.entries(fields)) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+    form.append(input);
+  }
+  document.body.append(form);
+  form.submit();
+}
+
+function PlanList({
+  siteSlug,
+  plans,
+  providers,
+  renew,
+}: {
+  siteSlug: string;
+  plans: PublicMembershipPlanResponse[];
+  providers: MembershipCheckoutProvider[];
+  renew: boolean;
+}) {
+  const [provider, setProvider] = useState<MembershipCheckoutProvider>(providers[0] ?? "MERCADO_PAGO");
   const [selected, setSelected] = useState<string | null>(plans.length === 1 ? (plans[0]?.id ?? null) : null);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -136,16 +173,21 @@ function PlanList({ siteSlug, plans, renew }: { siteSlug: string; plans: PublicM
     setPending(true);
     setError(null);
     try {
-      const body: Record<string, string> = { email: email.trim() };
+      const body: Record<string, string> = { email: email.trim(), provider };
       if (name.trim().length > 0) body.name = name.trim();
       const response = await fetch(`/api/members/checkout/${encodeURIComponent(siteSlug)}/${encodeURIComponent(selected)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const payload = (await response.json().catch(() => null)) as { checkoutUrl?: string; message?: string } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        checkoutUrl?: string;
+        method?: "GET" | "POST";
+        fields?: Record<string, string>;
+        message?: string;
+      } | null;
       if (response.ok && payload?.checkoutUrl) {
-        window.location.assign(payload.checkoutUrl);
+        goToCheckout(payload.checkoutUrl, payload.method === "POST" ? "POST" : "GET", payload.fields ?? {});
         return;
       }
       setError(payload?.message ?? "No pudimos iniciar el pago. Intenta de nuevo en un momento.");
@@ -177,6 +219,17 @@ function PlanList({ siteSlug, plans, renew }: { siteSlug: string; plans: PublicM
           </label>
         ))}
       </fieldset>
+      {providers.length > 1 ? (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium text-[var(--site-color-foreground)]">¿Cómo quieres pagar?</legend>
+          {providers.map((option) => (
+            <label key={option} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-[var(--site-color-border)] p-3 text-sm text-[var(--site-color-foreground)] has-[:checked]:border-[var(--site-color-primary)]">
+              <input type="radio" name="medio" value={option} checked={provider === option} onChange={() => setProvider(option)} className="size-4" />
+              {MEMBERSHIP_PROVIDER_LABELS[option]}
+            </label>
+          ))}
+        </fieldset>
+      ) : null}
       <div className="flex flex-col gap-1.5">
         <label htmlFor="compra-correo" className="text-sm font-medium text-[var(--site-color-foreground)]">
           Tu correo
@@ -215,10 +268,10 @@ function PlanList({ siteSlug, plans, renew }: { siteSlug: string; plans: PublicM
         disabled={pending}
         className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[var(--site-color-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--site-color-primary-foreground)] focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60"
       >
-        {pending ? "Un momento…" : "Pagar con Mercado Pago"}
+        {pending ? "Un momento…" : `Pagar con ${provider === "WEBPAY_PLUS" ? "Webpay" : "Mercado Pago"}`}
       </button>
       <p className="text-xs text-[var(--site-color-muted-foreground)]">
-        El pago es por un periodo y no se renueva solo: puedes renovar cuando quieras y los días se suman. El dinero va directo a la cuenta del negocio.
+        El pago es por un periodo y no se renueva solo: puedes renovar cuando quieras y los días se suman. El dinero va directo a la cuenta del negocio; la plataforma de pago no entrega tu tarjeta a este sitio.
       </p>
     </form>
   );

@@ -68,8 +68,8 @@ export async function SitePage({
     const result = memberToken ? await getMemberPage(siteSlug, pageSlug, memberToken) : ({ kind: "none" } as const);
     if (result.kind !== "ok") {
       // F10.2: si el negocio vende membresías, la puerta ofrece comprarlas (o renovarlas).
-      const { plans } = await getMemberPlans(siteSlug);
-      return <MemberGate siteSlug={siteSlug} siteName={site.name} plans={plans} inactive={result.kind === "inactive"} />;
+      const { plans, providers } = await getMemberPlans(siteSlug);
+      return <MemberGate siteSlug={siteSlug} siteName={site.name} plans={plans} providers={providers} inactive={result.kind === "inactive"} />;
     }
     page = result.page;
     isMember = true;

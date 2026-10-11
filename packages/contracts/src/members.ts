@@ -61,8 +61,10 @@ export const membershipPlanResponse = z.object({
 
 export const membershipPlanListResponse = z.object({
   plans: z.array(membershipPlanResponse),
-  /** `false` si el negocio no conectó su cuenta de Mercado Pago o la plataforma no tiene el cobro configurado. */
+  /** `false` si el negocio no conectó Mercado Pago ni Webpay Plus, o la plataforma no tiene el cobro configurado. */
   checkoutAvailable: z.boolean(),
+  /** Medios de pago conectados por el negocio. */
+  providers: z.array(z.enum(["MERCADO_PAGO", "WEBPAY_PLUS"])),
   /** Cobrado en el mes en curso (hora de Santiago), por moneda. Solo pagos aprobados y sin devolución total. */
   monthRevenue: z.array(z.object({ currency: z.string(), amount: z.number().int(), purchases: z.number().int() })),
 });
@@ -79,10 +81,22 @@ export const publicMembershipPlanResponse = z.object({
 
 export const publicMembershipPlansResponse = z.object({
   checkoutAvailable: z.boolean(),
+  /** Medios de pago que el negocio tiene conectados (Mercado Pago y/o Webpay Plus). */
+  providers: z.array(z.enum(["MERCADO_PAGO", "WEBPAY_PLUS"])),
   plans: z.array(publicMembershipPlanResponse),
 });
 
-export const membershipCheckoutResponse = z.object({ checkoutUrl: z.string(), statusUrl: z.string() });
+/**
+ * Dónde pagar. Con Mercado Pago basta ir a `checkoutUrl` (GET). Con Webpay Plus el navegador debe hacer POST a `checkoutUrl` con
+ * `fields` (`token_ws`): por eso `method` y `fields`.
+ */
+export const membershipCheckoutResponse = z.object({
+  checkoutUrl: z.string(),
+  statusUrl: z.string(),
+  provider: z.enum(["MERCADO_PAGO", "WEBPAY_PLUS"]),
+  method: z.enum(["GET", "POST"]),
+  fields: z.record(z.string(), z.string()),
+});
 
 /** «Tu membresía»: el enlace del correo (o el regreso de Mercado Pago) es la credencial. Sin correo ni datos del pago. */
 export const publicMembershipStatusResponse = z.object({
@@ -97,6 +111,7 @@ export const publicMembershipStatusResponse = z.object({
   periodEnd: isoDateTime.nullable(),
 });
 
+export type MembershipCheckoutResponse = z.infer<typeof membershipCheckoutResponse>;
 export type MembershipPlanResponse = z.infer<typeof membershipPlanResponse>;
 export type MembershipPlanListResponse = z.infer<typeof membershipPlanListResponse>;
 export type PublicMembershipPlanResponse = z.infer<typeof publicMembershipPlanResponse>;

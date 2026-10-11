@@ -7,6 +7,12 @@ import type { MercadoPagoCheckoutLike } from "@impulza/payments";
  */
 export const MERCADO_PAGO_CHECKOUT = Symbol("MERCADO_PAGO_CHECKOUT");
 
+/**
+ * Webpay Plus del negocio (F10.2c, ADR-030): cliente HTTP sin estado; las credenciales son las de CADA negocio y se pasan en cada llamada.
+ * Las pruebas lo reemplazan por `FakeWebpayPlus` (`@impulza/payments`).
+ */
+export const WEBPAY_PLUS_GATEWAY = Symbol("WEBPAY_PLUS_GATEWAY");
+
 export interface CheckoutConfig {
   checkout: MercadoPagoCheckoutLike;
   webhookSecret: string;

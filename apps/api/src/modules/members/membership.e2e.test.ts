@@ -220,7 +220,7 @@ describe("Membresías con cobro por la cuenta del negocio (e2e) — F10.2 / ADR-
     const created = await plan(b);
     const publicPlans = await request(http).get(`/api/v1/public/sites/${b.siteSlug}/members/plans`).expect(200);
     publicMembershipPlansResponse.parse(publicPlans.body);
-    expect(publicPlans.body).toEqual({ checkoutAvailable: false, plans: [] });
+    expect(publicPlans.body).toEqual({ checkoutAvailable: false, providers: [], plans: [] });
     await startCheckout(b.siteSlug, created.id, { email: `a${unique("x")}${DOMAIN}` }).expect(503);
     expect((await b.owner.agent.get(b.plans).expect(200)).body.checkoutAvailable).toBe(false);
   });

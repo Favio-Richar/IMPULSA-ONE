@@ -659,3 +659,7 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   `checkout_expires_at`), `status_token_hash` (único; el enlace no se guarda), `provider_payment_id` (único, asignado de forma condicional), `payment_status`, `refunded_amount`, y `paid_at`/`period_start`/`period_end`
   (`CHECK`: una compra pagada tiene periodo). Migración reversible `20261011200000_f102_membership_plans`.
 - **MembershipPurchase.renewal_reminder_sent_at / expiry_notice_sent_at** (F10.2b): marcas de «ya se avisó», reclamadas de forma condicional. Migración reversible `20261011210000_f102b_membership_notices`.
+- **PaymentGateway.WEBPAY_PLUS** (F10.2c): valor nuevo; `payment_accounts` guarda con `provider = WEBPAY_PLUS` el código de comercio (`provider_user_id`, no secreto) y la llave cifrada (`access_token_encrypted`);
+  `expires_at` queda en 2999 para que ningún proceso de renovación la considere. Una suscripción de Impulza nunca usa este valor.
+- **MembershipPurchase.payment_provider / provider_order_ref** (F10.2c): con qué pasarela se pagó y, en Webpay Plus, la orden de compra (única) que se compara al confirmar; `checkout_preference_id` guarda el token de la
+  transacción. Migraciones `20261011220000_f102c_webpay_plus_account` y `20261011230000_f102c_membership_provider`.

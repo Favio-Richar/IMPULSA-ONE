@@ -22554,6 +22554,16 @@
                     "checkoutAvailable": {
                       "type": "boolean"
                     },
+                    "providers": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "MERCADO_PAGO",
+                          "WEBPAY_PLUS"
+                        ]
+                      }
+                    },
                     "plans": {
                       "type": "array",
                       "items": {
@@ -22601,6 +22611,7 @@
                   },
                   "required": [
                     "checkoutAvailable",
+                    "providers",
                     "plans"
                   ],
                   "additionalProperties": false
@@ -22669,6 +22680,13 @@
                   "name": {
                     "type": "string",
                     "maxLength": 240
+                  },
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "MERCADO_PAGO",
+                      "WEBPAY_PLUS"
+                    ]
                   }
                 },
                 "required": [
@@ -22692,11 +22710,34 @@
                     },
                     "statusUrl": {
                       "type": "string"
+                    },
+                    "provider": {
+                      "type": "string",
+                      "enum": [
+                        "MERCADO_PAGO",
+                        "WEBPAY_PLUS"
+                      ]
+                    },
+                    "method": {
+                      "type": "string",
+                      "enum": [
+                        "GET",
+                        "POST"
+                      ]
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
                     }
                   },
                   "required": [
                     "checkoutUrl",
-                    "statusUrl"
+                    "statusUrl",
+                    "provider",
+                    "method",
+                    "fields"
                   ],
                   "additionalProperties": false
                 }
@@ -22945,6 +22986,16 @@
                     "checkoutAvailable": {
                       "type": "boolean"
                     },
+                    "providers": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "MERCADO_PAGO",
+                          "WEBPAY_PLUS"
+                        ]
+                      }
+                    },
                     "monthRevenue": {
                       "type": "array",
                       "items": {
@@ -22976,6 +23027,7 @@
                   "required": [
                     "plans",
                     "checkoutAvailable",
+                    "providers",
                     "monthRevenue"
                   ],
                   "additionalProperties": false
@@ -24650,12 +24702,44 @@
                         "expiresAt"
                       ],
                       "additionalProperties": false
+                    },
+                    "webpayPlus": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "CONNECTED",
+                            "ERROR"
+                          ]
+                        },
+                        "liveMode": {
+                          "type": "boolean"
+                        },
+                        "commerceCodeLast4": {
+                          "type": "string"
+                        },
+                        "connectedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "liveMode",
+                        "commerceCodeLast4",
+                        "connectedAt"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
                     "available",
                     "canManage",
-                    "mercadoPago"
+                    "mercadoPago",
+                    "webpayPlus"
                   ],
                   "additionalProperties": false
                 }
@@ -24754,6 +24838,154 @@
           }
         ],
         "summary": "Empezar a conectar Mercado Pago",
+        "tags": [
+          "payment-accounts"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/payment-accounts/webpay-plus": {
+      "put": {
+        "description": "Código de comercio, llave secreta y ambiente. Se comprueban contra Transbank antes de guardar (una transacción de prueba que no se cobra). La llave queda cifrada y nunca se devuelve (F10.2c, ADR-030). Solo el dueño.",
+        "operationId": "PaymentAccountsController_connectWebpay",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "commerceCode": {
+                    "type": "string",
+                    "pattern": "^\\d{12}$"
+                  },
+                  "apiKeySecret": {
+                    "type": "string",
+                    "minLength": 32,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9]+$"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "enum": [
+                      "integration",
+                      "production"
+                    ]
+                  }
+                },
+                "required": [
+                  "commerceCode",
+                  "apiKeySecret",
+                  "environment"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Conectada."
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "422": {
+            "description": "`WEBPAY_CREDENTIALS_REJECTED` o `WEBPAY_UNAVAILABLE`."
+          },
+          "429": {
+            "description": "Más de 10 peticiones en 600 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Conectar Webpay Plus con las credenciales del negocio",
+        "tags": [
+          "payment-accounts"
+        ]
+      },
+      "delete": {
+        "description": "Borra las credenciales guardadas. Queda auditado.",
+        "operationId": "PaymentAccountsController_disconnectWebpay",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Desconectada."
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "`NOT_CONNECTED`."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Desconectar Webpay Plus",
         "tags": [
           "payment-accounts"
         ]

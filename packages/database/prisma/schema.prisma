@@ -87,6 +87,8 @@ enum SubscriptionStatus {
 enum PaymentGateway {
   WEBPAY_ONECLICK
   MERCADO_PAGO
+  // F10.2c (ADR-030): Webpay Plus con las credenciales del propio negocio (cobra a SUS clientes). Solo se usa en `PaymentAccount`.
+  WEBPAY_PLUS
 }
 
 enum BillingCycle {
@@ -3055,6 +3057,10 @@ model MembershipPurchase {
   currency             String
   periodDays           Int                      @map("period_days")
   status               MembershipPurchaseStatus @default(PENDING)
+  // Con que pasarela se pago (F10.2c, ADR-030). En Webpay Plus, `checkoutPreferenceId` guarda el token de la transaccion y
+  // `providerOrderRef` la orden de compra (la que Transbank confirma y que se compara al volver el comprador).
+  paymentProvider      PaymentGateway           @default(MERCADO_PAGO) @map("payment_provider")
+  providerOrderRef     String?                  @unique @map("provider_order_ref")
   checkoutPreferenceId String?                  @map("checkout_preference_id")
   checkoutUrl          String?                  @map("checkout_url")
   checkoutExpiresAt    DateTime?                @map("checkout_expires_at") @db.Timestamptz(6)

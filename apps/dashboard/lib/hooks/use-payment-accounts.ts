@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { disconnectMercadoPago, getPaymentAccounts, startMercadoPagoConnect } from "../api/payment-accounts";
+import {
+  connectWebpayPlus,
+  disconnectMercadoPago,
+  disconnectWebpayPlus,
+  getPaymentAccounts,
+  startMercadoPagoConnect,
+  type ConnectWebpayPlusInput,
+} from "../api/payment-accounts";
 
 function accountsKey(organizationId: string) {
   return ["payment-accounts", organizationId] as const;
@@ -12,6 +19,22 @@ export function usePaymentAccounts(organizationId: string) {
 
 export function useStartMercadoPagoConnect(organizationId: string) {
   return useMutation({ mutationFn: () => startMercadoPagoConnect(organizationId) });
+}
+
+export function useConnectWebpayPlus(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ConnectWebpayPlusInput) => connectWebpayPlus(organizationId, body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: accountsKey(organizationId) }),
+  });
+}
+
+export function useDisconnectWebpayPlus(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => disconnectWebpayPlus(organizationId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: accountsKey(organizationId) }),
+  });
 }
 
 export function useDisconnectMercadoPago(organizationId: string) {

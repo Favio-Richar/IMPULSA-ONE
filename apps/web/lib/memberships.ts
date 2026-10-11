@@ -21,7 +21,7 @@ export async function getMembershipStatus(token: string, paymentId?: string): Pr
 
 /** Planes que se pueden comprar ahora. Sin caché (el negocio puede cambiarlos o conectar su cuenta). Ante cualquier falla, sin planes. */
 export async function getMemberPlans(siteSlug: string): Promise<PublicMembershipPlansResponse> {
-  const none: PublicMembershipPlansResponse = { checkoutAvailable: false, plans: [] };
+  const none: PublicMembershipPlansResponse = { checkoutAvailable: false, providers: [], plans: [] };
   const response = await fetchUpstream("member-plans", `${env.API_BASE_URL}/public/sites/${encodeURIComponent(siteSlug)}/members/plans`, {
     headers: { "X-Requested-With": "impulza-one" },
     cache: "no-store",

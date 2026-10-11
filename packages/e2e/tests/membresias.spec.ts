@@ -50,7 +50,7 @@ test("el negocio crea, cambia de precio, archiva y restaura un plan", async ({ p
   await page.goto(`/sitios/${fixture.siteId}/miembros`);
   await expect(page.getByRole("heading", { name: "Planes de membresía" })).toBeVisible();
   // Sin cuenta de Mercado Pago conectada, se le explica qué falta y no se promete nada.
-  await expect(page.getByRole("status").filter({ hasText: "conecta tu cuenta de Mercado Pago" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "conecta Mercado Pago o Webpay Plus" })).toBeVisible();
 
   const form = page.getByRole("form", { name: "Crear plan" });
   await form.getByRole("button", { name: "Crear plan" }).click();

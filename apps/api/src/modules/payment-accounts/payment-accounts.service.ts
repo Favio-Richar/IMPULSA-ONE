@@ -3,13 +3,23 @@ import { Inject, Injectable, NotFoundException, UnprocessableEntityException } f
 import { decryptSecret, encryptSecret } from "@impulza/auth";
 import type { PaymentAccountConnectResponse, PaymentAccountsResponse } from "@impulza/contracts";
 import { MembershipStatus, PaymentAccountStatus, PERMISSIONS, type PrismaClient } from "@impulza/database";
-import { codeChallengeFor, createCodeVerifier, type MercadoPagoOAuthLike, PaymentGatewayError } from "@impulza/payments";
+import {
+  codeChallengeFor,
+  createCodeVerifier,
+  type MercadoPagoOAuthLike,
+  newWebpayPlusBuyOrder,
+  PaymentGatewayError,
+  type WebpayPlusCredentials,
+  type WebpayPlusLike,
+} from "@impulza/payments";
+import type { ConnectWebpayPlusDto } from "@impulza/validation";
 import type { Redis } from "ioredis";
 import { PRISMA } from "../../database/prisma.module.js";
 import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { REDIS } from "../../redis/redis.module.js";
 import { AuditService } from "../audit/audit.service.js";
+import { WEBPAY_PLUS_GATEWAY } from "./checkout.tokens.js";
 import { MERCADO_PAGO_OAUTH } from "./payment-accounts.tokens.js";
 
 /** El `state` de OAuth vive 10 minutos y se usa una sola vez. */
@@ -37,6 +47,7 @@ export class PaymentAccountsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     @Inject(REDIS) private readonly redis: Redis,
     @Inject(MERCADO_PAGO_OAUTH) private readonly oauth: MercadoPagoOAuthLike | null,
+    @Inject(WEBPAY_PLUS_GATEWAY) private readonly webpayPlus: WebpayPlusLike,
     private readonly audit: AuditService,
   ) {}
 
@@ -49,8 +60,9 @@ export class PaymentAccountsService {
   }
 
   async status(organizationId: string, roleId: string): Promise<PaymentAccountsResponse> {
-    const [account, grant] = await Promise.all([
+    const [account, webpay, grant] = await Promise.all([
       this.prisma.paymentAccount.findUnique({ where: { organizationId_provider: { organizationId, provider: "MERCADO_PAGO" } } }),
+      this.prisma.paymentAccount.findUnique({ where: { organizationId_provider: { organizationId, provider: "WEBPAY_PLUS" } } }),
       this.prisma.rolePermission.findFirst({ where: { roleId, permission: { key: PERMISSIONS.PAYMENTS_CONNECT } } }),
     ]);
     return {
@@ -58,6 +70,9 @@ export class PaymentAccountsService {
       canManage: grant !== null,
       mercadoPago: account
         ? { status: account.status, liveMode: account.liveMode, connectedAt: account.connectedAt.toISOString(), expiresAt: account.expiresAt.toISOString() }
+        : null,
+      webpayPlus: webpay
+        ? { status: webpay.status, liveMode: webpay.liveMode, commerceCodeLast4: webpay.providerUserId.slice(-4), connectedAt: webpay.connectedAt.toISOString() }
         : null,
     };
   }
@@ -124,6 +139,79 @@ export class PaymentAccountsService {
     });
     logger.info("payments: cuenta de Mercado Pago conectada", { organizationId: pending.organizationId, liveMode: tokens.liveMode });
     return "conectada";
+  }
+
+  /**
+   * Conecta Webpay Plus con las credenciales del propio negocio (F10.2c, ADR-030). Se valida de verdad: se crea una transacción de
+   * prueba en Transbank (no se paga ni se cobra nada y vence sola); si las credenciales no sirven, no se guarda nada. La llave queda
+   * cifrada y nunca vuelve a salir por la API ni por los registros.
+   */
+  async connectWebpayPlus(organizationId: string, userId: string, dto: ConnectWebpayPlusDto): Promise<void> {
+    const credentials: WebpayPlusCredentials = { commerceCode: dto.commerceCode, apiKeySecret: dto.apiKeySecret, environment: dto.environment };
+    try {
+      await this.webpayPlus.create(credentials, {
+        buyOrder: newWebpayPlusBuyOrder(),
+        sessionId: `verificacion-${organizationId.slice(0, 8)}`,
+        amount: 50,
+        returnUrl: `${(env.API_PUBLIC_URL ?? env.APP_BASE_URL).replace(/\/+$/, "")}/api/v1/payments/webpay/verification`,
+      });
+    } catch (error) {
+      const code = error instanceof PaymentGatewayError ? error.code : "unknown";
+      logger.warn("payments: Transbank no aceptó las credenciales de Webpay Plus", { organizationId, code });
+      if (code === "auth_error") {
+        throw new UnprocessableEntityException({ code: "WEBPAY_CREDENTIALS_REJECTED", message: "Transbank no aceptó esas credenciales. Revisa el código de comercio, la llave y el ambiente." });
+      }
+      throw new UnprocessableEntityException({ code: "WEBPAY_UNAVAILABLE", message: "No pudimos comprobar las credenciales con Transbank ahora. Intenta de nuevo en unos minutos." });
+    }
+
+    const data = {
+      providerUserId: dto.commerceCode,
+      accessTokenEncrypted: encryptSecret(dto.apiKeySecret, env.AUTH_ENCRYPTION_KEY),
+      // Webpay Plus no tiene refresh token: se guarda un valor fijo cifrado para respetar la forma de la tabla.
+      refreshTokenEncrypted: encryptSecret("webpay-plus", env.AUTH_ENCRYPTION_KEY),
+      // Las credenciales no vencen solas: fecha lejana para que ningún proceso de renovación las considere.
+      expiresAt: new Date("2999-01-01T00:00:00Z"),
+      liveMode: dto.environment === "production",
+      status: PaymentAccountStatus.CONNECTED,
+      lastError: null,
+      connectedById: userId,
+      connectedAt: new Date(),
+      lastRefreshedAt: null,
+    };
+    await this.prisma.paymentAccount.upsert({
+      where: { organizationId_provider: { organizationId, provider: "WEBPAY_PLUS" } },
+      create: { organizationId, provider: "WEBPAY_PLUS", ...data },
+      update: data,
+    });
+    await this.audit.record({
+      organizationId,
+      actorId: userId,
+      action: "payments.account_connected",
+      targetType: "payment_account",
+      metadata: { provider: "WEBPAY_PLUS", liveMode: data.liveMode },
+    });
+    logger.info("payments: cuenta de Webpay Plus conectada", { organizationId, liveMode: data.liveMode });
+  }
+
+  async disconnectWebpayPlus(organizationId: string, userId: string): Promise<void> {
+    const deleted = await this.prisma.paymentAccount.deleteMany({ where: { organizationId, provider: "WEBPAY_PLUS" } });
+    if (deleted.count === 0) throw new NotFoundException({ code: "NOT_CONNECTED", message: "No hay una cuenta de Webpay Plus conectada." });
+    await this.audit.record({ organizationId, actorId: userId, action: "payments.account_disconnected", targetType: "payment_account", metadata: { provider: "WEBPAY_PLUS" } });
+    logger.info("payments: cuenta de Webpay Plus desconectada", { organizationId });
+  }
+
+  /**
+   * Credenciales para cobrar con Webpay Plus a nombre del negocio, o `null` si no hay cuenta conectada y sana. Solo las usan los
+   * cobros de **esa** organización.
+   */
+  async webpayPlusFor(organizationId: string): Promise<WebpayPlusCredentials | null> {
+    const account = await this.prisma.paymentAccount.findUnique({ where: { organizationId_provider: { organizationId, provider: "WEBPAY_PLUS" } } });
+    if (!account || account.status !== PaymentAccountStatus.CONNECTED) return null;
+    return {
+      commerceCode: account.providerUserId,
+      apiKeySecret: decryptSecret(account.accessTokenEncrypted, env.AUTH_ENCRYPTION_KEY),
+      environment: account.liveMode ? "production" : "integration",
+    };
   }
 
   /** Desconectar: se borran los tokens. Desde ese momento los cobros vuelven a enlaces externos. */

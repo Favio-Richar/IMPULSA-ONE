@@ -13,6 +13,20 @@ export function startMercadoPagoConnect(organizationId: string): Promise<Payment
   return apiFetch<PaymentAccountConnectResponse>(`${accountsPath(organizationId)}/mercadopago/connect`, { method: "POST" });
 }
 
+export interface ConnectWebpayPlusInput {
+  commerceCode: string;
+  apiKeySecret: string;
+  environment: "integration" | "production";
+}
+
+export function connectWebpayPlus(organizationId: string, body: ConnectWebpayPlusInput): Promise<void> {
+  return apiFetch<void>(`${accountsPath(organizationId)}/webpay-plus`, { method: "PUT", body });
+}
+
+export function disconnectWebpayPlus(organizationId: string): Promise<void> {
+  return apiFetch<void>(`${accountsPath(organizationId)}/webpay-plus`, { method: "DELETE" });
+}
+
 export function disconnectMercadoPago(organizationId: string): Promise<void> {
   return apiFetch<void>(`${accountsPath(organizationId)}/mercadopago`, { method: "DELETE" });
 }

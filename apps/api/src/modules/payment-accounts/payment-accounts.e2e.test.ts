@@ -98,7 +98,7 @@ describe("Cuenta de Mercado Pago del negocio (e2e) — F5.8, ADR-013", () => {
 
   it("el dueño conecta su cuenta: PKCE correcto, tokens cifrados, auditado y nunca en las respuestas", async () => {
     const { agent, organizationId } = await createOrg();
-    expect(paymentAccountsResponse.parse((await agent.get(base(organizationId)).expect(200)).body)).toEqual({ available: true, canManage: true, mercadoPago: null });
+    expect(paymentAccountsResponse.parse((await agent.get(base(organizationId)).expect(200)).body)).toEqual({ available: true, canManage: true, mercadoPago: null, webpayPlus: null });
 
     const { state, challenge, redirectUri } = await startConnect(agent, organizationId);
     expect(redirectUri).toMatch(/\/api\/v1\/payments\/mercadopago\/oauth\/callback$/);

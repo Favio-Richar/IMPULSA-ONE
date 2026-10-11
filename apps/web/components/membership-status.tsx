@@ -23,18 +23,18 @@ export function membershipStatusView(status: PublicMembershipStatusResponse): { 
     };
   }
   if (status.paymentStatus && PROCESSING.has(status.paymentStatus)) {
-    return { title: "Pago en revisión", text: "Mercado Pago está procesando tu pago. Te enviaremos el enlace por correo apenas se confirme." };
+    return { title: "Pago en revisión", text: "Tu pago se está procesando. Te enviaremos el enlace por correo apenas se confirme." };
   }
   if (status.paymentStatus === "rejected" || status.paymentStatus === "cancelled") {
     return {
       title: "El pago no se completó",
-      text: status.checkoutUrl ? "Mercado Pago no aprobó el pago. Puedes intentarlo de nuevo con otro medio." : "Mercado Pago no aprobó el pago. Vuelve al sitio para intentarlo de nuevo.",
+      text: status.checkoutUrl ? "El pago no fue aprobado. Puedes intentarlo de nuevo con otro medio." : "El pago no fue aprobado. Vuelve al sitio para intentarlo de nuevo con otra tarjeta u otro medio.",
     };
   }
   if (status.status === "EXPIRED") {
     return { title: "La compra venció", text: "El plazo para pagar terminó. Vuelve al sitio y elige tu plan de nuevo; no se cobró nada." };
   }
-  return { title: "Compra pendiente de pago", text: "Tu compra está reservada. Págala con Mercado Pago para activar tu membresía." };
+  return { title: "Compra pendiente de pago", text: status.checkoutUrl ? "Tu compra está reservada. Págala con Mercado Pago para activar tu membresía." : "Tu compra aún no está pagada. Si cerraste la ventana de pago, vuelve al sitio y elige tu plan de nuevo; no se cobró nada." };
 }
 
 /** «Tu membresía»: lo que ve quien compra al volver de Mercado Pago o con el enlace de su correo. Solo lectura. */

@@ -85,7 +85,7 @@ export function PlansSection({ organizationId, siteId }: { organizationId: strin
         <>
           {!query.data.checkoutAvailable ? (
             <p role="status" className="rounded-md border border-warning/30 bg-warning/5 p-3 text-sm text-foreground">
-              Todavía no puedes vender membresías: conecta tu cuenta de Mercado Pago en{" "}
+              Todavía no puedes vender membresías: conecta Mercado Pago o Webpay Plus en{" "}
               <Link href="/cobros" className="text-primary underline underline-offset-2">
                 Cobros
               </Link>

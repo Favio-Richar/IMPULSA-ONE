@@ -6,6 +6,7 @@ import { CheckCircle2, CircleAlert, ExternalLink, Info, Link2, ShieldCheck, Wall
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
 import { ConfirmButton } from "../../../components/confirm-button";
+import { WebpayPlusCard } from "../../../components/payments/webpay-plus-card";
 import { useActiveOrgStore } from "../../../lib/active-org-store";
 import { billingErrorMessage, formatDate } from "../../../lib/billing-text";
 import { useDisconnectMercadoPago, usePaymentAccounts, useStartMercadoPagoConnect } from "../../../lib/hooks/use-payment-accounts";
@@ -58,14 +59,15 @@ function Cobros({ organizationId }: { organizationId: string }): React.JSX.Eleme
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold text-foreground">Cobros</h1>
         <p className="text-sm text-muted-foreground">
-          Conecta tu cuenta de Mercado Pago para que tus clientes paguen pedidos y señas en tu página. El dinero llega directo a tu cuenta: Impulza One no
-          lo recibe ni cobra comisión por tus ventas.
+          Conecta Mercado Pago, Webpay Plus o ambos para que tus clientes paguen en tu página (membresías ya; pedidos y señas, según lo que tengas conectado). El dinero llega
+          directo a tu cuenta: Impulza One no lo recibe ni cobra comisión por tus ventas.
         </p>
       </div>
 
       {outcome ? <OutcomeBanner outcome={outcome} onDismiss={() => router.replace(pathname)} /> : null}
 
       <MercadoPagoCard organizationId={organizationId} data={accounts.data} />
+      <WebpayPlusCard organizationId={organizationId} data={accounts.data} />
 
       <section aria-labelledby="como-funciona" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
         <h2 id="como-funciona" className="text-base font-semibold text-foreground">

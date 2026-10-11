@@ -56,7 +56,7 @@ export class MembershipPlansService {
     const now = new Date();
     const range = santiagoMonthRange(currentSantiagoMonth());
 
-    const [plans, current, month, available] = await Promise.all([
+    const [plans, current, month, providers] = await Promise.all([
       this.prisma.membershipPlan.findMany({ where: { siteId, organizationId }, orderBy: [{ status: "asc" }, { createdAt: "asc" }] }),
       // Periodos vigentes: el filtro fino (reembolsos) se aplica con la misma regla que el acceso.
       this.prisma.membershipPurchase.findMany({
@@ -67,7 +67,7 @@ export class MembershipPlansService {
         where: { siteId, organizationId, status: "PAID", paidAt: { gte: range.from, lt: range.to } },
         select: { currency: true, amount: true, refundedAmount: true, paymentStatus: true },
       }),
-      this.checkout.checkoutAvailable(organizationId),
+      this.checkout.availableProviders(organizationId),
     ]);
 
     const members = new Map<string, Set<string>>();
@@ -89,7 +89,8 @@ export class MembershipPlansService {
 
     return {
       plans: plans.map((plan) => this.toResponse(plan, members.get(plan.id)?.size ?? 0)),
-      checkoutAvailable: available,
+      checkoutAvailable: providers.length > 0,
+      providers,
       monthRevenue: [...revenue.entries()].map(([currency, row]) => ({ currency, ...row })),
     };
   }

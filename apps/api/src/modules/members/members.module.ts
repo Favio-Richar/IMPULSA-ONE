@@ -8,6 +8,7 @@ import {
   MembershipPaymentWebhookController,
   MembershipPlansController,
   PublicMembershipPlansController,
+  WebpayMembershipReturnController,
   PublicMembershipStatusController,
 } from "./membership.controllers.js";
 import { MembershipCheckoutService } from "./membership-checkout.service.js";
@@ -28,6 +29,7 @@ import { PublicMembersController } from "./public-members.controller.js";
     PublicMembershipPlansController,
     PublicMembershipStatusController,
     MembershipPaymentWebhookController,
+    WebpayMembershipReturnController,
     MembershipPlansController,
     MembersController,
   ],

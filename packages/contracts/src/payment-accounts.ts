@@ -17,6 +17,17 @@ export const paymentAccountsResponse = z.object({
       expiresAt: isoDateTime,
     })
     .nullable(),
+  /** Webpay Plus con las credenciales del propio negocio (ADR-030). Nunca la llave ni el código completo. */
+  webpayPlus: z
+    .object({
+      status: z.enum(["CONNECTED", "ERROR"]),
+      /** `false`: ambiente de integración de Transbank (no mueve dinero real). */
+      liveMode: z.boolean(),
+      /** Últimos 4 dígitos del código de comercio, para que el dueño reconozca cuál conectó. */
+      commerceCodeLast4: z.string(),
+      connectedAt: isoDateTime,
+    })
+    .nullable(),
 });
 
 export const paymentAccountConnectResponse = z.object({ url: z.string().url() });

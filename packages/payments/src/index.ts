@@ -74,3 +74,16 @@ export {
   type CheckoutPayment,
   type CheckoutPaymentStatus,
 } from "./mercado-pago-checkout.js";
+export {
+  WEBPAY_PLUS_INTEGRATION_CREDENTIALS,
+  FakeWebpayPlus,
+  WebpayPlus,
+  newWebpayPlusBuyOrder,
+  webpayPlusBuyOrder,
+  webpayPlusMismatches,
+  type WebpayPlusCreateInput,
+  type WebpayPlusCredentials,
+  type WebpayPlusLike,
+  type WebpayPlusResult,
+  type WebpayPlusTransaction,
+} from "./webpay-plus.js";

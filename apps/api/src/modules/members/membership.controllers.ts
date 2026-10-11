@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Param, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Headers, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiExcludeEndpoint, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import {
   membershipCheckoutResponse,
@@ -8,6 +8,7 @@ import {
   publicMembershipStatusResponse,
 } from "@impulza/contracts";
 import { MembershipPlanStatus, PERMISSIONS } from "@impulza/database";
+import type { Response } from "express";
 import {
   createMembershipPlanSchema,
   startMembershipCheckoutSchema,
@@ -196,6 +197,48 @@ export class PublicMembershipStatusController {
   @ApiRateLimited(60, 60)
   status(@Param("token") token: string, @Query("paymentId") paymentId: unknown) {
     return this.checkout.publicStatus(token, typeof paymentId === "string" ? paymentId : undefined);
+  }
+}
+
+/**
+ * Regreso del comprador desde Webpay Plus (F10.2c, ADR-030). Webpay no manda webhooks: Transbank redirige al comprador acá, con
+ * `token_ws` (pagó o lo intentó) o `TBK_TOKEN` (abandonó), por GET o POST. Sin sesión ni CSRF (lo dispara el navegador del comprador
+ * desde Transbank): el servidor confirma la transacción con las credenciales del negocio y siempre redirige a «Tu membresía».
+ */
+@ApiTags("public-members")
+@Controller("payments/webpay/memberships/:purchaseId")
+export class WebpayMembershipReturnController {
+  constructor(private readonly checkout: MembershipCheckoutService) {}
+
+  private async finish(purchaseId: string, source: Record<string, unknown>, res: Response): Promise<void> {
+    const text = (value: unknown) => (typeof value === "string" && value.length <= 200 ? value : undefined);
+    const target = await this.checkout.handleWebpayReturn({
+      purchaseId,
+      statusToken: text(source.t),
+      tokenWs: text(source.token_ws),
+      tbkToken: text(source.TBK_TOKEN),
+    });
+    if (!target) throw new NotFoundException();
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    res.redirect(HttpStatus.SEE_OTHER, target);
+  }
+
+  @Get("return")
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ limit: 120, windowSeconds: 60, keyPrefix: "memberships-webpay-return" })
+  @ApiExcludeEndpoint()
+  async returnGet(@Param("purchaseId") purchaseId: string, @Query() query: Record<string, unknown>, @Res() res: Response) {
+    await this.finish(purchaseId, query, res);
+  }
+
+  @Post("return")
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ limit: 120, windowSeconds: 60, keyPrefix: "memberships-webpay-return" })
+  @ApiExcludeEndpoint()
+  async returnPost(@Param("purchaseId") purchaseId: string, @Query() query: Record<string, unknown>, @Body() body: Record<string, unknown> | undefined, @Res() res: Response) {
+    // `t` va en la URL que pusimos; `token_ws` / `TBK_TOKEN` llegan en el cuerpo del formulario de Transbank.
+    await this.finish(purchaseId, { ...query, ...(body ?? {}) }, res);
   }
 }
 

@@ -67,6 +67,26 @@ export function memberCookieName(siteSlug: string): string {
   return `impulza_member_${siteSlug}`;
 }
 
+// ───────────────────────────── F10.2c: Webpay Plus del negocio ─────────────────────────────
+
+/** Credenciales del comercio en Transbank. La llave es un secreto: se valida la forma, nunca se devuelve ni se registra. */
+export const connectWebpayPlusSchema = z
+  .object({
+    commerceCode: z
+      .string()
+      .trim()
+      .regex(/^\d{12}$/, "El código de comercio tiene 12 dígitos."),
+    apiKeySecret: z
+      .string()
+      .trim()
+      .min(32, "La llave secreta es más larga: cópiala completa desde Transbank.")
+      .max(128, "La llave secreta es demasiado larga.")
+      .regex(/^[A-Za-z0-9]+$/, "La llave secreta solo lleva letras y números."),
+    environment: z.enum(["integration", "production"], { error: "Elige si son credenciales de prueba o de producción." }),
+  })
+  .strict();
+export type ConnectWebpayPlusDto = z.infer<typeof connectWebpayPlusSchema>;
+
 // ───────────────────────────── F10.2: planes de membresía ─────────────────────────────
 
 export const MEMBERSHIP_PERIODS = ["MONTHLY", "YEARLY"] as const;
@@ -127,7 +147,21 @@ export const updateMembershipPlanSchema = z
 export type UpdateMembershipPlanDto = z.infer<typeof updateMembershipPlanSchema>;
 
 /** Quien compra: correo y, opcionalmente, nombre. El precio nunca viene del cliente: sale del plan guardado. */
-export const startMembershipCheckoutSchema = z.object({ email: memberEmailSchema, name: optionalName.optional() }).strict();
+export const MEMBERSHIP_CHECKOUT_PROVIDERS = ["MERCADO_PAGO", "WEBPAY_PLUS"] as const;
+export type MembershipCheckoutProvider = (typeof MEMBERSHIP_CHECKOUT_PROVIDERS)[number];
+export const MEMBERSHIP_PROVIDER_LABELS: Record<MembershipCheckoutProvider, string> = {
+  MERCADO_PAGO: "Mercado Pago",
+  WEBPAY_PLUS: "Webpay (tarjetas de crédito y débito)",
+};
+
+export const startMembershipCheckoutSchema = z
+  .object({
+    email: memberEmailSchema,
+    name: optionalName.optional(),
+    /** Medio de pago elegido. Si se omite, el primero disponible del negocio. */
+    provider: z.enum(MEMBERSHIP_CHECKOUT_PROVIDERS).optional(),
+  })
+  .strict();
 export type StartMembershipCheckoutDto = z.infer<typeof startMembershipCheckoutSchema>;
 
 /** Compra de un periodo, tal como la necesita la regla de acceso. */

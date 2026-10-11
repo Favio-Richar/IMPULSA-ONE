@@ -8,6 +8,7 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 |---|---|---|
 | F10.1 | Miembros de sitio y contenido protegido (enlace mágico) | **Hecha** (2026-10-11): API 12/12, suite 74/74 (API 1035), Playwright 4/4; reservas en el detalle |
 | F10.2 | Planes de membresía y cobro por la cuenta del negocio | **Hecha** (2026-10-11): (a) planes, compra, acceso por vigencia y reembolsos; (b) avisos de renovación y de vencimiento; reservas en el detalle |
+| F10.2c | Webpay Plus como medio de cobro del negocio (ADR-030): cuenta propia + membresías | **Hecha** (2026-10-11); falta F10.2d pedidos y F10.2e señas de reservas |
 | F10.3 | Cursos: módulos, lecciones y progreso | Pendiente |
 | F10.4 | Tarjeta digital, vCard y pases de wallet | Pendiente |
 | F10.5 | PWA: instalación y modo sin conexión acotado | Pendiente |
@@ -97,6 +98,28 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
   de correo); **3 mutaciones atrapadas** (sin reclamo condicional —la primera versión de la prueba de carrera no la detectaba y se endureció—, sin filtrar revocados, sin mirar si ya renovó).
 - **Reserva:** el «período de gracia configurable» del backlog **no aplica** al modelo prepagado (el acceso termina con el periodo pagado); si el negocio quiere dar días extra, puede invitar al miembro. La
   «cancelación por el miembro» tampoco aplica: no hay cobro automático que cancelar.
+
+**Hecha — F10.2c (2026-10-11): Webpay Plus como medio de cobro del negocio (ADR-030).**
+
+- **Cuenta propia del negocio:** `PUT/DELETE /organizations/:id/payment-accounts/webpay-plus` (solo quien tiene `payments.connect`). Código de comercio (12 dígitos), llave secreta y ambiente. Las credenciales se
+  **comprueban de verdad** creando una transacción de prueba de $50 en Transbank (que no se paga ni se cobra y vence sola): si no sirven, no se guarda nada (`WEBPAY_CREDENTIALS_REJECTED` / `WEBPAY_UNAVAILABLE`). La
+  llave queda cifrada con la misma clave que los tokens de Mercado Pago y nunca vuelve a salir (el estado solo muestra los últimos 4 dígitos del comercio). Una cuenta por pasarela por organización
+  (`PaymentGateway.WEBPAY_PLUS`, migración `20261011220000_f102c_webpay_plus_account`); la suscripción de Impulza nunca usa ese valor (se falla ruidosamente si apareciera).
+- **Dinero directo al comercio del negocio:** Impulza no custodia ni cobra comisión. Se descartó una «tienda hija» de Impulza que reciba y reparta (sería custodiar dinero de terceros).
+- **Compra de membresía con Webpay:** el visitante ve los medios conectados y elige (si hay uno solo, ese). El servidor crea la transacción con una orden de compra corta y aleatoria y el **precio del plan
+  guardado**; el comprador vuelve a `…/payments/webpay/memberships/:id/return` y **el servidor confirma** con las credenciales del negocio (Webpay no manda webhooks). Se confirma el token que GUARDAMOS (nunca el de
+  la URL) y solo se aplica si queda autorizada y coincide el orden de compra y el monto; asignar el pago es condicional (varios regresos simultáneos: una sola activación). Tarjeta rechazada: queda pendiente con su
+  motivo y se reintenta. Abandonar la ventana no cobra nada. Columnas `payment_provider` y `provider_order_ref` en la compra (migración `20261011230000_f102c_membership_provider`).
+- **Web:** la puerta de la página muestra los medios y envía por POST a Webpay con `token_ws`; «Tu membresía» sirve para ambos. **Panel:** tarjeta «Webpay Plus (Transbank)» en Cobros (llave en campo de contraseña,
+  nunca rellenada de vuelta) y los planes avisan si no hay ningún medio conectado.
+- **Pruebas:** 11 del adaptador (REST, ambientes, errores, simulador), 9 de integración (conexión, forma, credenciales rechazadas, Transbank caído, permisos, medios disponibles, creación, confirmación única, POST de
+  regreso, token ajeno/abandono/enlace inválido, tarjeta rechazada y monto distinto, regresos simultáneos, cambio de comercio) y Playwright (formulario y cuenta conectada, 16/16 con la regresión de cobros y
+  membresías); **4 mutaciones**: 3 atrapadas (sin verificar monto/orden/estado, sin validar el enlace de estado, asignación no condicional) y 1 equivalente (validar el token de la URL es redundante porque nunca
+  se confirma ese token; queda documentado y probado que una transacción ajena NO se consume).
+- **Reservas honestas:** (1) **Webpay Plus no avisa reembolsos ni contracargos**: a diferencia de Mercado Pago, la devolución no se detecta sola; el negocio puede revocar al miembro y queda pendiente una acción
+  «anular compra» en el panel; (2) **no se ejerció contra Transbank real**: se probó con el simulador y con las credenciales públicas de integración documentadas; el propietario debe probar con su código de
+  comercio al conectar; (3) **pedidos de la tienda y señas de reservas aún no ofrecen Webpay** (F10.2d y F10.2e); (4) solo CLP; (5) cada negocio debe contratar Webpay Plus con Transbank (trámite suyo, fuera del
+  producto: la pantalla de Cobros lo explica).
 
 ## F10.3 — Cursos
 

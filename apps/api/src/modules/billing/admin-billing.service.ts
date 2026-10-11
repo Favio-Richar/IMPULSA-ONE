@@ -12,6 +12,7 @@ import {
 } from "@impulza/payments";
 import type { AdminRefundInput, ListAdminPaymentsQuery, MarkTaxDocumentInput } from "@impulza/validation";
 import { PRISMA } from "../../database/prisma.module.js";
+import { subscriptionGateway } from "./subscription-gateway.js";
 import { env } from "../../env.js";
 import { logger } from "../../observability/logger.js";
 import { AuditService } from "../audit/audit.service.js";
@@ -243,7 +244,7 @@ export class AdminBillingService {
       id: payment.id,
       organization: { id: payment.organization.id, name: payment.organization.name },
       planName: payment.subscription.plan.name,
-      gateway: payment.gateway,
+      gateway: subscriptionGateway(payment.gateway),
       amount: payment.amount,
       netAmount: payment.netAmount,
       vatAmount: payment.vatAmount,

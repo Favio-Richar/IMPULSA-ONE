@@ -1,14 +1,16 @@
-import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { ApiCookieAuth, ApiExcludeEndpoint, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { paymentAccountConnectResponse, paymentAccountsResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
+import { connectWebpayPlusSchema, type ConnectWebpayPlusDto } from "@impulza/validation";
 import type { Response } from "express";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { RateLimit } from "../../common/rate-limit.decorator.js";
 import { RateLimitGuard } from "../../common/rate-limit.guard.js";
 import { env } from "../../env.js";
 import { SESSION_AUTH } from "../../openapi/document.js";
-import { ApiOrganizationIdParam, ApiOrganizationScopedErrors, ApiRateLimited, ApiZodResponse } from "../../openapi/zod-openapi.js";
+import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
+import { ApiOrganizationIdParam, ApiOrganizationScopedErrors, ApiRateLimited, ApiZodBody, ApiZodResponse } from "../../openapi/zod-openapi.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
 import { OrganizationMembershipGuard } from "../organizations/guards/organization-membership.guard.js";
@@ -45,6 +47,40 @@ export class PaymentAccountsController {
   @ApiRateLimited(10, 600)
   async connect(@Param("organizationId") organizationId: string, @CurrentUser() user: User) {
     return this.accounts.startConnect(organizationId, user.id);
+  }
+
+  @Put("webpay-plus")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(PermissionGuard, RateLimitGuard)
+  @RequirePermission(PERMISSIONS.PAYMENTS_CONNECT)
+  @RateLimit({ limit: 10, windowSeconds: 600, keyPrefix: "payments-webpay-connect" })
+  @ApiOperation({
+    summary: "Conectar Webpay Plus con las credenciales del negocio",
+    description:
+      "Código de comercio, llave secreta y ambiente. Se comprueban contra Transbank antes de guardar (una transacción de prueba que no se cobra). La llave queda cifrada y nunca se devuelve (F10.2c, ADR-030). Solo el dueño.",
+  })
+  @ApiZodBody(connectWebpayPlusSchema)
+  @ApiResponse({ status: 204, description: "Conectada." })
+  @ApiResponse({ status: 400, description: "Entrada inválida (detalle en `issues`)." })
+  @ApiResponse({ status: 422, description: "`WEBPAY_CREDENTIALS_REJECTED` o `WEBPAY_UNAVAILABLE`." })
+  @ApiRateLimited(10, 600)
+  async connectWebpay(
+    @Param("organizationId") organizationId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(connectWebpayPlusSchema)) body: ConnectWebpayPlusDto,
+  ) {
+    await this.accounts.connectWebpayPlus(organizationId, user.id, body);
+  }
+
+  @Delete("webpay-plus")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.PAYMENTS_CONNECT)
+  @ApiOperation({ summary: "Desconectar Webpay Plus", description: "Borra las credenciales guardadas. Queda auditado." })
+  @ApiResponse({ status: 204, description: "Desconectada." })
+  @ApiResponse({ status: 404, description: "`NOT_CONNECTED`." })
+  async disconnectWebpay(@Param("organizationId") organizationId: string, @CurrentUser() user: User) {
+    await this.accounts.disconnectWebpayPlus(organizationId, user.id);
   }
 
   @Delete("mercadopago")

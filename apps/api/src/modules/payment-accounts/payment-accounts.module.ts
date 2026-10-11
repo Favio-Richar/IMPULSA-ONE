@@ -1,8 +1,8 @@
 import { Module } from "@nestjs/common";
-import { MercadoPagoCheckout, MercadoPagoOAuth } from "@impulza/payments";
+import { MercadoPagoCheckout, MercadoPagoOAuth, WebpayPlus } from "@impulza/payments";
 import { mercadoPagoOAuthConfig } from "../../env.js";
 import { CheckoutRefundsService } from "./checkout-refunds.service.js";
-import { MERCADO_PAGO_CHECKOUT } from "./checkout.tokens.js";
+import { MERCADO_PAGO_CHECKOUT, WEBPAY_PLUS_GATEWAY } from "./checkout.tokens.js";
 import { MercadoPagoOAuthCallbackController, PaymentAccountsController } from "./payment-accounts.controller.js";
 import { PaymentAccountsService } from "./payment-accounts.service.js";
 import { MERCADO_PAGO_OAUTH } from "./payment-accounts.tokens.js";
@@ -15,12 +15,13 @@ import { MERCADO_PAGO_OAUTH } from "./payment-accounts.tokens.js";
   providers: [
     PaymentAccountsService,
     CheckoutRefundsService,
+    { provide: WEBPAY_PLUS_GATEWAY, useFactory: () => new WebpayPlus() },
     { provide: MERCADO_PAGO_OAUTH, useFactory: () => (mercadoPagoOAuthConfig ? new MercadoPagoOAuth(mercadoPagoOAuthConfig) : null) },
     {
       provide: MERCADO_PAGO_CHECKOUT,
       useFactory: () => (mercadoPagoOAuthConfig ? { checkout: new MercadoPagoCheckout(), webhookSecret: mercadoPagoOAuthConfig.webhookSecret } : null),
     },
   ],
-  exports: [PaymentAccountsService, CheckoutRefundsService, MERCADO_PAGO_CHECKOUT],
+  exports: [PaymentAccountsService, CheckoutRefundsService, MERCADO_PAGO_CHECKOUT, WEBPAY_PLUS_GATEWAY],
 })
 export class PaymentAccountsModule {}

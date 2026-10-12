@@ -66,6 +66,14 @@ export const PERMISSION_MODULES = [
   { module: "miembros", label: "Miembros", actions: [{ permission: "member.manage", label: "Gestionar miembros y páginas protegidas" }] },
   { module: "cursos", label: "Cursos", actions: [{ permission: "course.manage", label: "Crear y publicar cursos, módulos y lecciones" }] },
   {
+    module: "marketplace",
+    label: "Marketplace",
+    actions: [
+      { permission: "marketplace.install", label: "Instalar y quitar integraciones y plantillas" },
+      { permission: "marketplace.submit", label: "Publicar integraciones y plantillas propias" },
+    ],
+  },
+  {
     module: "publicacion",
     label: "Aprobación de publicaciones",
     actions: [

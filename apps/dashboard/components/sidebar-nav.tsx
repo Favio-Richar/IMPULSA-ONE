@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@impulza/ui";
-import { Building2, CalendarCheck, ChartColumn, ClipboardCheck, FileBarChart, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Palette, ScrollText, Settings, ShieldAlert, ShieldCheck, ShoppingBag, Users, Wallet, Webhook, Workflow } from "lucide-react";
+import { Building2, CalendarCheck, ChartColumn, ClipboardCheck, FileBarChart, Gauge, Globe, Home, ImageIcon, LifeBuoy, Link2, ListOrdered, Megaphone, Package, Palette, ScrollText, Settings, ShieldAlert, ShieldCheck, ShoppingBag, Users, Wallet, Webhook, Workflow, Store } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -26,6 +26,8 @@ const NAV_ITEMS = [
   { href: "/automatizaciones", label: "Automatizaciones", icon: Workflow },
   // Webhooks salientes hacia Zapier, Make u otros sistemas (F7.2, ADR-017).
   { href: "/integraciones", label: "Integraciones", icon: Webhook },
+  // Marketplace de integraciones y plantillas de socios (F10.6, ADR-029).
+  { href: "/marketplace", label: "Marketplace", icon: Store },
   // Agenda de reservas (F5.3).
   { href: "/reservas", label: "Reservas", icon: CalendarCheck },
   { href: "/catalogo", label: "Catálogo", icon: Package },

@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module.js";
+import { MarketplaceModule } from "../marketplace/marketplace.module.js";
+import { AdminMarketplaceController } from "../marketplace/marketplace.controllers.js";
 import { ModerationModule } from "../moderation/moderation.module.js";
 import { PublicSitesModule } from "../public-sites/public-sites.module.js";
 import { SupportModule } from "../support/support.module.js";
@@ -17,8 +19,8 @@ import { ModerationAdminService } from "../moderation/moderation-admin.service.j
 // la bandeja de soporte del equipo (F4.5). La cola de moderación (F9.9b) vive en `modules/moderation` pero se sirve
 // desde acá: comparte la puerta de administración y necesita bloquear/restaurar organizaciones con `AdminService`.
 @Module({
-  imports: [AuthModule, PublicSitesModule, SupportModule, ModerationModule],
-  controllers: [AdminAuthController, AdminController, AdminSupportController, AdminOperationsController, AdminAbuseReportsController],
+  imports: [AuthModule, PublicSitesModule, SupportModule, ModerationModule, MarketplaceModule],
+  controllers: [AdminAuthController, AdminController, AdminSupportController, AdminOperationsController, AdminAbuseReportsController, AdminMarketplaceController],
   providers: [AdminAuthService, AdminService, AdminOperationsService, ModerationAdminService],
   exports: [AdminOperationsService],
 })

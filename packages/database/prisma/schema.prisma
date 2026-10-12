@@ -248,6 +248,7 @@ model Organization {
   reportComments      ReportComment[]
   abuseReports        AbuseReport[]
   siteMembers         SiteMember[]
+  marketplaceInstalls MarketplaceInstall[]
   membershipPlans     MembershipPlan[]
   agencyMemberScopes  AgencyMemberScope[] @relation("AgencyMemberScopes")
   subscriptions       Subscription[]
@@ -3289,4 +3290,70 @@ model DigitalCard {
 
   @@index([organizationId])
   @@map("digital_cards")
+}
+
+// ---------------------------------------------------------------------------------------------
+// F10.6 (ADR-029): marketplace de integraciones y plantillas. Datos declarativos (plantilla del catalogo cerrado de bloques, o un
+// conector de eventos hacia una direccion que pone quien instala): nada se ejecuta y no hay cobro ni custodia de dinero.
+// ---------------------------------------------------------------------------------------------
+
+enum MarketplaceListingKind {
+  TEMPLATE
+  INTEGRATION
+}
+
+enum MarketplaceListingStatus {
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+model MarketplaceListing {
+  id                        String                   @id @default(uuid()) @db.Uuid
+  kind                      MarketplaceListingKind
+  slug                      String                   @unique
+  name                      String
+  summary                   String
+  description               String
+  partnerName               String                   @map("partner_name")
+  partnerUrl                String?                  @map("partner_url")
+  version                   String
+  // Lo que pide, derivado de los datos al publicar (nunca de un texto del socio).
+  permissions               String[]
+  // TEMPLATE: { template: <definicion> } · INTEGRATION: { events: [...], instructions?: string }
+  payload                   Json
+  status                    MarketplaceListingStatus @default(IN_REVIEW)
+  reviewReason              String?                  @map("review_reason")
+  submittedByOrganizationId String?                  @map("submitted_by_organization_id") @db.Uuid
+  submittedById             String?                  @map("submitted_by_id") @db.Uuid
+  reviewedById              String?                  @map("reviewed_by_id") @db.Uuid
+  reviewedAt                DateTime?                @map("reviewed_at") @db.Timestamptz(6)
+  createdAt                 DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  installs MarketplaceInstall[]
+
+  @@index([status, kind])
+  @@index([submittedByOrganizationId])
+  @@map("marketplace_listings")
+}
+
+model MarketplaceInstall {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  listingId      String   @map("listing_id") @db.Uuid
+  // La version que tomo al instalar: una publicacion que cambia no altera lo ya instalado.
+  version        String
+  // TEMPLATE: { templateId } · INTEGRATION: { endpointId }
+  config         Json
+  installedById  String?  @map("installed_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  listing      MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, listingId], map: "marketplace_installs_org_listing_key")
+  @@index([listingId])
+  @@map("marketplace_installs")
 }

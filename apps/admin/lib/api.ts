@@ -1,4 +1,6 @@
 import type {
+  AdminMarketplaceListResponse,
+  AdminMarketplaceListingResponse,
   AdminAbuseReportDetailResponse,
   AdminAbuseReportListResponse,
   AdminAiConnectionResponse,
@@ -57,6 +59,14 @@ function query(params: Record<string, string | number | undefined>): string {
 }
 
 export const adminApi = {
+  // Revisión del marketplace (F10.6).
+  marketplace: (params: { status?: string; kind?: string } = {}) =>
+    apiFetch<AdminMarketplaceListResponse>(`/admin/marketplace${query(params)}`),
+  marketplaceApprove: (id: string) => apiFetch<AdminMarketplaceListingResponse>(`/admin/marketplace/${id}/approve`, { method: "POST" }),
+  marketplaceReject: (id: string, reason: string) =>
+    apiFetch<AdminMarketplaceListingResponse>(`/admin/marketplace/${id}/reject`, { method: "POST", body: { reason } }),
+  marketplaceWithdraw: (id: string, reason: string) =>
+    apiFetch<AdminMarketplaceListingResponse>(`/admin/marketplace/${id}/withdraw`, { method: "POST", body: { reason } }),
   login: (body: { email: string; password: string; code: string }) =>
     apiFetch<AdminLoginResponse>("/admin/auth/login", { method: "POST", body }),
   logout: () => apiFetch<void>("/admin/auth/logout", { method: "POST" }),

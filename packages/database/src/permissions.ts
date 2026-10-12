@@ -45,6 +45,9 @@ export const PERMISSIONS = {
   MEMBER_MANAGE: "member.manage",
   // F10.3 (ADR-029): cursos, modulos y lecciones.
   COURSE_MANAGE: "course.manage",
+  // F10.6 (ADR-029): instalar y quitar integraciones/plantillas del marketplace, y publicar las propias como socio.
+  MARKETPLACE_INSTALL: "marketplace.install",
+  MARKETPLACE_SUBMIT: "marketplace.submit",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -191,6 +194,14 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.COURSE_MANAGE,
     description: "Crear y publicar cursos, módulos y lecciones de un sitio, y decidir quién tiene acceso (F10.3, ADR-029).",
   },
+  {
+    key: PERMISSIONS.MARKETPLACE_INSTALL,
+    description: "Instalar y desinstalar integraciones y plantillas del marketplace en la organización (F10.6, ADR-029).",
+  },
+  {
+    key: PERMISSIONS.MARKETPLACE_SUBMIT,
+    description: "Publicar una integración o plantilla propia en el marketplace, como socio, y retirarla (F10.6, ADR-029).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -245,6 +256,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.MODERATION_APPEAL,
     PERMISSIONS.MEMBER_MANAGE,
     PERMISSIONS.COURSE_MANAGE,
+    PERMISSIONS.MARKETPLACE_INSTALL,
+    PERMISSIONS.MARKETPLACE_SUBMIT,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -277,6 +290,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.MODERATION_APPEAL,
     PERMISSIONS.MEMBER_MANAGE,
     PERMISSIONS.COURSE_MANAGE,
+    PERMISSIONS.MARKETPLACE_INSTALL,
+    PERMISSIONS.MARKETPLACE_SUBMIT,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y

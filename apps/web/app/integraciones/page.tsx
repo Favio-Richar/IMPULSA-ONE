@@ -3,6 +3,7 @@ import { MarketingFooter } from "../../components/marketing/footer";
 import { BrandedMarketingHeader } from "../../components/marketing/branded-header";
 import { MarketingHeroBackground, MarketingCtaBackground } from "../../components/marketing/hero-background";
 import { IntegracionesDirectory } from "../../components/marketing/integraciones-directory";
+import { MarketplacePartners } from "../../components/marketing/marketplace-partners";
 import { Reveal } from "../../components/marketing/reveal";
 import { getDashboardLinks } from "../../lib/dashboard-links";
 
@@ -42,6 +43,9 @@ export default function IntegracionesPage(): React.JSX.Element {
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <IntegracionesDirectory bienvenidaHref={bienvenidaHref} />
       </section>
+
+      {/* F10.6: lo que publican los socios y la plataforma aprobó */}
+      <MarketplacePartners loginHref={loginHref} />
 
       {/* CTA Final */}
       <section className="relative overflow-hidden border-t border-[#e2e8f0] bg-[radial-gradient(circle_at_bottom,_#e6f5f3,_#ffffff_70%)] py-20">

@@ -20,7 +20,8 @@ import { WebhooksService } from "./webhooks.service.js";
       useFactory: () => new Queue<WebhookDeliveryJob>(WEBHOOKS_QUEUE, { connection: { url: env.REDIS_URL, maxRetriesPerRequest: null } }),
     },
   ],
-  exports: [WebhookEventsService],
+  // `WebhooksService` también (F10.6): instalar una integración del marketplace crea su destino por la misma puerta que el panel.
+  exports: [WebhookEventsService, WebhooksService],
 })
 export class WebhooksModule implements OnApplicationShutdown {
   constructor(@Inject(WEBHOOK_QUEUE) private readonly queue: Queue<WebhookDeliveryJob>) {}

@@ -101,6 +101,7 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/sites/{siteSlug}/members/me",
       "GET /api/v1/public/sites/{siteSlug}/members/pages/{pageSlug}",
       "POST /api/v1/public/sites/{siteSlug}/members/logout",
+      "GET /api/v1/public/marketplace",
       "GET /api/v1/public/sites/{siteSlug}/card",
       "GET /api/v1/public/sites/{siteSlug}/card/vcard",
       "POST /api/v1/public/sites/{siteSlug}/card/wallet/google",

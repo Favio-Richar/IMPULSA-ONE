@@ -14,7 +14,7 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 | F10.3 | Cursos: módulos, lecciones y progreso | **Hecha** (2026-10-12): API 13/13, validación 8/8, Playwright 4/4 (2 viewports); compra única fuera de alcance (ver reservas) |
 | F10.4 | Tarjeta digital, vCard y pases de wallet | **Hecha** (2026-10-12): API 16/16 (9 integración + 7 de wallet), validación 7/7, Playwright 4/4 (2 viewports); pases reales pendientes de credenciales |
 | F10.5 | PWA: instalación y modo sin conexión acotado | **Hecha** (2026-10-12): paquete `@impulza/pwa` 11/11, Playwright 6/6 (2 viewports); sin auditoría Lighthouse (ver reservas) |
-| F10.6 | Marketplace de integraciones y plantillas | Pendiente |
+| F10.6 | Marketplace de integraciones y plantillas | **Hecha** (2026-10-12): API 12/12, Playwright 2/2 (2 viewports); suite completa pendiente de F10.7 |
 | F10.7 | Aislamiento, seguridad y cierre de la Fase 10 | Pendiente |
 
 ---
@@ -220,6 +220,17 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
    Lighthouse PWA instalable, Playwright.
 
 ## F10.6 — Marketplace de integraciones y plantillas
+
+**Hecha — F10.6 (2026-10-12): marketplace de integraciones y plantillas (ADR-029 §6).**
+
+- **Modelo:** `MarketplaceListing` (tipo, socio, versión, permisos derivados, estado `IN_REVIEW`/`APPROVED`/`REJECTED`/`WITHDRAWN`, motivo) y `MarketplaceInstall` (única por organización y publicación; guarda la versión instalada). Migración reversible `20261012050000_f106_marketplace`; permisos `marketplace.install` y `marketplace.submit` (OWNER y ADMIN).
+- **Qué se publica (solo DATOS declarativos):** una **plantilla** (bloques del catálogo cerrado, validados con `templateSchema`, saneados y sin referencias a otra organización) o una **integración** (lista de eventos hacia la dirección que pone quien instala). Nada se ejecuta en páginas públicas; no hay cobro ni custodia de dinero. Los permisos que muestra el listado salen de los datos, no del texto del socio.
+- **Flujo:** el socio publica (queda en revisión, invisible) → la superadministración aprueba o rechaza con motivo → entra al directorio (público en `/integraciones` y en el panel) → la organización instala (plantilla: queda entre sus plantillas propias; integración: crea un destino de webhooks con la misma validación SSRF y firma, y muestra la clave una sola vez) y desinstala cuando quiera. **Retirar (la plataforma o el socio) desinstala de todas las organizaciones**; aprobar de nuevo reactiva la publicación.
+- **Panel:** `/marketplace` (directorio con filtros, instalar con dirección de destino, desinstalar con confirmación, publicar y retirar propias); **administración:** `/marketplace` con cola por estado, aprobar, rechazar y retirar con motivo.
+- **Topes:** 10 publicaciones vivas por organización, 50 instalaciones, y el tope de plantillas propias existente. Todo queda auditado (`marketplace.*`, `admin.marketplace_*`).
+- **Hallazgo corregido durante la prueba:** el texto enriquecido de una plantilla publicada llegaba sin sanear; ahora se sanea al publicar y al instalar (misma función que el constructor).
+- **Pruebas:** 12 de integración (invisible hasta aprobar, solo administración revisa, rechazo con motivo, instalar/desinstalar plantilla e integración, destino borrado a mano, retiro que desinstala y es reversible, retiro del socio, validación y saneo, permisos derivados, aislamiento, tope) y Playwright (publicar → aprobar → ver en el sitio → instalar → desinstalar → retirar) en teléfono y escritorio.
+- **Reservas honestas:** (1) no hay correo al socio al aprobar o rechazar (el estado y el motivo se ven en su panel); (2) una plantilla de socio se arma a partir de una de sus páginas (sin editor propio ni imágenes de vista previa); (3) actualizar a una versión nueva exige desinstalar e instalar; (4) no hay publicaciones de pago ni reparto de ingresos (fuera de alcance por ADR-029); (5) las integraciones son envíos de eventos (webhooks): no hay OAuth ni lectura de datos desde el socio.
 
 1. `MarketplaceListing` (tipo integración/plantilla, socio, versión, permisos que pide, estado de revisión).
 2. Directorio público y panel de instalación por organización (permiso `marketplace.install`); instalación reversible.

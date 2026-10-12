@@ -50,4 +50,5 @@ export * from "./moderation.js";
 export * from "./members.js";
 export * from "./courses.js";
 export * from "./digital-card.js";
+export * from "./marketplace.js";
 export * from "./engagement.js";

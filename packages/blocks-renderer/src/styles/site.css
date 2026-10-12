@@ -151,3 +151,58 @@
     filter: none !important;
   }
 }
+
+/*
+ * Movimiento de una foto de fondo (F10): acercamiento lento, paneo lento o profundidad al desplazarte. Solo CSS; la foto
+ * va sobre-escalada para que sus bordes nunca se vean. Quieta con «reducir movimiento» y al imprimir.
+ */
+@keyframes site-bg-kenburns {
+  from {
+    transform: scale(1.04) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.2) translate3d(-2%, -1.5%, 0);
+  }
+}
+
+@keyframes site-bg-drift {
+  from {
+    transform: scale(1.14) translate3d(-3.5%, 0, 0);
+  }
+  to {
+    transform: scale(1.14) translate3d(3.5%, 0, 0);
+  }
+}
+
+@keyframes site-bg-parallax {
+  from {
+    transform: scale(1.18) translate3d(0, -4%, 0);
+  }
+  to {
+    transform: scale(1.18) translate3d(0, 4%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-bg-kenburns {
+    animation: site-bg-kenburns 28s ease-in-out infinite alternate;
+  }
+  .site-bg-drift {
+    animation: site-bg-drift 42s ease-in-out infinite alternate;
+  }
+  @supports (animation-timeline: scroll()) {
+    .site-bg-parallax {
+      animation: site-bg-parallax linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+}
+
+@media print {
+  .site-bg-kenburns,
+  .site-bg-drift,
+  .site-bg-parallax {
+    animation: none !important;
+    transform: none !important;
+  }
+}

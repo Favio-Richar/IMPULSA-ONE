@@ -59,6 +59,23 @@ export function gradientCss(gradient: BackgroundGradient): string {
   return `linear-gradient(160deg, ${gradient.stops[0]} 0%, ${gradient.stops[1]} 100%)`;
 }
 
+// --- Efecto de movimiento de una foto de fondo (F10) --------------------------------------------
+
+/**
+ * Movimiento suave de una foto de fondo, solo CSS y nunca con «reducir movimiento»: `kenburns` (acercamiento lento),
+ * `drift` (paneo lateral lento) y `parallax` (la foto se desplaza más despacio que la página, donde el navegador
+ * soporta animaciones por scroll). `none` o ausente: foto quieta, como siempre. Un video ya tiene su propio movimiento.
+ */
+export const BACKGROUND_EFFECTS = ["none", "kenburns", "drift", "parallax"] as const;
+export type BackgroundEffect = (typeof BACKGROUND_EFFECTS)[number];
+export const BACKGROUND_EFFECT_LABELS: Record<BackgroundEffect, string> = {
+  none: "Sin movimiento",
+  kenburns: "Acercamiento lento",
+  drift: "Paneo lento",
+  parallax: "Profundidad al desplazarte",
+};
+const effectSchema = z.enum(BACKGROUND_EFFECTS);
+
 // --- Capa de legibilidad ---------------------------------------------------------------------
 
 export const OVERLAY_TONES = ["dark", "light"] as const;
@@ -181,7 +198,7 @@ export const siteBackgroundSchema = z.discriminatedUnion("kind", [
     }),
   }),
   z.object({ kind: z.literal("gradient"), gradient: z.enum(GRADIENT_CODES) }),
-  z.object({ kind: z.literal("image"), image: z.object({ url: safeUrlSchema }), overlay: overlaySchema }),
+  z.object({ kind: z.literal("image"), image: z.object({ url: safeUrlSchema }), overlay: overlaySchema, effect: effectSchema.optional() }),
   z.object({
     kind: z.literal("video"),
     video: z.string().refine((code) => getBackgroundVideo(code) !== undefined, { message: "Ese video no está disponible." }),
@@ -201,7 +218,7 @@ export type SiteBackground = z.infer<typeof siteBackgroundSchema>;
 export const resolvedSiteBackgroundSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("color"), color: hexColorSchema, text: z.enum(BACKGROUND_TEXT_PALETTES) }),
   z.object({ kind: z.literal("gradient"), gradient: z.enum(GRADIENT_CODES), text: z.enum(BACKGROUND_TEXT_PALETTES) }),
-  z.object({ kind: z.literal("image"), image: z.object({ url: z.string() }), overlay: overlaySchema, text: z.enum(BACKGROUND_TEXT_PALETTES) }),
+  z.object({ kind: z.literal("image"), image: z.object({ url: z.string() }), overlay: overlaySchema, text: z.enum(BACKGROUND_TEXT_PALETTES), effect: effectSchema.optional() }),
   z.object({
     kind: z.literal("video"),
     video: z.object({ posterUrl: z.string(), src: z.string() }),
@@ -234,7 +251,13 @@ export function resolveSiteBackground(
     case "gradient":
       return { kind: "gradient", gradient: background.gradient, text: getBackgroundGradient(background.gradient)!.text };
     case "image":
-      return { kind: "image", image: background.image, overlay: background.overlay, text: overlayTextPalette(background.overlay.tone) };
+      return {
+        kind: "image",
+        image: background.image,
+        overlay: background.overlay,
+        text: overlayTextPalette(background.overlay.tone),
+        ...(background.effect && background.effect !== "none" ? { effect: background.effect } : {}),
+      };
     case "video": {
       const video = getBackgroundVideo(background.video)!;
       return {

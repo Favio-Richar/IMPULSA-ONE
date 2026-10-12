@@ -3,6 +3,9 @@
 import { SiteBackdrop } from "@impulza/blocks-renderer";
 import type { MediaAssetResponse } from "@impulza/contracts";
 import {
+  BACKGROUND_EFFECT_LABELS,
+  BACKGROUND_EFFECTS,
+  type BackgroundEffect,
   BACKGROUND_GRADIENTS,
   colorTextPalette,
   getBackgroundGradient,
@@ -131,6 +134,8 @@ function BackgroundEditor({
   const [overlay, setOverlay] = useState<{ tone: OverlayTone; strength: OverlayStrength }>(
     saved?.kind === "image" || saved?.kind === "video" || saved?.kind === "own_video" ? saved.overlay : DEFAULT_OVERLAY,
   );
+  // F10: movimiento de la foto de fondo (solo imágenes; un video ya se mueve).
+  const [effect, setEffect] = useState<BackgroundEffect>(saved?.kind === "image" && saved.effect ? saved.effect : "none");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [done, setDone] = useState(false);
   const colorId = useId();
@@ -163,7 +168,7 @@ function BackgroundEditor({
       case "gradient":
         return { kind: "gradient", gradient: gradient as Extract<SiteBackground, { kind: "gradient" }>["gradient"] };
       case "image":
-        return image ? { kind: "image", image: { url: image.url }, overlay } : null;
+        return image ? { kind: "image", image: { url: image.url }, overlay, ...(effect !== "none" ? { effect } : {}) } : null;
       case "video":
         if (!video) return null;
         return video.source === "own"
@@ -409,6 +414,15 @@ function BackgroundEditor({
                   value={overlay.strength}
                   onChange={(strength) => setOverlay({ ...overlay, strength })}
                 />
+                {kind === "image" ? (
+                  <OptionGroup
+                    legend="Movimiento de la foto"
+                    name={`${colorId}-effect`}
+                    options={BACKGROUND_EFFECTS.map((entry) => ({ value: entry, label: BACKGROUND_EFFECT_LABELS[entry], disabled: false }))}
+                    value={effect}
+                    onChange={(entry) => setEffect(entry)}
+                  />
+                ) : null}
                 {((kind === "image" && image) || (kind === "video" && video?.source === "own")) && allowedStrengths.length < OVERLAY_STRENGTHS.length ? (
                   <p className="text-xs text-muted-foreground">
                     Las intensidades desactivadas no dejarían leer bien el texto sobre {kind === "image" ? "esta imagen" : "algunas escenas de este video"}.

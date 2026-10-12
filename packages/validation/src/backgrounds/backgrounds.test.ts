@@ -141,3 +141,22 @@ describe("video propio de fondo (PP6)", () => {
     expect(siteBackgroundSchema.safeParse({ kind: "own_video", video: { src: "data:video/mp4;base64,AAAA" }, overlay }).success).toBe(false);
   });
 });
+
+describe("efecto de movimiento de una foto de fondo (F10)", () => {
+  const base = { kind: "image", image: { url: "https://media.impulza.cl/a.webp" }, overlay: { tone: "dark", strength: "strong" } } as const;
+
+  it("acepta los efectos del catálogo y rechaza otros", () => {
+    for (const effect of ["none", "kenburns", "drift", "parallax"]) {
+      expect(siteBackgroundSchema.safeParse({ ...base, effect }).success, effect).toBe(true);
+    }
+    expect(siteBackgroundSchema.safeParse({ ...base, effect: "explosion" }).success).toBe(false);
+    expect(siteBackgroundSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("al resolver, «sin movimiento» no deja rastro y un efecto real pasa tal cual", () => {
+    const theme = THEME_CATALOG[0]!.tokens;
+    const passthrough = (key: string) => key;
+    expect(resolveSiteBackground({ ...base, effect: "none" }, theme, passthrough)).not.toHaveProperty("effect");
+    expect(resolveSiteBackground({ ...base, effect: "drift" }, theme, passthrough)).toMatchObject({ kind: "image", effect: "drift" });
+  });
+});

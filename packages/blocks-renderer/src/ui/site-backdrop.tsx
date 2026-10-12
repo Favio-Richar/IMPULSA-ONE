@@ -88,7 +88,7 @@ export function SiteBackdrop({
               loading="eager"
               fetchPriority="high"
               decoding="async"
-              className="absolute inset-0 h-full w-full object-cover"
+              className={`absolute inset-0 h-full w-full object-cover ${background.effect ? `site-bg-${background.effect}` : ""}`}
             />
           ) : null}
           {background.kind === "video" ? <BackgroundVideo posterUrl={background.video.posterUrl} src={background.video.src} fixed={fixed} /> : null}

@@ -202,6 +202,25 @@ describe("Fondo de la página (e2e) — PP3", () => {
       });
     });
 
+    it("F10: guarda el efecto de movimiento de la foto, lo devuelve resuelto y rechaza uno inventado; «sin movimiento» no se guarda", async () => {
+      const owner = await createOwnerWithSite();
+      const image = await uploadImage(owner.agent, owner.organizationId, await brightPhoto());
+      const send = (effect: unknown) =>
+        owner.agent.put(owner.path).set(CSRF_HEADERS).send({ background: { kind: "image", image: { url: image.url }, overlay: STRONG_DARK, effect } });
+
+      const saved = await send("kenburns").expect(200);
+      expect(saved.body.background).toMatchObject({ kind: "image", effect: "kenburns" });
+      expect(saved.body.resolved).toMatchObject({ kind: "image", effect: "kenburns" });
+
+      for (const effect of ["drift", "parallax"]) {
+        expect((await send(effect).expect(200)).body.resolved.effect).toBe(effect);
+      }
+      // Sin efecto, el fondo resuelto no trae la clave: la página se ve exactamente como antes.
+      const none = await send("none").expect(200);
+      expect(none.body.resolved.effect).toBeUndefined();
+      await send("explosion").expect(422);
+    });
+
     it("no acepta una imagen externa, de otra organización ni una que aún se procesa", async () => {
       const a = await createOwnerWithSite();
       const b = await createOwnerWithSite();

@@ -4,7 +4,7 @@ import { AgendaController } from "./agenda.controller.js";
 import { AgendaService } from "./agenda.service.js";
 import { AuthModule } from "../auth/auth.module.js";
 import { AutomationsModule } from "../automations/automations.module.js";
-import { BookingDepositWebhookController } from "./booking-deposit.controller.js";
+import { BookingDepositWebhookController, BookingWebpayReturnController } from "./booking-deposit.controller.js";
 import { BookingDepositService } from "./booking-deposit.service.js";
 import { BookingManageController } from "./booking-manage.controller.js";
 import { BookingManageService } from "./booking-manage.service.js";
@@ -28,6 +28,7 @@ import { PublicBookingsService } from "./public-bookings.service.js";
     AgendaController,
     BookingManageController,
     BookingDepositWebhookController,
+    BookingWebpayReturnController,
     CalendarFeedController,
     GoogleCalendarController,
   ],

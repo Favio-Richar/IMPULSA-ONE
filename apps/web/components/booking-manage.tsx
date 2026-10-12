@@ -3,6 +3,7 @@
 import { BookingTimePicker } from "@impulza/blocks-renderer";
 import type { PublicBookingInfoResponse, PublicManagedBookingResponse } from "@impulza/contracts";
 import { useRef, useState } from "react";
+import { BookingWebpayButton } from "./booking-webpay-button";
 
 const PANEL =
   "rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] p-5 shadow-[var(--site-shadow)] text-[var(--site-color-foreground)] sm:p-6";
@@ -182,6 +183,7 @@ export function BookingManage({ token, initial, refreshHref }: { token: string; 
 
         {mode === "view" ? (
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {booking.webpayAvailable ? <BookingWebpayButton token={token} /> : null}
             {booking.checkoutUrl ? (
               // Misma pestaña: Mercado Pago devuelve al cliente aquí, con el estado de la seña.
               <a href={booking.checkoutUrl} rel="noopener noreferrer" className={PRIMARY}>

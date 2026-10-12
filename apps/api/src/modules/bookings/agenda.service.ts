@@ -259,6 +259,10 @@ export class AgendaService {
     // Validación temprana (sin candado) para responder rápido; se repite bajo el candado.
     const booking = await this.getOrThrow(organizationId, bookingId);
     const refundable = (current: typeof booking) => {
+      // Webpay Plus no pasa por la API de Mercado Pago: la devolución se hace en el portal de Transbank (ADR-030).
+      if (current.paymentProvider === "WEBPAY_PLUS") {
+        throw new UnprocessableEntityException("Esta seña se pagó con Webpay Plus: la devolución se hace desde tu portal de Transbank, no desde acá.");
+      }
       if (!current.providerPaymentId || current.depositAmount === null || (current.paymentStatus !== "approved" && current.paymentStatus !== "refunded")) {
         throw new UnprocessableEntityException(NO_DEPOSIT_TO_REFUND);
       }

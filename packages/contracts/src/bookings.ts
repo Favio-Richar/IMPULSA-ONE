@@ -207,6 +207,8 @@ export const publicBookingConfirmationResponse = z.object({
   paymentDeadline: isoDateTime.nullable(),
   /** Dónde pagar la seña con Mercado Pago. */
   checkoutUrl: z.string().nullable(),
+  /** «Tu reserva», donde se paga la seña con Webpay Plus (F10.2e); `null` sin cuenta de Webpay conectada. Opcional: caché anterior. */
+  webpayUrl: z.string().nullable().optional(),
 });
 export type PublicBookingConfirmationResponse = z.infer<typeof publicBookingConfirmationResponse>;
 
@@ -259,9 +261,19 @@ export const publicManagedBookingResponse = z.object({
   deposit: z.object({ amount: z.number().int(), status: z.string().nullable(), deadline: isoDateTime.nullable(), paidAt: isoDateTime.nullable() }).nullable(),
   /** Dónde pagar la seña, solo mientras la reserva la espera y el plazo no venció. */
   checkoutUrl: z.string().nullable(),
+  /** ¿Se puede pagar la seña ahora con Webpay Plus? (F10.2e). Opcional: una respuesta anterior sigue siendo válida. */
+  webpayAvailable: z.boolean().optional(),
   /** `false` si ya no está confirmada o falta menos que la anticipación mínima del negocio. */
   canChange: z.boolean(),
   /** Hasta cuándo se puede cancelar o cambiar. */
   changeDeadline: isoDateTime,
 });
 export type PublicManagedBookingResponse = z.infer<typeof publicManagedBookingResponse>;
+
+/** Empezar a pagar la seña de una reserva con Webpay Plus (F10.2e): a dónde enviar al comprador (POST con `token_ws`). */
+export const bookingWebpayStartResponse = z.object({
+  checkoutUrl: z.string(),
+  method: z.literal("POST"),
+  fields: z.record(z.string(), z.string()),
+});
+export type BookingWebpayStartResponse = z.infer<typeof bookingWebpayStartResponse>;

@@ -1711,6 +1711,11 @@ model Booking {
   // F5.11a: cuánto se devolvió de la seña (leído de Mercado Pago; `CHECK` ≤ seña).
   depositRefundedAmount Int      @default(0) @map("deposit_refunded_amount")
   googleEventId   String?       @map("google_event_id")
+  // F10.2e (ADR-030): Webpay Plus. `webpayToken` / `webpayBuyOrder`: la ultima transaccion creada para la sena (cada intento
+  // crea una nueva); `paymentProvider`: la pasarela del ultimo intento o la que cobro.
+  paymentProvider PaymentGateway? @map("payment_provider")
+  webpayToken     String?         @map("webpay_token")
+  webpayBuyOrder  String?         @unique @map("webpay_buy_order")
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 

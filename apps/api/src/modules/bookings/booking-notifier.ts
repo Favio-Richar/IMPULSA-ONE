@@ -54,8 +54,9 @@ export class BookingNotifier {
     }
   }
 
-  private messageData(booking: Booking, siteName: string): BookingMessageData {
+  private messageData(booking: Booking, siteName: string, gateways?: Array<"MERCADO_PAGO" | "WEBPAY_PLUS">): BookingMessageData {
     return {
+      ...(gateways && gateways.length > 0 ? { gateways } : {}),
       siteName,
       serviceName: booking.serviceName,
       startsAt: booking.startsAt.toISOString(),
@@ -69,9 +70,9 @@ export class BookingNotifier {
   }
 
   /** La reserva espera la seña (F5.10): se le pide pagarla antes del plazo. */
-  async notifyDepositPending(booking: Booking, siteName: string): Promise<void> {
+  async notifyDepositPending(booking: Booking, siteName: string, gateways?: Array<"MERCADO_PAGO" | "WEBPAY_PLUS">): Promise<void> {
     if (!booking.paymentDeadline) return;
-    await this.send(booking.customerEmail, bookingDepositPendingEmail(this.messageData(booking, siteName), booking.paymentDeadline.toISOString()), {
+    await this.send(booking.customerEmail, bookingDepositPendingEmail(this.messageData(booking, siteName, gateways), booking.paymentDeadline.toISOString()), {
       bookingId: booking.id,
       kind: "deposit_pending",
       to: "customer",
@@ -115,7 +116,11 @@ export class BookingNotifier {
       agendaUrl: `${env.APP_BASE_URL.replace(/\/$/, "")}/reservas`,
       deposit:
         paymentId && booking.depositAmount !== null && booking.priceCurrency
-          ? { amount: formatDepositAmount(booking.depositAmount, booking.priceCurrency), paymentId }
+          ? {
+              amount: formatDepositAmount(booking.depositAmount, booking.priceCurrency),
+              paymentId,
+              gateway: booking.paymentProvider === "WEBPAY_PLUS" ? ("WEBPAY_PLUS" as const) : ("MERCADO_PAGO" as const),
+            }
           : null,
     });
     for (const owner of owners) {

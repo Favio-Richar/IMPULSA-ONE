@@ -13,6 +13,8 @@ export interface BookingMessageData {
   paymentUrl: string | null;
   /** Enlace "gestiona tu reserva"; `null` si la instalación no tiene la URL pública configurada. */
   manageUrl: string | null;
+  /** Pasarela(s) con que se puede pagar la seña (F10.2e). Sin dato, Mercado Pago (como antes de Webpay). */
+  gateways?: ReadonlyArray<"MERCADO_PAGO" | "WEBPAY_PLUS">;
   /** Seña cobrada con Mercado Pago (F5.10), en la moneda del precio. */
   depositAmount?: number | null;
 }
@@ -130,6 +132,12 @@ export function bookingCancelledEmail(data: BookingMessageData): EmailContent {
  * Reserva que espera la seña (F5.10): la hora queda tomada hasta `paymentDeadline`. El enlace de
  * gestión lleva a "Tu reserva", que tiene el botón para pagar con Mercado Pago.
  */
+const GATEWAY_NAMES = { MERCADO_PAGO: "Mercado Pago", WEBPAY_PLUS: "Webpay Plus" } as const;
+function gatewayNames(gateways?: ReadonlyArray<"MERCADO_PAGO" | "WEBPAY_PLUS">): string {
+  const list = gateways && gateways.length > 0 ? gateways : (["MERCADO_PAGO"] as const);
+  return list.map((gateway) => GATEWAY_NAMES[gateway]).join(" o ");
+}
+
 export function bookingDepositPendingEmail(data: BookingMessageData, paymentDeadline: string): EmailContent {
   return {
     subject: oneLine(`Paga la seña para confirmar tu reserva en ${data.siteName}`),
@@ -140,7 +148,7 @@ export function bookingDepositPendingEmail(data: BookingMessageData, paymentDead
       `Seña: ${depositText(data)}`,
       "",
       `Tienes hasta las ${formatTime(paymentDeadline, data.timeZone)} para pagarla; si no, la hora se libera.`,
-      ...(data.manageUrl ? ["Paga la seña con Mercado Pago aquí (el pago lo recibe directamente el negocio):", data.manageUrl] : []),
+      ...(data.manageUrl ? [`Paga la seña con ${gatewayNames(data.gateways)} aquí (el pago lo recibe directamente el negocio):`, data.manageUrl] : []),
       "",
       `${data.siteName}`,
     ].join("\n"),
@@ -191,7 +199,7 @@ export interface OwnerNoticeData {
   /** Enlace a la agenda del panel. */
   agendaUrl: string | null;
   /** Seña pagada (F5.10): monto ya formateado e id del pago en Mercado Pago. */
-  deposit?: { amount: string; paymentId: string } | null;
+  deposit?: { amount: string; paymentId: string; gateway?: "MERCADO_PAGO" | "WEBPAY_PLUS" } | null;
 }
 
 const OWNER_SUBJECTS: Record<OwnerNoticeKind, string> = {
@@ -221,7 +229,13 @@ export function ownerBookingNoticeEmail(data: OwnerNoticeData): EmailContent {
       `Correo: ${data.customerEmail}`,
       ...(data.customerPhone ? [`Teléfono: ${data.customerPhone}`] : []),
       ...(data.note ? [`Comentario: ${data.note}`] : []),
-      ...(data.deposit ? [`Seña pagada con Mercado Pago: ${data.deposit.amount} (pago ${data.deposit.paymentId}). El dinero está en tu cuenta.`] : []),
+      ...(data.deposit
+        ? [
+            data.deposit.gateway === "WEBPAY_PLUS"
+              ? `Seña pagada con Webpay Plus: ${data.deposit.amount} (orden ${data.deposit.paymentId}). El dinero está en tu comercio de Transbank.`
+              : `Seña pagada con Mercado Pago: ${data.deposit.amount} (pago ${data.deposit.paymentId}). El dinero está en tu cuenta.`,
+          ]
+        : []),
       ...(data.kind === "paid_without_slot"
         ? [
             "",

@@ -1,12 +1,13 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { publicManagedBookingResponse } from "@impulza/contracts";
+import { bookingWebpayStartResponse, publicManagedBookingResponse } from "@impulza/contracts";
 import { rescheduleBookingSchema, type RescheduleBookingInput } from "@impulza/validation";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { RateLimit } from "../../common/rate-limit.decorator.js";
 import { RateLimitGuard } from "../../common/rate-limit.guard.js";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
 import { ApiZodBody, ApiZodResponse } from "../../openapi/zod-openapi.js";
+import { BookingDepositService } from "./booking-deposit.service.js";
 import { BookingManageService, MANAGE_NOT_FOUND, NEW_SLOT_TAKEN, TOO_LATE } from "./booking-manage.service.js";
 
 /**
@@ -18,7 +19,10 @@ import { BookingManageService, MANAGE_NOT_FOUND, NEW_SLOT_TAKEN, TOO_LATE } from
 @Controller("public/bookings/:token")
 @UseGuards(CsrfGuard, RateLimitGuard)
 export class BookingManageController {
-  constructor(private readonly manageService: BookingManageService) {}
+  constructor(
+    private readonly manageService: BookingManageService,
+    private readonly deposit: BookingDepositService,
+  ) {}
 
   @Get()
   @RateLimit({ limit: 60, windowSeconds: 60, keyPrefix: "public-booking-manage" })
@@ -28,6 +32,22 @@ export class BookingManageController {
   @ApiQuery({ name: "paymentId", required: false, description: "Id del pago de la seña en Mercado Pago, tal como vuelve el cliente (F5.10): se consulta con el token del negocio." })
   view(@Param("token") token: string, @Query("paymentId") paymentId: unknown) {
     return this.manageService.view(token, new Date(), typeof paymentId === "string" ? paymentId : undefined);
+  }
+
+  @Post("webpay")
+  @HttpCode(HttpStatus.OK)
+  @RateLimit({ limit: 20, windowSeconds: 60, keyPrefix: "public-booking-webpay" })
+  @ApiOperation({
+    summary: "Empezar a pagar la seña con Webpay Plus",
+    description:
+      "Crea una transacción de Webpay Plus en el comercio del propio negocio por la seña guardada de la reserva (nunca un monto enviado por el cliente) y devuelve a dónde enviarlo por POST con `token_ws`. Cada intento crea una transacción nueva; al volver, el servidor confirma la última.",
+  })
+  @ApiZodResponse(200, bookingWebpayStartResponse, "A dónde enviar al cliente.")
+  @ApiResponse({ status: 404, description: MANAGE_NOT_FOUND })
+  @ApiResponse({ status: 409, description: "La reserva ya no espera la seña." })
+  @ApiResponse({ status: 503, description: "Webpay no está disponible ahora." })
+  startWebpay(@Param("token") token: string) {
+    return this.deposit.startWebpay(token);
   }
 
   @Post("cancel")

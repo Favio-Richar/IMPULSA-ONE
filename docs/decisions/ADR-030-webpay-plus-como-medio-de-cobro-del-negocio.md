@@ -43,3 +43,11 @@ Hoy el negocio cobra a **sus** clientes (pedidos F5.9, señas de reservas F5.10,
 - **Devolución:** un pedido pagado con Webpay no pasa por la API de Mercado Pago; la API lo rechaza con 422 y el panel indica hacerlo en Transbank. La acción «anular compra» desde el panel (API de reversa/anulación
   de Transbank) queda como seguimiento de este ADR.
 - **CSP:** `form-action` de `apps/web` debe incluir `https://*.transbank.cl`; sin eso el navegador bloquea el envío a Webpay.
+
+## Addendum — señas de reservas (F10.2e, 2026-10-11)
+
+- Mismo criterio que pedidos y membresías: la transacción se crea al pulsar «Pagar» en «Tu reserva» (el enlace firmado de la reserva es la credencial), el monto es la seña **guardada**, el servidor confirma la
+  transacción guardada y confirma la reserva de forma condicional (una sola vez), verificando orden de compra y monto.
+- La hora sigue tomada hasta el plazo de pago; si vence y el worker la libera, un pago tardío reutiliza la rutina existente (confirma si la hora sigue libre; si no, avisa al negocio con constancia).
+- **Devolución:** una seña pagada con Webpay no pasa por Mercado Pago; la API responde 422 y el panel indica el portal de Transbank. Con esto, los tres consumidores previstos (membresías, pedidos, reservas)
+  quedan cubiertos; sigue pendiente la acción «anular compra» desde el panel.

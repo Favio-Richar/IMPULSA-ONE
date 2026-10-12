@@ -234,6 +234,7 @@ export class PublicBookingsService {
       depositAmount: null,
       paymentDeadline: null,
       checkoutUrl: null,
+      webpayUrl: null,
     };
 
     // Antispam (mismo criterio que los formularios, F3.2): a un bot se le responde como si hubiera
@@ -429,10 +430,13 @@ export class PublicBookingsService {
       });
     }
     let booking = await this.prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
+    let depositGateways: Array<"MERCADO_PAGO" | "WEBPAY_PLUS"> = [];
     if (booking.status === "PENDING_PAYMENT") {
       const started = await this.deposit.startFor(booking);
       booking = started.booking;
       confirmation.checkoutUrl = started.checkoutUrl;
+      confirmation.webpayUrl = started.webpayUrl;
+      depositGateways = started.gateways;
     }
     if (booking.status === "PENDING_PAYMENT") {
       // Al cliente se le pide la seña; el negocio recibe el aviso cuando se pague (o la ve en su agenda).
@@ -440,7 +444,7 @@ export class PublicBookingsService {
       confirmation.depositAmount = booking.depositAmount;
       confirmation.paymentDeadline = booking.paymentDeadline?.toISOString() ?? null;
       confirmation.paymentUrl = null;
-      await this.notifier.notifyDepositPending(booking, site.name);
+      await this.notifier.notifyDepositPending(booking, site.name, depositGateways);
     } else {
       // Correos (F5.4): confirmación con el enlace "gestiona tu reserva" y aviso a los dueños.
       await this.notifier.notifyCustomer("confirmed", booking, site.name);

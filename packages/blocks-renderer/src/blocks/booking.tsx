@@ -661,8 +661,18 @@ function Confirmation({ confirmation, heading }: { confirmation: PublicBookingCo
             Pagar la seña con Mercado Pago
           </a>
         ) : null}
+        {confirmation.webpayUrl ? (
+          // Webpay se paga desde "Tu reserva": ahí se crea la transacción en el momento de pagar (F10.2e).
+          <a href={confirmation.webpayUrl} rel="noopener noreferrer" className={PRIMARY_BUTTON}>
+            <CreditCard className="h-4 w-4" aria-hidden="true" />
+            Pagar la seña con Webpay
+          </a>
+        ) : null}
         <p className="text-xs text-[var(--site-color-muted-foreground)]">
-          Pagas en el sitio de Mercado Pago y el dinero lo recibe directamente el negocio. También te enviamos el enlace por correo.
+          {confirmation.webpayUrl
+            ? "Pagas en el sitio de la pasarela y el dinero lo recibe directamente el negocio."
+            : "Pagas en el sitio de Mercado Pago y el dinero lo recibe directamente el negocio."}{" "}
+          También te enviamos el enlace por correo.
         </p>
       </div>
     );

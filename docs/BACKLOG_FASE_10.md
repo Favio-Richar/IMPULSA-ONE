@@ -9,7 +9,8 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 | F10.1 | Miembros de sitio y contenido protegido (enlace mágico) | **Hecha** (2026-10-11): API 12/12, suite 74/74 (API 1035), Playwright 4/4; reservas en el detalle |
 | F10.2 | Planes de membresía y cobro por la cuenta del negocio | **Hecha** (2026-10-11): (a) planes, compra, acceso por vigencia y reembolsos; (b) avisos de renovación y de vencimiento; reservas en el detalle |
 | F10.2c | Webpay Plus como medio de cobro del negocio (ADR-030): cuenta propia + membresías | **Hecha** (2026-10-11) |
-| F10.2d | Webpay Plus en los pedidos de la tienda (ADR-030) | **Hecha** (2026-10-11); falta F10.2e señas de reservas |
+| F10.2d | Webpay Plus en los pedidos de la tienda (ADR-030) | **Hecha** (2026-10-11) |
+| F10.2e | Webpay Plus en las señas de reservas (ADR-030) | **Hecha** (2026-10-11) |
 | F10.3 | Cursos: módulos, lecciones y progreso | Pendiente |
 | F10.4 | Tarjeta digital, vCard y pases de wallet | Pendiente |
 | F10.5 | PWA: instalación y modo sin conexión acotado | Pendiente |
@@ -119,7 +120,7 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
   se confirma ese token; queda documentado y probado que una transacción ajena NO se consume).
 - **Reservas honestas:** (1) **Webpay Plus no avisa reembolsos ni contracargos**: a diferencia de Mercado Pago, la devolución no se detecta sola; el negocio puede revocar al miembro y queda pendiente una acción
   «anular compra» en el panel; (2) **no se ejerció contra Transbank real**: se probó con el simulador y con las credenciales públicas de integración documentadas; el propietario debe probar con su código de
-  comercio al conectar; (3) **las señas de reservas aún no ofrecen Webpay** (F10.2e; los pedidos sí, F10.2d); (4) solo CLP; (5) cada negocio debe contratar Webpay Plus con Transbank (trámite suyo, fuera del
+  comercio al conectar; (3) ~~las señas de reservas no ofrecían Webpay~~ (resuelto en F10.2e); (4) solo CLP; (5) cada negocio debe contratar Webpay Plus con Transbank (trámite suyo, fuera del
   producto: la pantalla de Cobros lo explica).
 
 **Hecha — F10.2d (2026-10-11): Webpay Plus en los pedidos de la tienda (ADR-030).**
@@ -142,6 +143,23 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
   monto/orden, asignación no condicional, sin guarda de devolución, sin vigencia).
 - **Reservas honestas:** misma lista de F10.2c (sin avisos de devolución/contracargo de Webpay, no ejercido contra Transbank real, solo CLP). Además: la **devolución de un pedido pagado con Webpay es manual**
   hasta que exista la acción «anular compra» en el panel (se anota como siguiente paso del propio ADR-030).
+
+**Hecha — F10.2e (2026-10-11): Webpay Plus en las señas de reservas (ADR-030).**
+
+- **Cómo se ofrece:** con Mercado Pago y/o Webpay Plus conectados, la reserva con seña queda `PENDING_PAYMENT` (la hora tomada hasta el plazo) y la confirmación ofrece los medios disponibles. Mercado Pago crea la
+  preferencia en el acto; Webpay se paga desde «Tu reserva». Si ninguna pasarela puede, la reserva se confirma sin seña: nunca se pierde una reserva por la pasarela.
+- **La transacción se crea al pulsar «Pagar con Webpay»** (`POST /public/bookings/:token/webpay`, con límite de tasa y el enlace firmado como credencial): cada intento crea la suya. El monto es la **seña guardada**
+  de la reserva, nunca uno enviado por el visitante; `sessionId` = reserva.
+- **Regreso y confirmación** (`/payments/webpay/bookings/:token/return`, GET y POST, 303 a «Tu reserva»): el servidor confirma la transacción **guardada**, no la de la URL, y solo confirma la reserva si queda
+  autorizada y coinciden orden de compra y monto. La confirmación es condicional (6 regresos simultáneos: una sola confirmación, un solo aviso). Si el plazo venció y el worker ya liberó la hora, se reutiliza
+  la rutina de Mercado Pago: confirma si la hora sigue libre; si no, deja constancia y avisa al negocio.
+- **Datos:** `bookings.payment_provider`, `webpay_token`, `webpay_buy_order` (única); migración reversible `20261012020000_f102e_booking_webpay`. El pago queda como `webpay:<orden de compra>` en `provider_payment_id`.
+- **Resto del sistema:** correos del cliente y del negocio nombran la pasarela correcta; el panel de agenda muestra «Seña pagada con Webpay Plus · orden …» y **no ofrece devolver** (la API responde 422 y explica
+  que se hace en el portal de Transbank).
+- **Pruebas:** 13 de integración (solo Webpay, monto/comercio/sessionId, confirmación única y avisos, regresos simultáneos, rechazo y reintento, monto distinto, token ajeno, abandono, vencida/cancelada, Transbank
+  caído, dos medios, devolución bloqueada, aislamiento) + las 65 de reservas existentes sin cambios (82 con OpenAPI).
+- **Reservas honestas:** las mismas de F10.2c/F10.2d (sin avisos de devolución/contracargo de Webpay, devolución manual en Transbank, no ejercido contra Transbank real, solo CLP). Pendiente de F10.2e: prueba
+  Playwright del botón «Tu reserva» (la ruta y el botón están cubiertos por integración y por el mismo envío de formulario ya probado en F10.2d).
 
 ## F10.3 — Cursos
 

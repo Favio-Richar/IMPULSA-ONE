@@ -665,5 +665,7 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
   transacción. Migraciones `20261011220000_f102c_webpay_plus_account` y `20261011230000_f102c_membership_provider`.
 - **Order.payment_provider / webpay_token / webpay_buy_order** (F10.2d): pasarela del último intento o que cobró; token de la última transacción de Webpay Plus y su orden de compra (única). Con Webpay, `provider_payment_id`
   guarda `webpay:<orden de compra>`. Migración reversible `20261011240000_f102d_order_webpay`.
+- **Booking.payment_provider / webpay_token / webpay_buy_order** (F10.2e): lo mismo que en `Order`, para la seña de la reserva (`webpay_buy_order` única; `provider_payment_id` = `webpay:<orden>`). Migración
+  reversible `20261012020000_f102e_booking_webpay`.
 - **Template.companion_pages** (F10): JSON nullable `[{ slug, blocksSeed }]` (a lo sumo 2) con las páginas que la plantilla crea además de la de inicio. Migración reversible `20261012000000_f10_template_companion_pages`.
 - **PageEngagement / PageLike** (F10): `page_engagement(page_id PK → pages, views, likes)` con `CHECK >= 0`, y `page_likes(page_id, visitor_key HMAC, UNIQUE(page_id, visitor_key))`. Las vistas las suma el procesador de analítica en la transacción del evento; los «me gusta» los mantiene el servicio en la transacción de crear/borrar la fila. Migración reversible `20261012010000_f10_page_engagement`.

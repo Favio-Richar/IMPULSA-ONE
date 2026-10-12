@@ -108,6 +108,7 @@ export class BookingManageService {
               paidAt: booking.depositPaidAt?.toISOString() ?? null,
             },
       checkoutUrl: canPay ? booking.checkoutUrl : null,
+      webpayAvailable: await this.deposit.webpayAvailableFor(booking),
       canChange: this.canChange(booking, deadline, now),
       changeDeadline: deadline.toISOString(),
     };

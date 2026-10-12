@@ -33068,6 +33068,10 @@
                     "checkoutUrl": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "webpayUrl": {
+                      "nullable": true,
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -34854,6 +34858,9 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "webpayAvailable": {
+                      "type": "boolean"
+                    },
                     "canChange": {
                       "type": "boolean"
                     },
@@ -34892,6 +34899,82 @@
           }
         },
         "summary": "Ver una reserva con su enlace de gestión",
+        "tags": [
+          "public-bookings"
+        ]
+      }
+    },
+    "/api/v1/public/bookings/{token}/webpay": {
+      "post": {
+        "description": "Crea una transacción de Webpay Plus en el comercio del propio negocio por la seña guardada de la reserva (nunca un monto enviado por el cliente) y devuelve a dónde enviarlo por POST con `token_ws`. Cada intento crea una transacción nueva; al volver, el servidor confirma la última.",
+        "operationId": "BookingManageController_startWebpay",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A dónde enviar al cliente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "checkoutUrl": {
+                      "type": "string"
+                    },
+                    "method": {
+                      "type": "string",
+                      "enum": [
+                        "POST"
+                      ]
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "checkoutUrl",
+                    "method",
+                    "fields"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El enlace no es válido o la reserva ya no existe."
+          },
+          "409": {
+            "description": "La reserva ya no espera la seña."
+          },
+          "503": {
+            "description": "Webpay no está disponible ahora."
+          }
+        },
+        "summary": "Empezar a pagar la seña con Webpay Plus",
         "tags": [
           "public-bookings"
         ]
@@ -35028,6 +35111,9 @@
                     "checkoutUrl": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "webpayAvailable": {
+                      "type": "boolean"
                     },
                     "canChange": {
                       "type": "boolean"
@@ -35226,6 +35312,9 @@
                     "checkoutUrl": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "webpayAvailable": {
+                      "type": "boolean"
                     },
                     "canChange": {
                       "type": "boolean"

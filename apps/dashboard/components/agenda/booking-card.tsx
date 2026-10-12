@@ -45,6 +45,13 @@ export function depositText(booking: Pick<BookingResponse, "deposit" | "status" 
   if (!deposit || !booking.priceCurrency) return null;
   const amount = formatMoney(deposit.amount, booking.priceCurrency);
   if (deposit.paymentId) {
+    // Webpay Plus (F10.2e): no avisa devoluciones ni contracargos; el dinero se devuelve desde el portal de Transbank.
+    if (deposit.paymentId.startsWith("webpay:")) {
+      const order = deposit.paymentId.slice("webpay:".length);
+      return booking.status === "CANCELLED"
+        ? `Seña de ${amount} pagada con Webpay Plus con la reserva ya cancelada (orden ${order}): reactívala o devuélvela desde tu portal de Transbank.`
+        : `Seña de ${amount} pagada con Webpay Plus · orden ${order}. Para devolverla, hazlo desde tu portal de Transbank.`;
+    }
     if (deposit.status === "charged_back") return `Contracargo de la seña de ${amount} (pago ${deposit.paymentId}). Respóndelo desde tu cuenta de Mercado Pago.`;
     if (deposit.status === "in_mediation") return `Reclamo abierto por la seña de ${amount} (pago ${deposit.paymentId}). Respóndelo desde tu cuenta de Mercado Pago.`;
     if (deposit.refundedAmount > 0) {
@@ -75,7 +82,10 @@ export function BookingCard({ organizationId, booking }: { organizationId: strin
   const deposit = depositText(booking);
   const refund = useRefundBookingDeposit(organizationId);
   // Lo que queda por devolver de una seña pagada en línea (F5.11a).
-  const refundable = booking.deposit?.paymentId && booking.deposit.status === "approved" ? booking.deposit.amount - booking.deposit.refundedAmount : 0;
+  const refundable =
+    booking.deposit?.paymentId && !booking.deposit.paymentId.startsWith("webpay:") && booking.deposit.status === "approved"
+      ? booking.deposit.amount - booking.deposit.refundedAmount
+      : 0;
   const whatsapp = booking.customerPhone ? `https://wa.me/${booking.customerPhone.replace(/\D/g, "")}` : null;
   const error =
     update.error instanceof ApiError && update.error.status === 409

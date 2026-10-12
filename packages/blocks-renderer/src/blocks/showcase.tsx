@@ -23,6 +23,7 @@ export function ShowcaseBlock({ config }: { config: ShowcaseBlockConfig }) {
           <li key={index}>
             <a
               href={item.link}
+              data-tilt=""
               {...OUTBOUND_LINK}
               aria-label={`${item.title}${item.subtitle ? `, ${item.subtitle}` : ""}: ${config.actionLabel}`}
               className={`group relative block overflow-hidden rounded-[var(--site-radius)] border border-[var(--site-color-border)] bg-[var(--site-color-surface)] shadow-[var(--site-shadow)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-focus,var(--site-color-link))] ${grid ? "aspect-[4/5]" : "aspect-[16/10]"}`}

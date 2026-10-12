@@ -13,6 +13,7 @@ import {
 import type { CSSProperties, ReactNode } from "react";
 import { BackgroundVideo } from "./background-video.js";
 import { SiteModeToggle } from "./site-mode-toggle.js";
+import { SiteMotionEnhancer } from "./site-motion-enhancer.js";
 
 /** Color de base mientras carga la imagen o el video: el de la capa, así el texto ya se lee. */
 function baseStyle(background: ResolvedSiteBackground): CSSProperties {
@@ -96,6 +97,7 @@ export function SiteBackdrop({
           ) : null}
         </div>
       ) : null}
+      {theme.motion === "elegant" && showModeToggle ? <SiteMotionEnhancer /> : null}
       {altVars && showModeToggle ? <SiteModeToggle altVars={{ ...altVars }} baseBackground={theme.palette.background} /> : null}
       {children}
     </div>

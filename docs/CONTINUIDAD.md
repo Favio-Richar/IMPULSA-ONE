@@ -5,12 +5,13 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-12) — **Fases 0 a 9 completas**; **Fase 10 en curso: hechas F10.1, F10.2 (a–e), F10.3 y F10.4**; siguiente: **F10.5 PWA**, luego F10.6 marketplace y F10.7 cierre
+## 0. RETOMAR AQUÍ (2026-10-12) — **Fases 0 a 9 completas**; **Fase 10 en curso: hechas F10.1, F10.2 (a–e), F10.3, F10.4 y F10.5**; siguiente: **F10.6 marketplace**, luego F10.7 cierre
 
 **Estado de la Fase 10 (rama `fase-9/f9-6-equipo-avanzado`):** F10.1 miembros y contenido protegido; F10.2 planes de membresía, Webpay Plus como medio de cobro del negocio en membresías (c), pedidos (d) y señas de reservas (e)
 (ADR-030); **F10.3 cursos** (módulos, lecciones de texto/video, progreso por miembro, acceso OPEN/MEMBERS/PLAN, panel en `/sitios/:id/cursos`, público en `/:sitio/c`). Además, trabajo transversal de la fase: 13 portales completos
 con álbum, bloques de portal (`album`, `page_header`, `stats`, `steps`, `feature`, `works_wheel`, `marquee`, `showcase`, `engagement`), páginas compañeras, vistas y «me gusta», modo día/noche y movimiento elegante, efectos de fondo, y
 «Mi sistema» en el detalle del sitio (áreas administrables según el contenido real). Detalle y reservas honestas por historia en `docs/BACKLOG_FASE_10.md`.
+**F10.5 PWA:** paquete `@impulza/pwa` (service worker, manifiesto, cliente); `/sw.js` y `/manifest.webmanifest` en panel y sitio, manifiesto por sitio en `/:sitio/manifest.webmanifest`; el proxy de dominios propios excluye `sw.js`, `offline.html`, `icons/` y `manifest.webmanifest`. **Trampas:** el registro solo ocurre con `NODE_ENV=production`; si tras agregar un paquete `pnpm` no lo enlaza, `pnpm install --offline`; el límite de tasa de login de administración (429 en `global-setup`) se limpia con `redis-cli del ratelimit:*`.
 **F10.4 tarjeta digital:** `/:sitio/t` (página), `/t/vcard`, `/t/apple` y `/api/card/google/:sitio`; pases detrás de `WalletPassProvider` (sin credenciales: 503 claro). **Trampas:** el heredoc/Write convierte escapes `\uXXXX` en caracteres reales (construir regex de control con `String.fromCharCode`); una migración con comillas simples dentro de `node -e` se rompe: escribir el SQL con la herramienta Write; si `prisma migrate deploy` queda en P3009, `migrate resolve --rolled-back` (y borrar la fila en `impulza_test`); procesos `tsx watch` huérfanos del worker retienen la DLL de Prisma.
 **Trampas de F10.3:** un permiso nuevo exige `db:seed` y `db:test:prepare` antes de las pruebas (si no, 403 en todo); las rutas públicas nuevas van en la lista de `openapi.test.ts`; `apps/web` no puede tener una página con slug de 1 letra
 (`/:sitio/c` está libre porque el mínimo de un slug de página es 3).

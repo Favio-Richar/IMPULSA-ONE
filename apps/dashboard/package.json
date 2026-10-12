@@ -17,6 +17,7 @@
     "@hookform/resolvers": "5.9.1",
     "@impulza/blocks-renderer": "workspace:*",
     "@impulza/contracts": "workspace:*",
+    "@impulza/pwa": "workspace:*",
     "@impulza/ui": "workspace:*",
     "@impulza/validation": "workspace:*",
     "@tanstack/react-query": "5.102.8",

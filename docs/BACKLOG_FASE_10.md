@@ -13,7 +13,7 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 | F10.2e | Webpay Plus en las señas de reservas (ADR-030) | **Hecha** (2026-10-11) |
 | F10.3 | Cursos: módulos, lecciones y progreso | **Hecha** (2026-10-12): API 13/13, validación 8/8, Playwright 4/4 (2 viewports); compra única fuera de alcance (ver reservas) |
 | F10.4 | Tarjeta digital, vCard y pases de wallet | **Hecha** (2026-10-12): API 16/16 (9 integración + 7 de wallet), validación 7/7, Playwright 4/4 (2 viewports); pases reales pendientes de credenciales |
-| F10.5 | PWA: instalación y modo sin conexión acotado | Pendiente |
+| F10.5 | PWA: instalación y modo sin conexión acotado | **Hecha** (2026-10-12): paquete `@impulza/pwa` 11/11, Playwright 6/6 (2 viewports); sin auditoría Lighthouse (ver reservas) |
 | F10.6 | Marketplace de integraciones y plantillas | Pendiente |
 | F10.7 | Aislamiento, seguridad y cierre de la Fase 10 | Pendiente |
 
@@ -202,6 +202,16 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 4. **Pruebas:** vCard contra casos hostiles (saltos de línea, comillas), adaptador simulado, sin credenciales, aislamiento.
 
 ## F10.5 — PWA
+
+**Hecha — F10.5 (2026-10-12): app instalable y modo sin conexión acotado (ADR-029).**
+
+- **Paquete `@impulza/pwa`:** una sola fuente del service worker (texto generado, servido en `/sw.js` por el panel y por el sitio público), del manifiesto y del componente de cliente (registro, aviso de versión nueva e instalación).
+- **Manifiestos:** panel (`/manifest.webmanifest`, `standalone`, íconos 192/512/maskable), sitio de la plataforma y **uno por sitio** (`/:sitio/manifest.webmanifest`, con el nombre y los colores del tema del sitio; `start_url` y `scope` dentro de `/:sitio/`). Íconos y `offline.html` estáticos en `public/`.
+- **Service worker (regla de oro):** nunca atiende peticiones que no sean GET, de otro origen (la API, los medios) ni `/api/` ni `/sw.js`; **las páginas van siempre a la red** y solo si falla se muestra la pantalla «Sin conexión» precacheada; solo guarda estáticos con huella (`/_next/static/`) e íconos, y jamás una respuesta con `Set-Cookie` o un error. Nada con sesión ni datos en caché.
+- **Actualización controlada:** la versión nueva se instala y **espera**; la página muestra «Hay una versión nueva disponible» y solo al pulsar «Actualizar» se activa y recarga una vez. La primera instalación no recarga. Se revisa si hay versión nueva cada hora.
+- **Instalación guiada** en el panel: ofrece «Instalar» cuando el navegador lo permite, con «Ahora no» recordado. En el sitio público no se muestra un botón propio (se instala desde el menú del navegador).
+- **Pruebas:** 11 unitarias del service worker en un entorno simulado (qué nunca atiende, navegaciones, estáticos, cookies, activación, SKIP_WAITING) y del manifiesto; Playwright: manifiestos válidos con íconos, `/sw.js` sin caché y sin `skipWaiting` en la instalación, registro real en el build de producción, **ninguna URL `/api/` ni página con datos en Cache Storage**, pantalla sin conexión con la red cortada y flujo de actualización.
+- **Reservas honestas:** (1) **no se corrió Lighthouse**: su categoría PWA ya no existe en las versiones actuales; la instalabilidad se verifica con las condiciones que exige Chrome (manifiesto, íconos, service worker con `fetch`); (2) el registro del service worker solo ocurre en producción (en `next dev` no se registra); (3) los íconos son un cuadrado con una «I»: el negocio no puede subir su propio ícono por sitio todavía; (4) sin notificaciones push ni sincronización en segundo plano; (5) sin modo sin conexión de datos: sin red solo se ve la pantalla de aviso (decisión deliberada para no guardar nada ligado a una persona).
 
 1. Manifiesto e iconos para el panel y para la página pública; instalación guiada.
 2. Service worker que cachea solo recursos estáticos y una pantalla sin conexión; **nunca** respuestas de API.

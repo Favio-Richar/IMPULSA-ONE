@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@impulza/pwa": "workspace:*",
     "@impulza/analytics": "workspace:*",
     "@impulza/blocks-renderer": "workspace:*",
     "@impulza/contracts": "workspace:*",

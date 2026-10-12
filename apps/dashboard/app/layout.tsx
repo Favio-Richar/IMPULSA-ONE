@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import { PwaClient } from "@impulza/pwa";
+import type { Metadata, Viewport } from "next";
 import { brandCssVariables } from "@impulza/validation";
 import { getPlatformBranding } from "../lib/api/branding";
 import { Providers } from "./providers";
@@ -9,9 +10,15 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${branding.name} — Panel`,
     description: "Panel del propietario, colaboradores y modo agencia.",
-    icons: branding.faviconUrl ? [{ url: branding.faviconUrl }] : undefined,
+    icons: {
+      ...(branding.faviconUrl ? { icon: [{ url: branding.faviconUrl }] } : {}),
+      apple: "/icons/apple-touch-icon.png",
+    },
   };
 }
+
+// F10.5: color de la barra del sistema cuando se abre como app instalada.
+export const viewport: Viewport = { themeColor: "#0f766e" };
 
 export default async function RootLayout({
   children,
@@ -27,6 +34,8 @@ export default async function RootLayout({
       <head>{brandCss ? <style>{brandCss}</style> : null}</head>
       <body>
         <Providers>{children}</Providers>
+        {/* F10.5: registra el service worker, avisa de versiones nuevas (sin activarlas solas) y ofrece instalar la app. */}
+        <PwaClient showInstall className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background px-4 py-3 text-sm text-foreground shadow-lg" />
       </body>
     </html>
   );

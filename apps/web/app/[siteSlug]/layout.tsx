@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { getPublicSite } from "../../lib/api";
@@ -6,6 +7,15 @@ import { SiteShell } from "../../components/site-shell";
 interface Props {
   children: ReactNode;
   params: Promise<{ siteSlug: string }>;
+}
+
+/**
+ * F10.5: vínculo al manifiesto de la app instalable del sitio. Solo esa clave: el título y la descripción de cada página siguen
+ * saliendo de su propio `generateMetadata` (ver la nota de abajo sobre `title.template`).
+ */
+export async function generateMetadata({ params }: Pick<Props, "params">): Promise<Metadata> {
+  const { siteSlug } = await params;
+  return { manifest: `/${encodeURIComponent(siteSlug)}/manifest.webmanifest` };
 }
 
 /**

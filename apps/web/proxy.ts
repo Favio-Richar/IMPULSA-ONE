@@ -63,5 +63,6 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 export const config = {
   // Ni los archivos del framework ni las rutas de API propias (analítica, formularios, invalidación):
   // esas se sirven igual en cualquier host.
-  matcher: ["/((?!_next/static|_next/image|api/|favicon.ico).*)"],
+  // Tampoco el service worker, la pantalla sin conexión ni los íconos (F10.5): son de la plataforma, sirven en cualquier host.
+  matcher: ["/((?!_next/static|_next/image|api/|favicon.ico|sw.js|offline.html|icons/|manifest.webmanifest).*)"],
 };

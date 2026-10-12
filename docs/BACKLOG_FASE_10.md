@@ -12,7 +12,7 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 | F10.2d | Webpay Plus en los pedidos de la tienda (ADR-030) | **Hecha** (2026-10-11) |
 | F10.2e | Webpay Plus en las señas de reservas (ADR-030) | **Hecha** (2026-10-11) |
 | F10.3 | Cursos: módulos, lecciones y progreso | **Hecha** (2026-10-12): API 13/13, validación 8/8, Playwright 4/4 (2 viewports); compra única fuera de alcance (ver reservas) |
-| F10.4 | Tarjeta digital, vCard y pases de wallet | Pendiente |
+| F10.4 | Tarjeta digital, vCard y pases de wallet | **Hecha** (2026-10-12): API 16/16 (9 integración + 7 de wallet), validación 7/7, Playwright 4/4 (2 viewports); pases reales pendientes de credenciales |
 | F10.5 | PWA: instalación y modo sin conexión acotado | Pendiente |
 | F10.6 | Marketplace de integraciones y plantillas | Pendiente |
 | F10.7 | Aislamiento, seguridad y cierre de la Fase 10 | Pendiente |
@@ -183,6 +183,17 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
    escritorio.
 
 ## F10.4 — Tarjeta digital, vCard y pases de wallet
+
+**Hecha — F10.4 (2026-10-12): tarjeta digital, vCard y pases de wallet (ADR-029).**
+
+- **Modelo:** `DigitalCard`, una por sitio (nombre, cargo, empresa, presentación, teléfono, WhatsApp, correo, web, dirección, foto y hasta 8 redes); migración reversible `20261012040000_f104_digital_card`. Se edita con el permiso `site.update`; guardar queda auditado (`digital_card.updated`).
+- **Público** (`/:sitio/t`, dentro del tema del sitio): foto, nombre, cargo, acciones (guardar contacto, WhatsApp, llamar, correo, web), redes, dirección, **QR** de la tarjeta y botones de wallet. Mientras la tarjeta no esté activa, la página, la vCard y los pases responden **404**.
+- **vCard 3.0** (`/:sitio/t/vcard`): campos escapados (barra, punto y coma, coma, saltos), caracteres de control quitados, líneas plegadas a 75 octetos sin partir UTF-8, teléfonos y URLs inválidos omitidos, nombre de archivo saneado. Probada contra valores hostiles: ningún campo puede abrir una propiedad ni otra tarjeta.
+- **Wallet detrás de `WalletPassProvider`:** **Google Wallet** (JWT RS256 con la clase y el objeto del pase, sin crear nada antes en el emisor) y **Apple Wallet** (`.pkpass` con `pass.json`, íconos, manifiesto SHA-1 y firma PKCS#7 desprendida con el certificado del emisor y la cadena WWDR). Variables `GOOGLE_WALLET_*` / `APPLE_WALLET_*` (todas las de un proveedor o ninguna). **Sin credenciales: 503 `WALLET_UNAVAILABLE` con un mensaje claro, el botón no se muestra y la tarjeta y la vCard siguen.** Los datos del pase salen solo de la tarjeta del sitio dueño.
+- **Panel** (`/sitios/:id/tarjeta`): formulario con foto desde la biblioteca, redes, activación, enlace público copiable, QR y estado de los pases.
+- **Dependencias nuevas:** `node-forge` (firma PKCS#7 del pase de Apple) y `fflate` (zip del `.pkpass`) en la API; `qrcode` en `apps/web` (el QR se genera en el servidor).
+- **Pruebas:** 9 de integración (ciclo del panel, activación, validación, vCard sin inyección, pase de Google y de Apple por el adaptador, sin credenciales, aislamiento, sin sesión), 7 de proveedores (JWT verificado con la clave pública; `.pkpass` con hashes del manifiesto y **firma PKCS#7 verificada** contra el certificado), 7 unitarias de vCard y reglas, y Playwright en teléfono y escritorio.
+- **Reservas honestas:** (1) **los pases reales no se probaron contra Google ni Apple**: faltan las credenciales del propietario (cuenta de emisor de Google Wallet y certificado de Apple); se verificó la firma con certificados de prueba; (2) la tarjeta usa el tema del sitio, sin diseño propio del pase (colores fijos oscuros); (3) la fotografía no se incrusta en el pase de Apple (solo íconos sólidos) ni en el de Google; (4) una sola tarjeta por sitio (no por persona del equipo); (5) no hay límite de plan específico para tarjetas (el diseño original lo mencionaba): queda acotada a una por sitio.
 
 1. `DigitalCard` por organización/sitio (nombre, cargo, contactos, redes, QR) con página pública propia.
 2. Descarga **vCard** válida (campos escapados, sin inyección de líneas) y QR de la tarjeta.

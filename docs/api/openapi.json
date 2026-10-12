@@ -29855,6 +29855,815 @@
         ]
       }
     },
+    "/api/v1/public/sites/{siteSlug}/card": {
+      "get": {
+        "operationId": "PublicDigitalCardController_card",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La tarjeta y qué pases de wallet se ofrecen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "fullName": {
+                      "type": "string"
+                    },
+                    "jobTitle": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "company": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "bio": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "phone": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "whatsapp": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "email": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "website": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "address": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "photoUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "socials": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "network": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "network",
+                          "url"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "siteName": {
+                      "type": "string"
+                    },
+                    "siteSlug": {
+                      "type": "string"
+                    },
+                    "wallet": {
+                      "type": "object",
+                      "properties": {
+                        "google": {
+                          "type": "boolean"
+                        },
+                        "apple": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "google",
+                        "apple"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "fullName",
+                    "jobTitle",
+                    "company",
+                    "bio",
+                    "phone",
+                    "whatsapp",
+                    "email",
+                    "website",
+                    "address",
+                    "photoUrl",
+                    "socials",
+                    "siteName",
+                    "siteSlug",
+                    "wallet"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El sitio no existe o su tarjeta no está activa."
+          },
+          "429": {
+            "description": "Más de 120 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Tarjeta digital del sitio",
+        "tags": [
+          "public-digital-card"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/card/vcard": {
+      "get": {
+        "description": "Archivo `text/vcard` (vCard 3.0), con los campos escapados.",
+        "operationId": "PublicDigitalCardController_vcard",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivo vCard."
+          },
+          "404": {
+            "description": "El sitio no existe o su tarjeta no está activa."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Descargar la tarjeta como vCard",
+        "tags": [
+          "public-digital-card"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/card/wallet/google": {
+      "post": {
+        "description": "Devuelve la dirección «Guardar en Google Wallet». Sin credenciales de la plataforma, 503 `WALLET_UNAVAILABLE`.",
+        "operationId": "PublicDigitalCardController_google",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dirección para guardar el pase.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "saveUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "saveUrl"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El sitio no existe o su tarjeta no está activa."
+          },
+          "429": {
+            "description": "Más de 20 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          },
+          "503": {
+            "description": "Google Wallet no está disponible."
+          }
+        },
+        "summary": "Pase de Google Wallet",
+        "tags": [
+          "public-digital-card"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/card/wallet/apple": {
+      "get": {
+        "description": "Archivo `.pkpass` firmado. Sin credenciales de la plataforma, 503 `WALLET_UNAVAILABLE`.",
+        "operationId": "PublicDigitalCardController_apple",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivo .pkpass."
+          },
+          "404": {
+            "description": "El sitio no existe o su tarjeta no está activa."
+          },
+          "429": {
+            "description": "Más de 20 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          },
+          "503": {
+            "description": "Apple Wallet no está disponible."
+          }
+        },
+        "summary": "Pase de Apple Wallet",
+        "tags": [
+          "public-digital-card"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/digital-card": {
+      "get": {
+        "description": "`card` es `null` mientras no se haya creado. Incluye la dirección pública y qué pases de wallet están disponibles.",
+        "operationId": "DigitalCardController_get",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La tarjeta y su estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "card": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "jobTitle": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "company": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "bio": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "whatsapp": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "email": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "website": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "address": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "photoUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "socials": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "network": {
+                                "type": "string"
+                              },
+                              "url": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "network",
+                              "url"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "fullName",
+                        "jobTitle",
+                        "company",
+                        "bio",
+                        "phone",
+                        "whatsapp",
+                        "email",
+                        "website",
+                        "address",
+                        "photoUrl",
+                        "socials",
+                        "enabled",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "publicUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "wallet": {
+                      "type": "object",
+                      "properties": {
+                        "google": {
+                          "type": "boolean"
+                        },
+                        "apple": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "google",
+                        "apple"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "card",
+                    "publicUrl",
+                    "wallet"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio no encontrado en esta organización."
+          },
+          "429": {
+            "description": "Más de 120 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Tarjeta digital del sitio",
+        "tags": [
+          "digital-card"
+        ]
+      },
+      "put": {
+        "description": "Una por sitio. Mientras `enabled` sea falso, la página pública, la vCard y los pases responden 404.",
+        "operationId": "DigitalCardController_save",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "fullName": {
+                    "type": "string",
+                    "maxLength": 240
+                  },
+                  "jobTitle": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "company": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "bio": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 600
+                  },
+                  "phone": {
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^\\+[1-9]\\d{6,14}$"
+                  },
+                  "whatsapp": {
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^\\+[1-9]\\d{6,14}$"
+                  },
+                  "email": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 320,
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "website": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  },
+                  "address": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 400
+                  },
+                  "photoUrl": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  },
+                  "socials": {
+                    "default": [],
+                    "maxItems": 8,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "network": {
+                          "type": "string",
+                          "enum": [
+                            "instagram",
+                            "facebook",
+                            "tiktok",
+                            "youtube",
+                            "linkedin",
+                            "x",
+                            "whatsapp",
+                            "threads",
+                            "pinterest",
+                            "spotify",
+                            "github",
+                            "website",
+                            "onlyfans",
+                            "twitch",
+                            "kick",
+                            "telegram",
+                            "snapchat",
+                            "discord",
+                            "patreon",
+                            "soundcloud",
+                            "applemusic",
+                            "vimeo",
+                            "behance",
+                            "dribbble",
+                            "substack",
+                            "medium",
+                            "etsy",
+                            "shopify",
+                            "calendly",
+                            "googlemaps"
+                          ]
+                        },
+                        "url": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2048
+                        }
+                      },
+                      "required": [
+                        "network",
+                        "url"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "fullName"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "La tarjeta guardada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "card": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "jobTitle": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "company": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "bio": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "whatsapp": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "email": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "website": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "address": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "photoUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "socials": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "network": {
+                                "type": "string"
+                              },
+                              "url": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "network",
+                              "url"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "fullName",
+                        "jobTitle",
+                        "company",
+                        "bio",
+                        "phone",
+                        "whatsapp",
+                        "email",
+                        "website",
+                        "address",
+                        "photoUrl",
+                        "socials",
+                        "enabled",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "publicUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "wallet": {
+                      "type": "object",
+                      "properties": {
+                        "google": {
+                          "type": "boolean"
+                        },
+                        "apple": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "google",
+                        "apple"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "card",
+                    "publicUrl",
+                    "wallet"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio no encontrado en esta organización."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Crear o actualizar la tarjeta digital",
+        "tags": [
+          "digital-card"
+        ]
+      }
+    },
     "/api/v1/public/sites/{siteSlug}/pages/{pageSlug}/engagement": {
       "get": {
         "description": "Cifras públicas y si este visitante ya dio «me gusta». Solo páginas publicadas y públicas. Sin caché.",

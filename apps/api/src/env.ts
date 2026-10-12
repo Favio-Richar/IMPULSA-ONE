@@ -78,6 +78,16 @@ export const env = loadEnv({
   // Opcionales: sin ellas opera en modo desacoplado sin fallar y queda listo para cuando se suministren.
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  // Pases de wallet de la tarjeta digital (F10.4, ADR-029). Todas las de un proveedor o ninguna: sin ellas el proveedor responde
+  // «no disponible» y la tarjeta y la vCard siguen funcionando. Las claves PEM admiten saltos de línea escritos como \n.
+  GOOGLE_WALLET_ISSUER_ID: z.string().optional(),
+  GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL: z.string().optional(),
+  GOOGLE_WALLET_PRIVATE_KEY: z.string().optional(),
+  APPLE_WALLET_PASS_TYPE_ID: z.string().optional(),
+  APPLE_WALLET_TEAM_ID: z.string().optional(),
+  APPLE_WALLET_SIGNER_CERT: z.string().optional(),
+  APPLE_WALLET_SIGNER_KEY: z.string().optional(),
+  APPLE_WALLET_WWDR_CERT: z.string().optional(),
   API_PUBLIC_URL: urlSchema.optional(),
   // Panel de operaciones (F7.11): URL del `/health` del worker. Sin ella, fuera de producción se usa
   // `http://localhost:4100/health`; en producción el panel informa que no está configurada.

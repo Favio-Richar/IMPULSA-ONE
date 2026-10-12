@@ -654,6 +654,7 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 
 - **SiteMember.source** (`INVITED` por defecto | `PURCHASED`): el acceso de un comprador depende de su periodo pagado.
 - **Course / CourseModule / Lesson / CoursePlan / LessonProgress** (F10.3): `courses` (único `(site_id, slug)`, `status` DRAFT|PUBLISHED, `access` OPEN|MEMBERS|PLAN), `course_modules` y `lessons` ordenados por `position` (lección: `kind` TEXT|VIDEO, `body` saneado, `video` JSON proveedor+id, `free_preview`), `course_plans` (PK `(course_id, plan_id)`) y `lesson_progress` (único `(member_id, lesson_id)`). Todo cae en cascada con el sitio. Migración reversible `20261012030000_f103_courses`.
+- **DigitalCard** (F10.4): `digital_cards`, una por sitio (`site_id` único, `CASCADE`): `enabled`, `full_name`, datos de contacto opcionales, `photo_url` y `socials` JSON (lista blanca de redes). La página pública, la vCard y los pases salen solo de aquí. Migración reversible `20261012040000_f104_digital_card`.
 - **MembershipPlan** (`membership_plans`): `organization_id`, `site_id` (`CASCADE`), `name`, `description`, `price_amount` (entero, `CHECK > 0`), `price_currency` (`CHECK` 3 letras mayúsculas), `period`
   (`MONTHLY`|`YEARLY`), `status` (`ACTIVE`|`ARCHIVED`).
 - **MembershipPurchase** (`membership_purchases`): copia del plan (`plan_name`, `amount`, `currency`, `period_days`), `status` (`PENDING`|`PAID`|`EXPIRED`), cobro (`checkout_preference_id`, `checkout_url`,

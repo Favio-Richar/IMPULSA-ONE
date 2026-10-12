@@ -107,6 +107,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
       <EngagementSummary organizationId={organizationId} siteId={siteId} />
       <MembersShortcut siteId={siteId} />
       <CoursesShortcut siteId={siteId} />
+      <DigitalCardShortcut siteId={siteId} />
       <CampaignModeShortcut siteId={siteId} />
       <CustomDomains organizationId={organizationId} siteId={siteId} />
       <MeasurementSettings organizationId={organizationId} siteId={siteId} />
@@ -578,6 +579,23 @@ function CoursesShortcut({ siteId }: { siteId: string }): React.JSX.Element {
         <p className="text-sm text-muted-foreground">Módulos y lecciones de texto o video, con avance por alumno y acceso por membresía.</p>
         <Link href={`/sitios/${siteId}/cursos`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
           Administrar cursos
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Acceso a la tarjeta digital del sitio (F10.4), que tiene su propia pantalla. */
+function DigitalCardShortcut({ siteId }: { siteId: string }): React.JSX.Element {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Tarjeta digital</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Tu tarjeta de presentación con QR, descarga de contacto (vCard) y pase para Apple y Google Wallet.</p>
+        <Link href={`/sitios/${siteId}/tarjeta`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+          Administrar tarjeta
         </Link>
       </CardContent>
     </Card>

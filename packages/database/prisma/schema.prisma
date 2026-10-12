@@ -848,6 +848,7 @@ model Site {
   members             SiteMember[]
   membershipPlans     MembershipPlan[]
   courses             Course[]
+  digitalCard         DigitalCard?
 
   @@index([organizationId])
   @@map("sites")
@@ -3260,4 +3261,32 @@ model LessonProgress {
   @@index([courseId, memberId])
   @@index([organizationId])
   @@map("lesson_progress")
+}
+
+// F10.4 (ADR-029): tarjeta digital del sitio (una por sitio). Los datos son los que el negocio decide publicar: la pagina
+// publica, la vCard y los pases de wallet salen solo de aqui y solo de la organizacion dueña del sitio.
+model DigitalCard {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  siteId         String   @unique @map("site_id") @db.Uuid
+  enabled        Boolean  @default(false)
+  fullName       String   @map("full_name")
+  jobTitle       String?  @map("job_title")
+  company        String?
+  bio            String?
+  phone          String?
+  whatsapp       String?
+  email          String?
+  website        String?
+  address        String?
+  photoUrl       String?  @map("photo_url")
+  // [{ network, url }]: lista blanca de redes (ver validation/blocks/primitives).
+  socials        Json     @default("[]")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("digital_cards")
 }

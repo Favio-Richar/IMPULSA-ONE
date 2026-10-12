@@ -49,4 +49,5 @@ export * from "./reports.js";
 export * from "./moderation.js";
 export * from "./members.js";
 export * from "./courses.js";
+export * from "./digital-card.js";
 export * from "./engagement.js";

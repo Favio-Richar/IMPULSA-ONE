@@ -923,6 +923,9 @@ model Page {
   // F10.1 (ADR-029): solo para miembros del sitio. En vivo (no va en la publicación): activarlo o quitarlo surte efecto al
   // invalidar la caché, sin republicar. El contenido de una página así NUNCA viaja en la respuesta pública cacheada.
   membersOnly Boolean       @default(false) @map("members_only")
+  // F10: contadores publicos de vistas y "me gusta" de la pagina.
+  engagement  PageEngagement?
+  likes       PageLike[]
   // Borrado lógico (F2.3): borrar una página no puede destruir su historial de versiones — es
   // trabajo del usuario (CLAUDE.md). La purga definitiva es una operación aparte y explícita.
   deletedAt  DateTime?      @map("deleted_at") @db.Timestamptz(6)
@@ -1114,6 +1117,9 @@ model Template {
   // Lista ordenada de bloques con su configuración de ejemplo, formato del snapshot de
   // `PageVersion` (`type`, `configSchemaVersion`, `isPrimary`, `config`).
   blocksSeed      Json     @map("blocks_seed")
+  // F10: paginas que la plantilla crea ademas de la de inicio (album, perfil, servicios...), para que cada boton
+  // de la plantilla lleve a una pagina real. `[{ slug, blocksSeed }]`, a lo sumo 2 (el plan gratis admite 3 paginas).
+  companionPages  Json?    @map("companion_pages")
   sortOrder       Int      @default(0) @map("sort_order")
   isActive        Boolean  @default(true) @map("is_active")
   isFeatured      Boolean  @default(false) @map("is_featured")
@@ -3091,4 +3097,38 @@ model MembershipPurchase {
   @@index([siteId, status, paidAt])
   @@index([organizationId])
   @@map("membership_purchases")
+}
+
+// F10: contadores publicos de una pagina. `views` los suma el procesador de analitica en la misma transaccion que guarda
+// el evento (nunca se pierde ni se duplica por reintento); `likes` los mantiene el servicio de "me gusta" en la misma
+// transaccion que crea o borra el `PageLike`. No dependen de la retencion de los eventos crudos.
+model PageEngagement {
+  pageId         String   @id @map("page_id") @db.Uuid
+  siteId         String   @map("site_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  views          Int      @default(0)
+  likes          Int      @default(0)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([organizationId])
+  @@map("page_engagement")
+}
+
+// F10: un "me gusta" por visitante y pagina. `visitorKey` es un HMAC (nunca la IP) y la unicidad impide contar dos veces.
+model PageLike {
+  id             String   @id @default(uuid()) @db.Uuid
+  pageId         String   @map("page_id") @db.Uuid
+  siteId         String   @map("site_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  visitorKey     String   @map("visitor_key")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, visitorKey])
+  @@index([siteId])
+  @@map("page_likes")
 }

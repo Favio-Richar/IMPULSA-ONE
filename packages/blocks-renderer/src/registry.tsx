@@ -15,6 +15,7 @@ import {
   faqSchema,
   gallerySchema,
   worksWheelSchema,
+  engagementSchema,
   marqueeSchema,
   showcaseSchema,
   heroSchema,
@@ -44,6 +45,7 @@ import { FaqBlock } from "./blocks/faq.js";
 import { GalleryBlock } from "./blocks/gallery.js";
 import { WorksWheelBlock } from "./blocks/works-wheel.js";
 import { MarqueeBlock } from "./blocks/marquee.js";
+import { EngagementBlock } from "./blocks/engagement.js";
 import { ShowcaseBlock } from "./blocks/showcase.js";
 import { HeroBlock } from "./blocks/hero.js";
 import { ImageBlock } from "./blocks/image.js";
@@ -76,6 +78,7 @@ export function RenderBlock({
   block,
   buttonVariant,
   siteSlug,
+  pageSlug,
   forms,
   mode = "public",
   mono = false,
@@ -83,6 +86,8 @@ export function RenderBlock({
   block: PublicBlockResponse;
   buttonVariant: ButtonVariant;
   siteSlug?: string;
+  /** Página que se está pintando: el bloque de vistas y «me gusta» pregunta por ella. */
+  pageSlug?: string;
   forms?: Record<string, PublicFormResponse>;
   mode?: "public" | "preview";
   /** Botones monocromo (PL7): la acción principal usa la superficie neutra, no el color primario. */
@@ -116,6 +121,10 @@ export function RenderBlock({
     case "gallery": {
       const parsed = gallerySchema.safeParse(block.config);
       return parsed.success ? <GalleryBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
+    }
+    case "engagement": {
+      const parsed = engagementSchema.safeParse(block.config);
+      return parsed.success ? <EngagementBlock config={parsed.data} siteSlug={siteSlug} pageSlug={pageSlug} mode={mode} /> : null;
     }
     case "marquee": {
       const parsed = marqueeSchema.safeParse(block.config);

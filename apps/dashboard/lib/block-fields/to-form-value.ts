@@ -56,6 +56,7 @@ function toFormLeaf(raw: unknown, control: FieldControl, optional = false): unkn
     case "datetime":
     case "text":
     case "url":
+    case "link":
     case "email":
     case "phone":
     case "richtext":

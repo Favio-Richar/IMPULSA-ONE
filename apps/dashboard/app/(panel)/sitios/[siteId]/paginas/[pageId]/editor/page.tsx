@@ -324,6 +324,21 @@ function BlockEditor({
               historial de versiones
             </Link>
             . Publica para que tus visitantes vean los bloques nuevos.
+            {(applied.result.companionPages ?? []).some((page) => page.created) ? (
+              <>
+                {" "}
+                La plantilla también creó{" "}
+                {(applied.result.companionPages ?? [])
+                  .filter((page) => page.created)
+                  .map((page) => `«${page.slug}»`)
+                  .join(" y ")}
+                : sus botones llevan ahí. Publícalas desde{" "}
+                <Link href={`/sitios/${siteId}`} className="font-medium text-primary underline">
+                  las páginas del sitio
+                </Link>
+                .
+              </>
+            ) : null}
           </p>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {applied.result.appearance.applied ? (

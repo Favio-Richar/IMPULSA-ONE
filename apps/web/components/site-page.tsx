@@ -3,7 +3,7 @@ import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { PageBlocks } from "@impulza/blocks-renderer";
 import type { PublicFormResponse } from "@impulza/contracts";
-import { AB_BUCKET_COOKIE, memberCookieName, parseAbBucket, themeTokensSchema } from "@impulza/validation";
+import { AB_BUCKET_COOKIE, memberCookieName, parseAbBucket, resolvePageLinks, themeTokensSchema } from "@impulza/validation";
 import { hasExperiments, randomAbBucket, resolveExperimentBlocks } from "../lib/ab";
 import { getBookingAvailable, getMemberPage, getPublicForm, getPublicPage, getPublicSite } from "../lib/api";
 import { getMemberPlans } from "../lib/memberships";
@@ -112,9 +112,11 @@ export async function SitePage({
       {isMember ? <MemberSignOut siteSlug={siteSlug} /> : null}
       <AnalyticsTracker siteSlug={siteSlug} pageSlug={page.slug} />
       <PageBlocks
-        blocks={blocks}
+        // `page:<slug>` → la ruta real de esa página del sitio (álbum, perfil, servicios…).
+        blocks={blocks.map((block) => ({ ...block, config: resolvePageLinks(block.config, siteSlug, site.pages.find((entry) => entry.isHome)?.slug) }))}
         buttonStyle={tokens.buttonStyle}
         siteSlug={siteSlug}
+        pageSlug={pageSlug}
         forms={forms}
         mode="public"
       />

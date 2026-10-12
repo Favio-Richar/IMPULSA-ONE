@@ -4,6 +4,7 @@ function defaultLeafValue(control: FieldControl, optional: boolean | undefined):
   switch (control.kind) {
     case "text":
     case "url":
+    case "link":
     case "email":
     case "phone":
     case "richtext":

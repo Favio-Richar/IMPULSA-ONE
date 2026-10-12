@@ -33,6 +33,7 @@ export class TemplatesService {
       background: row.background,
       previewImageUrl: row.previewImageUrl,
       blocksSeed: row.blocksSeed,
+      companionPages: row.companionPages ?? undefined,
       sortOrder: row.sortOrder,
     });
 
@@ -74,6 +75,19 @@ export class TemplatesService {
         ...(block.isPrimary ? { isPrimary: true as const } : {}),
         config: block.config,
       })),
+      ...(template.companionPages && template.companionPages.length > 0
+        ? {
+            companionPages: template.companionPages.map((page) => ({
+              slug: page.slug,
+              blocks: page.blocksSeed.map((block) => ({
+                type: block.type,
+                configSchemaVersion: block.configSchemaVersion,
+                ...(block.isPrimary ? { isPrimary: true as const } : {}),
+                config: block.config,
+              })),
+            })),
+          }
+        : {}),
     };
   }
 

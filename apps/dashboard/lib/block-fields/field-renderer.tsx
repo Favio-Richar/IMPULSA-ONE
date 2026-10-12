@@ -7,6 +7,7 @@ import type { FieldError } from "react-hook-form";
 import { ImageField } from "../../components/block-editor/image-field";
 import { RichTextEditor } from "../../components/block-editor/rich-text-editor";
 import { defaultArrayItem } from "./defaults";
+import { usePageOptions } from "./page-options";
 import type { FieldControl, FieldDescriptor } from "./types.js";
 
 const inputClass =
@@ -204,6 +205,9 @@ function FieldControlView({ field, namePrefix }: { field: FieldDescriptor; nameP
         </label>
       );
 
+    case "link":
+      return <LinkFieldView field={field} name={name} error={error} />;
+
     case "text":
     case "url":
     case "email":
@@ -374,4 +378,46 @@ function errorAt(errors: Record<string, unknown>, path: string): string | undefi
   }
   const fieldError = current as FieldError | undefined;
   return typeof fieldError?.message === "string" ? fieldError.message : undefined;
+}
+
+/**
+ * Destino de un botón o tarjeta: el negocio elige una **página de su portal** (álbum, perfil, servicios…) o pega un
+ * enlace externo. Lo que se guarda es `page:<slug>` (ver `linkTargetSchema`) o la URL; el render público lo resuelve.
+ */
+function LinkFieldView({ field, name, error }: { field: FieldDescriptor; name: string; error: string | undefined }) {
+  const { register, setValue, watch } = useFormContext();
+  const pages = usePageOptions();
+  const value = String(watch(name) ?? "");
+  const selected = pages.find((page) => value === `page:${page.slug}`)?.slug ?? "";
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="flex flex-col gap-1.5">
+        <span className={labelTextClass}>{field.label}</span>
+        <input type="text" inputMode="url" autoComplete="off" placeholder="https://… o page:nombre-de-la-pagina" className={inputClass} {...register(name)} />
+      </label>
+      {pages.length > 0 ? (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-muted-foreground">O elige una página de tu portal</span>
+          <select
+            value={selected}
+            aria-label={`${field.label}: página de tu portal`}
+            className={inputClass}
+            onChange={(event) => {
+              if (event.target.value) setValue(name, `page:${event.target.value}`, { shouldDirty: true, shouldValidate: true });
+            }}
+          >
+            <option value="">— Elegir página —</option>
+            {pages.map((page) => (
+              <option key={page.slug} value={page.slug}>
+                {page.title}
+                {page.isHome ? " (inicio)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {error ? <FieldErrorText message={error} /> : null}
+      {!error && field.helperText ? <span className="text-sm text-muted-foreground">{field.helperText}</span> : null}
+    </div>
+  );
 }

@@ -21,6 +21,20 @@ import type { TemplateBlockSeed, TemplateDefinition } from "./index.js";
 
 const EXAMPLE_PHONE = "+56900000000";
 
+/**
+ * Destino de un botón de la plantilla. Todo botón lleva a una **página real del portal** (`page:<slug>`, ver
+ * `companionPages`): ninguno apunta a un sitio de ejemplo que no existe. Un destino ya escrito como `page:…` o
+ * `https://…` se respeta; cualquier otro nombre se toma como el slug de una página compañera, y los servicios con un
+ * nombre que no sea una página compañera caen en la página de contacto.
+ */
+const PAGE_CONTACT = "page:contacto";
+function internalTarget(path: string): string {
+  if (path.startsWith("page:") || path.startsWith("https://")) return path;
+  return path === "guia" || path === "carta" || path === "catalogo" || path === "lanzamiento" || path === "contacto" || path === "convenios" || path === "fechas" || path === "ubicacion" || path === "agenda" || path === "portafolio" || path === "cursos" || path === "horarios" || path === "album" || path === "perfil"
+    ? `page:${path}`
+    : PAGE_CONTACT;
+}
+
 function profile(name: string, headline: string, bio: string, layout?: "hero"): TemplateBlockSeed {
   return {
     type: "profile",
@@ -47,7 +61,7 @@ function link(label: string, path: string, options: { description?: string; prim
     ...(options.primary ? { isPrimary: true as const } : {}),
     config: {
       label,
-      url: `https://example.com/${path}`,
+      url: internalTarget(path),
       ...(options.description ? { description: options.description } : {}),
       style: options.primary ? "primary" : "secondary",
       // PL8: cada enlace de la plantilla se puede compartir.
@@ -65,8 +79,17 @@ function service(name: string, description: string, priceClp: number, ctaLabel: 
       description: `<p>${description}</p>`,
       priceAmount: priceClp,
       priceCurrency: "CLP",
-      cta: { label: ctaLabel, url: `https://example.com/${path}` },
+      cta: { label: ctaLabel, url: internalTarget(path) },
     },
+  };
+}
+
+/** Servicio sin botón propio: la página ya termina en la acción principal (WhatsApp), así que no hace falta otro destino. */
+function serviceWithoutButton(name: string, description: string, priceClp: number): TemplateBlockSeed {
+  return {
+    type: "service",
+    configSchemaVersion: 1,
+    config: { name, description: `<p>${description}</p>`, priceAmount: priceClp, priceCurrency: "CLP" },
   };
 }
 
@@ -249,7 +272,8 @@ function newsletter(title: string, description: string, buttonLabel = "Suscribir
 }
 
 /** Foto de ejemplo (Unsplash, licencia libre): el negocio la reemplaza por las suyas desde su biblioteca. */
-const STOCK = (id: string, alt: string) => ({ url: `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=80`, alt });
+const STOCK_URL = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=80`;
+const STOCK = (id: string, alt: string) => ({ url: STOCK_URL(id), alt });
 
 function profileWithCover(name: string, headline: string, bio: string, cover: { url: string; alt: string }): TemplateBlockSeed {
   return {
@@ -270,7 +294,7 @@ function worksWheel(label: string, items: Array<{ title: string; image: { url: s
     config: {
       label,
       actionLabel: "Ver",
-      items: items.map((item) => ({ title: item.title, image: item.image, ...(item.path ? { link: `https://example.com/${item.path}` } : {}) })),
+      items: items.map((item) => ({ title: item.title, image: item.image, ...(item.path ? { link: internalTarget(item.path) } : {}) })),
     },
   };
 }
@@ -291,15 +315,32 @@ function showcase(
         subtitle: item.subtitle,
         ...(item.badge ? { badge: item.badge } : {}),
         image: item.image,
-        link: `https://example.com/${item.path}`,
+        link: internalTarget(item.path),
       })),
     },
   };
 }
 
+function textBlock(html: string): TemplateBlockSeed {
+  return { type: "text", configSchemaVersion: 1, config: { html, alignment: "left" } };
+}
+
+function contactActions(): TemplateBlockSeed {
+  return {
+    type: "contact_actions",
+    configSchemaVersion: 1,
+    config: { email: "contacto@example.com", phone: EXAMPLE_PHONE, emailLabel: "Escríbeme por correo", phoneLabel: "Llámame" },
+  };
+}
+
+/** Página de contacto estándar: texto de bienvenida, WhatsApp como acción principal, correo y teléfono, y preguntas. */
+function contactPage(intro: string, waLabel: string, waMessage: string, extra: TemplateBlockSeed[] = []): TemplateBlockSeed[] {
+  return [textBlock(`<h2>Contacto</h2><p>${intro}</p>`), whatsapp(waLabel, waMessage), contactActions(), ...extra];
+}
+
 const EXAMPLE_BIO = "Texto de ejemplo: reemplázalo por";
 
-export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
+const BASE_TEMPLATES: readonly TemplateDefinition[] = [
   {
     code: "profesional-servicios",
     name: "Profesional de servicios",
@@ -500,12 +541,12 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
       marquee(["Fotografía", "Moda", "Editorial", "Retrato", "Belleza"]),
       whatsapp("Reserva tu sesión", "Hola, quiero reservar una sesión de fotos."),
       worksWheel("Portafolio 2026", [
-        { title: "Editorial Otoño", image: STOCK("photo-1558769132-cb1aea458c5e", "Foto de ejemplo: prendas de otoño en un perchero"), path: "editorial-otono" },
-        { title: "Retrato", image: STOCK("photo-1531746020798-e6953c6e8e04", "Foto de ejemplo: retrato sobre fondo rosado"), path: "retrato" },
-        { title: "Campaña urbana", image: STOCK("photo-1523381210434-271e8be1f52b", "Foto de ejemplo: camisetas verdes en perchas"), path: "campana-urbana" },
-        { title: "Belleza", image: STOCK("photo-1596462502278-27bfdc403348", "Foto de ejemplo: productos de maquillaje sobre fondo beige"), path: "belleza" },
-        { title: "Estudio", image: STOCK("photo-1490481651871-ab68de25d43d", "Foto de ejemplo: vestidos blancos en un perchero"), path: "estudio" },
-        { title: "Backstage", image: STOCK("photo-1558171813-4c088753af8f", "Foto de ejemplo: camisa sobre una silla en un estudio"), path: "backstage" },
+        { title: "Editorial Otoño", image: STOCK("photo-1558769132-cb1aea458c5e", "Foto de ejemplo: prendas de otoño en un perchero"), path: "album" },
+        { title: "Retrato", image: STOCK("photo-1531746020798-e6953c6e8e04", "Foto de ejemplo: retrato sobre fondo rosado"), path: "album" },
+        { title: "Campaña urbana", image: STOCK("photo-1523381210434-271e8be1f52b", "Foto de ejemplo: camisetas verdes en perchas"), path: "album" },
+        { title: "Belleza", image: STOCK("photo-1596462502278-27bfdc403348", "Foto de ejemplo: productos de maquillaje sobre fondo beige"), path: "album" },
+        { title: "Estudio", image: STOCK("photo-1490481651871-ab68de25d43d", "Foto de ejemplo: vestidos blancos en un perchero"), path: "album" },
+        { title: "Backstage", image: STOCK("photo-1558171813-4c088753af8f", "Foto de ejemplo: camisa sobre una silla en un estudio"), path: "album" },
       ]),
       showcase("Álbumes y perfiles", [
         {
@@ -513,25 +554,25 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
           subtitle: "Todas las series en alta resolución",
           badge: "120 fotos",
           image: STOCK("photo-1445205170230-053b83016050", "Foto de ejemplo: perchero de una boutique"),
-          path: "album",
+          path: "page:album",
         },
         {
           title: "Mi perfil de modelo",
           subtitle: "Medidas, experiencia y comp card",
           badge: "Book",
           image: STOCK("photo-1531746020798-e6953c6e8e04", "Foto de ejemplo: retrato para book de modelo"),
-          path: "perfil-modelo",
+          path: "page:perfil",
         },
         {
           title: "Mi sitio web",
           subtitle: "Proyectos, prensa y contacto",
           image: STOCK("photo-1490481651871-ab68de25d43d", "Foto de ejemplo: vestidos blancos en un perchero"),
-          path: "sitio",
+          path: "https://example.com/mi-sitio-web",
         },
       ]),
-      service("Sesión de retrato (ejemplo)", "60 minutos, 15 fotos editadas. Precio de ejemplo.", 90000, "Reservar", "retrato"),
-      service("Book de modelo (ejemplo)", "Tres looks y entrega en 7 días. Precio de ejemplo.", 180000, "Reservar", "book"),
-      service("Campaña o cobertura de evento (ejemplo)", "Cotización según proyecto. Precio de ejemplo.", 350000, "Cotizar", "campana"),
+      service("Sesión de retrato (ejemplo)", "60 minutos, 15 fotos editadas. Precio de ejemplo.", 90000, "Reservar", "page:perfil"),
+      service("Book de modelo (ejemplo)", "Tres looks y entrega en 7 días. Precio de ejemplo.", 180000, "Reservar", "page:perfil"),
+      service("Campaña o cobertura de evento (ejemplo)", "Cotización según proyecto. Precio de ejemplo.", 350000, "Cotizar", "page:perfil"),
       testimonials([
         ["Entendió la marca desde la primera reunión. Reseña de ejemplo.", "Directora creativa de ejemplo"],
         ["Las fotos superaron lo que imaginaba. Reseña de ejemplo.", "Modelo de ejemplo"],
@@ -593,7 +634,7 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
       ),
       link("Agenda una sesión", "agenda", { primary: true }),
       link("Mi portafolio", "portafolio"),
-      service("Sesión de asesoría (ejemplo)", "Una hora por videollamada. Precio de ejemplo.", 30000, "Reservar", "sesion"),
+      service("Sesión de asesoría (ejemplo)", "Una hora por videollamada. Precio de ejemplo.", 30000, "Reservar", "page:agenda"),
       testimonials([["Muy clara y cercana. Reseña de ejemplo.", "Clienta de ejemplo"]]),
       social(["instagram", "tiktok", "linkedin"]),
     ],
@@ -632,7 +673,7 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
           venue: "Campus online y presencial",
           address: "Av. Providencia 1234, Santiago",
           description: "Aprende las bases fundamentales con ejercicios prácticos guiados.",
-          ticketUrl: "https://example.com/entradas-taller",
+          ticketUrl: PAGE_CONTACT,
           ticketLabel: "Asegurar cupo",
         },
       ]),
@@ -689,7 +730,7 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
           features: ["Acceso ilimitado", "Plan de entrenamiento mensual", "Uso de camarines y duchas"],
           badge: "Recomendado",
           highlighted: true,
-          cta: { label: "Elegir plan", url: "https://example.com/plan-mensual" },
+          cta: { label: "Elegir plan", url: PAGE_CONTACT },
         },
         {
           name: "Pase 8 Clases (ejemplo)",
@@ -699,13 +740,13 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
           description: "Pack de 8 sesiones para usar dentro de 45 días corridos.",
           features: ["8 clases guiadas", "Flexibilidad horaria"],
           highlighted: false,
-          cta: { label: "Comprar pase", url: "https://example.com/pase-clases" },
+          cta: { label: "Comprar pase", url: PAGE_CONTACT },
         },
       ]),
       gallery(
         [
-          { url: "https://example.com/espacio-1.jpg", alt: "Zona de pesas y máquinas de ejemplo" },
-          { url: "https://example.com/espacio-2.jpg", alt: "Sala de clases funcionales de ejemplo" },
+          { url: STOCK_URL("photo-1544367567-0f2fcb009e0b"), alt: "Foto de ejemplo: clase de bienestar al atardecer" },
+          { url: STOCK_URL("photo-1503951914875-452162b0f3f1"), alt: "Foto de ejemplo: servicio en un local" },
         ],
         "grid",
       ),
@@ -749,7 +790,7 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
           venue: "Sala de Conciertos de ejemplo",
           address: "Av. Bellavista 567, Recoleta, Santiago",
           description: "Show completo con banda invitada y venta de merchandising oficial.",
-          ticketUrl: "https://example.com/entradas-concierto",
+          ticketUrl: PAGE_CONTACT,
           ticketLabel: "Comprar entrada",
         },
       ]),
@@ -759,8 +800,8 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
       ),
       gallery(
         [
-          { url: "https://example.com/en-vivo-1.jpg", alt: "Fotografía de show en vivo de ejemplo" },
-          { url: "https://example.com/en-vivo-2.jpg", alt: "Sesión de grabación en estudio de ejemplo" },
+          { url: STOCK_URL("photo-1470229722913-7c0e2dbbafd3"), alt: "Foto de ejemplo: concierto con luces" },
+          { url: STOCK_URL("photo-1492684223066-81342ee5ff30"), alt: "Foto de ejemplo: público en un evento" },
         ],
         "carousel",
       ),
@@ -796,8 +837,8 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
       map("Av. Italia 1450, Barrio Italia, Providencia, Santiago", "Ubicación del local", "Estacionamiento disponible en calles aledañas."),
       gallery(
         [
-          { url: "https://example.com/plato-1.jpg", alt: "Plato de autor con productos de temporada de ejemplo" },
-          { url: "https://example.com/salon-1.jpg", alt: "Comedor principal y barra de tragos de ejemplo" },
+          { url: STOCK_URL("photo-1504674900247-0877df9cc836"), alt: "Foto de ejemplo: plato de autor" },
+          { url: STOCK_URL("photo-1554118811-1e0d58224f24"), alt: "Foto de ejemplo: interior de un local" },
         ],
         "grid",
       ),
@@ -812,3 +853,227 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [
     ],
   },
 ];
+
+type CompanionPages = NonNullable<TemplateDefinition["companionPages"]>;
+
+/**
+ * Páginas que cada plantilla crea además de la de inicio (F10): a donde llevan sus botones y tarjetas. Con a lo sumo
+ * dos, un sitio nuevo queda en tres páginas: lo que admite el plan gratis. Todo el contenido es de ejemplo y editable.
+ */
+const COMPANION_PAGES: Record<string, CompanionPages> = {
+  "profesional-servicios": [
+    {
+      slug: "guia",
+      blocksSeed: [
+        textBlock("<h2>Guía de inicio de actividades</h2><p>Todo lo que necesitas saber para empezar a operar de forma ordenada y sin sorpresas con el SII. Contenido de ejemplo: reemplázalo por tu guía.</p><ul><li>Qué trámites hacer y en qué orden</li><li>Qué documentos preparar</li><li>Errores frecuentes que conviene evitar</li></ul>"),
+        newsletter("Recibe la guía en tu correo", "Déjanos tu correo y te la enviamos junto con consejos prácticos una vez al mes.", "Quiero la guía"),
+        faq([
+          ["¿La guía tiene costo?", "Respuesta de ejemplo: no, es gratuita."],
+          ["¿Sirve si ya tengo la empresa?", "Respuesta de ejemplo: sí, incluye una lista para revisar tu situación actual."],
+        ]),
+        whatsapp("Resuelve tus dudas", "Hola, tengo dudas sobre la guía de inicio de actividades."),
+      ],
+    },
+    { slug: "contacto", blocksSeed: contactPage("Cuéntanos tu caso y te respondemos el mismo día hábil. Texto de ejemplo.", "Agenda una asesoría", "Hola, quiero agendar una asesoría.", [faq([["¿Atiendes en línea?", "Respuesta de ejemplo: sí, por videollamada o de forma presencial."]])]) },
+  ],
+  "cafe-gastronomia": [
+    {
+      slug: "carta",
+      blocksSeed: [
+        textBlock("<h2>Nuestra carta</h2><p>Café de especialidad, pastelería de la casa y platos del día. Precios y productos de ejemplo.</p>"),
+        service("Café de especialidad (ejemplo)", "Espresso, latte o filtrado, con granos de origen único.", 3200, "Pedir", "contacto"),
+        service("Pastel del día (ejemplo)", "Elaboración propia, cambia cada día.", 3900, "Pedir", "contacto"),
+        service("Brunch del fin de semana (ejemplo)", "Café, jugo natural y plato del día.", 12900, "Reservar", "contacto"),
+        map("Av. Providencia 1234, Providencia, Santiago", "Nuestro local (ejemplo)", "Atendemos de martes a domingo."),
+      ],
+    },
+    { slug: "contacto", blocksSeed: contactPage("Pedidos, reservas de mesa y eventos privados. Texto de ejemplo.", "Haz tu pedido por WhatsApp", "Hola, quiero hacer un pedido.") },
+  ],
+  "comercio-tienda": [
+    {
+      slug: "catalogo",
+      blocksSeed: [
+        textBlock("<h2>Catálogo</h2><p>Todo lo que tenemos disponible, con precios y envíos a todo el país. Productos de ejemplo.</p>"),
+        catalogBlock("Ver el catálogo completo"),
+        service("Producto destacado (ejemplo)", "Describe tu producto estrella. Precio de ejemplo.", 19990, "Lo quiero", "contacto"),
+        service("Pack regalo (ejemplo)", "Una combinación lista para regalar. Precio de ejemplo.", 29990, "Lo quiero", "contacto"),
+        faq([["¿Cuánto demora el envío?", "Respuesta de ejemplo: entre 2 y 5 días hábiles según tu ciudad."]]),
+      ],
+    },
+    { slug: "contacto", blocksSeed: contactPage("Consultas de productos, pedidos y envíos. Texto de ejemplo.", "Compra por WhatsApp", "Hola, quiero comprar un producto.") },
+  ],
+  "creador-personal": [
+    {
+      slug: "lanzamiento",
+      blocksSeed: [
+        textBlock("<h2>Mi nuevo lanzamiento</h2><p>Escúchalo, compártelo y cuéntame qué te pareció. Contenido de ejemplo: reemplázalo por el tuyo.</p>"),
+        music({ provider: "spotify", kind: "track", id: "4cOdK2wGLETKBW3PvgPWqT" }, "Sencillo (ejemplo)"),
+        newsletter("Entérate primero", "Te aviso de cada lanzamiento antes que nadie.", "Avísame"),
+        social(["instagram", "tiktok", "youtube", "spotify"]),
+      ],
+    },
+    { slug: "contacto", blocksSeed: contactPage("Colaboraciones, marcas y prensa: escríbeme con tu propuesta. Texto de ejemplo.", "Escríbeme por WhatsApp", "Hola, tengo una propuesta de colaboración.") },
+  ],
+  "salud-bienestar": [
+    {
+      slug: "convenios",
+      blocksSeed: [
+        textBlock("<h2>Convenios y previsiones</h2><p>Trabajamos con las principales aseguradoras para que puedas atenderte con tu cobertura. Información de ejemplo: reemplázala por la real.</p><ul><li>Isapres y seguros complementarios</li><li>Convenios con empresas</li><li>Reembolso con boleta o bono</li></ul>"),
+        faq([
+          ["¿Atienden con bono?", "Respuesta de ejemplo: sí, con bono electrónico o reembolso."],
+          ["¿Cómo sé si mi seguro cubre la sesión?", "Respuesta de ejemplo: escríbenos y lo verificamos contigo."],
+        ]),
+        whatsapp("Consulta tu cobertura", "Hola, quiero saber si mi previsión tiene convenio."),
+      ],
+    },
+    { slug: "contacto", blocksSeed: contactPage("Reserva tu hora o cuéntanos qué necesitas. Texto de ejemplo.", "Reserva tu hora", "Hola, quiero reservar una hora.") },
+  ],
+  "eventos-turismo": [
+    {
+      slug: "fechas",
+      blocksSeed: [
+        textBlock("<h2>Próximas fechas</h2><p>Cupos limitados por salida. Reserva con anticipación. Fechas de ejemplo.</p>"),
+        events("Salidas confirmadas", [
+          { name: "Tour de medio día (ejemplo)", start: "2027-01-16T09:00", end: "2027-01-16T14:00", venue: "Punto de encuentro (ejemplo)", ticketUrl: PAGE_CONTACT, ticketLabel: "Reservar cupo" },
+          { name: "Experiencia privada (ejemplo)", start: "2027-01-23T10:00", end: "2027-01-23T16:00", venue: "A convenir", ticketUrl: PAGE_CONTACT, ticketLabel: "Cotizar" },
+        ]),
+        whatsapp("Reserva tu cupo", "Hola, quiero reservar un cupo."),
+      ],
+    },
+    { slug: "contacto", blocksSeed: contactPage("Grupos, empresas y experiencias a medida. Texto de ejemplo.", "Reserva tu cupo", "Hola, quiero reservar un cupo.") },
+  ],
+  "fotografia-moda": [
+    {
+      slug: "album",
+      blocksSeed: [
+        textBlock("<h2>Álbum completo</h2><p>Una selección de mis series más recientes: editorial, retrato, campaña y backstage. Fotos de ejemplo: reemplázalas por las tuyas.</p>"),
+        gallery(
+          [
+            { url: STOCK_URL("photo-1445205170230-053b83016050"), alt: "Foto de ejemplo: perchero de una boutique" },
+            { url: STOCK_URL("photo-1558769132-cb1aea458c5e"), alt: "Foto de ejemplo: prendas de otoño en un perchero" },
+            { url: STOCK_URL("photo-1523381210434-271e8be1f52b"), alt: "Foto de ejemplo: camisetas verdes en perchas" },
+            { url: STOCK_URL("photo-1596462502278-27bfdc403348"), alt: "Foto de ejemplo: productos de maquillaje sobre fondo beige" },
+            { url: STOCK_URL("photo-1490481651871-ab68de25d43d"), alt: "Foto de ejemplo: vestidos blancos en un perchero" },
+            { url: STOCK_URL("photo-1558171813-4c088753af8f"), alt: "Foto de ejemplo: camisa sobre una silla en un estudio" },
+          ],
+          "grid",
+        ),
+        link("Ver mi perfil y servicios", "perfil", { primary: true }),
+      ],
+    },
+    {
+      slug: "perfil",
+      blocksSeed: [
+        textBlock("<h2>Perfil y servicios</h2><p>Quién soy, cómo trabajo y qué puedes contratarme. Texto de ejemplo: reemplázalo por tu historia.</p><ul><li>Experiencia: editorial, campañas y retrato</li><li>Idiomas: español e inglés</li><li>Disponibilidad: Chile y viajes</li></ul>"),
+        serviceWithoutButton("Sesión de retrato (ejemplo)", "60 minutos, 15 fotos editadas. Precio de ejemplo.", 90000),
+        serviceWithoutButton("Book de modelo (ejemplo)", "Tres looks y entrega en 7 días. Precio de ejemplo.", 180000),
+        serviceWithoutButton("Campaña o cobertura de evento (ejemplo)", "Cotización según proyecto. Precio de ejemplo.", 350000),
+        whatsapp("Reserva tu sesión", "Hola, quiero reservar una sesión."),
+        contactActions(),
+      ],
+    },
+  ],
+  "belleza-barberia": [
+    {
+      slug: "ubicacion",
+      blocksSeed: [
+        textBlock("<h2>Cómo llegar</h2><p>Estamos a pasos del metro. Horario de ejemplo: martes a sábado de 10:00 a 20:00.</p>"),
+        map("Av. Providencia 1234, Providencia, Santiago", "Tu Barbería (ejemplo)", "Estacionamiento en la calle."),
+        whatsapp("Reserva tu hora", "Hola, quiero reservar una hora."),
+      ],
+    },
+    { slug: "contacto", blocksSeed: contactPage("Reserva tu hora o cuéntanos qué corte buscas. Texto de ejemplo.", "Reserva tu hora", "Hola, quiero reservar una hora.") },
+  ],
+  "portada-minimal": [
+    {
+      slug: "agenda",
+      blocksSeed: [
+        textBlock("<h2>Agenda una sesión</h2><p>Una hora por videollamada para ordenar tus ideas y salir con un plan. Texto de ejemplo.</p>"),
+        whatsapp("Agenda por WhatsApp", "Hola, quiero agendar una sesión."),
+        contactActions(),
+        faq([["¿Cómo es la primera sesión?", "Respuesta de ejemplo: conversamos tus objetivos y definimos un plan de trabajo."]]),
+      ],
+    },
+    {
+      slug: "portafolio",
+      blocksSeed: [
+        textBlock("<h2>Mi portafolio</h2><p>Proyectos y resultados recientes. Contenido de ejemplo.</p>"),
+        gallery(
+          [
+            { url: STOCK_URL("photo-1490481651871-ab68de25d43d"), alt: "Foto de ejemplo: proyecto 1" },
+            { url: STOCK_URL("photo-1445205170230-053b83016050"), alt: "Foto de ejemplo: proyecto 2" },
+            { url: STOCK_URL("photo-1558769132-cb1aea458c5e"), alt: "Foto de ejemplo: proyecto 3" },
+            { url: STOCK_URL("photo-1523381210434-271e8be1f52b"), alt: "Foto de ejemplo: proyecto 4" },
+          ],
+          "grid",
+        ),
+        testimonials([["Muy clara y cercana. Reseña de ejemplo.", "Clienta de ejemplo"]]),
+        link("Agenda una sesión", "agenda", { primary: true }),
+      ],
+    },
+  ],
+  "academia-talleres": [
+    {
+      slug: "cursos",
+      blocksSeed: [
+        textBlock("<h2>Programa de cursos</h2><p>Formación práctica con certificado. Cursos y precios de ejemplo.</p>"),
+        service("Curso inicial (ejemplo)", "Cuatro semanas, clases en vivo y material incluido. Precio de ejemplo.", 89000, "Inscribirme", "contacto"),
+        service("Taller intensivo (ejemplo)", "Sesión práctica de 4 horas con certificado. Precio de ejemplo.", 45000, "Inscribirme", "contacto"),
+        faq([["¿Hay becas o descuentos?", "Respuesta de ejemplo: sí, consulta por convenios y pago en cuotas."]]),
+      ],
+    },
+    { slug: "contacto", blocksSeed: contactPage("Consultas de inscripción, empresas y convenios. Texto de ejemplo.", "Consulta sobre talleres", "Hola, me interesa inscribirme en un taller.") },
+  ],
+  "fitness-entrenamiento": [
+    {
+      slug: "horarios",
+      blocksSeed: [
+        textBlock("<h2>Horarios e instalaciones</h2><p>Clases guiadas y sala libre. Horarios de ejemplo.</p><ul><li>Lunes a viernes: 06:30 a 21:30</li><li>Sábado: 09:00 a 14:00</li><li>Domingo: cerrado</li></ul>"),
+        gallery(
+          [
+            { url: STOCK_URL("photo-1544367567-0f2fcb009e0b"), alt: "Foto de ejemplo: clase al atardecer" },
+            { url: STOCK_URL("photo-1503951914875-452162b0f3f1"), alt: "Foto de ejemplo: instalaciones" },
+          ],
+          "grid",
+        ),
+        whatsapp("Reserva tu clase de prueba", "Hola, quiero reservar una clase de prueba."),
+      ],
+    },
+    { slug: "contacto", blocksSeed: contactPage("Planes, evaluación física y clases de prueba. Texto de ejemplo.", "Reserva tu clase de prueba", "Hola, quiero reservar una clase de prueba.") },
+  ],
+  "musico-banda": [
+    {
+      slug: "album",
+      blocksSeed: [
+        textBlock("<h2>Nuevo álbum</h2><p>Todas las canciones, el videoclip y las fotos del proceso. Contenido de ejemplo.</p>"),
+        music({ provider: "spotify", kind: "track", id: "4cOdK2wGLETKBW3PvgPWqT" }, "Sencillo (ejemplo)"),
+        video({ provider: "youtube", videoId: "dQw4w9WgXcQ" }, "Videoclip (ejemplo)"),
+        social(["spotify", "youtube", "instagram", "tiktok"]),
+      ],
+    },
+    { slug: "contacto", blocksSeed: contactPage("Contrataciones, prensa y colaboraciones. Texto de ejemplo.", "Escríbenos por WhatsApp", "Hola, quiero contratar una presentación.") },
+  ],
+  "restaurante-menu": [
+    { slug: "contacto", blocksSeed: contactPage("Reservas de mesa, eventos privados y grupos. Texto de ejemplo.", "Reserva tu mesa por WhatsApp", "Hola, quiero reservar una mesa para cenar.", [map("Av. Italia 1450, Barrio Italia, Providencia, Santiago", "Ubicación del local", "Estacionamiento disponible en calles aledañas."), faq([["¿Aceptan reservas para grupos?", "Respuesta de ejemplo: sí, desde 8 personas con 48 horas de anticipación."]])]) },
+  ],
+};
+
+/** Vistas y «me gusta» (F10): todo portal las trae, justo antes de las redes (o al final si no tiene). */
+const ENGAGEMENT_BLOCK: TemplateBlockSeed = {
+  type: "engagement",
+  configSchemaVersion: 1,
+  config: { showViews: true, showLikes: true, likeLabel: "Me gusta" },
+};
+
+function withEngagement(blocks: TemplateDefinition["blocksSeed"]): TemplateDefinition["blocksSeed"] {
+  const socialIndex = blocks.findIndex((block) => block.type === "social");
+  if (socialIndex === -1) return [...blocks, ENGAGEMENT_BLOCK];
+  return [...blocks.slice(0, socialIndex), ENGAGEMENT_BLOCK, ...blocks.slice(socialIndex)];
+}
+
+/** El catálogo que se siembra: cada plantilla con sus páginas compañeras (las que sus botones enlazan). */
+export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = BASE_TEMPLATES.map((template) => ({
+  ...template,
+  blocksSeed: withEngagement(template.blocksSeed),
+  ...(COMPANION_PAGES[template.code] ? { companionPages: COMPANION_PAGES[template.code] } : {}),
+}));

@@ -8,6 +8,7 @@ import { AuditService } from "../audit/audit.service.js";
 import { BlocksService } from "../blocks/blocks.service.js";
 import { BrandProfileService } from "../brand-profile/brand-profile.service.js";
 import { PageVersionsService } from "../pages/page-versions.service.js";
+import { PagesService } from "../pages/pages.service.js";
 import { RevalidateWebService } from "../public-sites/revalidate-web.service.js";
 import { TemplatesService } from "./templates.service.js";
 
@@ -39,6 +40,7 @@ export class ApplyTemplateService {
     private readonly auditService: AuditService,
     private readonly revalidateWebService: RevalidateWebService,
     private readonly brandProfileService: BrandProfileService,
+    private readonly pagesService: PagesService,
   ) {}
 
   async applyTemplate(
@@ -115,6 +117,25 @@ export class ApplyTemplateService {
 
     const previous = { themeId: site.themeId, background: (site.background as unknown) ?? null };
 
+    // F10: páginas compañeras (álbum, perfil, servicios…). Se crean ANTES de tocar nada de la página actual: si el plan
+    // no admite más páginas, la petición falla con 402 sin haber reemplazado el contenido. Una página que ya existe
+    // con ese slug se respeta tal cual (nunca se pisa lo que la persona ya armó).
+    const companions: Array<{ pageId: string; slug: string; created: boolean; blocks: Array<{ type: string; isPrimary: boolean; config: unknown; version: number }> }> = [];
+    for (const companion of template.companionPages ?? []) {
+      const existing = await this.prisma.page.findFirst({ where: { siteId, slug: companion.slug, deletedAt: null }, select: { id: true } });
+      if (existing) {
+        companions.push({ pageId: existing.id, slug: companion.slug, created: false, blocks: [] });
+        continue;
+      }
+      const blocks: Array<{ type: string; isPrimary: boolean; config: unknown; version: number }> = [];
+      for (const block of personalizeTemplateBlocks(companion.blocks.map((entry) => ({ ...entry })), input.personalization)) {
+        const { config, version } = await this.blocksService.prepareBlockConfig(organizationId, block.type, block.config);
+        blocks.push({ type: block.type, isPrimary: block.isPrimary === true, config, version });
+      }
+      const page = await this.pagesService.createPage(organizationId, actorId, siteId, companion.slug, "PUBLIC");
+      companions.push({ pageId: page.id, slug: companion.slug, created: true, blocks });
+    }
+
     await this.prisma.$transaction(async (tx) => {
       await tx.block.deleteMany({ where: { pageId } });
 
@@ -125,6 +146,18 @@ export class ApplyTemplateService {
         await tx.blockVersion.create({
           data: { blockId: created.id, versionNumber: 1, config: block.config as Prisma.InputJsonValue },
         });
+      }
+
+      for (const companion of companions) {
+        if (!companion.created) continue;
+        for (const [position, block] of companion.blocks.entries()) {
+          const created = await tx.block.create({
+            data: { pageId: companion.pageId, type: block.type, position, configSchemaVersion: block.version, isPrimary: block.isPrimary },
+          });
+          await tx.blockVersion.create({
+            data: { blockId: created.id, versionNumber: 1, config: block.config as Prisma.InputJsonValue },
+          });
+        }
       }
 
       if (input.applyAppearance) {
@@ -148,6 +181,7 @@ export class ApplyTemplateService {
         siteId,
         templateCode: template.code,
         blocks: prepared.length,
+        companionPages: companions.filter((page) => page.created).map((page) => page.slug),
         discardedUnpublishedChanges: hasUnpublishedChanges,
         appearanceApplied: input.applyAppearance,
         themeFrom: previous.themeId,
@@ -177,6 +211,7 @@ export class ApplyTemplateService {
     return {
       templateCode: template.code,
       pageId,
+      ...(companions.length > 0 ? { companionPages: companions.map(({ pageId: id, slug, created }) => ({ pageId: id, slug, created })) } : {}),
       blocks: blocks.map(
         (block): BlockResponse => ({
           ...block,

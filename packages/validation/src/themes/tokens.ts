@@ -76,17 +76,25 @@ export const themeTokensSchema = z
     shadow: z.enum(SHADOW_SCALES),
     buttonStyle: z.enum(BUTTON_STYLES),
     motion: z.enum(MOTION_STYLES).optional(),
+    /**
+     * Paleta alterna (modo día/noche, F10): si el tema la trae, la página pública muestra un botón para cambiar entre
+     * ambas. Es opcional: un tema sin ella se ve y se comporta igual que siempre. Cumple el mismo contraste AA que la principal.
+     */
+    altPalette: paletteSchema.optional(),
   })
   // Sin esto, un tema válido "de forma" podría ser ilegible. El objetivo WCAG 2.2 AA del proyecto
   // no puede depender de que el usuario elija bien: se verifica al guardar, en el servidor.
   .superRefine((tokens, ctx) => {
-    const { palette } = tokens;
+    // La paleta principal y, si la hay, la alterna (modo día/noche): las dos tienen que ser legibles.
+    const palettes: Array<["palette" | "altPalette", z.infer<typeof paletteSchema>]> = [["palette", tokens.palette]];
+    if (tokens.altPalette) palettes.push(["altPalette", tokens.altPalette]);
 
+    for (const [key, palette] of palettes) {
     const textPairs: Array<[string, string, string]> = [
-      ["palette.foreground", palette.foreground, palette.background],
-      ["palette.mutedForeground", palette.mutedForeground, palette.background],
-      ["palette.foreground", palette.foreground, palette.surface],
-      ["palette.primaryForeground", palette.primaryForeground, palette.primary],
+      [`${key}.foreground`, palette.foreground, palette.background],
+      [`${key}.mutedForeground`, palette.mutedForeground, palette.background],
+      [`${key}.foreground`, palette.foreground, palette.surface],
+      [`${key}.primaryForeground`, palette.primaryForeground, palette.primary],
     ];
 
     for (const [path, foreground, background] of textPairs) {
@@ -108,7 +116,7 @@ export const themeTokensSchema = z
     // contradicen la dirección visual del proyecto ("bordes moderados, sombras discretas") y al
     // propio design system, cuyo borde es #e2e8f0 sobre blanco por decisión de diseño.
     const uiPairs: Array<[string, string, string]> = [
-      ["palette.primary", palette.primary, palette.background],
+      [`${key}.primary`, palette.primary, palette.background],
     ];
 
     for (const [path, foreground, background] of uiPairs) {
@@ -120,6 +128,7 @@ export const themeTokensSchema = z
           message: `Contraste insuficiente (${ratio.toFixed(2)}:1). WCAG 2.2 AA exige al menos ${AA_UI_COMPONENT}:1 para elementos de interfaz.`,
         });
       }
+    }
     }
   });
 

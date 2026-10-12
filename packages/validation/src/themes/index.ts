@@ -18,4 +18,4 @@ export {
   type ThemeCatalogEntry,
   type ThemeFamily,
 } from "./catalog.js";
-export { themeTokensToCssVariables, type ThemeCssVariables } from "./css-variables.js";
+export { themeTokensToCssVariables, themeAltCssVariables, type ThemeCssVariables } from "./css-variables.js";

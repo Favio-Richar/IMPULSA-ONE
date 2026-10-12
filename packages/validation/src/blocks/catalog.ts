@@ -5,6 +5,7 @@ import {
   phoneSchema,
   plainTextSchema,
   richTextSchema,
+  linkTargetSchema,
   safeUrlSchema,
   socialNetworkSchema,
   videoEmbedSchema,
@@ -47,6 +48,8 @@ export const BLOCK_TYPES = [
   // F10: cinta de texto en movimiento y colecciones (álbumes / segundos perfiles)
   "marquee",
   "showcase",
+  // F10: contador público de vistas y botón «me gusta» de la página
+  "engagement",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -79,7 +82,7 @@ export const heroSchema = z.object({
   subtitle: plainTextSchema(300).optional(),
   background: imageSchema.optional(),
   alignment: alignmentSchema,
-  cta: z.object({ label: plainTextSchema(60), url: safeUrlSchema }).optional(),
+  cta: z.object({ label: plainTextSchema(60), url: linkTargetSchema }).optional(),
 });
 
 export const textSchema = z.object({
@@ -89,7 +92,7 @@ export const textSchema = z.object({
 
 export const linkSchema = z.object({
   label: plainTextSchema(80),
-  url: safeUrlSchema,
+  url: linkTargetSchema,
   description: plainTextSchema(160).optional(),
   style: z.enum(["primary", "secondary", "outline"]).default("primary"),
   icon: socialNetworkSchema.optional(),
@@ -109,7 +112,7 @@ export const socialSchema = z.object({
 export const imageBlockSchema = z.object({
   image: imageSchema,
   caption: plainTextSchema(300).optional(),
-  link: safeUrlSchema.optional(),
+  link: linkTargetSchema.optional(),
 });
 
 export const gallerySchema = z.object({
@@ -127,7 +130,7 @@ export const WORKS_WHEEL_MAX_ITEMS = 16;
 export const worksWheelItemSchema = z.object({
   title: plainTextSchema(60),
   image: imageSchema,
-  link: safeUrlSchema.optional(),
+  link: linkTargetSchema.optional(),
 });
 export const worksWheelSchema = z.object({
   /** Va al centro del anillo y es el nombre accesible de la sección. */
@@ -159,7 +162,7 @@ export const showcaseItemSchema = z.object({
   /** Insignia corta sobre la portada: «24 fotos», «Nuevo», «2026». */
   badge: plainTextSchema(24).optional(),
   image: imageSchema,
-  link: safeUrlSchema,
+  link: linkTargetSchema,
 });
 export const showcaseSchema = z.object({
   title: plainTextSchema(80).optional(),
@@ -168,6 +171,17 @@ export const showcaseSchema = z.object({
   /** Texto accesible y visible de la flecha de cada tarjeta. */
   actionLabel: plainTextSchema(24).default("Ver"),
   items: z.array(showcaseItemSchema).min(1).max(SHOWCASE_MAX_ITEMS),
+});
+
+/**
+ * Vistas y «me gusta» (F10): muestra cuánta gente vio la página y deja que el visitante le dé «me gusta». Las cifras las
+ * pone el servidor; el bloque solo decide qué mostrar.
+ */
+export const engagementSchema = z.object({
+  showViews: z.boolean().default(true),
+  showLikes: z.boolean().default(true),
+  /** Texto del botón; sin él, «Me gusta». */
+  likeLabel: plainTextSchema(24).default("Me gusta"),
 });
 
 export const videoSchema = z.object({
@@ -227,7 +241,7 @@ export const serviceSchema = z.object({
   // Precio en la unidad mínima de la moneda (centavos) — nunca decimal flotante (ST §8).
   priceAmount: z.number().int().min(0).optional(),
   priceCurrency: z.string().length(3).toUpperCase().optional(),
-  cta: z.object({ label: plainTextSchema(60), url: safeUrlSchema }).optional(),
+  cta: z.object({ label: plainTextSchema(60), url: linkTargetSchema }).optional(),
 });
 
 export const dividerSchema = z.object({
@@ -268,7 +282,7 @@ export const testimonialsSchema = z.object({
 
 // --- F7.3 (ADR-018): bloques con tiempo y con contenido externo --------------------------------
 
-const ctaSchema = z.object({ label: plainTextSchema(60), url: safeUrlSchema });
+const ctaSchema = z.object({ label: plainTextSchema(60), url: linkTargetSchema });
 
 /**
  * Cuenta regresiva hasta una hora de pared en la zona del negocio. Al terminar, muestra su mensaje
@@ -336,7 +350,7 @@ export const eventItemSchema = z.object({
   address: plainTextSchema(300).optional(),
   description: plainTextSchema(500).optional(),
   image: imageSchema.optional(),
-  ticketUrl: safeUrlSchema.optional(),
+  ticketUrl: linkTargetSchema.optional(),
   ticketLabel: plainTextSchema(40).optional(),
   soldOut: z.boolean().default(false),
 });
@@ -434,6 +448,7 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
   works_wheel: { type: "works_wheel", version: 1, schema: worksWheelSchema, richTextPaths: [] },
   marquee: { type: "marquee", version: 1, schema: marqueeSchema, richTextPaths: [] },
   showcase: { type: "showcase", version: 1, schema: showcaseSchema, richTextPaths: [] },
+  engagement: { type: "engagement", version: 1, schema: engagementSchema, richTextPaths: [] },
 };
 
 /**
@@ -474,6 +489,7 @@ export type WorksWheelItem = z.infer<typeof worksWheelItemSchema>;
 export type MarqueeBlockConfig = z.infer<typeof marqueeSchema>;
 export type ShowcaseBlockConfig = z.infer<typeof showcaseSchema>;
 export type ShowcaseItem = z.infer<typeof showcaseItemSchema>;
+export type EngagementBlockConfig = z.infer<typeof engagementSchema>;
 export type VideoBlockConfig = z.infer<typeof videoSchema>;
 export type WhatsappBlockConfig = z.infer<typeof whatsappSchema>;
 export type ContactActionsBlockConfig = z.infer<typeof contactActionsSchema>;

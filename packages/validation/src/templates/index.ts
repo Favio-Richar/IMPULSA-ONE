@@ -170,6 +170,19 @@ export const templateBlocksSeedSchema = z
     }
   });
 
+/** Páginas que una plantilla crea además de la de inicio (F10). Con 2, el sitio llega a 3 páginas: lo que admite el plan gratis. */
+export const TEMPLATE_MAX_COMPANION_PAGES = 2;
+export const templateCompanionPageSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(3)
+    .max(60)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Usa minúsculas, números y guiones."),
+  blocksSeed: templateBlocksSeedSchema,
+});
+export type TemplateCompanionPage = z.infer<typeof templateCompanionPageSchema>;
+
 function uniqueTags<T extends string>(values: readonly [T, ...T[]]) {
   return z
     .array(z.enum(values))
@@ -201,6 +214,12 @@ export const templateSchema = z
       .refine((url) => url.startsWith("https://"), { message: "La vista previa tiene que servirse por https." })
       .nullable(),
     blocksSeed: templateBlocksSeedSchema,
+    /** F10: páginas extra (álbum, perfil, servicios…). Los botones de la plantilla las enlazan con `page:<slug>`. */
+    companionPages: z
+      .array(templateCompanionPageSchema)
+      .max(TEMPLATE_MAX_COMPANION_PAGES)
+      .refine((pages) => new Set(pages.map((page) => page.slug)).size === pages.length, { message: "Hay páginas repetidas." })
+      .optional(),
     sortOrder: z.number().int().min(0),
   })
   .superRefine((template, ctx) => {

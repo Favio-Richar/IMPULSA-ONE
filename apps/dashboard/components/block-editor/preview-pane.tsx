@@ -63,7 +63,7 @@ export function PreviewPane({
           className="h-fit min-h-full overflow-clip rounded-md border border-border shadow-sm transition-[width]"
           style={{ width: DEVICES[device].width, maxWidth: "100%" }}
         >
-          <SiteBackdrop theme={tokens} background={resolvedBackground} fixed={false} className="min-h-full">
+          <SiteBackdrop theme={tokens} background={resolvedBackground} fixed={false} showModeToggle={false} className="min-h-full">
             {visibleBlocks.length === 0 ? (
               <p className="p-10 text-center text-sm text-[var(--site-color-muted-foreground)]">
                 Agrega un bloque para ver la vista previa.

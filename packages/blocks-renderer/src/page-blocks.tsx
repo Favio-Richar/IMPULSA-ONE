@@ -32,6 +32,7 @@ export function PageBlocks({
   blocks,
   buttonStyle,
   siteSlug,
+  pageSlug,
   forms,
   mode = "public",
   primaryActionBar = true,
@@ -39,6 +40,8 @@ export function PageBlocks({
   blocks: PublicBlockResponse[];
   buttonStyle: ThemeTokens["buttonStyle"];
   siteSlug?: string;
+  /** Página que se pinta (vistas y «me gusta»). */
+  pageSlug?: string;
   forms?: Record<string, PublicFormResponse>;
   mode?: "public" | "preview";
   /**
@@ -89,6 +92,7 @@ export function PageBlocks({
                 block={block}
                 buttonVariant={STACK_TYPES.has(block.type) ? stackVariant : buttonVariant}
                 siteSlug={siteSlug}
+                pageSlug={pageSlug}
                 forms={forms}
                 mode={mode}
                 mono={mono}

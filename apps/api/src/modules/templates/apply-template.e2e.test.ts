@@ -2,7 +2,7 @@ import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { applyTemplateResponse, blockResponse } from "@impulza/contracts";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
-import type { Prisma, PrismaClient } from "@impulza/database";
+import { Prisma, type PrismaClient } from "@impulza/database";
 import { getCatalogTheme, TEMPLATE_CATALOG, THEME_CATALOG } from "@impulza/validation";
 import cookieParser from "cookie-parser";
 import type { Redis } from "ioredis";
@@ -76,9 +76,10 @@ describe("Aplicar plantilla (e2e) — PL4", () => {
         background: (template.background ?? undefined) as Prisma.InputJsonValue | undefined,
         previewImageUrl: template.previewImageUrl,
         blocksSeed: template.blocksSeed as Prisma.InputJsonValue,
+        companionPages: (template.companionPages ?? undefined) as Prisma.InputJsonValue | undefined,
         sortOrder: template.sortOrder,
       };
-      await prisma.template.upsert({ where: { code: template.code }, update: {}, create: { code: template.code, ...data } });
+      await prisma.template.upsert({ where: { code: template.code }, update: { companionPages: data.companionPages ?? Prisma.DbNull, blocksSeed: data.blocksSeed }, create: { code: template.code, ...data } });
     }
   });
 
@@ -98,7 +99,7 @@ describe("Aplicar plantilla (e2e) — PL4", () => {
     }
   });
 
-  async function createOrgWithSite() {
+  async function createOrgWithSite(options: { roomy?: boolean } = {}) {
     const email = `user-${Date.now()}-${Math.random().toString(36).slice(2)}${TEST_EMAIL_DOMAIN}`;
     const password = "password1234";
     const agent = request.agent(httpServer);
@@ -108,7 +109,7 @@ describe("Aplicar plantilla (e2e) — PL4", () => {
     await agent.post("/api/v1/auth/login").set(CSRF_HEADERS).send({ email, password }).expect(201);
     const org = await agent.post("/api/v1/organizations").set(CSRF_HEADERS).send({ name: "Org", slug: uniqueSlug("org") }).expect(201);
     const organizationId = org.body.id as string;
-    await assignRoomyPlan(prisma, organizationId);
+    if (options.roomy !== false) await assignRoomyPlan(prisma, organizationId);
 
     const site = await agent
       .post(`/api/v1/organizations/${organizationId}/sites`)
@@ -177,6 +178,64 @@ describe("Aplicar plantilla (e2e) — PL4", () => {
       discardedUnpublishedChanges: false,
       onboarding: { accountType: "negocio", objective: "vender", industry: "gastronomia" },
     });
+  });
+
+  it("F10: la plantilla crea sus páginas compañeras y cada botón de inicio lleva a una página real", async () => {
+    const { agent, organizationId, siteId, base } = await createOrgWithSite();
+    const res = await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: CAFE.code, applyAppearance: false }).expect(200);
+    applyTemplateResponse.parse(res.body);
+    expect(res.body.companionPages).toEqual([
+      expect.objectContaining({ slug: "carta", created: true }),
+      expect.objectContaining({ slug: "contacto", created: true }),
+    ]);
+
+    const pages = (await agent.get(`/api/v1/organizations/${organizationId}/sites/${siteId}/pages`).expect(200)).body as Array<{ id: string; slug: string; isHome: boolean; visibility: string }>;
+    const carta = pages.find((page) => page.slug === "carta")!;
+    expect(carta.visibility).toBe("PUBLIC");
+    const blocks = (await agent.get(`/api/v1/organizations/${organizationId}/sites/${siteId}/pages/${carta.id}/blocks`).expect(200)).body as Array<{ type: string }>;
+    expect(blocks.length).toBeGreaterThan(2);
+    expect(blocks.map((block) => block.type)).toContain("service");
+
+    // El botón «Ver la carta» de la página de inicio apunta a la página que se acaba de crear.
+    const home = pages.find((page) => page.isHome)!;
+    const homeBlocks = (await agent.get(`/api/v1/organizations/${organizationId}/sites/${siteId}/pages/${home.id}/blocks`).expect(200)).body as Array<{ type: string; config: { url?: string } }>;
+    expect(homeBlocks.find((block) => block.type === "link")?.config.url).toBe("page:carta");
+
+    // Aplicarla de nuevo no duplica ni pisa las páginas ya creadas.
+    const again = await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: CAFE.code, applyAppearance: false, discardUnpublishedChanges: true }).expect(200);
+    expect(again.body.companionPages).toEqual([
+      expect.objectContaining({ slug: "carta", created: false }),
+      expect.objectContaining({ slug: "contacto", created: false }),
+    ]);
+    const after = (await agent.get(`/api/v1/organizations/${organizationId}/sites/${siteId}/pages`).expect(200)).body as Array<{ slug: string }>;
+    expect(after.filter((page) => page.slug === "carta")).toHaveLength(1);
+  });
+
+  it("F10: una página con el mismo slug que ya armó la persona se respeta tal cual", async () => {
+    const { agent, organizationId, siteId, base } = await createOrgWithSite();
+    const pagesPath = `/api/v1/organizations/${organizationId}/sites/${siteId}/pages`;
+    const mine = await agent.post(pagesPath).set(CSRF_HEADERS).send({ slug: "carta" }).expect(201);
+    await agent.post(`${pagesPath}/${mine.body.id}/blocks`).set(CSRF_HEADERS).send({ type: "text", config: { html: "<p>Mi carta propia</p>" } }).expect(201);
+
+    const res = await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: CAFE.code, applyAppearance: false }).expect(200);
+    expect(res.body.companionPages).toEqual(expect.arrayContaining([expect.objectContaining({ slug: "carta", created: false, pageId: mine.body.id })]));
+    const blocks = (await agent.get(`${pagesPath}/${mine.body.id}/blocks`).expect(200)).body as Array<{ config: { html?: string } }>;
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]!.config.html).toContain("Mi carta propia");
+  });
+
+  it("F10: si el plan no admite las páginas compañeras responde 402 y no toca la página actual", async () => {
+    // Plan gratis: 3 páginas por sitio. Con inicio + 1 propia, las 2 compañeras no caben.
+    const { agent, organizationId, siteId, pageId, base } = await createOrgWithSite({ roomy: false });
+    const pagesPath = `/api/v1/organizations/${organizationId}/sites/${siteId}/pages`;
+    await agent.post(pagesPath).set(CSRF_HEADERS).send({ slug: "otra-pagina" }).expect(201);
+    await agent.post(`${pagesPath}/${pageId}/blocks`).set(CSRF_HEADERS).send({ type: "text", config: { html: "<p>Mi contenido</p>" } }).expect(201);
+
+    const res = await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: CAFE.code, applyAppearance: false, discardUnpublishedChanges: true });
+    expect(res.status).toBe(402);
+    const blocks = (await agent.get(`${pagesPath}/${pageId}/blocks`).expect(200)).body as Array<{ config: { html?: string } }>;
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]!.config.html).toContain("Mi contenido");
   });
 
   it("sin apariencia deja el tema y el fondo del sitio tal cual", async () => {

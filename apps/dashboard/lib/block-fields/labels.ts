@@ -9,6 +9,7 @@ import {
   Orbit,
   ArrowLeftRight,
   GalleryVertical,
+  Heart,
   Briefcase,
   CalendarCheck,
   Contact,
@@ -56,6 +57,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   works_wheel: "Rueda de trabajos",
   marquee: "Cinta de texto",
   showcase: "Colecciones",
+  engagement: "Vistas y me gusta",
 };
 
 /** Un ícono lineal por tipo (no-negociable de UI/UX del proyecto) — la misma biblioteca
@@ -87,4 +89,5 @@ export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   works_wheel: Orbit,
   marquee: ArrowLeftRight,
   showcase: GalleryVertical,
+  engagement: Heart,
 };

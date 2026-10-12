@@ -120,7 +120,8 @@ function readString(config: unknown, key: string): string | undefined {
 function collectLinkUrls(type: string, config: Record<string, unknown>): string[] {
   const urls: string[] = [];
   const push = (value: unknown) => {
-    if (typeof value === "string" && value.trim() !== "") {
+    // Las páginas del propio sitio (`page:<slug>`) no son enlaces externos: no se revisan como tales.
+    if (typeof value === "string" && value.trim() !== "" && !value.trim().toLowerCase().startsWith("page:")) {
       urls.push(value.trim());
     }
   };

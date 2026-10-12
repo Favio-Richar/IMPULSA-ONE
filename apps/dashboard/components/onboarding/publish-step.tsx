@@ -158,7 +158,17 @@ export function PublishStep({ onNext, onBack, onSlugConflict }: StepProps & { on
       }
 
       if (publish && !useOnboardingStore.getState().progress.published) {
-        await step("publish", () => publishPage(organizationId, siteId, pageId));
+        await step("publish", async () => {
+          await publishPage(organizationId, siteId, pageId);
+          // F10: las páginas que trae la plantilla (álbum, perfil, contacto…) se publican con la de inicio: sus botones
+          // llevan a ellas y no pueden quedar apuntando a una página sin publicar.
+          const pages = await listPages(organizationId, siteId);
+          for (const page of pages) {
+            if (page.id !== pageId && page.deletedAt === null && page.visibility === "PUBLIC" && page.status !== "PUBLISHED") {
+              await publishPage(organizationId, siteId, page.id);
+            }
+          }
+        });
         setProgress({ published: true });
       }
 

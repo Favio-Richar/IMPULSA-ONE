@@ -135,3 +135,8 @@
     display: none;
   }
 }
+
+/* Modo día/noche (F10): con la paleta alterna activa manda el color de fondo de esa paleta, no el de la capa de fondo. */
+[data-site-root][data-site-mode="alt"] [data-site-backdrop] {
+  display: none;
+}

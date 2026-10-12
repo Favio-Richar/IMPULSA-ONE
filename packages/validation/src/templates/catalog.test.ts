@@ -102,3 +102,49 @@ describe("TEMPLATE_CATALOG (PL3)", () => {
     });
   });
 });
+
+describe("portales completos: cada botón de una plantilla lleva a una página real (F10)", () => {
+  /** Todos los `page:<slug>` que aparecen en cualquier valor de la configuración (a cualquier profundidad). */
+  function pageRefs(value: unknown, found = new Set<string>()): Set<string> {
+    if (typeof value === "string") {
+      const match = /^page:([a-z0-9-]+)$/.exec(value);
+      if (match) found.add(match[1]!);
+    } else if (Array.isArray(value)) {
+      for (const item of value) pageRefs(item, found);
+    } else if (value && typeof value === "object") {
+      for (const item of Object.values(value)) pageRefs(item, found);
+    }
+    return found;
+  }
+
+  for (const template of TEMPLATE_CATALOG) {
+    describe(template.code, () => {
+      const companions = template.companionPages ?? [];
+      const slugs = new Set(companions.map((page) => page.slug));
+
+      it("trae a lo sumo 2 páginas compañeras (con la de inicio, 3: lo que admite el plan gratis)", () => {
+        expect(companions.length).toBeLessThanOrEqual(2);
+      });
+
+      it("todo enlace interno de la plantilla apunta a una de sus páginas compañeras", () => {
+        const refs = new Set<string>();
+        pageRefs(template.blocksSeed, refs);
+        for (const page of companions) pageRefs(page.blocksSeed, refs);
+        for (const ref of refs) expect(slugs.has(ref), `${template.code}: page:${ref} no existe`).toBe(true);
+      });
+
+      it("ninguna página compañera deja a la persona sin salida: cada una trae una acción (WhatsApp, enlace, formulario…)", () => {
+        for (const page of companions) {
+          expect(page.blocksSeed.some((block) => ["whatsapp", "link", "contact_actions", "booking", "newsletter", "service", "catalog", "social"].includes(block.type)), page.slug).toBe(true);
+        }
+      });
+
+      it("no trae botones que lleven a sitios de ejemplo inexistentes (solo la web propia de la plantilla de fotografía)", () => {
+        const text = JSON.stringify([template.blocksSeed, ...companions.map((page) => page.blocksSeed)]);
+        const dead = [...text.matchAll(/"(?:url|link|ticketUrl)":"(https:\/\/example\.com\/[^"]*)"/g)].map((match) => match[1]);
+        const allowed = template.code === "fotografia-moda" ? ["https://example.com/mi-sitio-web"] : [];
+        expect(dead.filter((url) => !allowed.includes(url!))).toEqual([]);
+      });
+    });
+  }
+});

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { AA_NORMAL_TEXT, AA_UI_COMPONENT, contrastRatio } from "../contrast.js";
 import { DEFAULT_THEME_CODE, getCatalogTheme, THEME_CATALOG, THEME_FAMILIES } from "./catalog.js";
 import { themeTokensSchema } from "./tokens.js";
+import { themeAltCssVariables } from "./css-variables.js";
 
 const baseTokens = THEME_CATALOG[0]!.tokens;
 
@@ -178,5 +179,23 @@ describe("esquema de tokens de tema", () => {
     if (result.success) {
       expect(result.data.palette.primary).toBe("#4338ca");
     }
+  });
+});
+
+describe("modo día/noche: paleta alterna (F10)", () => {
+  it("el tema Atelier trae una paleta alterna que también cumple AA, y el resto de los temas no la necesita", () => {
+    const atelier = getCatalogTheme("oscuro-atelier")!;
+    expect(atelier.tokens.altPalette).toBeDefined();
+    expect(themeTokensSchema.safeParse(atelier.tokens).success).toBe(true);
+    expect(themeAltCssVariables(atelier.tokens)?.["--site-color-background"]).toBe("#faf7f2");
+    expect(themeAltCssVariables(getCatalogTheme("claro-profesional")!.tokens)).toBeNull();
+  });
+
+  it("una paleta alterna ilegible se rechaza igual que la principal", () => {
+    const tokens = structuredClone(getCatalogTheme("oscuro-atelier")!.tokens);
+    tokens.altPalette = { ...tokens.altPalette!, foreground: "#fafafa" };
+    const result = themeTokensSchema.safeParse(tokens);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues.some((issue) => issue.path[0] === "altPalette")).toBe(true);
   });
 });

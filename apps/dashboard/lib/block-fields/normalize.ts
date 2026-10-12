@@ -33,6 +33,7 @@ function normalizeLeaf(raw: unknown, control: FieldControl): unknown {
   switch (control.kind) {
     case "text":
     case "url":
+    case "link":
     case "email":
     case "phone":
     case "richtext":

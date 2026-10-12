@@ -38,6 +38,72 @@ export const safeUrlSchema = z
     }
   });
 
+/**
+ * Enlace interno a otra página del mismo sitio: `page:<slug>` (por ejemplo `page:album`). Se guarda así —no como una
+ * ruta— para que sobreviva a un cambio de dirección del sitio o a un dominio propio; el render público lo convierte en
+ * la ruta real (`resolvePageLinks`). Nada de rutas libres: solo el slug de una página.
+ */
+export const PAGE_LINK_PREFIX = "page:";
+export const PAGE_LINK_PATTERN = /^page:([a-z0-9]+(?:-[a-z0-9]+)*)$/;
+/** `/<sitio>` o `/<sitio>/<página>`: la ruta a la que `resolvePageLinks` convierte una referencia de página. */
+const RESOLVED_PAGE_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)?$/;
+
+/** El slug de una referencia `page:<slug>`, o `null` si el valor no es una. */
+export function pageSlugFromLink(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const match = PAGE_LINK_PATTERN.exec(value.trim());
+  return match && match[1]!.length <= 60 ? match[1]! : null;
+}
+
+/**
+ * Destino de un botón o tarjeta: un enlace externo seguro (`https://…`, igual que `safeUrlSchema`) **o** una página de
+ * este mismo sitio (`page:<slug>`). Es lo que hace que un álbum, un perfil o un servicio lleven a una página real del
+ * portal sin que el negocio tenga que escribir direcciones.
+ */
+export const linkTargetSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(2048)
+  .superRefine((value, ctx) => {
+    if (value.toLowerCase().startsWith(PAGE_LINK_PREFIX)) {
+      if (!PAGE_LINK_PATTERN.test(value)) {
+        ctx.addIssue({ code: "custom", message: "La página debe indicarse como page:nombre-de-la-pagina." });
+      }
+      return;
+    }
+    // Ruta interna ya resuelta (`/<sitio>` o `/<sitio>/<página>`): es lo que el render público le entrega al bloque
+    // después de convertir `page:<slug>`. Solo caracteres de slug, sin `//`, sin `..` y sin parámetros.
+    if (RESOLVED_PAGE_PATH.test(value)) return;
+    const url = parseUrl(value);
+    if (!url) {
+      ctx.addIssue({ code: "custom", message: "Escribe una URL completa (https://…) o elige una página de tu sitio." });
+      return;
+    }
+    if (!ALLOWED_LINK_PROTOCOLS.has(url.protocol)) {
+      ctx.addIssue({ code: "custom", message: "Solo se permiten enlaces http:// o https://." });
+    }
+  });
+
+/**
+ * Recorre una configuración de bloque y convierte cada `page:<slug>` en la ruta pública de esa página. Pura: la usa el
+ * render público (`apps/web`) con el slug del sitio. No toca nada que no sea exactamente una referencia de página.
+ */
+export function resolvePageLinks<T>(value: T, siteSlug: string, homeSlug?: string): T {
+  if (typeof value === "string") {
+    const slug = pageSlugFromLink(value);
+    // La página de inicio se sirve en la raíz del sitio, no en `/<sitio>/<slug>`.
+    return (slug ? (slug === homeSlug ? `/${siteSlug}` : `/${siteSlug}/${slug}`) : value) as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => resolvePageLinks(item, siteSlug, homeSlug)) as T;
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, resolvePageLinks(item, siteSlug, homeSlug)])) as T;
+  }
+  return value;
+}
+
 /** Texto plano: se guarda tal cual, sin interpretar como HTML en ningún render. */
 export const plainTextSchema = (max: number) => z.string().trim().min(1).max(max);
 

@@ -89,6 +89,14 @@ export interface ThemeCssVariables {
   "--site-section-padding": string;
 }
 
+/**
+ * Las variables del modo alterno (día/noche, F10), o `null` si el tema no trae paleta alterna. Mismas propiedades que
+ * `themeTokensToCssVariables`: solo cambian los colores; tipografía, radio y densidad son los del tema.
+ */
+export function themeAltCssVariables(tokens: ThemeTokens): ThemeCssVariables | null {
+  return tokens.altPalette ? themeTokensToCssVariables({ ...tokens, palette: tokens.altPalette, altPalette: undefined }) : null;
+}
+
 export function themeTokensToCssVariables(tokens: ThemeTokens): ThemeCssVariables {
   const density = DENSITY_VALUES[tokens.density];
 

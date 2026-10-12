@@ -6,11 +6,13 @@ import {
   OVERLAY_COLORS,
   overlayCss,
   type ResolvedSiteBackground,
+  themeAltCssVariables,
   themeTokensToCssVariables,
   type ThemeTokens,
 } from "@impulza/validation";
 import type { CSSProperties, ReactNode } from "react";
 import { BackgroundVideo } from "./background-video.js";
+import { SiteModeToggle } from "./site-mode-toggle.js";
 
 /** Color de base mientras carga la imagen o el video: el de la capa, así el texto ya se lee. */
 function baseStyle(background: ResolvedSiteBackground): CSSProperties {
@@ -41,14 +43,19 @@ export function SiteBackdrop({
   background,
   fixed = true,
   className = "",
+  showModeToggle = true,
   children,
 }: {
   theme: ThemeTokens;
   background: ResolvedSiteBackground | null;
   fixed?: boolean;
   className?: string;
+  /** `false` en miniaturas y en la vista previa del constructor: ahí el botón de día/noche no tiene sentido. */
+  showModeToggle?: boolean;
   children: ReactNode;
 }) {
+  // Modo día/noche (F10): solo si el tema trae paleta alterna.
+  const altVars = themeAltCssVariables(theme);
   const style = {
     ...themeTokensToCssVariables(theme),
     ...(background ? backgroundTextCssVariables(background.text) : {}),
@@ -70,7 +77,7 @@ export function SiteBackdrop({
       className={`relative isolate bg-[var(--site-color-background)] text-[var(--site-color-foreground)] ${className}`}
     >
       {background ? (
-        <div aria-hidden="true" className={`${fixed ? "fixed" : "absolute"} inset-0 -z-10 overflow-hidden`} style={baseStyle(background)}>
+        <div aria-hidden="true" data-site-backdrop="" className={`${fixed ? "fixed" : "absolute"} inset-0 -z-10 overflow-hidden`} style={baseStyle(background)}>
           {background.kind === "image" ? (
             <img
               src={background.image.url}
@@ -89,6 +96,7 @@ export function SiteBackdrop({
           ) : null}
         </div>
       ) : null}
+      {altVars && showModeToggle ? <SiteModeToggle altVars={{ ...altVars }} baseBackground={theme.palette.background} /> : null}
       {children}
     </div>
   );

@@ -59,3 +59,31 @@ describe("SiteBackdrop (PP3)", () => {
   });
 });
 
+describe("modo día/noche (F10)", () => {
+  const atelier = THEME_CATALOG.find((entry) => entry.code === "oscuro-atelier")!.tokens;
+
+  it("un tema con paleta alterna trae el botón accesible para cambiar de modo, y la capa de fondo queda marcada", () => {
+    const html = renderToStaticMarkup(
+      <SiteBackdrop theme={atelier} background={{ kind: "color", color: "#0b0a0a", text: "light" }}>
+        <p>Contenido</p>
+      </SiteBackdrop>,
+    );
+    expect(html).toContain('aria-label="Cambiar a modo claro"');
+    expect(html).toContain('aria-pressed="false"');
+    expect(html).toContain("data-site-backdrop");
+    expect(html).toContain('data-site-motion="elegant"');
+  });
+
+  it("un tema sin paleta alterna no agrega ningún botón", () => {
+    expect(render(null)).not.toContain("Cambiar a modo");
+  });
+
+  it("sin botón en miniaturas y en la vista previa del constructor", () => {
+    const html = renderToStaticMarkup(
+      <SiteBackdrop theme={atelier} background={null} showModeToggle={false}>
+        <p>Contenido</p>
+      </SiteBackdrop>,
+    );
+    expect(html).not.toContain("Cambiar a modo");
+  });
+});

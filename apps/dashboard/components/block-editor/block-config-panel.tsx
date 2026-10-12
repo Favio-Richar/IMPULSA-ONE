@@ -17,6 +17,8 @@ import { useEffect, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { BLOCK_FIELD_SETS } from "../../lib/block-fields/catalog";
 import { FieldGroup } from "../../lib/block-fields/field-renderer";
+import { PageOptionsProvider } from "../../lib/block-fields/page-options";
+import { usePages } from "../../lib/hooks/use-pages";
 import { BLOCK_LABELS } from "../../lib/block-fields/labels";
 import { createBlockConfigResolver } from "../../lib/block-fields/resolver";
 import { sameConfig } from "../../lib/block-fields/same-config";
@@ -64,6 +66,11 @@ export function BlockConfigPanel({
   const fieldSet = type ? BLOCK_FIELD_SETS[type] : undefined;
   const definition = type ? BLOCK_CATALOG[type] : undefined;
   const updateMutation = useUpdateBlock(organizationId, siteId, pageId);
+  // Páginas del sitio para el selector de destino de botones y tarjetas (`page:<slug>`).
+  const pagesQuery = usePages(organizationId, siteId);
+  const pageOptions = (pagesQuery.data ?? [])
+    .filter((page) => page.deletedAt === null)
+    .map((page) => ({ slug: page.slug, title: page.isHome ? "Inicio" : page.slug, isHome: page.isHome }));
   const [status, setStatus] = useState<SaveStatus>("idle");
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openingConfigRef = useRef<unknown>(block.config);
@@ -244,7 +251,9 @@ export function BlockConfigPanel({
           />
         ) : null}
         <form className="flex flex-col gap-4" onSubmit={(event) => event.preventDefault()}>
-          <FieldGroup fields={fieldSet.fields} />
+          <PageOptionsProvider value={pageOptions}>
+            <FieldGroup fields={fieldSet.fields} />
+          </PageOptionsProvider>
           {type === "contact_form" ? (
             <ContactFormPicker
               organizationId={organizationId}

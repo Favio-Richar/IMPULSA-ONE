@@ -40,6 +40,7 @@ function row(code: string, overrides: Partial<TemplateDefinition> = {}): Prisma.
     ...template,
     background: template.background ?? undefined,
     blocksSeed: template.blocksSeed as Prisma.InputJsonValue,
+    companionPages: template.companionPages ? (template.companionPages as Prisma.InputJsonValue) : undefined,
   };
 }
 

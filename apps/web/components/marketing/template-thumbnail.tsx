@@ -34,7 +34,7 @@ export function TemplateThumbnail({ template, height = 280 }: { template: Templa
         className="pointer-events-none absolute top-0"
         style={{ left: "50%", width: PREVIEW_WIDTH, transform: `translateX(-50%) scale(${scale})`, transformOrigin: "top" }}
       >
-        <SiteBackdrop theme={tokens} background={background} fixed={false} className="min-h-full">
+        <SiteBackdrop theme={tokens} background={background} fixed={false} showModeToggle={false} className="min-h-full">
           <PageBlocks blocks={blocks} buttonStyle={tokens.buttonStyle} mode="preview" primaryActionBar={false} />
         </SiteBackdrop>
       </div>

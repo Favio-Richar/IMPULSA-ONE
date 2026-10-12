@@ -30,6 +30,7 @@ import { z } from "zod";
 import { ConfirmButton } from "../../../../components/confirm-button";
 import { BackgroundPicker } from "../../../../components/site/background-picker";
 import { CustomDomains } from "../../../../components/site/custom-domains";
+import { EngagementSummary } from "../../../../components/site/engagement-summary";
 import { MeasurementSettings } from "../../../../components/site/measurement-settings";
 import { useActiveOrgStore } from "../../../../lib/active-org-store";
 import { ApiError } from "../../../../lib/api-client";
@@ -101,6 +102,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
       <BookingShortcut siteId={siteId} />
       <CatalogShortcut siteId={siteId} />
       <AbTestsShortcut siteId={siteId} />
+      <EngagementSummary organizationId={organizationId} siteId={siteId} />
       <MembersShortcut siteId={siteId} />
       <CampaignModeShortcut siteId={siteId} />
       <CustomDomains organizationId={organizationId} siteId={siteId} />

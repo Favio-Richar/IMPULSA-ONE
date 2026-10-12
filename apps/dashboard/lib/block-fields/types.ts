@@ -11,6 +11,8 @@ export type FieldControl =
   | { kind: "boolean" }
   | { kind: "select"; options: ReadonlyArray<{ value: string; label: string }> }
   | { kind: "url" }
+  /** Destino de un botón o tarjeta: una página de este sitio (`page:<slug>`) o un enlace externo (`https://…`). */
+  | { kind: "link" }
   | { kind: "email" }
   | { kind: "phone" }
   /** Objeto `{ url, alt, decorative }` — mismo `imageSchema` en todo el catálogo (F2.4). `aspect`

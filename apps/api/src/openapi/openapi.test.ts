@@ -107,6 +107,10 @@ describe("Documento OpenAPI", () => {
       "GET /api/v1/public/memberships/purchases/{token}",
       // Pedido con Webpay Plus (F10.2d): el enlace del pedido es la credencial; crea una transacción por el total guardado.
       "POST /api/v1/public/orders/{token}/webpay",
+      // Vistas y «me gusta» de una página (F10): sin sesión, CSRF + límite de tasa por visitante, sin caché.
+      "GET /api/v1/public/sites/{siteSlug}/pages/{pageSlug}/engagement",
+      "PUT /api/v1/public/sites/{siteSlug}/pages/{pageSlug}/engagement",
+      "DELETE /api/v1/public/sites/{siteSlug}/pages/{pageSlug}/engagement",
       "GET /api/v1/public/short-links/{slug}",
       "GET /api/v1/public/qr/{qrCodeId}",
       // Catálogo de planes (F4.1): los precios de un SaaS son públicos (página de precios).

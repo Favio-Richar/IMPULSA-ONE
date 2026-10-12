@@ -55,6 +55,8 @@ export const templateResponse = z.object({
   previewImageUrl: z.string().nullable(),
   /** Bloques iniciales, en orden. */
   blocks: z.array(templateBlockSeedResponse),
+  /** F10: páginas que la plantilla crea además de la de inicio (álbum, perfil, servicios…). Ausente si no trae. */
+  companionPages: z.array(z.object({ slug: z.string(), blocks: z.array(templateBlockSeedResponse) })).optional(),
 });
 
 export type TemplateResponse = z.infer<typeof templateResponse>;
@@ -69,6 +71,8 @@ export const applyTemplateResponse = z.object({
   templateCode: z.string(),
   pageId: uuid,
   blocks: z.array(blockResponse),
+  /** F10: páginas que se crearon junto con la plantilla (sin publicar); el panel las publica con la de inicio. */
+  companionPages: z.array(z.object({ pageId: uuid, slug: z.string(), created: z.boolean() })).optional(),
   appearance: z.object({
     applied: z.boolean(),
     previous: z.object({ themeId: uuid.nullable(), background: z.unknown().nullable() }),

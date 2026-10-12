@@ -32,6 +32,8 @@ function isForeignKeyViolation(error: unknown): boolean {
  * `analytics_events.idempotency_key`, la transacción entera se revierte y los agregados no se
  * tocan. El evento se cuenta una sola vez aunque la red o la cola lo entreguen dos.
  */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function processAnalyticsEvent(
   prisma: PrismaClient,
   job: AnalyticsEventJob,
@@ -82,6 +84,18 @@ export async function processAnalyticsEvent(
           createdAt: occurredAt,
         },
       });
+
+      // F10: contador público de vistas por página, en la misma transacción que el evento (si el evento ya se contó, la
+      // violación de unicidad de arriba aborta todo y esta suma tampoco ocurre). Solo si `subjectId` es una página real
+      // de este sitio: el contador nunca crece por un identificador inventado.
+      if (job.type === "page_view" && job.siteId && job.subjectId && UUID_PATTERN.test(job.subjectId)) {
+        await tx.$executeRaw`
+          INSERT INTO page_engagement (page_id, site_id, organization_id, views, likes, updated_at)
+          SELECT p.id, p.site_id, ${job.organizationId}::uuid, 1, 0, now()
+          FROM pages p
+          WHERE p.id = ${job.subjectId}::uuid AND p.site_id = ${job.siteId}::uuid
+          ON CONFLICT (page_id) DO UPDATE SET views = page_engagement.views + 1, updated_at = now()`;
+      }
 
       // Upsert atómico en SQL (no leer-sumar-escribir desde Node): dos workers incrementando la
       // misma métrica a la vez nunca pierden una suma.

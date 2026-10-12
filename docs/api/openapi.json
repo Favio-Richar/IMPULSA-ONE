@@ -3958,6 +3958,51 @@
                           ],
                           "additionalProperties": false
                         }
+                      },
+                      "companionPages": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "slug": {
+                              "type": "string"
+                            },
+                            "blocks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "configSchemaVersion": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "isPrimary": {
+                                    "type": "boolean",
+                                    "enum": [
+                                      true
+                                    ]
+                                  },
+                                  "config": {}
+                                },
+                                "required": [
+                                  "type",
+                                  "configSchemaVersion",
+                                  "config"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "slug",
+                            "blocks"
+                          ],
+                          "additionalProperties": false
+                        }
                       }
                     },
                     "required": [
@@ -4132,6 +4177,51 @@
                           "type",
                           "configSchemaVersion",
                           "config"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "companionPages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "blocks": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string"
+                                },
+                                "configSchemaVersion": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "isPrimary": {
+                                  "type": "boolean",
+                                  "enum": [
+                                    true
+                                  ]
+                                },
+                                "config": {}
+                              },
+                              "required": [
+                                "type",
+                                "configSchemaVersion",
+                                "config"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "slug",
+                          "blocks"
                         ],
                         "additionalProperties": false
                       }
@@ -4497,6 +4587,31 @@
                         "additionalProperties": false
                       }
                     },
+                    "companionPages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "pageId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "slug": {
+                            "type": "string"
+                          },
+                          "created": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "pageId",
+                          "slug",
+                          "created"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "appearance": {
                       "type": "object",
                       "properties": {
@@ -4715,6 +4830,51 @@
                             "type",
                             "configSchemaVersion",
                             "config"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "companionPages": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "slug": {
+                              "type": "string"
+                            },
+                            "blocks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "configSchemaVersion": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "isPrimary": {
+                                    "type": "boolean",
+                                    "enum": [
+                                      true
+                                    ]
+                                  },
+                                  "config": {}
+                                },
+                                "required": [
+                                  "type",
+                                  "configSchemaVersion",
+                                  "config"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "slug",
+                            "blocks"
                           ],
                           "additionalProperties": false
                         }
@@ -4958,6 +5118,51 @@
                           "type",
                           "configSchemaVersion",
                           "config"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "companionPages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "blocks": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string"
+                                },
+                                "configSchemaVersion": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "isPrimary": {
+                                  "type": "boolean",
+                                  "enum": [
+                                    true
+                                  ]
+                                },
+                                "config": {}
+                              },
+                              "required": [
+                                "type",
+                                "configSchemaVersion",
+                                "config"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "slug",
+                          "blocks"
                         ],
                         "additionalProperties": false
                       }
@@ -5330,7 +5535,8 @@
                       "newsletter",
                       "works_wheel",
                       "marquee",
-                      "showcase"
+                      "showcase",
+                      "engagement"
                     ]
                   },
                   "config": {},
@@ -25047,6 +25253,375 @@
         "summary": "Desconectar Mercado Pago",
         "tags": [
           "payment-accounts"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/pages/{pageSlug}/engagement": {
+      "get": {
+        "description": "Cifras públicas y si este visitante ya dio «me gusta». Solo páginas publicadas y públicas. Sin caché.",
+        "operationId": "PublicEngagementController_read",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cifras de la página.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "views": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "likes": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "liked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "views",
+                    "likes",
+                    "liked"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La página no existe o no está publicada."
+          },
+          "429": {
+            "description": "Más de 120 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Vistas y «me gusta» de una página",
+        "tags": [
+          "public-engagement"
+        ]
+      },
+      "put": {
+        "description": "Uno por visitante y página; repetirlo no cambia nada. No se guarda la IP.",
+        "operationId": "PublicEngagementController_like",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cifras actualizadas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "views": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "likes": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "liked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "views",
+                    "likes",
+                    "liked"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La página no existe o no está publicada."
+          },
+          "429": {
+            "description": "Más de 30 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Dar «me gusta» a una página",
+        "tags": [
+          "public-engagement"
+        ]
+      },
+      "delete": {
+        "operationId": "PublicEngagementController_unlike",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cifras actualizadas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "views": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "likes": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "liked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "views",
+                    "likes",
+                    "liked"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La página no existe o no está publicada."
+          },
+          "429": {
+            "description": "Más de 30 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Quitar el «me gusta» de una página",
+        "tags": [
+          "public-engagement"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/engagement": {
+      "get": {
+        "description": "Cifras acumuladas de cada página del sitio y sus totales.",
+        "operationId": "SiteEngagementController_list",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cifras por página.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "pageId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "slug": {
+                            "type": "string"
+                          },
+                          "isHome": {
+                            "type": "boolean"
+                          },
+                          "views": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "likes": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "pageId",
+                          "slug",
+                          "isHome",
+                          "views",
+                          "likes"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "totals": {
+                      "type": "object",
+                      "properties": {
+                        "views": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "likes": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "views",
+                        "likes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "pages",
+                    "totals"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "429": {
+            "description": "Más de 120 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Vistas y «me gusta» por página",
+        "tags": [
+          "engagement"
         ]
       }
     },

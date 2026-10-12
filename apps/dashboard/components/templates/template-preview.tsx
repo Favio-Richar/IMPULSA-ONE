@@ -47,7 +47,7 @@ export function TemplatePreview({
   });
 
   return (
-    <SiteBackdrop theme={tokens} background={background} fixed={false} className={cn("min-h-full", className)}>
+    <SiteBackdrop theme={tokens} background={background} fixed={false} showModeToggle={false} className={cn("min-h-full", className)}>
       <PageBlocks blocks={blocks} buttonStyle={tokens.buttonStyle} mode="preview" primaryActionBar={!thumbnail} />
     </SiteBackdrop>
   );

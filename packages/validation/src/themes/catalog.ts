@@ -324,6 +324,16 @@ export const THEME_CATALOG: readonly ThemeCatalogEntry[] = [
       shadow: "none",
       buttonStyle: "glass",
       motion: "elegant",
+      // Modo día: marfil con texto casi negro y el mismo champán oscurecido para el botón.
+      altPalette: {
+        background: "#faf7f2",
+        surface: "#ffffff",
+        foreground: "#16120d",
+        mutedForeground: "#5c5349",
+        primary: "#16120d",
+        primaryForeground: "#f6f1ea",
+        border: "#e3dccf",
+      },
     },
   },
   {

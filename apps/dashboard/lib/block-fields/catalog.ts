@@ -24,7 +24,7 @@ const ctaField: FieldDescriptor = {
     kind: "group",
     fields: [
       { name: "label", label: "Texto del botón", control: { kind: "text", maxLength: 60 } },
-      { name: "url", label: "Enlace", control: { kind: "url" } },
+      { name: "url", label: "Enlace", control: { kind: "link" } },
     ],
   },
 };
@@ -52,7 +52,7 @@ const ctaGroup = (label = "Botón"): FieldDescriptor => ({
     kind: "group",
     fields: [
       { name: "label", label: "Texto del botón", control: { kind: "text", maxLength: 60 } },
-      { name: "url", label: "Enlace", control: { kind: "url" } },
+      { name: "url", label: "Enlace", control: { kind: "link" } },
     ],
   },
 });
@@ -132,8 +132,8 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
       {
         name: "url",
         label: "Enlace",
-        helperText: "Pega el enlace de tu red, tu web, tu tienda o lo que quieras mostrar.",
-        control: { kind: "url" },
+        helperText: "Elige una página de tu portal o pega el enlace de tu red, tu web, tu tienda o lo que quieras mostrar.",
+        control: { kind: "link" },
       },
       { name: "description", label: "Descripción", optional: true, control: { kind: "text", maxLength: 160 } },
       {
@@ -196,7 +196,7 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
     fields: [
       imageField("image", "Imagen", false),
       { name: "caption", label: "Leyenda", optional: true, control: { kind: "text", maxLength: 300 } },
-      { name: "link", label: "Enlace al hacer clic", optional: true, control: { kind: "url" } },
+      { name: "link", label: "Enlace al hacer clic", optional: true, control: { kind: "link" } },
     ],
     seedConfig: () => ({ image: { url: "https://ejemplo.com/imagen.jpg", alt: "Descripción de la imagen" } }),
   },
@@ -314,7 +314,7 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
           fields: [
             { name: "title", label: "Nombre", control: { kind: "text", maxLength: 60 } },
             imageField("image", "Imagen", false, "wide"),
-            { name: "link", label: "Enlace al tocarla", optional: true, helperText: "Opcional: una página, un caso de estudio o una red.", control: { kind: "url" } },
+            { name: "link", label: "Enlace al tocarla", optional: true, helperText: "Opcional: una página de tu portal (álbum, perfil, servicios…) o un enlace externo.", control: { kind: "link" } },
           ],
         },
       },
@@ -361,6 +361,16 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
     seedConfig: () => ({ items: ["Fotografía", "Moda", "Editorial"], speed: "normal" }),
   },
 
+  // Vistas y «me gusta»: las cifras las pone el servidor; acá solo se elige qué mostrar.
+  engagement: {
+    fields: [
+      { name: "showViews", label: "Mostrar cuántas veces se vio la página", control: { kind: "boolean" } },
+      { name: "showLikes", label: "Mostrar el botón «Me gusta»", control: { kind: "boolean" } },
+      { name: "likeLabel", label: "Texto del botón", optional: true, helperText: "Si lo dejas vacío: «Me gusta».", control: { kind: "text", maxLength: 24 } },
+    ],
+    seedConfig: () => ({ showViews: true, showLikes: true, likeLabel: "Me gusta" }),
+  },
+
   // Colecciones: tarjetas grandes con portada que llevan al álbum, la galería, la web o a otro perfil.
   showcase: {
     fields: [
@@ -390,7 +400,7 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
             { name: "subtitle", label: "Subtítulo", optional: true, control: { kind: "text", maxLength: 100 } },
             { name: "badge", label: "Insignia", optional: true, helperText: "Por ejemplo «24 fotos» o «Nuevo».", control: { kind: "text", maxLength: 24 } },
             imageField("image", "Portada", false, "wide"),
-            { name: "link", label: "Enlace", helperText: "La dirección completa, con https://.", control: { kind: "url" } },
+            { name: "link", label: "Enlace", helperText: "Elige la página de tu portal a donde lleva (álbum, perfil, servicios…) o pega una dirección con https://.", control: { kind: "link" } },
           ],
         },
       },
@@ -682,7 +692,7 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
             { name: "address", label: "Dirección", optional: true, control: { kind: "text", maxLength: 300 } },
             { name: "description", label: "Descripción", optional: true, control: { kind: "text", maxLength: 500 } },
             imageField("image", "Imagen", true, "wide"),
-            { name: "ticketUrl", label: "Enlace de entradas o inscripción", optional: true, control: { kind: "url" } },
+            { name: "ticketUrl", label: "Enlace de entradas o inscripción", optional: true, control: { kind: "link" } },
             { name: "ticketLabel", label: "Texto del botón", optional: true, helperText: "Si lo dejas vacío: «Entradas».", control: { kind: "text", maxLength: 40 } },
             { name: "soldOut", label: "Agotado", control: { kind: "boolean" } },
           ],

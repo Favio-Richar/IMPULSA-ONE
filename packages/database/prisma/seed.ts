@@ -99,6 +99,7 @@ async function main(): Promise<void> {
       background: template.background === null ? Prisma.DbNull : (template.background as Prisma.InputJsonValue),
       previewImageUrl: template.previewImageUrl,
       blocksSeed: template.blocksSeed as Prisma.InputJsonValue,
+      companionPages: template.companionPages && template.companionPages.length > 0 ? (template.companionPages as Prisma.InputJsonValue) : Prisma.DbNull,
       sortOrder: template.sortOrder,
     };
     await prisma.template.upsert({ where: { code: template.code }, update: data, create: { code: template.code, ...data } });

@@ -71,7 +71,7 @@ export function IntegracionesDirectory({ bienvenidaHref }: { bienvenidaHref: str
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar integración…"
             aria-label="Buscar integración por nombre o función"
-            className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3.5 py-1.5 text-xs text-[#0f172a] placeholder-[#94a3b8] focus:border-[#0f6f6b] focus:outline-none focus:ring-1 focus:ring-[#0f6f6b]"
+            className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3.5 py-1.5 text-xs text-[#0f172a] placeholder-[#64748b] focus:border-[#0f6f6b] focus:outline-none focus:ring-1 focus:ring-[#0f6f6b]"
           />
         </div>
       </div>

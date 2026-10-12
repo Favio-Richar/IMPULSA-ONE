@@ -19,12 +19,16 @@ const CSRF = { "X-Requested-With": "impulza-one" };
 const blocksPath = `${API_BASE_URL}/organizations/${fixture.organizationId}/sites/${fixture.siteId}/pages/${fixture.pageId}/blocks`;
 
 async function settleAnimations(page: Page): Promise<void> {
-  // Solo las finitas: una animación infinita (p. ej. un indicador de carga) nunca «termina».
+  // Solo las finitas y guiadas por el reloj: una animación infinita (p. ej. un indicador de carga) nunca «termina», y
+  // una guiada por el scroll (`animation-timeline: view()`, movimiento elegante de F10) avanza con el desplazamiento, no con el tiempo.
   await page.evaluate(() =>
     Promise.all(
       document
         .getAnimations()
-        .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+        .filter(
+          (animation) =>
+            animation.effect?.getComputedTiming().iterations !== Infinity && !(animation.timeline && "source" in animation.timeline),
+        )
         .map((animation) => animation.finished.catch(() => undefined)),
     ),
   );

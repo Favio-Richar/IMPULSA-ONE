@@ -15,7 +15,7 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 | F10.4 | Tarjeta digital, vCard y pases de wallet | **Hecha** (2026-10-12): API 16/16 (9 integración + 7 de wallet), validación 7/7, Playwright 4/4 (2 viewports); pases reales pendientes de credenciales |
 | F10.5 | PWA: instalación y modo sin conexión acotado | **Hecha** (2026-10-12): paquete `@impulza/pwa` 11/11, Playwright 6/6 (2 viewports); sin auditoría Lighthouse (ver reservas) |
 | F10.6 | Marketplace de integraciones y plantillas | **Hecha** (2026-10-12): API 12/12, Playwright 2/2 (2 viewports); suite completa pendiente de F10.7 |
-| F10.7 | Aislamiento, seguridad y cierre de la Fase 10 | Pendiente |
+| F10.7 | Aislamiento, seguridad y cierre de la Fase 10 | **Hecha** (2026-10-12): suite 78/78, Playwright 423 en verde + las 8 fallas iniciales reejecutadas en verde (5 corregidas, 3 eran carga), 2 defectos reales corregidos, axe 22/22; reservas abajo |
 
 ---
 
@@ -245,6 +245,16 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 3. OpenAPI, ERD, ARCHITECTURE, README, CONTINUIDAD y trazabilidad actualizados.
 4. Suite completa, builds y Playwright completo en verde; barrido de accesibilidad y de consistencia visual.
 5. Lista final de reservas, escrita con honestidad.
+
+**Hecha — F10.7 (2026-10-12): aislamiento, seguridad y cierre.**
+
+- **Aislamiento:** nuevo «Barrido por sitio» (`multi-tenant-isolation.e2e.test.ts`): con la organización propia y el `siteId` de otra, ninguna de las ~90 rutas por sitio responde un éxito ni un 5xx y el sitio ajeno no cambia (verificado contra código roto). Se suma al barrido de rutas de organización de F9.10; ambos leen el OpenAPI, así que una ruta nueva queda cubierta sola. Archivo: 95/95.
+- **Revisión de amenazas:** `docs/architecture/THREAT_MODEL_FASE_10.md` (enlaces mágicos, cobros, cursos, tarjeta y pases, service worker, marketplace) con prueba por mitigación y 8 riesgos residuales.
+- **Defectos reales encontrados y corregidos al cerrar:** (1) `/integraciones` se prerenderizaba con el directorio de socios vacío (`no-store` en una página estática): ahora `force-dynamic`; (2) el pie compartido del sitio comercial, `/planes` y el buscador usaban `#94a3b8` sobre blanco (2,6:1, falla AA): ahora `#64748b`.
+- **Pruebas desactualizadas corregidas (no eran defectos del producto):** esperaban *todas* las imágenes `lazy` de la portada (las tarjetas de portales nuevos, fuera de pantalla, nunca «completan») y esperaban a que terminaran las animaciones guiadas por scroll del movimiento elegante.
+- **Accesibilidad:** `accesibilidad-fase10.spec.ts` con axe-core (WCAG 2.0/2.1/2.2 A y AA) sobre panel (miembros, cursos, tarjeta, marketplace) y público (tarjeta, cursos, curso, integraciones, planes, plantillas, sin conexión), en teléfono y escritorio: 22/22.
+- **Verificación:** `pnpm turbo run typecheck lint test` 78/78; Playwright completo 423 en verde + 8 fallas iniciales: 3 eran carga (auditoría, rendimiento, reserva pública; en verde aisladas) y 5 las de arriba, ya corregidas y reejecutadas en verde.
+- **Reservas de la fase (lista final):** sin cobro recurrente automático; Webpay sin avisos de devolución/contracargo (devolución manual); nada ejercido contra Transbank, Google Wallet ni Apple Wallet reales; correos por consola hasta configurar proveedor; sin compra única de un curso ni certificados; sin Lighthouse PWA; sin auditoría externa. Detalle en cada historia y en el modelo de amenazas.
 
 ## Extra F10 — Bloque «Rueda de trabajos» (2026-10-11)
 

@@ -135,3 +135,18 @@ El plan efectivo lo sigue decidiendo solo `PlansService`.
 - Ver `docs/architecture/ERD.md` para el modelo de datos.
 - Ver `docs/decisions/ADR-001-modular-monolith.md` y `ADR-002-multi-tenancy.md` para el
   razonamiento detrás de estas dos decisiones estructurales.
+- Ver `docs/architecture/THREAT_MODEL_FASE_9.md` y `THREAT_MODEL_FASE_10.md` para la revisión de amenazas
+  por fase (superficies nuevas, mitigaciones, pruebas y riesgos residuales).
+
+## 8. Fase 10: miembros, membresías, cursos, tarjeta, PWA y marketplace (ADR-029, ADR-030)
+
+- **Miembros de sitio** (`SiteMember`, nunca `User`): sesión propia por sitio, enlace mágico de un solo uso; el
+  contenido protegido lo decide el servidor y nunca viaja sin sesión válida.
+- **Cobro del negocio** detrás de adaptadores de pago: Mercado Pago (OAuth del negocio, ADR-013) y Webpay Plus
+  (credenciales del negocio, ADR-030). Impulza no custodia dinero; el servidor confirma la transacción **guardada**.
+- **Puertos nuevos:** `WalletPassProvider` (Google/Apple Wallet; sin credenciales responde 503 claro) y la cola
+  `membership-lifecycle` (BullMQ, idempotente).
+- **PWA:** paquete `@impulza/pwa` (service worker, manifiesto, cliente). El service worker nunca atiende la API ni
+  guarda datos con sesión.
+- **Marketplace:** módulo `modules/marketplace`; solo datos declarativos, revisión de superadministración,
+  instalación reversible; nada se ejecuta en páginas públicas.

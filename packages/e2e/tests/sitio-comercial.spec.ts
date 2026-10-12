@@ -21,6 +21,18 @@ async function settledScene(page: Page): Promise<string> {
 // Huella de la librería three.js (su biblioteca de shaders), que no aparece en el código propio de la escena.
 const THREE_FINGERPRINT = "#include <common>";
 
+/** Espera a las imágenes que están a la vista. Las `lazy` fuera de pantalla (tarjetas de rubros más abajo) no se
+ *  descargan hasta acercarse y nunca «completan»: esperarlas haría la prueba depender de algo que no se mira. */
+async function imagesInViewReady(page: Page): Promise<void> {
+  await page.waitForFunction(() =>
+    [...document.images].every((image) => {
+      const rect = image.getBoundingClientRect();
+      const visible = rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
+      return !visible || image.complete;
+    }),
+  );
+}
+
 /** La parte del canvas que se ve en pantalla, por debajo de la cabecera fija. */
 async function sceneClip(page: Page) {
   const box = await scene(page).locator("canvas").boundingBox();
@@ -94,7 +106,7 @@ test("con movimiento reducido se pinta un cuadro fijo: la escena no se mueve", a
 
   await expect(scene(page)).toHaveCSS("opacity", "1");
   await scene(page).locator("canvas").scrollIntoViewIfNeeded();
-  await page.waitForFunction(() => [...document.images].every((image) => image.complete));
+  await imagesInViewReady(page);
   const shot = await sceneClip(page);
   const first = await page.screenshot({ clip: shot });
   await page.mouse.move(40, 40);
@@ -126,7 +138,7 @@ test("la animación se pausa y se reanuda con un botón accesible por teclado (W
   // página y la cabecera fija puede quedar encima en una sola de ellas.
   const canvas = scene(page).locator("canvas");
   await canvas.scrollIntoViewIfNeeded();
-  await page.waitForFunction(() => [...document.images].every((image) => image.complete));
+  await imagesInViewReady(page);
   const shot = await sceneClip(page);
   const first = await page.screenshot({ clip: shot });
   await page.waitForTimeout(800);

@@ -2622,4 +2622,50 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
     });
   });
 
+  describe("Barrido por sitio (F10.7, ADR-002): el sitio de otra organización no existe para quien pasa su propia organización", () => {
+    // Complementa al barrido anterior: aquí la organización de la URL es la PROPIA (la puerta de membresía abre) pero el
+    // `siteId` es de otra. Ninguna ruta por sitio —miembros, planes, cursos, tarjeta digital, reservas, tienda…— puede
+    // responder algo que no sea «no existe» ni tocar nada. Una ruta nueva con `{siteId}` queda cubierta sola.
+    function siteRoutes(ownOrgId: string, foreignSiteId: string): Array<{ method: "get" | "post" | "put" | "patch" | "delete"; path: string; label: string }> {
+      const document = JSON.parse(readFileSync(new URL("../../../docs/api/openapi.json", import.meta.url), "utf8")) as {
+        paths: Record<string, Record<string, unknown>>;
+      };
+      return Object.entries(document.paths)
+        .filter(([path]) => path.startsWith("/api/v1/organizations/{organizationId}") && path.includes("{siteId}"))
+        .flatMap(([path, methods]) =>
+          Object.keys(methods)
+            .filter((method) => ["get", "post", "put", "patch", "delete"].includes(method))
+            .map((method) => ({
+              method: method as "get" | "post" | "put" | "patch" | "delete",
+              label: `${method.toUpperCase()} ${path}`,
+              path: path
+                .replace(/\{organizationId\}/g, ownOrgId)
+                .replace(/\{siteId\}/g, foreignSiteId)
+                .replace(/\{[^}]+\}/g, "00000000-0000-4000-8000-000000000000"),
+            })),
+        );
+    }
+
+    it("el propietario de B, con su organización y el sitio de A, nunca recibe un éxito ni un dato", async () => {
+      const routes = siteRoutes(orgB.id, orgA.siteId);
+      expect(routes.length).toBeGreaterThan(80);
+      const before = await prisma.site.findUniqueOrThrow({ where: { id: orgA.siteId } });
+
+      const failures: string[] = [];
+      for (const { method, path, label } of routes) {
+        const call = orgB.ownerAgent[method](path);
+        const response = method === "get" ? await call : await call.set(CSRF_HEADERS).send({});
+        // 404 = el sitio no existe para B. 400/422 solo si la validación del cuerpo vacío corta antes de resolver el sitio,
+        // lo que tampoco toca nada; lo que jamás puede aparecer es un 2xx o un 5xx.
+        if (response.status < 400 || response.status >= 500) {
+          failures.push(`${label}: ${response.status}`);
+        }
+      }
+      expect(failures).toEqual([]);
+      const after = await prisma.site.findUniqueOrThrow({ where: { id: orgA.siteId } });
+      expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
+      expect(after.organizationId).toBe(orgA.id);
+    });
+  });
+
 });

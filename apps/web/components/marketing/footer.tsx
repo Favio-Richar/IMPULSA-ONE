@@ -99,7 +99,7 @@ export async function MarketingFooter({
         </div>
       </div>
 
-      <div className="mx-auto mt-10 max-w-6xl border-t border-[#e2e8f0] px-4 pt-6 text-sm text-[#94a3b8] sm:px-6">
+      <div className="mx-auto mt-10 max-w-6xl border-t border-[#e2e8f0] px-4 pt-6 text-sm text-[#64748b] sm:px-6">
         <span>© {new Date().getFullYear()} {name}.</span>
       </div>
     </footer>

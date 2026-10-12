@@ -5,7 +5,9 @@ directo sobre el repositorio— retome el trabajo **sin rehacer nada y sin repet
 encontrados**. Complementa a `CLAUDE.md` (reglas duras), no lo reemplaza. Actualízalo al cerrar
 cada historia: estado, siguiente paso y cualquier trampa técnica nueva.
 
-## 0. RETOMAR AQUÍ (2026-10-12) — **Fases 0 a 9 completas**; **Fase 10 en curso: hechas F10.1, F10.2 (a–e), F10.3, F10.4, F10.5 y F10.6**; siguiente: **F10.7 cierre** (barrido de aislamiento, revisión de amenazas, suite completa y Playwright completo, accesibilidad)
+## 0. RETOMAR AQUÍ (2026-10-12) — **Fases 0 a 10 completas** (F10.7 cerrada); siguiente: fusionar la rama a `master` (pide confirmación de Favio) y definir la Fase 11 con el propietario
+
+**F10.7 cerrada (2026-10-12):** barrido de aislamiento por sitio, `THREAT_MODEL_FASE_10.md`, axe 22/22, suite 78/78 y Playwright en verde (detalle y reservas en `docs/BACKLOG_FASE_10.md`). **Trampas nuevas:** una página de `apps/web` que lee la API con `cache: "no-store"` debe llevar `export const dynamic = "force-dynamic"` (si no, se prerenderiza vacía y `fetchUpstream` se traga el error); las pruebas de interfaz no deben esperar imágenes `lazy` fuera de pantalla ni animaciones guiadas por scroll; la corrida completa de Playwright regenera `docs/design/capturas/*`: `git checkout -- docs/design/capturas` antes de commitear.
 
 **Estado de la Fase 10 (rama `fase-9/f9-6-equipo-avanzado`):** F10.1 miembros y contenido protegido; F10.2 planes de membresía, Webpay Plus como medio de cobro del negocio en membresías (c), pedidos (d) y señas de reservas (e)
 (ADR-030); **F10.3 cursos** (módulos, lecciones de texto/video, progreso por miembro, acceso OPEN/MEMBERS/PLAN, panel en `/sitios/:id/cursos`, público en `/:sitio/c`). Además, trabajo transversal de la fase: 13 portales completos

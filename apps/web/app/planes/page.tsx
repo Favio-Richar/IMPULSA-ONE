@@ -67,7 +67,7 @@ export default async function PlanesPage() {
             <div className="mt-10">
               <ComparisonTable />
             </div>
-            <p className="mt-3 text-xs text-[#94a3b8]">
+            <p className="mt-3 text-xs text-[#64748b]">
               Comparación referencial sobre funcionalidades típicas del rubro de enlace en bio; cada plataforma varía
               según su plan.
             </p>

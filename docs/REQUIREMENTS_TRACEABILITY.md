@@ -121,6 +121,13 @@ Este documento agrupa los requisitos detectados, su fuente y su estado. Sirve co
 | Reportes por cliente: comparación de periodos, programación, comentarios, exportación, enlace compartido | PM §11.5 | Fase 9 (F9.8, ADR-028) — **hecha** (a informe y CSV, b enlace compartido, c programación por cola, d comentarios) |
 | Marca configurable: el dueño de la plataforma (logo, nombre, colores, correos) y cada organización (logo, colores, datos) desde la interfaz | PM §11.4, §12 | Fase 9 (F9.1–F9.2, ADR-028) — **hecha** (F9.1 plataforma, F9.2 organización, cascada única `resolveBrand`) |
 | Moderación con reportes de abuso (decisión #9) | PM §12 | Fase 9 (F9.9, ADR-028) — **hecha con reservas** (a reporte público, b cola y acciones, c aviso y apelación, d pantallas); falta el texto legal de contenido, decisión del propietario |
+| Miembros de sitio y contenido protegido con enlace mágico (sin contraseña, sin enumeración) | ADR-029 | Fase 10 (F10.1) — **hecha** |
+| Planes de membresía y cobro por la cuenta del propio negocio (Mercado Pago y Webpay Plus), sin custodia de dinero | ADR-029, ADR-030 | Fase 10 (F10.2a–e) — **hecha con reservas** (sin cobro recurrente automático; Webpay no avisa devoluciones) |
+| Cursos: módulos, lecciones, progreso por miembro y acceso por plan | ADR-029 | Fase 10 (F10.3) — **hecha con reservas** (sin compra única ni certificados) |
+| Tarjeta digital, vCard y pases de Apple/Google Wallet | ADR-029 | Fase 10 (F10.4) — **hecha con reservas** (pases reales pendientes de credenciales del propietario) |
+| PWA: instalación y modo sin conexión acotado (el service worker nunca cachea la API) | ADR-029 | Fase 10 (F10.5) — **hecha con reservas** (sin Lighthouse PWA; registro solo en producción) |
+| Marketplace de integraciones y plantillas con revisión e instalación reversible | ADR-029 §6 | Fase 10 (F10.6) — **hecha con reservas** (sin pago a socios) |
+| Aislamiento por sitio y revisión de amenazas de la fase | ADR-002, ADR-029 | Fase 10 (F10.7) — barrido por sitio automático y `docs/architecture/THREAT_MODEL_FASE_10.md` |
 
 ## 12. IA
 

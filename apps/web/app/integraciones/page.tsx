@@ -7,6 +7,10 @@ import { MarketplacePartners } from "../../components/marketing/marketplace-part
 import { Reveal } from "../../components/marketing/reveal";
 import { getDashboardLinks } from "../../lib/dashboard-links";
 
+// El directorio de socios (F10.6) se lee sin caché: una aprobación o un retiro se ve en el acto. Prerenderizada,
+// la página quedaba para siempre con el directorio vacío del momento del build.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Integraciones — Impulza One",
   description:

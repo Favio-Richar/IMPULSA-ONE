@@ -48,4 +48,5 @@ export * from "./audit.js";
 export * from "./reports.js";
 export * from "./moderation.js";
 export * from "./members.js";
+export * from "./courses.js";
 export * from "./engagement.js";

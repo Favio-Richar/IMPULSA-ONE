@@ -423,6 +423,11 @@ function BackgroundEditor({
                     onChange={(entry) => setEffect(entry)}
                   />
                 ) : null}
+                {kind === "video" ? (
+                  <p className="text-xs text-muted-foreground">
+                    El video ya se mueve solo: se repite sin sonido en bucle. Si la persona tiene activado «reducir movimiento» o el ahorro de datos, ve su portada quieta.
+                  </p>
+                ) : null}
                 {((kind === "image" && image) || (kind === "video" && video?.source === "own")) && allowedStrengths.length < OVERLAY_STRENGTHS.length ? (
                   <p className="text-xs text-muted-foreground">
                     Las intensidades desactivadas no dejarían leer bien el texto sobre {kind === "image" ? "esta imagen" : "algunas escenas de este video"}.

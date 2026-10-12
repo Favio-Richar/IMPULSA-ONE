@@ -11,7 +11,7 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
 | F10.2c | Webpay Plus como medio de cobro del negocio (ADR-030): cuenta propia + membresías | **Hecha** (2026-10-11) |
 | F10.2d | Webpay Plus en los pedidos de la tienda (ADR-030) | **Hecha** (2026-10-11) |
 | F10.2e | Webpay Plus en las señas de reservas (ADR-030) | **Hecha** (2026-10-11) |
-| F10.3 | Cursos: módulos, lecciones y progreso | Pendiente |
+| F10.3 | Cursos: módulos, lecciones y progreso | **Hecha** (2026-10-12): API 13/13, validación 8/8, Playwright 4/4 (2 viewports); compra única fuera de alcance (ver reservas) |
 | F10.4 | Tarjeta digital, vCard y pases de wallet | Pendiente |
 | F10.5 | PWA: instalación y modo sin conexión acotado | Pendiente |
 | F10.6 | Marketplace de integraciones y plantillas | Pendiente |
@@ -162,6 +162,17 @@ prueba, estados de carga/vacío/error/éxito, responsive, pruebas, OpenAPI, migr
   Playwright del botón «Tu reserva» (la ruta y el botón están cubiertos por integración y por el mismo envío de formulario ya probado en F10.2d).
 
 ## F10.3 — Cursos
+
+**Hecha — F10.3 (2026-10-12): cursos, módulos, lecciones y progreso (ADR-029).**
+
+- **Modelo:** `Course` → `CourseModule` → `Lesson` (texto enriquecido **saneado en el servidor** o video por proveedor + id, nunca una URL libre), `CoursePlan` (planes que dan acceso) y `LessonProgress` (único por miembro y lección). Migración reversible `20261012030000_f103_courses`; permiso nuevo `course.manage` (OWNER y ADMIN).
+- **Acceso decidido por el servidor** (`canAccessCourse`): `OPEN` cualquiera; `MEMBERS` un miembro invitado activo o con un periodo pagado vigente; `PLAN` solo con un periodo vigente de un plan del curso (un invitado sin compra no entra; reembolso total o contracargo cortan). El contenido de una lección bloqueada **nunca viaja**: 403 `COURSE_LOCKED` sin cuerpo ni video. Una lección «de muestra» la ve cualquiera.
+- **Progreso por miembro:** marcar/desmarcar (idempotente), porcentaje, «retomar donde quedó»; exige sesión de miembro con acceso al curso. Ninguna respuesta se cachea (depende de la sesión).
+- **Panel** (`/sitios/:id/cursos`): lista, alta, editor con datos, portada, acceso/planes, publicar/ocultar, módulos y lecciones con orden (flechas), mover de módulo, lecciones de texto o video, duración y «de muestra»; avance de alumnos. «Mi sistema» muestra el área de cursos.
+- **Público** (`/:sitio/c`, `/c/:curso`, `/c/:curso/:leccion`) dentro del tema del sitio, con puerta de miembros (y compra de membresía) cuando falta acceso; el avance se guarda por una ruta propia que exige cabecera anti-CSRF y lee la cookie `HttpOnly`.
+- **Topes:** 50 cursos por sitio, 30 módulos por curso, 60 lecciones por módulo, 10 planes por curso. Publicar exige al menos una lección; quitar la última devuelve el curso a borrador.
+- **Pruebas:** 13 de integración (armado y orden, validación, borrador oculto, lección bloqueada sin contenido, acceso MEMBERS/PLAN/OPEN con sesión vencida/ajena/revocada/reembolsada, progreso y aislamiento entre personas, saneo, aislamiento entre negocios, auditoría, direcciones), 8 unitarias de reglas y Playwright (armar → publicar → visitante → miembro → avanzar) en teléfono y escritorio.
+- **Reservas honestas:** (1) **no hay compra única de un curso**: el acceso es por membresía (un plan anual cubre «comprar el curso» mientras no exista un producto de curso); (2) sin certificados, comentarios ni cuestionarios; (3) sin archivos descargables dentro de la lección (los videos son embebidos de YouTube/Vimeo/TikTok); (4) el orden se cambia con flechas, no arrastrando.
 
 1. `Course` → `CourseModule` → `Lesson` (texto enriquecido saneado, video por enlace/incrustado permitido, archivo protegido).
 2. Acceso por plan de membresía o por compra única (reusa catálogo/pedidos); el servidor entrega solo lo permitido.

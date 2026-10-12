@@ -20,6 +20,7 @@ import { PagesModule } from "./modules/pages/pages.module.js";
 import { PublicAnalyticsModule } from "./modules/public-analytics/public-analytics.module.js";
 import { PublicFormsModule } from "./modules/public-forms/public-forms.module.js";
 import { ModerationModule } from "./modules/moderation/moderation.module.js";
+import { CoursesModule } from "./modules/courses/courses.module.js";
 import { MembersModule } from "./modules/members/members.module.js";
 import { EngagementModule } from "./modules/engagement/engagement.module.js";
 import { PublicLinksModule } from "./modules/public-links/public-links.module.js";
@@ -76,6 +77,7 @@ import { PageCampaignsModule } from "./modules/page-campaigns/page-campaigns.mod
     PublicFormsModule,
     ModerationModule,
     MembersModule,
+    CoursesModule,
     EngagementModule,
     PublicAnalyticsModule,
     PublicLinksModule,

@@ -653,6 +653,7 @@ User (1) ──< SupportTicket (quién la abrió, SetNull)
 ## 9zl. Planes de membresía y compras (F10.2, BACKLOG_FASE_10.md, ADR-029)
 
 - **SiteMember.source** (`INVITED` por defecto | `PURCHASED`): el acceso de un comprador depende de su periodo pagado.
+- **Course / CourseModule / Lesson / CoursePlan / LessonProgress** (F10.3): `courses` (único `(site_id, slug)`, `status` DRAFT|PUBLISHED, `access` OPEN|MEMBERS|PLAN), `course_modules` y `lessons` ordenados por `position` (lección: `kind` TEXT|VIDEO, `body` saneado, `video` JSON proveedor+id, `free_preview`), `course_plans` (PK `(course_id, plan_id)`) y `lesson_progress` (único `(member_id, lesson_id)`). Todo cae en cascada con el sitio. Migración reversible `20261012030000_f103_courses`.
 - **MembershipPlan** (`membership_plans`): `organization_id`, `site_id` (`CASCADE`), `name`, `description`, `price_amount` (entero, `CHECK > 0`), `price_currency` (`CHECK` 3 letras mayúsculas), `period`
   (`MONTHLY`|`YEARLY`), `status` (`ACTIVE`|`ARCHIVED`).
 - **MembershipPurchase** (`membership_purchases`): copia del plan (`plan_name`, `amount`, `currency`, `period_days`), `status` (`PENDING`|`PAID`|`EXPIRED`), cobro (`checkout_preference_id`, `checkout_url`,

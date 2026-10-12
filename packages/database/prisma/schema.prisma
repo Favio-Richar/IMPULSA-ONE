@@ -847,6 +847,7 @@ model Site {
   abuseReports        AbuseReport[]
   members             SiteMember[]
   membershipPlans     MembershipPlan[]
+  courses             Course[]
 
   @@index([organizationId])
   @@map("sites")
@@ -2976,6 +2977,7 @@ model SiteMember {
   loginTokens  SiteMemberLoginToken[]
   sessions     SiteMemberSession[]
   purchases    MembershipPurchase[]
+  lessonProgress LessonProgress[]
 
   @@unique([siteId, email], map: "site_members_site_email_key")
   @@index([organizationId])
@@ -3055,6 +3057,7 @@ model MembershipPlan {
   organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   site         Site                 @relation(fields: [siteId], references: [id], onDelete: Cascade)
   purchases    MembershipPurchase[]
+  coursePlans  CoursePlan[]
 
   @@index([siteId, status])
   @@index([organizationId])
@@ -3136,4 +3139,125 @@ model PageLike {
   @@unique([pageId, visitorKey])
   @@index([siteId])
   @@map("page_likes")
+}
+
+// ---------------------------------------------------------------------------------------------
+// F10.3 (ADR-029): cursos. Curso -> modulos -> lecciones, con progreso por miembro. El acceso lo decide el servidor:
+// OPEN (cualquiera), MEMBERS (miembro con acceso vigente) o PLAN (miembro con un periodo vigente de alguno de sus planes).
+// ---------------------------------------------------------------------------------------------
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum CourseAccess {
+  OPEN
+  MEMBERS
+  PLAN
+}
+
+enum LessonKind {
+  TEXT
+  VIDEO
+}
+
+model Course {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  siteId         String       @map("site_id") @db.Uuid
+  slug           String
+  title          String
+  summary        String?
+  coverUrl       String?      @map("cover_url")
+  status         CourseStatus @default(DRAFT)
+  access         CourseAccess @default(MEMBERS)
+  position       Int          @default(0)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  site     Site            @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  modules  CourseModule[]
+  lessons  Lesson[]
+  plans    CoursePlan[]
+  progress LessonProgress[]
+
+  @@unique([siteId, slug], map: "courses_site_slug_key")
+  @@index([organizationId])
+  @@index([siteId, status, position])
+  @@map("courses")
+}
+
+model CourseModule {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  courseId       String   @map("course_id") @db.Uuid
+  title          String
+  position       Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@index([courseId, position])
+  @@index([organizationId])
+  @@map("course_modules")
+}
+
+model Lesson {
+  id              String     @id @default(uuid()) @db.Uuid
+  organizationId  String     @map("organization_id") @db.Uuid
+  courseId        String     @map("course_id") @db.Uuid
+  moduleId        String     @map("module_id") @db.Uuid
+  title           String
+  kind            LessonKind @default(TEXT)
+  // Texto enriquecido (se sanea al mostrarlo, igual que los bloques) y video por proveedor + id (nunca una URL libre).
+  body            String?
+  video           Json?
+  durationMinutes Int?       @map("duration_minutes")
+  // Visible para cualquiera aunque el curso sea de pago: la leccion de muestra.
+  freePreview     Boolean    @default(false) @map("free_preview")
+  position        Int        @default(0)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module   CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress LessonProgress[]
+
+  @@index([moduleId, position])
+  @@index([courseId])
+  @@index([organizationId])
+  @@map("lessons")
+}
+
+model CoursePlan {
+  courseId String @map("course_id") @db.Uuid
+  planId   String @map("plan_id") @db.Uuid
+
+  course Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  plan   MembershipPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, planId])
+  @@index([planId])
+  @@map("course_plans")
+}
+
+model LessonProgress {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  courseId       String   @map("course_id") @db.Uuid
+  lessonId       String   @map("lesson_id") @db.Uuid
+  memberId       String   @map("member_id") @db.Uuid
+  completedAt    DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
+
+  course Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  member SiteMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, lessonId], map: "lesson_progress_member_lesson_key")
+  @@index([courseId, memberId])
+  @@index([organizationId])
+  @@map("lesson_progress")
 }

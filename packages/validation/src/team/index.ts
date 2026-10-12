@@ -64,6 +64,7 @@ export const PERMISSION_MODULES = [
   { module: "auditoria", label: "Auditoría", actions: [{ permission: "audit.view", label: "Ver y exportar" }] },
   { module: "moderacion", label: "Moderación", actions: [{ permission: "moderation.appeal", label: "Ver y apelar medidas" }] },
   { module: "miembros", label: "Miembros", actions: [{ permission: "member.manage", label: "Gestionar miembros y páginas protegidas" }] },
+  { module: "cursos", label: "Cursos", actions: [{ permission: "course.manage", label: "Crear y publicar cursos, módulos y lecciones" }] },
   {
     module: "publicacion",
     label: "Aprobación de publicaciones",

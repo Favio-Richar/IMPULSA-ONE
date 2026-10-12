@@ -43,6 +43,8 @@ export const PERMISSIONS = {
   MODERATION_APPEAL: "moderation.appeal",
   // F10.1 (ADR-029): miembros de sitio y paginas solo para miembros.
   MEMBER_MANAGE: "member.manage",
+  // F10.3 (ADR-029): cursos, modulos y lecciones.
+  COURSE_MANAGE: "course.manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -185,6 +187,10 @@ export const PERMISSION_CATALOG: ReadonlyArray<{ key: PermissionKey; description
     key: PERMISSIONS.MEMBER_MANAGE,
     description: "Invitar, revocar y quitar a los miembros de un sitio y decidir qué páginas son solo para miembros (F10.1, ADR-029).",
   },
+  {
+    key: PERMISSIONS.COURSE_MANAGE,
+    description: "Crear y publicar cursos, módulos y lecciones de un sitio, y decidir quién tiene acceso (F10.3, ADR-029).",
+  },
 ];
 
 // Roles con cada permiso — única fuente de verdad para el seed (packages/database/prisma/seed.ts)
@@ -238,6 +244,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     // Quien responde por el negocio es quien puede apelar una medida de moderacion (F9.9c).
     PERMISSIONS.MODERATION_APPEAL,
     PERMISSIONS.MEMBER_MANAGE,
+    PERMISSIONS.COURSE_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.ORGANIZATION_MEMBERS_INVITE,
@@ -269,6 +276,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     PERMISSIONS.REPORT_COMMENT,
     PERMISSIONS.MODERATION_APPEAL,
     PERMISSIONS.MEMBER_MANAGE,
+    PERMISSIONS.COURSE_MANAGE,
   ],
   // EDITOR gestiona páginas (crear/editar/reordenar es su trabajo diario) pero no las borra:
   // borrar saca contenido de circulación, misma lógica que archivar un sitio. Formularios y

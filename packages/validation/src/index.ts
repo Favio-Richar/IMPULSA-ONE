@@ -72,3 +72,4 @@ export * from "./reports/schedule.js";
 export * from "./moderation/abuse-report.js";
 export * from "./moderation/moderation-actions.js";
 export * from "./members/index.js";
+export * from "./courses/index.js";

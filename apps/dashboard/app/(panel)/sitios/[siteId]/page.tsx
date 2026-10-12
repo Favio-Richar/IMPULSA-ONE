@@ -32,6 +32,7 @@ import { BackgroundPicker } from "../../../../components/site/background-picker"
 import { CustomDomains } from "../../../../components/site/custom-domains";
 import { EngagementSummary } from "../../../../components/site/engagement-summary";
 import { MeasurementSettings } from "../../../../components/site/measurement-settings";
+import { SiteWorkspace } from "../../../../components/site/site-workspace";
 import { useActiveOrgStore } from "../../../../lib/active-org-store";
 import { ApiError } from "../../../../lib/api-client";
 import {
@@ -95,6 +96,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
         <p className="text-sm text-muted-foreground">{site.slug}</p>
       </div>
 
+      <SiteWorkspace organizationId={organizationId} siteId={siteId} slug={site.slug} />
       <SiteSettingsForm organizationId={organizationId} siteId={siteId} name={site.name} slug={site.slug} />
       <ThemePicker organizationId={organizationId} siteId={siteId} />
       <BackgroundPicker organizationId={organizationId} siteId={siteId} />
@@ -104,6 +106,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
       <AbTestsShortcut siteId={siteId} />
       <EngagementSummary organizationId={organizationId} siteId={siteId} />
       <MembersShortcut siteId={siteId} />
+      <CoursesShortcut siteId={siteId} />
       <CampaignModeShortcut siteId={siteId} />
       <CustomDomains organizationId={organizationId} siteId={siteId} />
       <MeasurementSettings organizationId={organizationId} siteId={siteId} />
@@ -558,6 +561,23 @@ function MembersShortcut({ siteId }: { siteId: string }): React.JSX.Element {
         <p className="text-sm text-muted-foreground">Páginas solo para tus miembros y quién tiene acceso, sin contraseñas.</p>
         <Link href={`/sitios/${siteId}/miembros`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
           Gestionar miembros
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Acceso a los cursos del sitio (F10.3), que tienen su propia pantalla. */
+function CoursesShortcut({ siteId }: { siteId: string }): React.JSX.Element {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Cursos</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Módulos y lecciones de texto o video, con avance por alumno y acceso por membresía.</p>
+        <Link href={`/sitios/${siteId}/cursos`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+          Administrar cursos
         </Link>
       </CardContent>
     </Card>

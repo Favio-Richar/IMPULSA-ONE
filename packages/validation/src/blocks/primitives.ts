@@ -85,6 +85,34 @@ export const linkTargetSchema = z
     }
   });
 
+/** Nombre legible de las páginas que traen las plantillas (con acentos); las demás se muestran con su slug capitalizado. */
+const KNOWN_PAGE_LABELS: Record<string, string> = {
+  album: "Álbum",
+  perfil: "Perfil",
+  carta: "Carta",
+  contacto: "Contacto",
+  servicios: "Servicios",
+  catalogo: "Catálogo",
+  lanzamiento: "Lanzamiento",
+  tratamientos: "Tratamientos",
+  experiencias: "Experiencias",
+  musica: "Música",
+  planes: "Planes",
+  portafolio: "Portafolio",
+  agenda: "Agenda",
+  cursos: "Cursos",
+  reservas: "Reservas",
+};
+
+/** Texto del menú para una página: «Inicio» para la principal, un nombre conocido o el slug en forma de título. */
+export function pageNavLabel(slug: string, isHome: boolean): string {
+  if (isHome) return "Inicio";
+  const known = KNOWN_PAGE_LABELS[slug];
+  if (known) return known;
+  const spaced = slug.replace(/-/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 /**
  * Recorre una configuración de bloque y convierte cada `page:<slug>` en la ruta pública de esa página. Pura: la usa el
  * render público (`apps/web`) con el slug del sitio. No toca nada que no sea exactamente una referencia de página.

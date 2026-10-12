@@ -134,6 +134,7 @@ function collectLinkUrls(type: string, config: Record<string, unknown>): string[
       break;
     case "hero":
     case "service":
+    case "feature":
       push((config.cta as Record<string, unknown> | undefined)?.url);
       break;
     case "social":
@@ -180,6 +181,9 @@ function countImages(type: string, config: Record<string, unknown>): number {
   }
   if (type === "works_wheel" || type === "showcase") {
     return Array.isArray(config.items) ? config.items.length : 0;
+  }
+  if (type === "album") {
+    return Array.isArray(config.photos) ? config.photos.length : 0;
   }
   return ["image", "background", "avatar", "cover"].filter((key) => readString(config[key], "url") !== undefined).length;
 }

@@ -16,6 +16,11 @@ import {
   gallerySchema,
   worksWheelSchema,
   engagementSchema,
+  albumSchema,
+  pageHeaderSchema,
+  statsSchema,
+  stepsSchema,
+  featureSchema,
   marqueeSchema,
   showcaseSchema,
   heroSchema,
@@ -46,6 +51,11 @@ import { GalleryBlock } from "./blocks/gallery.js";
 import { WorksWheelBlock } from "./blocks/works-wheel.js";
 import { MarqueeBlock } from "./blocks/marquee.js";
 import { EngagementBlock } from "./blocks/engagement.js";
+import { AlbumBlock } from "./blocks/album.js";
+import { PageHeaderBlock } from "./blocks/page-header.js";
+import { StatsBlock } from "./blocks/stats.js";
+import { StepsBlock } from "./blocks/steps.js";
+import { FeatureBlock } from "./blocks/feature.js";
 import { ShowcaseBlock } from "./blocks/showcase.js";
 import { HeroBlock } from "./blocks/hero.js";
 import { ImageBlock } from "./blocks/image.js";
@@ -122,6 +132,26 @@ export function RenderBlock({
       const parsed = gallerySchema.safeParse(block.config);
       return parsed.success ? <GalleryBlock config={parsed.data} glass={buttonVariant === "glass"} /> : null;
     }
+    case "album": {
+      const parsed = albumSchema.safeParse(block.config);
+      return parsed.success ? <AlbumBlock config={parsed.data} mode={mode} /> : null;
+    }
+    case "page_header": {
+      const parsed = pageHeaderSchema.safeParse(block.config);
+      return parsed.success ? <PageHeaderBlock config={parsed.data} /> : null;
+    }
+    case "stats": {
+      const parsed = statsSchema.safeParse(block.config);
+      return parsed.success ? <StatsBlock config={parsed.data} mode={mode} /> : null;
+    }
+    case "steps": {
+      const parsed = stepsSchema.safeParse(block.config);
+      return parsed.success ? <StepsBlock config={parsed.data} mode={mode} /> : null;
+    }
+    case "feature": {
+      const parsed = featureSchema.safeParse(block.config);
+      return parsed.success ? <FeatureBlock config={parsed.data} mode={mode} /> : null;
+    }
     case "engagement": {
       const parsed = engagementSchema.safeParse(block.config);
       return parsed.success ? <EngagementBlock config={parsed.data} siteSlug={siteSlug} pageSlug={pageSlug} mode={mode} /> : null;
@@ -196,7 +226,7 @@ export function RenderBlock({
     }
     case "pricing": {
       const parsed = pricingSchema.safeParse(block.config);
-      return parsed.success ? <PricingBlock config={parsed.data} buttonVariant={buttonVariant} /> : null;
+      return parsed.success ? <PricingBlock config={parsed.data} buttonVariant={buttonVariant} mode={mode} /> : null;
     }
     case "map": {
       const parsed = mapSchema.safeParse(block.config);

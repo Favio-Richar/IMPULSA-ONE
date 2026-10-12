@@ -5536,7 +5536,12 @@
                       "works_wheel",
                       "marquee",
                       "showcase",
-                      "engagement"
+                      "engagement",
+                      "album",
+                      "page_header",
+                      "stats",
+                      "steps",
+                      "feature"
                     ]
                   },
                   "config": {},

@@ -16,8 +16,8 @@ import { parseStoredBlock } from "./stored-block.js";
 
 describe("catálogo de bloques (F2.4)", () => {
   it("cubre los 15 bloques del MVP de ST §9, reservas y tienda (F5) y los cinco de F7.3, el newsletter y la rueda de trabajos, sin repetir", () => {
-    expect(BLOCK_TYPES).toHaveLength(27);
-    expect(new Set(BLOCK_TYPES).size).toBe(27);
+    expect(BLOCK_TYPES).toHaveLength(32);
+    expect(new Set(BLOCK_TYPES).size).toBe(32);
     for (const type of ["countdown", "pricing", "map", "music", "events"]) {
       expect(BLOCK_TYPES).toContain(type);
     }
@@ -95,6 +95,11 @@ describe("catálogo de bloques (F2.4)", () => {
       newsletter: { title: "Novedades" },
       marquee: { items: ["Fotografía", "Moda"] },
       engagement: {},
+      album: { photos: [{ image: { url: "https://cdn.ejemplo.cl/a.jpg", alt: "a" } }] },
+      page_header: { title: "Portafolio" },
+      stats: { items: [{ value: "+10", label: "clientes" }, { value: "5", label: "años" }] },
+      steps: { items: [{ title: "Uno", description: "Primero" }, { title: "Dos", description: "Luego" }] },
+      feature: { image: { url: "https://cdn.ejemplo.cl/a.jpg", alt: "a" }, title: "Mi historia", text: "<p>hola</p>" },
       showcase: { items: [{ title: "Álbum", image: { url: "https://cdn.ejemplo.cl/a.jpg", alt: "Portada" }, link: "https://ejemplo.cl/album" }] },
       works_wheel: {
         items: [1, 2, 3].map((n) => ({ title: `Trabajo ${n}`, image: { url: `https://cdn.ejemplo.cl/${n}.jpg`, alt: `Trabajo ${n}` } })),
@@ -124,7 +129,7 @@ describe("catálogo de bloques (F2.4)", () => {
 
   it("los tipos con texto enriquecido son los esperados (un cambio debe notarse)", () => {
     const withRichText = BLOCK_TYPES.filter((type) => BLOCK_CATALOG[type].richTextPaths.length > 0);
-    expect([...withRichText].sort()).toEqual(["faq", "profile", "service", "text"]);
+    expect([...withRichText].sort()).toEqual(["faq", "feature", "profile", "service", "text"]);
   });
 });
 

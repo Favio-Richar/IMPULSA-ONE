@@ -46,20 +46,25 @@ describe("TEMPLATE_CATALOG (PL3)", () => {
     expect(musico).toBeDefined();
     expect(restaurante).toBeDefined();
 
-    const academiaTypes = academia.blocksSeed.map((b) => b.type);
+    // El portal completo (F10) reparte los bloques entre el inicio y sus páginas compañeras.
+    const portalTypes = (template: (typeof TEMPLATE_CATALOG)[number]) => [
+      ...template.blocksSeed.map((b) => b.type),
+      ...(template.companionPages ?? []).flatMap((page) => page.blocksSeed.map((b) => b.type)),
+    ];
+    const academiaTypes = portalTypes(academia);
     expect(academiaTypes).toContain("events");
     expect(academiaTypes).toContain("newsletter");
 
-    const fitnessTypes = fitness.blocksSeed.map((b) => b.type);
+    const fitnessTypes = portalTypes(fitness);
     expect(fitnessTypes).toContain("booking");
     expect(fitnessTypes).toContain("pricing");
 
-    const musicoTypes = musico.blocksSeed.map((b) => b.type);
+    const musicoTypes = portalTypes(musico);
     expect(musicoTypes).toContain("music");
     expect(musicoTypes).toContain("events");
     expect(musicoTypes).toContain("video");
 
-    const restauranteTypes = restaurante.blocksSeed.map((b) => b.type);
+    const restauranteTypes = portalTypes(restaurante);
     expect(restauranteTypes).toContain("catalog");
     expect(restauranteTypes).toContain("map");
   });
@@ -87,7 +92,7 @@ describe("TEMPLATE_CATALOG (PL3)", () => {
     });
 
     it("trae un servicio o una galería y la fila de redes", () => {
-      expect(types.includes("service") || types.includes("gallery")).toBe(true);
+      expect(["service", "gallery", "showcase", "album", "works_wheel", "catalog", "booking"].some((type) => types.includes(type))).toBe(true);
       expect(types).toContain("social");
     });
 

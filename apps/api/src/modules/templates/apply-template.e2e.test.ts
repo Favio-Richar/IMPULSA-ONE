@@ -35,6 +35,8 @@ function uniqueSlug(prefix: string): string {
 
 const CAFE = TEMPLATE_CATALOG.find((template) => template.code === "cafe-gastronomia")!;
 const CREATOR = TEMPLATE_CATALOG.find((template) => template.code === "creador-personal")!;
+// Perfil con avatar (sin portada a sangre): la marca de la organización aporta su logo como avatar.
+const PRO = TEMPLATE_CATALOG.find((template) => template.code === "profesional-servicios")!;
 
 describe("Aplicar plantilla (e2e) — PL4", () => {
   let app: INestApplication;
@@ -147,7 +149,9 @@ describe("Aplicar plantilla (e2e) — PL4", () => {
     const body = applyTemplateResponse.parse(response.body);
     const templateTypes = CAFE.blocksSeed.map((block) => block.type);
     const expectedTypes = [...templateTypes];
-    expectedTypes.splice(templateTypes.lastIndexOf("link") + 1, 0, "link");
+    // Los enlaces importados van tras el último enlace o botón de WhatsApp de la plantilla.
+    const lastAction = templateTypes.reduce((last, type, index) => (type === "link" || type === "whatsapp" ? index : last), -1);
+    expectedTypes.splice(lastAction + 1, 0, "link");
     expect(body.blocks.map((block) => block.type)).toEqual(expectedTypes);
     expect(body.blocks.filter((block) => block.isPrimary).map((block) => block.type)).toEqual(["whatsapp"]);
     expect(body.blocks.every((block) => block.degraded === null && block.visible)).toBe(true);
@@ -199,7 +203,8 @@ describe("Aplicar plantilla (e2e) — PL4", () => {
     // El botón «Ver la carta» de la página de inicio apunta a la página que se acaba de crear.
     const home = pages.find((page) => page.isHome)!;
     const homeBlocks = (await agent.get(`/api/v1/organizations/${organizationId}/sites/${siteId}/pages/${home.id}/blocks`).expect(200)).body as Array<{ type: string; config: { url?: string } }>;
-    expect(homeBlocks.find((block) => block.type === "link")?.config.url).toBe("page:carta");
+    const showcase = homeBlocks.find((block) => block.type === "showcase") as unknown as { config: { items: Array<{ link: string }> } };
+    expect(showcase.config.items.map((item) => item.link)).toEqual(["page:carta", "page:contacto"]);
 
     // Aplicarla de nuevo no duplica ni pisa las páginas ya creadas.
     const again = await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: CAFE.code, applyAppearance: false, discardUnpublishedChanges: true }).expect(200);
@@ -377,14 +382,14 @@ describe("Aplicar plantilla (e2e) — PL4", () => {
       applyTemplateResponse.parse(body).blocks.find((block) => block.type === "profile")!.config as { name: string; avatar?: { url: string; alt: string } };
 
     // Sin nombre propio: toma el de la marca, y el logo como avatar.
-    const sinNombre = profileOf((await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: CAFE.code, discardUnpublishedChanges: true }).expect(200)).body);
+    const sinNombre = profileOf((await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: PRO.code, discardUnpublishedChanges: true }).expect(200)).body);
     expect(sinNombre.name).toBe("Café de la Marca");
     expect(sinNombre.avatar?.url).toBe(logo);
     expect(sinNombre.avatar?.alt).toContain("Café de la Marca");
 
     // Con nombre propio: se respeta; el logo sigue siendo el avatar por defecto.
     const conNombre = profileOf(
-      (await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: CAFE.code, discardUnpublishedChanges: true, personalization: { name: "Mi nombre" } }).expect(200)).body,
+      (await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: PRO.code, discardUnpublishedChanges: true, personalization: { name: "Mi nombre" } }).expect(200)).body,
     );
     expect(conNombre.name).toBe("Mi nombre");
     expect(conNombre.avatar?.url).toBe(logo);
@@ -392,9 +397,9 @@ describe("Aplicar plantilla (e2e) — PL4", () => {
 
   it("F9.2: sin marca propia no se inventa un avatar ni se usa el logo de la plataforma", async () => {
     const { agent, base } = await createOrgWithSite();
-    const response = await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: CAFE.code }).expect(200);
+    const response = await agent.post(`${base}/apply-template`).set(CSRF_HEADERS).send({ templateCode: PRO.code }).expect(200);
     const profile = applyTemplateResponse.parse(response.body).blocks.find((block) => block.type === "profile")!.config as { name: string; avatar?: unknown };
     expect(profile.avatar).toBeUndefined();
-    expect(profile.name).toBe("Tu Café de Barrio");
+    expect(profile.name).toBe("Tu Estudio Profesional");
   });
 });

@@ -10,6 +10,11 @@ import {
   ArrowLeftRight,
   GalleryVertical,
   Heart,
+  Camera,
+  Heading1,
+  Hash,
+  ListOrdered,
+  PanelLeft,
   Briefcase,
   CalendarCheck,
   Contact,
@@ -58,6 +63,11 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   marquee: "Cinta de texto",
   showcase: "Colecciones",
   engagement: "Vistas y me gusta",
+  album: "Álbum de fotos",
+  page_header: "Encabezado de página",
+  stats: "Cifras",
+  steps: "Pasos (cómo trabajo)",
+  feature: "Imagen y texto",
 };
 
 /** Un ícono lineal por tipo (no-negociable de UI/UX del proyecto) — la misma biblioteca
@@ -90,4 +100,9 @@ export const BLOCK_ICONS: Record<BlockType, LucideIcon> = {
   marquee: ArrowLeftRight,
   showcase: GalleryVertical,
   engagement: Heart,
+  album: Camera,
+  page_header: Heading1,
+  stats: Hash,
+  steps: ListOrdered,
+  feature: PanelLeft,
 };

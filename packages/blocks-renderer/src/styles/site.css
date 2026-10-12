@@ -140,3 +140,14 @@
 [data-site-root][data-site-mode="alt"] [data-site-backdrop] {
   display: none;
 }
+
+/* Al imprimir (o guardar como PDF) todo se ve completo: sin animaciones de entrada guiadas por el scroll. */
+@media print {
+  [data-site-motion="elegant"] [data-block-type],
+  .site-block-enter {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

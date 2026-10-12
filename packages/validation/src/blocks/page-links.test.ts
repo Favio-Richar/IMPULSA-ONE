@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { heroSchema, linkSchema, showcaseSchema } from "./catalog.js";
-import { linkTargetSchema, pageSlugFromLink, resolvePageLinks } from "./primitives.js";
+import { linkTargetSchema, pageNavLabel, pageSlugFromLink, resolvePageLinks } from "./primitives.js";
 
 // Enlaces internos: un botón o tarjeta puede llevar a otra página del mismo sitio con `page:<slug>`.
 
@@ -41,5 +41,14 @@ describe("enlace a una página del sitio", () => {
       items: [{ link: "/mi-sitio/perfil" }, { link: "https://ejemplo.cl/x" }],
       label: "page:no-es-un-enlace-exacto extra",
     });
+  });
+});
+
+describe("nombre de una página en el menú", () => {
+  it("usa «Inicio» para la principal, nombres con acento para las conocidas y el slug en forma de título para el resto", () => {
+    expect(pageNavLabel("inicio", true)).toBe("Inicio");
+    expect(pageNavLabel("album", false)).toBe("Álbum");
+    expect(pageNavLabel("musica", false)).toBe("Música");
+    expect(pageNavLabel("mi-nueva-pagina", false)).toBe("Mi nueva pagina");
   });
 });

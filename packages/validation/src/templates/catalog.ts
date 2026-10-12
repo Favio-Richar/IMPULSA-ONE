@@ -1,4 +1,5 @@
 import type { TemplateBlockSeed, TemplateDefinition } from "./index.js";
+import { PORTAL_CONTENT } from "./portal-content.js";
 
 /**
  * Catálogo de plantillas de la plataforma (PL3). Lo siembra `packages/database/prisma/seed.ts`,
@@ -1072,8 +1073,16 @@ function withEngagement(blocks: TemplateDefinition["blocksSeed"]): TemplateDefin
 }
 
 /** El catálogo que se siembra: cada plantilla con sus páginas compañeras (las que sus botones enlazan). */
-export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = BASE_TEMPLATES.map((template) => ({
-  ...template,
-  blocksSeed: withEngagement(template.blocksSeed),
-  ...(COMPANION_PAGES[template.code] ? { companionPages: COMPANION_PAGES[template.code] } : {}),
-}));
+export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = BASE_TEMPLATES.map((template): TemplateDefinition => {
+  // Los portales completos (F10) traen su contenido de `portal-content.ts`: inicio + dos páginas, con álbum, cifras,
+  // pasos, preguntas y acción clara. El contenido base de arriba queda como respaldo de una plantilla sin portal.
+  const portal = PORTAL_CONTENT[template.code];
+  if (portal) {
+    return { ...template, blocksSeed: portal.home, companionPages: portal.pages.map((page) => ({ slug: page.slug, blocksSeed: page.blocks })) };
+  }
+  return {
+    ...template,
+    blocksSeed: withEngagement(template.blocksSeed),
+    ...(COMPANION_PAGES[template.code] ? { companionPages: COMPANION_PAGES[template.code] } : {}),
+  };
+});

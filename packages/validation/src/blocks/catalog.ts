@@ -50,6 +50,12 @@ export const BLOCK_TYPES = [
   "showcase",
   // F10: contador público de vistas y botón «me gusta» de la página
   "engagement",
+  // F10: bloques de portal profesional
+  "album",
+  "page_header",
+  "stats",
+  "steps",
+  "feature",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -171,6 +177,54 @@ export const showcaseSchema = z.object({
   /** Texto accesible y visible de la flecha de cada tarjeta. */
   actionLabel: plainTextSchema(24).default("Ver"),
   items: z.array(showcaseItemSchema).min(1).max(SHOWCASE_MAX_ITEMS),
+});
+
+/**
+ * Álbum (F10): la galería profesional de un portal. Fotos con título y categoría opcionales, filtros por categoría y un
+ * visor a pantalla completa (teclado, deslizamiento, contador). Hasta 60 fotos: la página carga de a 12 para no pesar.
+ */
+export const ALBUM_MAX_PHOTOS = 60;
+export const albumPhotoSchema = z.object({
+  image: imageSchema,
+  title: plainTextSchema(80).optional(),
+  /** Categoría corta para filtrar («Retrato», «Editorial»…). Las fotos sin categoría salen solo en «Todas». */
+  category: plainTextSchema(30).optional(),
+});
+export const albumSchema = z.object({
+  title: plainTextSchema(80).optional(),
+  description: plainTextSchema(300).optional(),
+  layout: z.enum(["masonry", "grid"]).default("masonry"),
+  showFilters: z.boolean().default(true),
+  photos: z.array(albumPhotoSchema).min(1).max(ALBUM_MAX_PHOTOS),
+});
+
+/** Encabezado de una página interna (F10): lo primero que se ve al abrir un álbum, un perfil o una sección. */
+export const pageHeaderSchema = z.object({
+  eyebrow: plainTextSchema(40).optional(),
+  title: plainTextSchema(100),
+  subtitle: plainTextSchema(300).optional(),
+});
+
+/** Cifras destacadas (F10): «+250 sesiones», «8 años»… Dos a cuatro. */
+export const statsSchema = z.object({
+  title: plainTextSchema(80).optional(),
+  items: z.array(z.object({ value: plainTextSchema(14), label: plainTextSchema(40) })).min(2).max(4),
+});
+
+/** Cómo trabajo (F10): pasos numerados. */
+export const stepsSchema = z.object({
+  title: plainTextSchema(80).optional(),
+  items: z.array(z.object({ title: plainTextSchema(60), description: plainTextSchema(240) })).min(2).max(6),
+});
+
+/** Imagen y texto (F10): una historia con foto, para «Sobre mí», una sección o un servicio destacado. */
+export const featureSchema = z.object({
+  image: imageSchema,
+  imagePosition: z.enum(["left", "right"]).default("left"),
+  eyebrow: plainTextSchema(40).optional(),
+  title: plainTextSchema(100),
+  text: richTextSchema,
+  cta: z.object({ label: plainTextSchema(60), url: linkTargetSchema }).optional(),
 });
 
 /**
@@ -449,6 +503,11 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
   marquee: { type: "marquee", version: 1, schema: marqueeSchema, richTextPaths: [] },
   showcase: { type: "showcase", version: 1, schema: showcaseSchema, richTextPaths: [] },
   engagement: { type: "engagement", version: 1, schema: engagementSchema, richTextPaths: [] },
+  album: { type: "album", version: 1, schema: albumSchema, richTextPaths: [] },
+  page_header: { type: "page_header", version: 1, schema: pageHeaderSchema, richTextPaths: [] },
+  stats: { type: "stats", version: 1, schema: statsSchema, richTextPaths: [] },
+  steps: { type: "steps", version: 1, schema: stepsSchema, richTextPaths: [] },
+  feature: { type: "feature", version: 1, schema: featureSchema, richTextPaths: ["text"] },
 };
 
 /**
@@ -490,6 +549,12 @@ export type MarqueeBlockConfig = z.infer<typeof marqueeSchema>;
 export type ShowcaseBlockConfig = z.infer<typeof showcaseSchema>;
 export type ShowcaseItem = z.infer<typeof showcaseItemSchema>;
 export type EngagementBlockConfig = z.infer<typeof engagementSchema>;
+export type AlbumBlockConfig = z.infer<typeof albumSchema>;
+export type AlbumPhoto = z.infer<typeof albumPhotoSchema>;
+export type PageHeaderBlockConfig = z.infer<typeof pageHeaderSchema>;
+export type StatsBlockConfig = z.infer<typeof statsSchema>;
+export type StepsBlockConfig = z.infer<typeof stepsSchema>;
+export type FeatureBlockConfig = z.infer<typeof featureSchema>;
 export type VideoBlockConfig = z.infer<typeof videoSchema>;
 export type WhatsappBlockConfig = z.infer<typeof whatsappSchema>;
 export type ContactActionsBlockConfig = z.infer<typeof contactActionsSchema>;

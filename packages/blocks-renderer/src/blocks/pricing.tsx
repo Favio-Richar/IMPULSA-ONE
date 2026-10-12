@@ -3,6 +3,7 @@ import type { PricingBlockConfig, PricingPlan } from "@impulza/validation";
 import { formatPrice } from "../lib/format-price.js";
 import { LinkButton, type ButtonVariant } from "../ui/link-button.js";
 import { stackSurfaceClass } from "../ui/stack-button.js";
+import { WideBleed } from "../ui/wide-bleed.js";
 
 const PERIOD_SUFFIX: Record<PricingPlan["period"], string> = { once: "", month: "/mes", year: "/año" };
 const PERIOD_SPOKEN: Record<PricingPlan["period"], string> = { once: "pago único", month: "al mes", year: "al año" };
@@ -12,10 +13,12 @@ const PERIOD_SPOKEN: Record<PricingPlan["period"], string> = { once: "pago únic
  * dos columnas si hay espacio. El plan destacado lleva el borde y el botón en el color primario; el
  * resto, el botón secundario. Montos enteros en la unidad mínima (ST §8), formateados con Intl.
  */
-export function PricingBlock({ config, buttonVariant }: { config: PricingBlockConfig; buttonVariant: ButtonVariant }) {
+export function PricingBlock({ config, buttonVariant, mode = "public" }: { config: PricingBlockConfig; buttonVariant: ButtonVariant; mode?: "public" | "preview" }) {
   const glass = buttonVariant === "glass";
-  const columns = config.plans.length > 1 ? "@md:grid-cols-2" : "";
-  return (
+  // Con tres o más planes, la tabla se sale de la columna y los muestra uno al lado del otro (F10).
+  const wide = config.plans.length >= 3;
+  const columns = config.plans.length > 1 ? (wide ? "@md:grid-cols-2 @2xl:grid-cols-3" : "@md:grid-cols-2") : "";
+  const content = (
     <section className="flex flex-col gap-3" aria-label={config.title ?? "Precios"}>
       {config.title ? <h2 className="text-center text-base font-semibold text-[var(--site-color-foreground)]">{config.title}</h2> : null}
       <ul className={`grid gap-3 ${columns}`}>
@@ -72,4 +75,5 @@ export function PricingBlock({ config, buttonVariant }: { config: PricingBlockCo
       </ul>
     </section>
   );
+  return wide ? <WideBleed mode={mode} size="lg">{content}</WideBleed> : content;
 }

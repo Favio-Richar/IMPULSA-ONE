@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Container, SiteBackdrop } from "@impulza/blocks-renderer";
 import type { PublicSiteResponse } from "@impulza/contracts";
-import { resolvedSiteBackgroundSchema, themeTokensSchema } from "@impulza/validation";
+import { pageNavLabel, resolvedSiteBackgroundSchema, themeTokensSchema } from "@impulza/validation";
 import { env } from "../lib/env";
 
 /**
@@ -36,7 +36,7 @@ export function SiteShell({ site, children }: { site: PublicSiteResponse; childr
                       href={page.isHome ? `/${site.slug}` : `/${site.slug}/${page.slug}`}
                       className="text-[var(--site-color-muted-foreground)] hover:text-[var(--site-color-foreground)]"
                     >
-                      {page.isHome ? "Inicio" : page.slug}
+                      {pageNavLabel(page.slug, page.isHome)}
                     </a>
                   </li>
                 ))}

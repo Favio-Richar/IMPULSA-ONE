@@ -1,10 +1,13 @@
 "use client";
 
 import { Button } from "@impulza/ui";
-import { Plus, X } from "lucide-react";
+import { ImagePlus, Plus, X } from "lucide-react";
+import { useState } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import type { FieldError } from "react-hook-form";
 import { ImageField } from "../../components/block-editor/image-field";
+import { MultiMediaPicker } from "../../components/media/multi-media-picker";
+import { useActiveOrgStore } from "../active-org-store";
 import { RichTextEditor } from "../../components/block-editor/rich-text-editor";
 import { defaultArrayItem } from "./defaults";
 import { usePageOptions } from "./page-options";
@@ -299,22 +302,54 @@ function ArrayFieldView({
 }) {
   const { control } = useFormContext();
   const { fields, append, remove } = useFieldArray({ control, name });
+  const organizationId = useActiveOrgStore((state) => state.activeOrganizationId);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const bulk = arrayControl.bulkAdd;
+
+  /** Agrega de una vez las fotos elegidas: el texto alternativo parte del nombre del archivo y se puede mejorar después. */
+  function addBulk(assets: Array<{ url: string | null; fileName: string }>): void {
+    if (!bulk) return;
+    const room = arrayControl.max - fields.length;
+    for (const asset of assets.slice(0, Math.max(0, room))) {
+      if (!asset.url) continue;
+      const alt = asset.fileName.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim() || "Foto";
+      const image = { url: asset.url, alt: alt.slice(0, 300), decorative: false };
+      append(bulk.imageKey === null ? image : { ...defaultArrayItem(arrayControl.fields), [bulk.imageKey]: image });
+    }
+  }
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border p-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className={labelTextClass}>{label}</span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={fields.length >= arrayControl.max}
-          onClick={() => append(defaultArrayItem(arrayControl.fields))}
-        >
-          <Plus className="size-4" />
-          Agregar {arrayControl.itemLabel.toLowerCase()}
-        </Button>
+        <div className="flex flex-wrap gap-1">
+          {bulk && organizationId ? (
+            <Button type="button" variant="secondary" size="sm" disabled={fields.length >= arrayControl.max} onClick={() => setBulkOpen(true)}>
+              <ImagePlus className="size-4" />
+              Agregar varias fotos
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={fields.length >= arrayControl.max}
+            onClick={() => append(defaultArrayItem(arrayControl.fields))}
+          >
+            <Plus className="size-4" />
+            Agregar {arrayControl.itemLabel.toLowerCase()}
+          </Button>
+        </div>
       </div>
+      {bulk && organizationId ? (
+        <MultiMediaPicker
+          organizationId={organizationId}
+          open={bulkOpen}
+          onOpenChange={setBulkOpen}
+          maxSelectable={Math.max(0, arrayControl.max - fields.length)}
+          onConfirm={(assets) => addBulk(assets)}
+        />
+      ) : null}
       {fields.length === 0 ? <p className="text-sm text-muted-foreground">Todavía no hay ninguno.</p> : null}
       {fields.map((item, index) => (
         <div key={item.id} className="flex flex-col gap-2 rounded-md border border-border-strong p-3">

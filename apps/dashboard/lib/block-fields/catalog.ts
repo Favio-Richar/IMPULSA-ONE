@@ -268,6 +268,7 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
           max: 24,
           itemLabel: "Imagen",
           itemKind: "image",
+          bulkAdd: { imageKey: null },
           fields: [
             { name: "url", label: "URL de la imagen", control: { kind: "url" } },
             { name: "alt", label: "Texto alternativo", control: { kind: "text", maxLength: 300 } },
@@ -359,6 +360,140 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
       },
     ],
     seedConfig: () => ({ items: ["Fotografía", "Moda", "Editorial"], speed: "normal" }),
+  },
+
+  // Álbum profesional: fotos con título y categoría, filtros y visor a pantalla completa.
+  album: {
+    fields: [
+      { name: "title", label: "Título del álbum", optional: true, control: { kind: "text", maxLength: 80 } },
+      { name: "description", label: "Descripción", optional: true, control: { kind: "text", maxLength: 300 } },
+      {
+        name: "layout",
+        label: "Diseño",
+        control: {
+          kind: "select",
+          options: [
+            { value: "masonry", label: "Mosaico (respeta la forma de cada foto)" },
+            { value: "grid", label: "Cuadrícula (todas cuadradas)" },
+          ],
+        },
+      },
+      { name: "showFilters", label: "Mostrar filtros por categoría", control: { kind: "boolean" } },
+      {
+        name: "photos",
+        label: "Fotos",
+        helperText: "Hasta 60. Pon la misma categoría a varias fotos para que se puedan filtrar. El visitante las abre a pantalla completa.",
+        control: {
+          kind: "array",
+          min: 1,
+          max: 60,
+          itemLabel: "Foto",
+          bulkAdd: { imageKey: "image" },
+          fields: [
+            imageField("image", "Foto", false, "wide"),
+            { name: "title", label: "Título", optional: true, control: { kind: "text", maxLength: 80 } },
+            { name: "category", label: "Categoría", optional: true, helperText: "Por ejemplo «Retrato» o «Editorial».", control: { kind: "text", maxLength: 30 } },
+          ],
+        },
+      },
+    ],
+    seedConfig: () => ({
+      layout: "masonry",
+      showFilters: true,
+      photos: [1, 2, 3].map((n) => ({ image: { url: `https://ejemplo.com/foto-${n}.jpg`, alt: `Foto ${n}` }, title: `Foto ${n}`, category: "Serie 1" })),
+    }),
+  },
+
+  // Encabezado de página interna.
+  page_header: {
+    fields: [
+      { name: "eyebrow", label: "Rótulo superior", optional: true, helperText: "Una o dos palabras en mayúsculas: «Portafolio», «Sobre mí».", control: { kind: "text", maxLength: 40 } },
+      { name: "title", label: "Título", control: { kind: "text", maxLength: 100 } },
+      { name: "subtitle", label: "Bajada", optional: true, control: { kind: "text", maxLength: 300 } },
+    ],
+    seedConfig: () => ({ eyebrow: "Portafolio", title: "Título de la página", subtitle: "Una frase que explique de qué trata esta página." }),
+  },
+
+  // Cifras destacadas.
+  stats: {
+    fields: [
+      { name: "title", label: "Título", optional: true, control: { kind: "text", maxLength: 80 } },
+      {
+        name: "items",
+        label: "Cifras",
+        helperText: "De 2 a 4. Por ejemplo «+250» y «sesiones realizadas».",
+        control: {
+          kind: "array",
+          min: 2,
+          max: 4,
+          itemLabel: "Cifra",
+          fields: [
+            { name: "value", label: "Valor", control: { kind: "text", maxLength: 14 } },
+            { name: "label", label: "Descripción", control: { kind: "text", maxLength: 40 } },
+          ],
+        },
+      },
+    ],
+    seedConfig: () => ({ items: [{ value: "+100", label: "clientes felices" }, { value: "8", label: "años de experiencia" }, { value: "24 h", label: "tiempo de respuesta" }] }),
+  },
+
+  // Pasos numerados.
+  steps: {
+    fields: [
+      { name: "title", label: "Título", optional: true, control: { kind: "text", maxLength: 80 } },
+      {
+        name: "items",
+        label: "Pasos",
+        helperText: "De 2 a 6, en orden.",
+        control: {
+          kind: "array",
+          min: 2,
+          max: 6,
+          itemLabel: "Paso",
+          fields: [
+            { name: "title", label: "Título del paso", control: { kind: "text", maxLength: 60 } },
+            { name: "description", label: "Descripción", control: { kind: "text", maxLength: 240 } },
+          ],
+        },
+      },
+    ],
+    seedConfig: () => ({
+      title: "Cómo trabajamos",
+      items: [
+        { title: "Conversamos", description: "Me cuentas qué necesitas y vemos si soy la persona indicada." },
+        { title: "Planificamos", description: "Definimos fecha, lugar y alcance con un presupuesto claro." },
+        { title: "Entrego", description: "Recibes el resultado final en el plazo acordado." },
+      ],
+    }),
+  },
+
+  // Imagen y texto.
+  feature: {
+    fields: [
+      imageField("image", "Imagen", false, "square"),
+      {
+        name: "imagePosition",
+        label: "Posición de la imagen",
+        control: {
+          kind: "select",
+          options: [
+            { value: "left", label: "A la izquierda" },
+            { value: "right", label: "A la derecha" },
+          ],
+        },
+      },
+      { name: "eyebrow", label: "Rótulo superior", optional: true, control: { kind: "text", maxLength: 40 } },
+      { name: "title", label: "Título", control: { kind: "text", maxLength: 100 } },
+      { name: "text", label: "Texto", control: { kind: "richtext" } },
+      ctaField,
+    ],
+    seedConfig: () => ({
+      image: { url: "https://ejemplo.com/imagen.jpg", alt: "Descripción de la imagen" },
+      imagePosition: "left",
+      eyebrow: "Sobre mí",
+      title: "Mi historia",
+      text: "<p>Cuenta aquí quién eres, cómo trabajas y qué te hace distinto.</p>",
+    }),
   },
 
   // Vistas y «me gusta»: las cifras las pone el servidor; acá solo se elige qué mostrar.

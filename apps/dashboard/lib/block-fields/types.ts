@@ -42,6 +42,11 @@ export type FieldControl =
       fields: readonly FieldDescriptor[];
       /** Cada ítem es una imagen completa (`gallery.images`): se edita con el selector de imágenes. */
       itemKind?: "image";
+      /**
+       * Ofrece «Agregar varias fotos» de una vez desde la biblioteca. `imageKey`: el campo del ítem que guarda la
+       * imagen (`album.photos[].image`), o `null` si el ítem entero es la imagen (`gallery.images[]`).
+       */
+      bulkAdd?: { imageKey: string | null };
     };
 
 export interface FieldDescriptor {

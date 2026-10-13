@@ -9,6 +9,7 @@ import {
   musicSchema,
   newsletterBlockSchema,
   subscribeBlockSchema,
+  stickerSchema,
   pricingSchema,
   contactActionsSchema,
   contactFormSchema,
@@ -45,6 +46,7 @@ import { MapBlock } from "./blocks/map.js";
 import { MusicBlock } from "./blocks/music.js";
 import { NewsletterBlock } from "./blocks/newsletter.js";
 import { SubscribeBlock } from "./blocks/subscribe.js";
+import { StickerBlock } from "./blocks/sticker.js";
 import { PricingBlock } from "./blocks/pricing.js";
 import { ContactFormBlock } from "./blocks/contact-form.js";
 import { DividerBlock } from "./blocks/divider.js";
@@ -249,6 +251,10 @@ export function RenderBlock({
     case "subscribe": {
       const parsed = subscribeBlockSchema.safeParse(block.config);
       return parsed.success ? <SubscribeBlock config={parsed.data} siteSlug={siteSlug} buttonVariant={buttonVariant} mono={mono} /> : null;
+    }
+    case "sticker": {
+      const parsed = stickerSchema.safeParse(block.config);
+      return parsed.success ? <StickerBlock config={parsed.data} /> : null;
     }
     default:
       return null;

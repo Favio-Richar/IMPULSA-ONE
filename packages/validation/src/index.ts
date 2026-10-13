@@ -75,4 +75,5 @@ export * from "./members/index.js";
 export * from "./courses/index.js";
 export * from "./digital-card/index.js";
 export * from "./subscribe-page/index.js";
+export * from "./stickers/index.js";
 export * from "./marketplace/index.js";

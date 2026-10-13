@@ -46,3 +46,4 @@ export { FeatureBlock } from "./blocks/feature.js";
 export { ShowcaseBlock } from "./blocks/showcase.js";
 export { NewsletterBlock } from "./blocks/newsletter.js";
 export { SubscribeBlock } from "./blocks/subscribe.js";
+export { StickerBlock } from "./blocks/sticker.js";

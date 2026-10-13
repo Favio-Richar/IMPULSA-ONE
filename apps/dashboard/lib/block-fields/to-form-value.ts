@@ -60,6 +60,7 @@ function toFormLeaf(raw: unknown, control: FieldControl, optional = false): unkn
     case "email":
     case "phone":
     case "richtext":
+    case "sticker":
       return typeof raw === "string" ? raw : "";
     case "number":
       return typeof raw === "number" ? raw : undefined;

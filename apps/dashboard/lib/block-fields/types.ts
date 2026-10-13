@@ -11,6 +11,8 @@ export type FieldControl =
   | { kind: "boolean" }
   | { kind: "select"; options: ReadonlyArray<{ value: string; label: string }> }
   | { kind: "url" }
+  /** Una decoración del catálogo curado de stickers (`STICKER_CATALOG`): se elige en una grilla con categorías y búsqueda. */
+  | { kind: "sticker" }
   /** Destino de un botón o tarjeta: una página de este sitio (`page:<slug>`) o un enlace externo (`https://…`). */
   | { kind: "link" }
   | { kind: "email" }

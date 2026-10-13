@@ -1,3 +1,4 @@
+import { isStickerId, STICKER_ALIGNMENTS, STICKER_ROTATION_MAX, STICKER_ROTATION_MIN, STICKER_SIZES } from "../stickers/index.js";
 import { z } from "zod";
 import {
   emailSchema,
@@ -58,6 +59,8 @@ export const BLOCK_TYPES = [
   "feature",
   // Extra F10: botón «Suscribirme» que lleva a la página de suscripción del sitio (`/:sitio/s`)
   "subscribe",
+  // Extra F10: decoraciones curadas (flechas, formas, decorativos y sellos); puramente visuales
+  "sticker",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -457,6 +460,19 @@ export const subscribeBlockSchema = z.object({
 });
 
 /**
+ * Sticker o decoración (extra F10): una pieza visual de un conjunto CERRADO y curado (`STICKER_CATALOG`: flechas, formas,
+ * decorativos y sellos). No se sube nada: `stickerId` solo puede ser uno del catálogo. Es decorativo (el render lo oculta a
+ * lectores de pantalla). La geometría es la del lienzo de la página, que apila bloques en una columna: alineación a la izquierda,
+ * al centro o a la derecha, tamaño y una rotación pequeña.
+ */
+export const stickerSchema = z.object({
+  stickerId: z.string().refine(isStickerId, "Elige una decoración del catálogo."),
+  size: z.enum(STICKER_SIZES).default("md"),
+  rotation: z.number().int().min(STICKER_ROTATION_MIN).max(STICKER_ROTATION_MAX).default(0),
+  alignment: z.enum(STICKER_ALIGNMENTS).default("center"),
+});
+
+/**
  * Entrada del catálogo.
  *
  * `version` es el `config_schema_version` que se guarda con el bloque: sube cuando el esquema de
@@ -511,6 +527,7 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
   events: { type: "events", version: 1, schema: eventsSchema, richTextPaths: [] },
   newsletter: { type: "newsletter", version: 1, schema: newsletterBlockSchema, richTextPaths: [] },
   subscribe: { type: "subscribe", version: 1, schema: subscribeBlockSchema, richTextPaths: [] },
+  sticker: { type: "sticker", version: 1, schema: stickerSchema, richTextPaths: [] },
   works_wheel: { type: "works_wheel", version: 1, schema: worksWheelSchema, richTextPaths: [] },
   marquee: { type: "marquee", version: 1, schema: marqueeSchema, richTextPaths: [] },
   showcase: { type: "showcase", version: 1, schema: showcaseSchema, richTextPaths: [] },
@@ -586,3 +603,4 @@ export type EventsBlockConfig = z.infer<typeof eventsSchema>;
 export type EventItem = z.infer<typeof eventItemSchema>;
 export type NewsletterBlockConfig = z.infer<typeof newsletterBlockSchema>;
 export type SubscribeBlockConfig = z.infer<typeof subscribeBlockSchema>;
+export type StickerBlockConfig = z.infer<typeof stickerSchema>;

@@ -5548,7 +5548,8 @@
                       "stats",
                       "steps",
                       "feature",
-                      "subscribe"
+                      "subscribe",
+                      "sticker"
                     ]
                   },
                   "config": {},

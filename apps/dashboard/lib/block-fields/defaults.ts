@@ -11,6 +11,7 @@ function defaultLeafValue(control: FieldControl, optional: boolean | undefined):
     case "video":
     case "music":
     case "datetime":
+    case "sticker":
     case "lines":
       return "";
     case "number":

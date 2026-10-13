@@ -9,6 +9,7 @@ import { ImageField } from "../../components/block-editor/image-field";
 import { MultiMediaPicker } from "../../components/media/multi-media-picker";
 import { useActiveOrgStore } from "../active-org-store";
 import { RichTextEditor } from "../../components/block-editor/rich-text-editor";
+import { StickerPicker } from "../../components/block-editor/sticker-picker";
 import { defaultArrayItem } from "./defaults";
 import { usePageOptions } from "./page-options";
 import type { FieldControl, FieldDescriptor } from "./types.js";
@@ -210,6 +211,17 @@ function FieldControlView({ field, namePrefix }: { field: FieldDescriptor; nameP
 
     case "link":
       return <LinkFieldView field={field} name={name} error={error} />;
+
+    case "sticker":
+      return (
+        <Controller
+          control={control}
+          name={name}
+          render={({ field: controlled }) => (
+            <StickerPicker label={field.label} value={typeof controlled.value === "string" ? controlled.value : ""} onChange={controlled.onChange} error={error} />
+          )}
+        />
+      );
 
     case "text":
     case "url":

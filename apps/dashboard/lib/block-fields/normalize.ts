@@ -40,6 +40,7 @@ function normalizeLeaf(raw: unknown, control: FieldControl): unknown {
     case "video":
     case "music":
     case "datetime":
+    case "sticker":
       return typeof raw === "string" ? raw.trim() : "";
     case "lines":
       // Una línea por ítem; las vacías no cuentan. El tope real lo aplica el esquema.

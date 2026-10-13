@@ -25,6 +25,9 @@ export const env = loadEnv({
   // Meses sin interacción tras los que un contacto se marca para que el dueño revise si lo
   // conserva (ADR-004 punto 4). Solo marca: nunca borra un contacto.
   CONTACT_RETENTION_REVIEW_MONTHS: z.coerce.number().int().min(1).max(240).default(36),
+  // Días desde que se cierra un caso de abuso (F9.9) hasta que se borra el correo opcional del
+  // denunciante (decisión del propietario, 2026-10-13). El reporte y su decisión nunca se borran.
+  ABUSE_REPORT_EMAIL_RETENTION_DAYS: z.coerce.number().int().min(1).max(730).default(90),
   // Opcional a propósito: Sentry no es requerido para arrancar (F1.10).
   SENTRY_DSN: urlSchema.optional(),
   SENTRY_RELEASE: z.string().optional(),

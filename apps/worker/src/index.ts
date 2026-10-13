@@ -18,6 +18,7 @@ import { createHealthServer } from "./health-server.js";
 import { startMediaWorkers } from "./media-workers.js";
 import { emitWebhookEvent, startWebhookWorkers } from "./webhooks.js";
 import { startNewsletterWorkers } from "./newsletter.js";
+import { startModerationRetentionWorkers } from "./moderation-retention.js";
 import { startSequenceWorkers } from "./sequences.js";
 import { httpSiteRevalidator, startPageCampaignWorkers } from "./page-campaigns.js";
 import { logger } from "./observability/logger.js";
@@ -97,6 +98,15 @@ const bookingDeposits = await startBookingDepositWorkers({
 
 // Newsletter (F7.4, ADR-019): purga diaria de solicitudes que ya no hacen falta.
 const newsletter = await startNewsletterWorkers({ prisma, connection: { url: env.REDIS_URL, maxRetriesPerRequest: null } });
+
+// Moderación (F9.9, decisión del propietario 2026-10-13): purga diaria del correo del
+// denunciante en casos cerrados hace más de ABUSE_REPORT_EMAIL_RETENTION_DAYS. El reporte y su
+// decisión nunca se borran, solo ese dato opcional.
+const moderationRetention = await startModerationRetentionWorkers({
+  prisma,
+  connection: { url: env.REDIS_URL, maxRetriesPerRequest: null },
+  reporterEmailRetentionDays: env.ABUSE_REPORT_EMAIL_RETENTION_DAYS,
+});
 
 // Campañas de email (F5.6): el enlace de baja se firma con el mismo secreto de enlaces de correo.
 const campaignDispatch = await startCampaignDispatchWorkers({
@@ -224,6 +234,7 @@ async function shutdown(signal: string): Promise<void> {
   await paymentAccounts?.close();
   await webhooks?.close();
   await newsletter.close();
+  await moderationRetention.close();
   await sequences.close();
   await pageCampaigns?.close();
   await agencyImports?.close();

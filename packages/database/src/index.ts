@@ -16,4 +16,4 @@ if (process.env.NODE_ENV !== "production") {
 
 export * from "@prisma/client";
 export { PERMISSIONS, PERMISSION_CATALOG, ROLE_PERMISSIONS, type PermissionKey } from "./permissions.js";
-export { contactRetentionCutoff, flagContactsForRetentionReview } from "./retention.js";
+export { contactRetentionCutoff, flagContactsForRetentionReview, abuseReportEmailRetentionCutoff, purgeExpiredAbuseReportReporterEmails } from "./retention.js";

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import { AbuseReportStatus, type PrismaClient } from "@prisma/client";
 
 // Revisión de retención de contactos (ADR-004 punto 4). Vive junto al modelo de datos y no en
 // `apps/worker` para que la misma función la ejerciten las pruebas contra Postgres real de este
@@ -56,4 +56,46 @@ export async function flagContactsForRetentionReview(
   );
 
   return { flagged, cleared };
+}
+
+/** Un caso de abuso cerrado: tiene una decisión final, no una en revisión por apelación. */
+const CLOSED_ABUSE_REPORT_STATUSES: AbuseReportStatus[] = [
+  AbuseReportStatus.DISMISSED,
+  AbuseReportStatus.WARNED,
+  AbuseReportStatus.SITE_UNPUBLISHED,
+  AbuseReportStatus.ORG_SUSPENDED,
+];
+
+export function abuseReportEmailRetentionCutoff(now: Date, days: number): Date {
+  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * Borra el correo del denunciante (`reporter_email`) de los reportes de abuso cuyo caso se cerró
+ * hace más de `days` días (decisión del propietario, 2026-10-13: 90 días desde que se cierra el
+ * caso). El reporte en sí **nunca se borra** -- la decisión y su motivo quedan para auditoría --
+ * solo el dato personal opcional del denunciante, que ya cumplió su único propósito (que el
+ * equipo pueda pedirle contexto durante la revisión).
+ *
+ * Un caso en `APPEALED` sigue abierto aunque guarde un `resolvedAt` de la decisión que se apeló:
+ * no cuenta como cerrado hasta que se decida la apelación (vuelve a uno de los estados de
+ * `CLOSED_ABUSE_REPORT_STATUSES` con un `resolvedAt` nuevo).
+ */
+export async function purgeExpiredAbuseReportReporterEmails(
+  prisma: PrismaClient,
+  options: { days: number; now?: Date },
+): Promise<{ purged: number }> {
+  const now = options.now ?? new Date();
+  const cutoff = abuseReportEmailRetentionCutoff(now, options.days);
+
+  const result = await prisma.abuseReport.updateMany({
+    where: {
+      status: { in: CLOSED_ABUSE_REPORT_STATUSES },
+      resolvedAt: { lt: cutoff },
+      reporterEmail: { not: null },
+    },
+    data: { reporterEmail: null },
+  });
+
+  return { purged: result.count };
 }

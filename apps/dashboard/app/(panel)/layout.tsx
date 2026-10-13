@@ -15,6 +15,7 @@ import { logout } from "../../lib/api/auth";
 import { listMyOrganizations } from "../../lib/api/organizations";
 import { useActiveOrgStore } from "../../lib/active-org-store";
 import { useMe } from "../../lib/hooks/use-me";
+import { useNavCollapsed } from "../../lib/hooks/use-nav-collapsed";
 import { usePlatformBranding } from "../../lib/hooks/use-platform-branding";
 import { usePanelBrand } from "../../lib/hooks/use-white-label";
 
@@ -23,6 +24,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Menú plegado a solo íconos en escritorio (preferencia de este navegador).
+  const [navCollapsed, toggleNavCollapsed] = useNavCollapsed();
 
   const activeOrganizationId = useActiveOrgStore((state) => state.activeOrganizationId);
   const meQuery = useMe();
@@ -85,21 +88,40 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-screen bg-background" data-testid="panel-root" data-brand={panelBrand ? "white-label" : "platform"}>
       {brandCss ? <style>{brandCss}</style> : null}
-      <aside className="hidden w-56 shrink-0 border-r border-border md:block print:hidden">
-        <div className="flex h-14 items-center border-b border-border px-4 text-sm font-semibold text-foreground">
+      {/* Altura de la pantalla y pegado arriba: el scroll de la página no lo mueve. Tres zonas: cabecera con la marca
+          (fija) y navegación (la única zona que se desplaza). El botón de plegar está en la cabecera de la página. */}
+      <aside
+        id="panel-sidebar"
+        data-collapsed={navCollapsed ? "true" : "false"}
+        className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-background transition-[width] duration-200 motion-reduce:transition-none md:flex print:hidden ${
+          navCollapsed ? "w-16" : "w-56"
+        }`}
+      >
+        <div
+          className={`flex h-14 shrink-0 items-center border-b border-border text-sm font-semibold text-foreground ${
+            navCollapsed ? "justify-center px-2" : "px-4"
+          }`}
+        >
           {brandLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={brandLogo} alt={brandName} className="h-6 max-w-[140px] object-contain" />
+            <img src={brandLogo} alt={brandName} className={navCollapsed ? "size-8 object-contain" : "h-6 max-w-[140px] object-contain"} />
+          ) : navCollapsed ? (
+            <span aria-hidden="true" className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
+              {brandName.slice(0, 1).toUpperCase()}
+            </span>
           ) : (
             brandName
           )}
         </div>
-        <SidebarNav
-          kind={activeOrganization?.kind}
-          delegated={activeOrganization?.access?.delegated ?? false}
-          allowedModules={activeOrganization?.access?.modules ?? []}
-          clientViewer={clientViewer}
-        />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <SidebarNav
+            kind={activeOrganization?.kind}
+            delegated={activeOrganization?.access?.delegated ?? false}
+            allowedModules={activeOrganization?.access?.modules ?? []}
+            clientViewer={clientViewer}
+            collapsed={navCollapsed}
+          />
+        </div>
       </aside>
 
       {mobileNavOpen ? (
@@ -110,8 +132,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             className="absolute inset-0 bg-black/30"
             onClick={() => setMobileNavOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 w-64 bg-background shadow-md">
-            <div className="flex h-14 items-center justify-between border-b border-border px-4">
+          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-background shadow-md">
+            <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
               <span className="text-sm font-semibold text-foreground">
                 {brandLogo ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -129,13 +151,15 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 <X className="size-4" />
               </Button>
             </div>
-            <SidebarNav
-              onNavigate={() => setMobileNavOpen(false)}
-              kind={activeOrganization?.kind}
-              delegated={activeOrganization?.access?.delegated ?? false}
-              allowedModules={activeOrganization?.access?.modules ?? []}
-              clientViewer={clientViewer}
-            />
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <SidebarNav
+                onNavigate={() => setMobileNavOpen(false)}
+                kind={activeOrganization?.kind}
+                delegated={activeOrganization?.access?.delegated ?? false}
+                allowedModules={activeOrganization?.access?.modules ?? []}
+                clientViewer={clientViewer}
+              />
+            </div>
           </aside>
         </div>
       ) : null}
@@ -152,6 +176,18 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             aria-label="Abrir menú"
           >
             <Menu className="size-4" />
+          </Button>
+          {/* Escritorio: pliega el menú a solo íconos y lo vuelve a expandir. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="hidden md:inline-flex"
+            onClick={toggleNavCollapsed}
+            aria-label={navCollapsed ? "Expandir barra lateral" : "Contraer barra lateral"}
+            aria-expanded={!navCollapsed}
+            aria-controls="panel-sidebar"
+          >
+            <Menu className="size-4" aria-hidden="true" />
           </Button>
 
           {/* `min-w-0`: el selector se encoge en un teléfono en vez de empujar la cabecera fuera de la

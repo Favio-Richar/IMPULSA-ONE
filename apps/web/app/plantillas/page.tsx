@@ -4,20 +4,27 @@ import { MarketingFooter } from "../../components/marketing/footer";
 import { Reveal } from "../../components/marketing/reveal";
 import { TemplateCardLink } from "../../components/marketing/shared";
 import { getDashboardLinks } from "../../lib/dashboard-links";
-import { getTemplateCatalog } from "../../lib/api";
+import { getTemplateCatalog, getPlatformBranding } from "../../lib/api";
 import { RubrosCarousel } from "../../components/marketing/rubros-carousel";
+import { JsonLd } from "../../components/json-ld";
+import { impulzaOrganizationNode } from "../../lib/marketing-structured-data.js";
+
+const OG_TITLE = "Plantillas";
+const OG_SUBTITLE = "Plantillas reales del catálogo, filtradas por rubro";
 
 export const metadata = {
   title: "Plantillas — Impulza One",
   description: "Elegí una plantilla real del catálogo de Impulza One, filtrada por rubro, y hacela tuya en el asistente de bienvenida.",
+  openGraph: { images: [{ url: `/og?${new URLSearchParams({ title: OG_TITLE, subtitle: OG_SUBTITLE }).toString()}` }] },
 };
 
 export default async function PlantillasPage() {
-  const templates = await getTemplateCatalog();
+  const [templates, branding] = await Promise.all([getTemplateCatalog(), getPlatformBranding()]);
   const { bienvenidaHref, loginHref } = getDashboardLinks();
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
+      <JsonLd nodes={[impulzaOrganizationNode(branding)]} />
       <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
 
       {/* Portada: un rubro por diapositiva, cada uno con su plantilla real. */}

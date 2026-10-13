@@ -95,12 +95,25 @@ export const publicOpenGraphResponse = z.object({
  * `canonicalPath` es relativo (`/mi-sitio` o `/mi-sitio/servicios`): `apps/web` arma la URL
  * absoluta con su propio origen, este contrato no asume ningún dominio.
  */
+/**
+ * Un nodo de datos estructurados (schema.org) ya resuelto del contenido real de la página
+ * (negocio, FAQ, servicios, eventos) -- F11, decisión del propietario 2026-10-13 ("SEO avanzado").
+ * Sin `url` ni ningún otro campo que dependa de un dominio: igual que `canonicalPath`, `apps/web`
+ * le agrega la URL absoluta con su propio origen antes de pintarlo (este contrato no asume
+ * ningún dominio, un sitio puede tener uno propio). Forma abierta (no un esquema por tipo de
+ * schema.org): quien la llena (`resolveStructuredData` en apps/api) ya valida cada bloque fuente
+ * contra su propio esquema real; duplicar esa forma acá no protege nada más.
+ */
+export const publicStructuredDataNode = z.record(z.string(), z.unknown());
+
 export const publicSeoResponse = z.object({
   title: z.string(),
   description: z.string().optional(),
   canonicalPath: z.string(),
   robots: publicSeoRobots,
   openGraph: publicOpenGraphResponse,
+  /** Vacío o ausente = nada que estructurar (página sin bloques de negocio, FAQ o eventos). */
+  structuredData: z.array(publicStructuredDataNode).optional(),
 });
 
 export const publicPageResponse = z.object({
@@ -136,5 +149,6 @@ export type PublicNavPageResponse = z.infer<typeof publicNavPageResponse>;
 export type PublicSiteResponse = z.infer<typeof publicSiteResponse>;
 export type PublicBlockResponse = z.infer<typeof publicBlockResponse>;
 export type PublicOpenGraphResponse = z.infer<typeof publicOpenGraphResponse>;
+export type PublicStructuredDataNode = z.infer<typeof publicStructuredDataNode>;
 export type PublicSeoResponse = z.infer<typeof publicSeoResponse>;
 export type PublicPageResponse = z.infer<typeof publicPageResponse>;

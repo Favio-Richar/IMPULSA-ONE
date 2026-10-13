@@ -6,10 +6,13 @@ import type { PublicFormResponse } from "@impulza/contracts";
 import { AB_BUCKET_COOKIE, memberCookieName, parseAbBucket, resolvePageLinks, themeTokensSchema } from "@impulza/validation";
 import { hasExperiments, randomAbBucket, resolveExperimentBlocks } from "../lib/ab";
 import { getBookingAvailable, getMemberPage, getPublicForm, getPublicPage, getPublicSite } from "../lib/api";
+import { env } from "../lib/env.js";
 import { getMemberPlans } from "../lib/memberships";
 import { applySmartCta, smartCtaNeedsBookings } from "../lib/smart-cta";
+import { siteStructuredData } from "../lib/structured-data.js";
 import { AbBucketCookie } from "./ab-bucket-cookie";
 import { AnalyticsTracker } from "./analytics-tracker";
+import { JsonLd } from "./json-ld";
 import { MemberGate } from "./member-gate";
 import { MemberSignOut } from "./member-sign-out";
 import { Measurement } from "./measurement";
@@ -106,8 +109,17 @@ export async function SitePage({
       })
     : tested;
 
+  // F11 ("SEO avanzado", decisión del propietario 2026-10-13): negocio, FAQ, eventos y servicios
+  // ya resueltos por la API (`resolveSeo`), más la URL absoluta de este proceso y el breadcrumb
+  // (que necesitan el origen real, por eso se terminan de armar acá y no en la API — ver
+  // `lib/structured-data.ts`). Nunca en una página `membersOnly` sin sesión: ésas no tienen SEO
+  // real que ofrecer (ver `resolveSeo` para ese caso).
+  const homePath = `/${siteSlug}`;
+  const structuredData = siteStructuredData(page.seo, { name: site.name, isHome: page.isHome, homePath }, env.PUBLIC_WEB_BASE_URL);
+
   return (
     <>
+      <JsonLd nodes={structuredData} />
       {bucket !== null && storedBucket === null ? <AbBucketCookie bucket={bucket} /> : null}
       {isMember ? <MemberSignOut siteSlug={siteSlug} /> : null}
       <AnalyticsTracker siteSlug={siteSlug} pageSlug={page.slug} />

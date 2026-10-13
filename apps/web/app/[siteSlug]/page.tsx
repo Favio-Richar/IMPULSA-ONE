@@ -14,8 +14,8 @@ interface Props {
 // render (memoización de peticiones), no es una segunda ida a la red.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { siteSlug } = await params;
-  const page = await getPublicPage(siteSlug, HOME_PAGE_SLUG);
-  return page ? seoToMetadata(page.seo) : {};
+  const [page, site] = await Promise.all([getPublicPage(siteSlug, HOME_PAGE_SLUG), getPublicSite(siteSlug)]);
+  return page ? seoToMetadata(page.seo, { siteName: site?.name }) : {};
 }
 
 // Modo campaña (F7.7, ADR-022): mientras una campaña toma el inicio, la raíz muestra su página. Los

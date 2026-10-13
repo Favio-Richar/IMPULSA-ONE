@@ -5,20 +5,27 @@ import { MarketingFooter } from "../../components/marketing/footer";
 import { Reveal } from "../../components/marketing/reveal";
 import { PlanCard, ComparisonTable, FaqAccordion, FAQ_ITEMS } from "../../components/marketing/shared";
 import { getDashboardLinks } from "../../lib/dashboard-links";
-import { getPlanCatalog } from "../../lib/api";
+import { getPlanCatalog, getPlatformBranding } from "../../lib/api";
+import { JsonLd } from "../../components/json-ld";
+import { impulzaOrganizationNode, marketingFaqNode } from "../../lib/marketing-structured-data.js";
+
+const OG_TITLE = "Planes";
+const OG_SUBTITLE = "Simples y sin sorpresas: portal, mini-CRM, formularios, QR y analítica";
 
 export const metadata = {
   title: "Planes — Impulza One",
   description: "Planes simples y sin sorpresas para tu portal biográfico, mini-CRM, formularios, QR y analítica.",
+  openGraph: { images: [{ url: `/og?${new URLSearchParams({ title: OG_TITLE, subtitle: OG_SUBTITLE }).toString()}` }] },
 };
 
 export default async function PlanesPage() {
-  const plansRaw = await getPlanCatalog();
+  const [plansRaw, branding] = await Promise.all([getPlanCatalog(), getPlatformBranding()]);
   const { bienvenidaHref, loginHref } = getDashboardLinks();
   const plans: PlanResponse[] = [...plansRaw].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
+      <JsonLd nodes={[impulzaOrganizationNode(branding), marketingFaqNode(FAQ_ITEMS)]} />
       <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
 
       <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-20">

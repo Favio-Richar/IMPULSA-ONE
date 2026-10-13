@@ -163,3 +163,171 @@ describe("resolveSeo (F2.8)", () => {
     expect(seo.canonicalPath).toBe("/panaderia/servicios");
   });
 });
+
+describe("resolveSeo — datos estructurados (F11, decisión del propietario 2026-10-13)", () => {
+  it("sin ningún bloque de negocio, solo un Organization genérico con el nombre del sitio", () => {
+    const seo = resolveSeo({ site, page: homePage, seoMeta: null, blocks: [], canonicalOverridePath: null, selfPath: "/panaderia" });
+    expect(seo.structuredData).toEqual([{ "@context": "https://schema.org", "@type": "Organization", name: "Panadería El Buen Pan" }]);
+  });
+
+  it("con un bloque map (dirección real), el negocio es LocalBusiness y no Organization", () => {
+    const seo = resolveSeo({
+      site,
+      page: homePage,
+      seoMeta: null,
+      blocks: [{ type: "map", config: { address: "Av. Siempre Viva 742, Santiago" } }],
+      canonicalOverridePath: null,
+      selfPath: "/panaderia",
+    });
+    expect(seo.structuredData[0]).toMatchObject({ "@type": "LocalBusiness", address: "Av. Siempre Viva 742, Santiago" });
+  });
+
+  it("junta nombre, foto, teléfono y redes de perfil/whatsapp/social en el mismo nodo de negocio", () => {
+    const seo = resolveSeo({
+      site,
+      page: homePage,
+      seoMeta: null,
+      blocks: [
+        { type: "profile", config: { name: "Panadería El Buen Pan", headline: "Pan artesanal desde 1998", avatar: { url: "https://cdn.test/logo.png", alt: "Logo" } } },
+        { type: "whatsapp", config: { phone: "+56912345678" } },
+        { type: "social", config: { links: [{ network: "instagram", url: "https://instagram.com/elbuenpan" }] } },
+      ],
+      canonicalOverridePath: null,
+      selfPath: "/panaderia",
+    });
+    expect(seo.structuredData[0]).toEqual({
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "Panadería El Buen Pan",
+      description: "Pan artesanal desde 1998",
+      image: "https://cdn.test/logo.png",
+      telephone: "+56912345678",
+      sameAs: ["https://instagram.com/elbuenpan"],
+    });
+  });
+
+  it("contact_actions aporta teléfono y correo si whatsapp no está", () => {
+    const seo = resolveSeo({
+      site,
+      page: homePage,
+      seoMeta: null,
+      blocks: [{ type: "contact_actions", config: { email: "hola@elbuenpan.cl", phone: "+56987654321" } }],
+      canonicalOverridePath: null,
+      selfPath: "/panaderia",
+    });
+    expect(seo.structuredData[0]).toMatchObject({ telephone: "+56987654321", email: "hola@elbuenpan.cl" });
+  });
+
+  it("cada bloque faq con preguntas reales se convierte en su propio FAQPage, con el HTML de la respuesta desnudo", () => {
+    const seo = resolveSeo({
+      site,
+      page: otherPage,
+      seoMeta: null,
+      blocks: [{ type: "faq", config: { items: [{ question: "¿Hacen envíos?", answer: "<p>Sí, dentro de <strong>Santiago</strong>.</p>" }] } }],
+      canonicalOverridePath: null,
+      selfPath: "/panaderia/servicios",
+    });
+    const faq = seo.structuredData.find((node) => node["@type"] === "FAQPage");
+    expect(faq).toEqual({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [{ "@type": "Question", name: "¿Hacen envíos?", acceptedAnswer: { "@type": "Answer", text: "Sí, dentro de Santiago ." } }],
+    });
+  });
+
+  it("un bloque events agrega un nodo Event por cada fila, con fecha de fin solo si la tiene", () => {
+    const seo = resolveSeo({
+      site,
+      page: otherPage,
+      seoMeta: null,
+      blocks: [
+        {
+          type: "events",
+          config: {
+            timeZone: "America/Santiago",
+            items: [
+              { name: "Taller de masa madre", start: "2026-11-01T10:00:00-03:00" },
+              { name: "Feria navideña", start: "2026-12-15T09:00:00-03:00", end: "2026-12-15T20:00:00-03:00" },
+            ],
+          },
+        },
+      ],
+      canonicalOverridePath: null,
+      selfPath: "/panaderia/servicios",
+    });
+    const events = seo.structuredData.filter((node) => node["@type"] === "Event");
+    expect(events).toEqual([
+      { "@context": "https://schema.org", "@type": "Event", name: "Taller de masa madre", startDate: "2026-11-01T10:00:00-03:00" },
+      {
+        "@context": "https://schema.org",
+        "@type": "Event",
+        name: "Feria navideña",
+        startDate: "2026-12-15T09:00:00-03:00",
+        endDate: "2026-12-15T20:00:00-03:00",
+      },
+    ]);
+  });
+
+  it("un bloque service con precio agrega un nodo Service con Offer; en CLP (sin decimales) el precio no se divide", () => {
+    const seo = resolveSeo({
+      site,
+      page: otherPage,
+      seoMeta: null,
+      blocks: [{ type: "service", config: { name: "Torta de cumpleaños", description: "Personalizada", priceAmount: 15000, priceCurrency: "CLP" } }],
+      canonicalOverridePath: null,
+      selfPath: "/panaderia/servicios",
+    });
+    const service = seo.structuredData.find((node) => node["@type"] === "Service");
+    expect(service).toEqual({
+      "@context": "https://schema.org",
+      "@type": "Service",
+      name: "Torta de cumpleaños",
+      description: "Personalizada",
+      offers: { "@type": "Offer", price: "15000", priceCurrency: "CLP" },
+    });
+  });
+
+  it("en una moneda con decimales (USD), el precio en la unidad mínima SÍ se divide por 100", () => {
+    const seo = resolveSeo({
+      site,
+      page: otherPage,
+      seoMeta: null,
+      blocks: [{ type: "service", config: { name: "Consulta", priceAmount: 2500, priceCurrency: "USD" } }],
+      canonicalOverridePath: null,
+      selfPath: "/panaderia/servicios",
+    });
+    const service = seo.structuredData.find((node) => node["@type"] === "Service");
+    expect((service?.offers as { price: string }).price).toBe("25.00");
+  });
+
+  it("un bloque service sin precio no agrega Offer", () => {
+    const seo = resolveSeo({
+      site,
+      page: otherPage,
+      seoMeta: null,
+      blocks: [{ type: "service", config: { name: "Cotización a medida" } }],
+      canonicalOverridePath: null,
+      selfPath: "/panaderia/servicios",
+    });
+    const service = seo.structuredData.find((node) => node["@type"] === "Service");
+    expect(service).toEqual({ "@context": "https://schema.org", "@type": "Service", name: "Cotización a medida" });
+  });
+
+  it("testimonials nunca aporta datos estructurados (Google no permite reseñas propias en el sitio del negocio)", () => {
+    const seo = resolveSeo({
+      site,
+      page: otherPage,
+      seoMeta: null,
+      blocks: [{ type: "testimonials", config: { items: [{ quote: "Excelente", author: "Un cliente", rating: 5 }] } }],
+      canonicalOverridePath: null,
+      selfPath: "/panaderia/servicios",
+    });
+    expect(seo.structuredData.some((node) => node["@type"] === "Review" || node["@type"] === "AggregateRating")).toBe(false);
+  });
+
+  it("una página membersOnly sin bloques no produce datos estructurados vacíos más allá del Organization base", () => {
+    const seo = resolveSeo({ site, page: otherPage, seoMeta: {}, blocks: [], canonicalOverridePath: null, selfPath: "/panaderia/servicios" });
+    expect(seo.structuredData).toHaveLength(1);
+    expect(seo.structuredData[0]!["@type"]).toBe("Organization");
+  });
+});

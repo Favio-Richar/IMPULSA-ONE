@@ -13,6 +13,17 @@ import { TemplateCarousel } from "../components/marketing/template-carousel";
 import { CorridorHero } from "../components/marketing/corridor-hero";
 import { RubrosWheel } from "../components/marketing/rubros-wheel";
 import { FEATURES, FeatureIcon, STEPS, PlanCard } from "../components/marketing/shared";
+import { JsonLd } from "../components/json-ld";
+import { impulzaOrganizationNode } from "../lib/marketing-structured-data.js";
+
+// Mismas peticiones que hace la página más abajo (`getPlatformBranding`, deduplicada por Next
+// dentro del mismo render): solo la imagen de Open Graph de respaldo necesita generateMetadata
+// acá -- el resto del `<title>`/descripción sigue viniendo del layout raíz (F2.8).
+export async function generateMetadata() {
+  const branding = await getPlatformBranding();
+  const params = new URLSearchParams({ title: "Tu negocio, al frente. En un solo enlace.", subtitle: branding.name });
+  return { openGraph: { images: [{ url: `/og?${params.toString()}` }] } };
+}
 
 export default async function MarketingHomePage() {
   const [templates, plansRaw, branding] = await Promise.all([
@@ -26,6 +37,7 @@ export default async function MarketingHomePage() {
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
+      <JsonLd nodes={[impulzaOrganizationNode(branding)]} />
       <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} branding={branding} />
 
       {/* Portada: corredor de fotos de negocios detrás del mensaje principal. */}

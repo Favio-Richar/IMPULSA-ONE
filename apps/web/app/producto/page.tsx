@@ -4,11 +4,18 @@ import { MarketingFooter } from "../../components/marketing/footer";
 import { Reveal } from "../../components/marketing/reveal";
 import { FEATURES, FeatureIcon, STEPS } from "../../components/marketing/shared";
 import { getDashboardLinks } from "../../lib/dashboard-links";
+import { getPlatformBranding } from "../../lib/api";
+import { JsonLd } from "../../components/json-ld";
+import { impulzaOrganizationNode } from "../../lib/marketing-structured-data.js";
+
+const OG_TITLE = "Producto";
+const OG_SUBTITLE = "Portal biográfico, mini-CRM, formularios, QR y analítica real";
 
 export const metadata = {
   title: "Producto — Impulza One",
   description:
     "Portal biográfico, mini-CRM, formularios propios, QR y analítica real: todo lo que trae Impulza One para tu enlace en bio.",
+  openGraph: { images: [{ url: `/og?${new URLSearchParams({ title: OG_TITLE, subtitle: OG_SUBTITLE }).toString()}` }] },
 };
 
 const DEEP_DIVES = [
@@ -40,9 +47,11 @@ const DEEP_DIVES = [
 
 export default async function ProductoPage() {
   const { bienvenidaHref, loginHref } = getDashboardLinks();
+  const branding = await getPlatformBranding();
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
+      <JsonLd nodes={[impulzaOrganizationNode(branding)]} />
       <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
 
       <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-20">

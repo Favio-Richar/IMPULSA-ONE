@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPublicPage } from "../../../lib/api";
+import { getPublicPage, getPublicSite } from "../../../lib/api";
 import { seoToMetadata } from "../../../lib/seo-metadata";
 import { SitePage, utmFrom } from "../../../components/site-page";
 
@@ -13,8 +13,8 @@ interface Props {
 // render (memoización de peticiones), no es una segunda ida a la red.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { siteSlug, pageSlug } = await params;
-  const page = await getPublicPage(siteSlug, pageSlug);
-  return page ? seoToMetadata(page.seo) : {};
+  const [page, site] = await Promise.all([getPublicPage(siteSlug, pageSlug), getPublicSite(siteSlug)]);
+  return page ? seoToMetadata(page.seo, { siteName: site?.name }) : {};
 }
 
 export default async function SiteInnerPage({ params, searchParams }: Props) {

@@ -33,17 +33,26 @@ export async function MarketingFooter({
         <div className="flex flex-col gap-3">
           <span className="flex items-center gap-2 text-base font-semibold text-[#0f172a]">
             {resolved.logoLightUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={resolved.logoLightUrl} alt={name} className="h-7 w-auto object-contain" />
+                {name}
+              </>
+            ) : name === "Impulza One" ? (
+              // Marca de fábrica: el logo completo (emblema y nombre), a un tamaño en que el nombre se lee.
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={resolved.logoLightUrl} alt={name} className="h-7 w-auto object-contain" />
+              <img src="/brand/impulza-logo-completo.png" alt={name} width={480} height={486} className="h-28 w-auto object-contain" />
             ) : (
-              <span
-                className="flex h-7 w-7 items-center justify-center rounded-[8px] text-xs font-bold text-white"
-                style={{ backgroundColor: primaryColor }}
-              >
-                {initials}
-              </span>
+              <>
+                <span
+                  className="flex h-7 w-7 items-center justify-center rounded-[8px] text-xs font-bold text-white"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  {initials}
+                </span>
+                {name}
+              </>
             )}
-            {name}
           </span>
           <p className="max-w-xs text-sm text-[#64748b]">{footerText}</p>
         </div>

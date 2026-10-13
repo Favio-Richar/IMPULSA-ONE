@@ -37,6 +37,11 @@ export function MarketingHeader({
           {branding?.logoLightUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={branding.logoLightUrl} alt={name} className="h-8 w-auto object-contain" />
+          ) : name === "Impulza One" ? (
+            // Marca de fábrica: nadie configuró un logo y la plataforma conserva su nombre. El nombre va al lado
+            // en texto (el del dibujo es muy fino para este tamaño), por eso la imagen es decorativa.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/brand/impulza-logo-emblema.png" alt="" width={40} height={40} className="size-10 object-contain" />
           ) : (
             <span
               className="flex h-8 w-8 items-center justify-center rounded-[10px] text-sm font-bold text-white"

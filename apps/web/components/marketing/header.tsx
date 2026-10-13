@@ -43,7 +43,7 @@ export function MarketingHeader({
           ) : name === "Impulza One" ? (
             // Marca de fábrica: nadie configuró un logo y la plataforma conserva su nombre. El logo ya trae el nombre.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src="/brand/impulza-logo-horizontal.png" alt={name} width={640} height={283} className="h-14 w-auto object-contain md:h-16" />
+            <img src="/brand/impulza-logo-horizontal.png" alt={name} width={640} height={275} className="h-14 w-auto object-contain md:h-16" />
           ) : (
             <>
               <span

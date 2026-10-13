@@ -24,6 +24,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useActiveOrgStore } from "../../lib/active-org-store";
 import { ApiError } from "../../lib/api-client";
+import { BusinessHome } from "../../components/home/business-home";
 import { createOrganization, listMembers, listMyOrganizations, type Organization } from "../../lib/api/organizations";
 
 const createOrgSchema = z.object({
@@ -124,7 +125,13 @@ export default function PanelHomePage(): React.JSX.Element {
     return <DelegatedHome organization={active} />;
   }
 
-  return <OrganizationMembers organizationId={activeOrganizationId} />;
+  return (
+    <BusinessHome
+      organization={active}
+      organizationId={activeOrganizationId}
+      membersSection={<OrganizationMembers organizationId={activeOrganizationId} />}
+    />
+  );
 }
 
 const DELEGATED_SHORTCUTS = [

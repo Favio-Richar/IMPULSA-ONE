@@ -116,7 +116,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             )
           ) : (
             // Valor de fábrica de la plataforma: nadie configuró un logo.
-            <ImpulzaLogo variant={navCollapsed ? "icon" : "full"} name={brandName} />
+            <PlatformFallbackLogo name={brandName} collapsed={navCollapsed} />
           )}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -147,7 +147,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 ) : panelBrand ? (
                   brandName
                 ) : (
-                  <ImpulzaLogo variant="full" name={brandName} />
+                  <PlatformFallbackLogo name={brandName} collapsed={false} />
                 )}
               </span>
               <Button
@@ -236,4 +236,21 @@ function ViewerHomeRedirect(): null {
     router.replace("/aprobaciones");
   }, [router]);
   return null;
+}
+
+/**
+ * Logo de fábrica del panel cuando nadie configuró uno: el logo oficial de Impulza One mientras la plataforma conserve
+ * su nombre; si el superadministrador la renombró sin subir logo, el isotipo con ese nombre (no mostramos otra marca).
+ */
+function PlatformFallbackLogo({ name, collapsed }: { name: string; collapsed: boolean }): React.JSX.Element {
+  if (name !== "Impulza One") {
+    return <ImpulzaLogo variant={collapsed ? "icon" : "full"} name={name} />;
+  }
+  return collapsed ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/brand/impulza-logo-icon.png" alt={name} width={36} height={36} className="size-9 object-contain" />
+  ) : (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/brand/impulza-logo.png" alt={name} width={720} height={210} className="h-10 w-auto max-w-[180px] object-contain object-left" />
+  );
 }

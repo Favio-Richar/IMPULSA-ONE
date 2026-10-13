@@ -35,22 +35,26 @@ export function MarketingHeader({
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-[#0f172a]">
           {branding?.logoLightUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={branding.logoLightUrl} alt={name} className="h-8 w-auto object-contain" />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={branding.logoLightUrl} alt={name} className="h-8 w-auto object-contain" />
+              {name}
+            </>
           ) : name === "Impulza One" ? (
-            // Marca de fábrica: nadie configuró un logo y la plataforma conserva su nombre. El nombre va al lado
-            // en texto (el del dibujo es muy fino para este tamaño), por eso la imagen es decorativa.
+            // Marca de fábrica: nadie configuró un logo y la plataforma conserva su nombre. El logo ya trae el nombre.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src="/brand/impulza-logo-emblema.png" alt="" width={40} height={40} className="size-10 object-contain" />
+            <img src="/brand/impulza-logo-horizontal.png" alt={name} width={640} height={283} className="h-14 w-auto object-contain md:h-16" />
           ) : (
-            <span
-              className="flex h-8 w-8 items-center justify-center rounded-[10px] text-sm font-bold text-white"
-              style={{ backgroundColor: primaryColor }}
-            >
-              {initials}
-            </span>
+            <>
+              <span
+                className="flex h-8 w-8 items-center justify-center rounded-[10px] text-sm font-bold text-white"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {initials}
+              </span>
+              {name}
+            </>
           )}
-          {name}
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">

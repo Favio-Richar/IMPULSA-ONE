@@ -39,9 +39,9 @@ export async function MarketingFooter({
                 {name}
               </>
             ) : name === "Impulza One" ? (
-              // Marca de fábrica: el logo completo (emblema y nombre), a un tamaño en que el nombre se lee.
+              // Marca de fábrica: el logo (emblema y nombre), a un tamaño en que el nombre se lee.
               // eslint-disable-next-line @next/next/no-img-element
-              <img src="/brand/impulza-logo-completo.png" alt={name} width={480} height={486} className="h-28 w-auto object-contain" />
+              <img src="/brand/impulza-logo-horizontal.png" alt={name} width={640} height={283} className="h-28 w-auto object-contain" />
             ) : (
               <>
                 <span

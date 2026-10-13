@@ -37,7 +37,29 @@ const paletteSchema = z.object({
  * es Fraunces en títulos + Inter en texto, la pareja de los temas oscuros. Ver
  * `themeTokensToCssVariables` y `packages/blocks-renderer/src/styles/fonts.css`.
  */
-export const FONT_FAMILIES = ["system", "serif", "geometric", "humanist", "executive", "vibrant", "editorial"] as const;
+export const FONT_FAMILIES = [
+  // Del dispositivo (sin descargar nada).
+  "system",
+  "serif",
+  "geometric",
+  "humanist",
+  // Parejas y familias alojadas en el propio sitio (OFL, `@fontsource-variable/*`).
+  "executive",
+  "vibrant",
+  "editorial",
+  // Ampliación del catálogo (extra F10): serif editorial, sans moderna y display expresiva.
+  "playfair",
+  "lora",
+  "cormorant",
+  "dmsans",
+  "jakarta",
+  "outfit",
+  "montserrat",
+  "grotesk",
+  "sora",
+  "syne",
+  "caveat",
+] as const;
 
 // "Bordes moderados, nada excesivamente redondo" es dirección visual obligatoria (CLAUDE.md), así
 // que no existe una opción "pill" para el marco general del tema.

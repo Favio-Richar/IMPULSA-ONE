@@ -17,3 +17,16 @@
 @import "@fontsource-variable/bricolage-grotesque";
 /* PL2 (ADR-008): títulos editoriales de los temas oscuros. */
 @import "@fontsource-variable/fraunces";
+/* Extra F10: ampliación del catálogo tipográfico (serif editorial, sans moderna y display expresiva). Mismas reglas: OFL-1.1,
+   alojadas en el propio sitio y con `font-display: swap`; una prueba lo verifica por cada paquete. */
+@import "@fontsource-variable/playfair-display";
+@import "@fontsource-variable/lora";
+@import "@fontsource-variable/cormorant";
+@import "@fontsource-variable/dm-sans";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/outfit";
+@import "@fontsource-variable/montserrat";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/sora";
+@import "@fontsource-variable/syne";
+@import "@fontsource-variable/caveat";

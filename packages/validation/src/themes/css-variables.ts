@@ -38,6 +38,21 @@ const FONT_STACKS: Record<ThemeTokens["fontFamily"], { body: string; heading: st
   vibrant: { body: `"Manrope Variable", ${SYSTEM_SANS}`, heading: `"Bricolage Grotesque Variable", ${SYSTEM_SANS}` },
   // Editorial (PL2, ADR-008): serif con carácter para el nombre y los títulos, Inter para leer.
   editorial: { body: `"Inter Variable", ${SYSTEM_SANS}`, heading: `"Fraunces Variable", ${SYSTEM_SERIF}` },
+
+  // Serif editorial (extra F10): títulos con carácter y un texto muy legible.
+  playfair: { body: `"Inter Variable", ${SYSTEM_SANS}`, heading: `"Playfair Display Variable", ${SYSTEM_SERIF}` },
+  lora: { body: `"Lora Variable", ${SYSTEM_SERIF}`, heading: `"Lora Variable", ${SYSTEM_SERIF}` },
+  cormorant: { body: `"Inter Variable", ${SYSTEM_SANS}`, heading: `"Cormorant Variable", ${SYSTEM_SERIF}` },
+  // Sans moderna: una sola familia en títulos y texto.
+  dmsans: { body: `"DM Sans Variable", ${SYSTEM_SANS}`, heading: `"DM Sans Variable", ${SYSTEM_SANS}` },
+  jakarta: { body: `"Plus Jakarta Sans Variable", ${SYSTEM_SANS}`, heading: `"Plus Jakarta Sans Variable", ${SYSTEM_SANS}` },
+  outfit: { body: `"Outfit Variable", ${SYSTEM_SANS}`, heading: `"Outfit Variable", ${SYSTEM_SANS}` },
+  montserrat: { body: `"Montserrat Variable", ${SYSTEM_SANS}`, heading: `"Montserrat Variable", ${SYSTEM_SANS}` },
+  // Display expresiva: títulos con personalidad y el texto en Inter para leer.
+  grotesk: { body: `"Inter Variable", ${SYSTEM_SANS}`, heading: `"Space Grotesk Variable", ${SYSTEM_SANS}` },
+  sora: { body: `"Inter Variable", ${SYSTEM_SANS}`, heading: `"Sora Variable", ${SYSTEM_SANS}` },
+  syne: { body: `"Inter Variable", ${SYSTEM_SANS}`, heading: `"Syne Variable", ${SYSTEM_SANS}` },
+  caveat: { body: `"Inter Variable", ${SYSTEM_SANS}`, heading: `"Caveat Variable", ${SYSTEM_SANS}` },
 };
 
 const RADIUS_VALUES: Record<ThemeTokens["radius"], string> = {

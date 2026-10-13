@@ -19,3 +19,4 @@ export {
   type ThemeFamily,
 } from "./catalog.js";
 export { themeTokensToCssVariables, themeAltCssVariables, type ThemeCssVariables } from "./css-variables.js";
+export { FONT_FAMILY_META, FONT_STYLE_GROUPS, type FontFamily, type FontStyleGroup } from "./fonts.js";

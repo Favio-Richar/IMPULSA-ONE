@@ -127,10 +127,19 @@ export async function getBookingAvailable(siteSlug: string): Promise<boolean | n
  * llevan `siteCacheTag`: los invalida el próximo despliegue, no una publicación de un cliente.
  * Usados por la home comercial (`app/page.tsx`) para mostrar datos reales, no maquetados.
  */
+/**
+ * Catálogo público (plantillas, planes): igual que `getPlatformBranding`, nunca debe tumbar una
+ * página ni el build -- si la API no responde (caída, o simplemente no está encendida al hacer
+ * `next build`), se trata como catálogo vacío en vez de propagar el error de red.
+ */
 async function fetchCatalog<T>(path: string, schema: { parse: (value: unknown) => T }): Promise<T | null> {
-  const response = await fetch(`${env.API_BASE_URL}${path}`, { next: { revalidate: 300 } });
-  if (!response.ok) return null;
-  return schema.parse(await response.json());
+  try {
+    const response = await fetch(`${env.API_BASE_URL}${path}`, { next: { revalidate: 300 } });
+    if (!response.ok) return null;
+    return schema.parse(await response.json());
+  } catch {
+    return null;
+  }
 }
 
 export async function getTemplateCatalog(): Promise<TemplateResponse[]> {

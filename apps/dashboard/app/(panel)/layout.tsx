@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, ErrorState, LoadingState } from "@impulza/ui";
+import { Button, ErrorState, ImpulzaLogo, LoadingState } from "@impulza/ui";
 import { brandCssVariables } from "@impulza/validation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
@@ -105,12 +105,18 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           {brandLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={brandLogo} alt={brandName} className={navCollapsed ? "size-8 object-contain" : "h-6 max-w-[140px] object-contain"} />
-          ) : navCollapsed ? (
-            <span aria-hidden="true" className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
-              {brandName.slice(0, 1).toUpperCase()}
-            </span>
+          ) : panelBrand ? (
+            // Marca blanca sin logo propio: nunca el de Impulza; el nombre de la agencia (o su inicial al plegar).
+            navCollapsed ? (
+              <span aria-hidden="true" className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
+                {brandName.slice(0, 1).toUpperCase()}
+              </span>
+            ) : (
+              brandName
+            )
           ) : (
-            brandName
+            // Valor de fábrica de la plataforma: nadie configuró un logo.
+            <ImpulzaLogo variant={navCollapsed ? "icon" : "full"} name={brandName} />
           )}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -138,8 +144,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 {brandLogo ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={brandLogo} alt={brandName} className="h-6 max-w-[140px] object-contain" />
-                ) : (
+                ) : panelBrand ? (
                   brandName
+                ) : (
+                  <ImpulzaLogo variant="full" name={brandName} />
                 )}
               </span>
               <Button

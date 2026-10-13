@@ -11,7 +11,8 @@ export async function generateMetadata(): Promise<Metadata> {
     title: `${branding.name} — Panel`,
     description: "Panel del propietario, colaboradores y modo agencia.",
     icons: {
-      ...(branding.faviconUrl ? { icon: [{ url: branding.faviconUrl }] } : {}),
+      // `icon` siempre con valor (igual que apps/web): con solo `apple`, Next no inyecta ningún favicon.
+      icon: branding.faviconUrl ? [{ url: branding.faviconUrl }] : [{ url: "/icons/icon-192.png" }],
       apple: "/icons/apple-touch-icon.png",
     },
   };

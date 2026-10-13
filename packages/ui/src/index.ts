@@ -1,6 +1,12 @@
 export { cn } from "./lib/cn.js";
 
 export { Button, buttonVariants, type ButtonProps } from "./components/Button.js";
+export {
+  ImpulzaLogo,
+  IMPULZA_LOGO_PRIMARY,
+  IMPULZA_LOGO_SECONDARY,
+  type ImpulzaLogoProps,
+} from "./components/ImpulzaLogo.js";
 export { Input, type InputProps } from "./components/Input.js";
 export { Textarea, type TextareaProps } from "./components/Textarea.js";
 export { Dialog, type DialogProps } from "./components/Dialog.js";

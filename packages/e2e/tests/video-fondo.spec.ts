@@ -27,7 +27,7 @@ function lightVideo(): Buffer {
 }
 
 function backgroundCard(page: Page): Locator {
-  return page.locator("div").filter({ has: page.getByText("Fondo de la página", { exact: true }) }).filter({ has: page.getByRole("button", { name: "Aplicar fondo" }) }).last();
+  return page.getByRole("region", { name: "Apariencia", exact: true });
 }
 
 /** Los radios están ocultos visualmente dentro de su etiqueta: se elige haciendo clic en ella. */
@@ -56,7 +56,7 @@ test("sube un video, queda convertido y se usa de fondo con una capa legible", a
   await expect(card.getByText("720×1280")).toBeVisible();
   await expect(card.locator("img")).toHaveAttribute("src", /w400\.webp$/);
 
-  await page.goto(`/sitios/${fixture.siteId}`);
+  await page.goto(`/sitios/${fixture.siteId}?tab=apariencia`);
   const background = backgroundCard(page);
   await choose(background, "Video");
   await choose(background, fileName);
@@ -64,8 +64,8 @@ test("sube un video, queda convertido y se usa de fondo con una capa legible", a
   await choose(background, "Oscura");
   await expect(background.getByRole("radio", { name: "Suave", exact: true })).toBeDisabled();
   await choose(background, "Fuerte");
-  await expect(background.getByRole("img", { name: "Vista previa del fondo" }).locator('[data-background="video"]')).toBeVisible();
-  await background.getByRole("button", { name: "Aplicar fondo" }).click();
+  await expect(background.getByRole("img", { name: "Vista previa de la apariencia" }).locator('[data-background="video"]')).toBeVisible();
+  await background.getByRole("button", { name: "Aplicar apariencia" }).click();
   await expect(background.getByText("Fondo aplicado. Ya se ve en tu página pública.")).toBeVisible({ timeout: 10_000 });
 
   try {
@@ -100,9 +100,9 @@ test("sube un video, queda convertido y se usa de fondo con una capa legible", a
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.paused)).toBe(false);
   } finally {
     // El resto de las pruebas espera el fondo del tema.
-    await page.goto(`/sitios/${fixture.siteId}`);
+    await page.goto(`/sitios/${fixture.siteId}?tab=apariencia`);
     await choose(backgroundCard(page), "Del tema");
-    await backgroundCard(page).getByRole("button", { name: "Aplicar fondo" }).click();
+    await backgroundCard(page).getByRole("button", { name: "Aplicar apariencia" }).click();
     await expect(backgroundCard(page).getByText("Fondo aplicado. Ya se ve en tu página pública.")).toBeVisible({ timeout: 10_000 });
   }
 });

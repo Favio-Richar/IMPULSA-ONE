@@ -77,7 +77,7 @@ test("una campaña se programa, se activa tomando el inicio, se mide y se termin
   const project = testInfo.project.name;
 
   // Acceso desde el detalle del sitio.
-  await page.goto(`/sitios/${fixture.siteId}`);
+  await page.goto(`/sitios/${fixture.siteId}?tab=contenido`);
   await page.getByRole("link", { name: "Ver campañas" }).click();
   await expect(page.getByRole("heading", { name: "Modo campaña", level: 1 })).toBeVisible();
   await expect(page.getByText("Todavía no hay campañas", { exact: true })).toBeVisible();

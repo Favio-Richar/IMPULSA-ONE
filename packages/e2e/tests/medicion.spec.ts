@@ -193,7 +193,7 @@ test("configurar: solo analítica carga solo GA4; retirarla la apaga", async ({ 
 });
 
 test("el panel configura la medición: valida el formato y muestra el estado", async ({ page }, testInfo) => {
-  await page.goto(`/sitios/${fixture.siteId}`);
+  await page.goto(`/sitios/${fixture.siteId}?tab=dominio`);
   const form = page.getByRole("form", { name: "Medición del sitio" });
   await expect(form).toBeVisible();
   await expect(form.getByLabel("ID de medición")).toHaveValue(GA4);

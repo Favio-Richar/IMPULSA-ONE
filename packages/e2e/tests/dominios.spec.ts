@@ -18,7 +18,7 @@ test("agrega un dominio, muestra el TXT a crear, lo intenta verificar y lo quita
   // mensaje comprensible (sin TXT, o DNS inalcanzable en un entorno sin red).
   const domain = `e2e-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}.impulza-e2e.cl`;
 
-  await page.goto(`/sitios/${fixture.siteId}`);
+  await page.goto(`/sitios/${fixture.siteId}?tab=dominio`);
   const card = page.getByRole("form", { name: "Agregar dominio propio" });
   await expect(card).toBeVisible();
 

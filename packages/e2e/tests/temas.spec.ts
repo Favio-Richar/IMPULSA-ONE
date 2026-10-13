@@ -17,12 +17,13 @@ async function expectNoHorizontalScroll(page: Page): Promise<void> {
 }
 
 async function applyTheme(page: Page, group: string, name: string): Promise<void> {
-  await page.goto(`/sitios/${fixture.siteId}`);
+  await page.goto(`/sitios/${fixture.siteId}?tab=apariencia`);
   const section = page.getByRole("region", { name: group });
   const card = section.getByRole("button", { name: new RegExp(`^${name}`) });
-  // Si ya es el actual, el botón está deshabilitado y no hay nada que aplicar.
-  if (await card.isEnabled()) {
+  // Si ya es el actual no hay nada que aplicar; si no, se elige y se aplica con el botón único de la apariencia.
+  if ((await card.getByText("Actual").count()) === 0) {
     await card.click();
+    await page.getByRole("button", { name: "Aplicar apariencia" }).click();
   }
   await expect(card.getByText("Actual")).toBeVisible({ timeout: 10_000 });
 }

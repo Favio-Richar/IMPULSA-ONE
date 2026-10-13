@@ -47,7 +47,7 @@ function brightPng(width: number, height: number): Buffer {
 }
 
 function backgroundCard(page: Page): Locator {
-  return page.locator("div").filter({ has: page.getByText("Fondo de la página", { exact: true }) }).filter({ has: page.getByRole("button", { name: "Aplicar fondo" }) }).last();
+  return page.getByRole("region", { name: "Apariencia", exact: true });
 }
 
 async function expectNoHorizontalScroll(page: Page): Promise<void> {
@@ -63,18 +63,18 @@ async function choose(scope: Locator, name: string): Promise<void> {
 }
 
 async function applyAndConfirm(card: Locator): Promise<void> {
-  await card.getByRole("button", { name: "Aplicar fondo" }).click();
+  await card.getByRole("button", { name: "Aplicar apariencia" }).click();
   await expect(card.getByText("Fondo aplicado. Ya se ve en tu página pública.")).toBeVisible({ timeout: 10_000 });
 }
 
 test("un degradado oscuro se ve en el constructor con el texto aclarado y las tarjetas intactas", async ({ page }) => {
-  await page.goto(`/sitios/${fixture.siteId}`);
+  await page.goto(`/sitios/${fixture.siteId}?tab=apariencia`);
   const card = backgroundCard(page);
   await expect(card).toBeVisible();
 
   await choose(card, "Degradado");
   await choose(card, "Medianoche");
-  await expect(card.getByRole("img", { name: "Vista previa del fondo" }).locator('[data-background="gradient"]')).toBeVisible();
+  await expect(card.getByRole("img", { name: "Vista previa de la apariencia" }).locator('[data-background="gradient"]')).toBeVisible();
   await applyAndConfirm(card);
   await expectNoHorizontalScroll(page);
 
@@ -88,25 +88,25 @@ test("un degradado oscuro se ve en el constructor con el texto aclarado y las ta
   await expect.poll(() => heroTitle.evaluate((element) => getComputedStyle(element).color)).not.toBe("rgb(255, 255, 255)");
 
   // Se deja el sitio con el fondo del tema para el resto de las pruebas.
-  await page.goto(`/sitios/${fixture.siteId}`);
+  await page.goto(`/sitios/${fixture.siteId}?tab=apariencia`);
   await choose(backgroundCard(page), "Del tema");
   await applyAndConfirm(backgroundCard(page));
 });
 
 test("un color con el que ningún texto se lee no se puede aplicar", async ({ page }) => {
-  await page.goto(`/sitios/${fixture.siteId}`);
+  await page.goto(`/sitios/${fixture.siteId}?tab=apariencia`);
   const card = backgroundCard(page);
   await choose(card, "Color");
   const hex = card.getByRole("textbox", { name: "Color", exact: true });
   await hex.fill("#777777");
   await expect(card.getByRole("alert").filter({ hasText: "ningún texto se lee bien" })).toBeVisible();
-  await expect(card.getByRole("button", { name: "Aplicar fondo" })).toBeDisabled();
+  await expect(card.getByRole("button", { name: "Aplicar apariencia" })).toBeDisabled();
   await hex.fill("#0b1f3a");
-  await expect(card.getByRole("button", { name: "Aplicar fondo" })).toBeEnabled();
+  await expect(card.getByRole("button", { name: "Aplicar apariencia" })).toBeEnabled();
 });
 
 test("sobre una foto clara solo se ofrece la capa que deja leer el texto", async ({ page }) => {
-  await page.goto(`/sitios/${fixture.siteId}`);
+  await page.goto(`/sitios/${fixture.siteId}?tab=apariencia`);
   const card = backgroundCard(page);
   await choose(card, "Imagen");
   await card.getByRole("button", { name: "Elegir imagen" }).click();
@@ -120,7 +120,7 @@ test("sobre una foto clara solo se ofrece la capa que deja leer el texto", async
   await expect(card.getByRole("radio", { name: "Suave" })).toBeDisabled();
   await expect(card.getByRole("radio", { name: "Media" })).toBeDisabled();
   await expect(card.getByRole("radio", { name: "Fuerte" })).toBeChecked();
-  await expect(card.getByRole("img", { name: "Vista previa del fondo" }).locator('[data-overlay="dark-strong"]')).toBeAttached();
+  await expect(card.getByRole("img", { name: "Vista previa de la apariencia" }).locator('[data-overlay="dark-strong"]')).toBeAttached();
   await applyAndConfirm(card);
   await expectNoHorizontalScroll(page);
 

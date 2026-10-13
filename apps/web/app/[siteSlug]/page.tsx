@@ -15,7 +15,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { siteSlug } = await params;
   const [page, site] = await Promise.all([getPublicPage(siteSlug, HOME_PAGE_SLUG), getPublicSite(siteSlug)]);
-  return page ? seoToMetadata(page.seo, { siteName: site?.name }) : {};
+  return page ? seoToMetadata(page.seo, { siteName: site?.name, faviconUrl: site?.faviconUrl }) : {};
 }
 
 // Modo campaña (F7.7, ADR-022): mientras una campaña toma el inicio, la raíz muestra su página. Los

@@ -6,7 +6,7 @@ import { FEATURES, FeatureIcon, STEPS } from "../../components/marketing/shared"
 import { getDashboardLinks } from "../../lib/dashboard-links";
 import { getPlatformBranding } from "../../lib/api";
 import { JsonLd } from "../../components/json-ld";
-import { impulzaOrganizationNode } from "../../lib/marketing-structured-data.js";
+import { impulzaOrganizationNode } from "../../lib/marketing-structured-data";
 
 const OG_TITLE = "Producto";
 const OG_SUBTITLE = "Portal biográfico, mini-CRM, formularios, QR y analítica real";

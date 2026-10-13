@@ -51,6 +51,15 @@ export const publicSiteResponse = z.object({
    * contrato: una respuesta en caché de antes de F7.7 sigue siendo válida.
    */
   homePageSlug: z.string().nullable().optional(),
+  /**
+   * Favicon efectivo del NEGOCIO (F11, decisión del propietario 2026-10-13): ya resuelto con la
+   * cascada de marca (`cascadeBrand`, audiencia `customer`) -- propio de la organización, si lo
+   * subió en Configuración > Marca; si no, `null` y `apps/web` deja el favicon por defecto de la
+   * plataforma (el que ya trae el layout raíz). Nunca el de marca blanca de una agencia: eso es
+   * para lo que ve el EQUIPO del cliente, no el público de su sitio. Opcional en el contrato: una
+   * respuesta en caché de antes de F11 sigue siendo válida (sin favicon propio).
+   */
+  faviconUrl: z.string().nullable().optional(),
 });
 
 export const publicBlockResponse = z.object({

@@ -13,8 +13,13 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: `Sitio comercial y páginas públicas de ${branding.name}.`,
     metadataBase: new URL(env.PUBLIC_WEB_BASE_URL),
+    // F11: `icons.icon` siempre debe traer un valor -- si este objeto se declara aquí con SOLO
+    // `apple`, Next deja de inyectar el favicon por convención de archivo (`app/icon.png`) para el
+    // resto, así que una organización/plataforma sin favicon propio (el caso por defecto, ver
+    // `DEFAULT_PLATFORM_BRANDING.faviconUrl === null`) terminaba sin ningún favicon. Por eso el
+    // respaldo es explícito, no un objeto vacío.
     icons: {
-      ...(branding.faviconUrl ? { icon: [{ url: branding.faviconUrl }] } : {}),
+      icon: branding.faviconUrl ? [{ url: branding.faviconUrl }] : [{ url: "/icon.png" }],
       apple: "/icons/apple-touch-icon.png",
     },
   };

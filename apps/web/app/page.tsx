@@ -14,7 +14,7 @@ import { CorridorHero } from "../components/marketing/corridor-hero";
 import { RubrosWheel } from "../components/marketing/rubros-wheel";
 import { FEATURES, FeatureIcon, STEPS, PlanCard } from "../components/marketing/shared";
 import { JsonLd } from "../components/json-ld";
-import { impulzaOrganizationNode } from "../lib/marketing-structured-data.js";
+import { impulzaOrganizationNode } from "../lib/marketing-structured-data";
 
 // Mismas peticiones que hace la página más abajo (`getPlatformBranding`, deduplicada por Next
 // dentro del mismo render): solo la imagen de Open Graph de respaldo necesita generateMetadata

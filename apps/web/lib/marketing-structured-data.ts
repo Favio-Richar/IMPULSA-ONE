@@ -1,5 +1,5 @@
 import type { PublicPlatformBrandingResponse } from "@impulza/contracts";
-import { env } from "./env.js";
+import { env } from "./env";
 
 // Datos estructurados (schema.org) del SITIO COMERCIAL de Impulza One (F11, "SEO avanzado",
 // decisión del propietario 2026-10-13) -- deliberadamente separado de `lib/structured-data.ts`,

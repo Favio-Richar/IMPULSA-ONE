@@ -14,7 +14,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { siteSlug, pageSlug } = await params;
   const [page, site] = await Promise.all([getPublicPage(siteSlug, pageSlug), getPublicSite(siteSlug)]);
-  return page ? seoToMetadata(page.seo, { siteName: site?.name }) : {};
+  return page ? seoToMetadata(page.seo, { siteName: site?.name, faviconUrl: site?.faviconUrl }) : {};
 }
 
 export default async function SiteInnerPage({ params, searchParams }: Props) {

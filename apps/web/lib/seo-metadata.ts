@@ -28,7 +28,7 @@ function fallbackOpenGraphImage(title: string, siteName?: string): string {
   return `/og?${params.toString()}`;
 }
 
-export function seoToMetadata(seo: PublicSeoResponse, options: { siteName?: string } = {}): Metadata {
+export function seoToMetadata(seo: PublicSeoResponse, options: { siteName?: string; faviconUrl?: string | null } = {}): Metadata {
   const ogImage = seo.openGraph.image ?? fallbackOpenGraphImage(seo.openGraph.title, options.siteName);
   return {
     title: seo.title,
@@ -43,5 +43,11 @@ export function seoToMetadata(seo: PublicSeoResponse, options: { siteName?: stri
       url: seo.canonicalPath,
       images: [{ url: ogImage }],
     },
+    // F11 (decisión del propietario 2026-10-13): favicon PROPIO del negocio, ya resuelto por la API
+    // con la cascada de marca (audiencia `customer`). Sin uno propio, no se declara `icons` acá --
+    // así el visitante sigue viendo el de la plataforma que ya pone `app/layout.tsx` (la ruta hija
+    // reemplaza por completo el `icons` del padre en Next, así que solo conviene declararlo cuando
+    // hay algo propio con qué reemplazarlo, repitiendo también el `apple` del layout raíz).
+    ...(options.faviconUrl ? { icons: { icon: [{ url: options.faviconUrl }], apple: "/icons/apple-touch-icon.png" } } : {}),
   };
 }

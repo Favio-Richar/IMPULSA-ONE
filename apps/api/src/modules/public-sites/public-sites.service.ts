@@ -20,6 +20,7 @@ import { STORAGE } from "../../storage/storage.module.js";
 import { PRISMA } from "../../database/prisma.module.js";
 import { pageContentSnapshotSchema } from "../pages/page-content-snapshot.js";
 import { ThemesService } from "../themes/themes.service.js";
+import { BrandProfileService } from "../brand-profile/brand-profile.service.js";
 import { resolveSeo, type ResolvedSeo } from "./seo-resolver.js";
 import { SERVED_SITE } from "../../common/active-organization.js";
 
@@ -33,6 +34,8 @@ export interface PublicSiteView {
   measurement: { ga4MeasurementId: string | null; metaPixelId: string | null };
   /** Modo campaña (F7.7, ADR-022): página que muestra la raíz ahora, o `null` = el inicio. */
   homePageSlug: string | null;
+  /** F11: favicon efectivo del negocio (cascada de marca, audiencia `customer`), o `null` = el de la plataforma. */
+  faviconUrl: string | null;
 }
 
 export interface PublicBlockView {
@@ -71,6 +74,8 @@ export class PublicSitesService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly themesService: ThemesService,
     @Inject(STORAGE) private readonly storage: StorageAdapter | null,
+    // Global (`@Global()` en `BrandProfileModule`): no necesita declararse en `PublicSitesModule`.
+    private readonly brandProfileService: BrandProfileService,
   ) {}
 
   /**
@@ -171,6 +176,10 @@ export class PublicSitesService {
         })),
       measurement: { ga4MeasurementId: site.ga4MeasurementId, metaPixelId: site.metaPixelId },
       homePageSlug: await this.campaignHomeSlug(site.id, campaigns.homePageId),
+      // F11: el favicon que ve el PÚBLICO del negocio, nunca el de marca blanca de una agencia
+      // (esa es para el equipo del cliente) -- por eso `audience: "customer"`, igual que el resto
+      // de lo que un negocio le muestra a sus propios visitantes (ADR-028 §4).
+      faviconUrl: (await this.brandProfileService.resolveBrand(site.organizationId, "customer")).faviconUrl,
     };
   }
 

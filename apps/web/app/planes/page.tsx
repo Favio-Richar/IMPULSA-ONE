@@ -7,7 +7,7 @@ import { PlanCard, ComparisonTable, FaqAccordion, FAQ_ITEMS } from "../../compon
 import { getDashboardLinks } from "../../lib/dashboard-links";
 import { getPlanCatalog, getPlatformBranding } from "../../lib/api";
 import { JsonLd } from "../../components/json-ld";
-import { impulzaOrganizationNode, marketingFaqNode } from "../../lib/marketing-structured-data.js";
+import { impulzaOrganizationNode, marketingFaqNode } from "../../lib/marketing-structured-data";
 
 const OG_TITLE = "Planes";
 const OG_SUBTITLE = "Simples y sin sorpresas: portal, mini-CRM, formularios, QR y analítica";

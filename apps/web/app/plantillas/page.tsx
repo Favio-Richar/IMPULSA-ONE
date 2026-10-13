@@ -7,7 +7,7 @@ import { getDashboardLinks } from "../../lib/dashboard-links";
 import { getTemplateCatalog, getPlatformBranding } from "../../lib/api";
 import { RubrosCarousel } from "../../components/marketing/rubros-carousel";
 import { JsonLd } from "../../components/json-ld";
-import { impulzaOrganizationNode } from "../../lib/marketing-structured-data.js";
+import { impulzaOrganizationNode } from "../../lib/marketing-structured-data";
 
 const OG_TITLE = "Plantillas";
 const OG_SUBTITLE = "Plantillas reales del catálogo, filtradas por rubro";

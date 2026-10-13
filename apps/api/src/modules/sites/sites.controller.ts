@@ -22,6 +22,7 @@ import { PermissionGuard } from "../rbac/permission.guard.js";
 import { RequirePermission } from "../rbac/require-permission.decorator.js";
 import { assignThemeSchema, type AssignThemeDto } from "../themes/dto/theme.dto.js";
 import { createSiteSchema, type CreateSiteDto } from "./dto/create-site.dto.js";
+import { duplicateSiteSchema, type DuplicateSiteDto } from "./dto/duplicate-site.dto.js";
 import { setSiteBackgroundSchema, type SetSiteBackgroundDto } from "./dto/site-background.dto.js";
 import { updateSiteSchema, type UpdateSiteDto } from "./dto/update-site.dto.js";
 import { SitesService } from "./sites.service.js";
@@ -60,6 +61,30 @@ export class SitesController {
     @Body(new ZodValidationPipe(createSiteSchema)) body: CreateSiteDto,
   ) {
     return this.sitesService.createSite(organizationId, user.id, body.name, body.slug);
+  }
+
+  // Duplicar es CREAR un sitio (cuenta contra el límite del plan y exige `site.create`): POST a una acción del origen.
+  @Post(":siteId/duplicate")
+  @ApiPlanLimited("sites")
+  @UseGuards(PermissionGuard)
+  @RequirePermission(PERMISSIONS.SITE_CREATE)
+  @ApiOperation({
+    summary: "Duplicar un sitio",
+    description:
+      "Requiere el permiso `site.create` y respeta el límite de sitios del plan. La copia nace en borrador con las páginas, los bloques, el tema y el fondo del origen. No copia dominios, QR, analítica, medición, formularios, servicios, productos ni pruebas A/B. El slug es único en toda la plataforma.",
+  })
+  @ApiUuidParam("siteId", "Sitio de la organización que se duplica.")
+  @ApiZodBody(duplicateSiteSchema)
+  @ApiZodResponse(201, siteResponse, "La copia, en estado `DRAFT`.")
+  @ApiResponse({ status: 404, description: SITE_NOT_FOUND })
+  @ApiResponse({ status: 409, description: SLUG_TAKEN })
+  async duplicate(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(duplicateSiteSchema)) body: DuplicateSiteDto,
+  ) {
+    return this.sitesService.duplicateSite(organizationId, user.id, siteId, body.name, body.slug);
   }
 
   // Leer no exige permiso: basta con ser miembro activo de la organización (ANALYST y SUPPORT

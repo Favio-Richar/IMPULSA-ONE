@@ -1,10 +1,14 @@
+import { randomUUID } from "node:crypto";
 import { ConflictException, Inject, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import type { SiteBackgroundResponse, SiteMeasurementResponse } from "@impulza/contracts";
 import { MediaKind, MediaStatus, Prisma, type PrismaClient, type Site, SiteStatus } from "@impulza/database";
 import { parseMediaUrl, type StorageAdapter } from "@impulza/storage";
 import {
   BACKGROUND_VIDEOS,
+  clearBlockReferences,
+  getBlockDefinition,
   HOME_PAGE_SLUG,
+  remapSmartCta,
   imageTonesSchema,
   isOverlayLegible,
   legibleStrengths,
@@ -109,6 +113,136 @@ export class SitesService {
     });
 
     return site;
+  }
+
+  /**
+   * Duplica un sitio dentro de la MISMA organización (extra F10): la copia nace en borrador, con las páginas (inicio, orden,
+   * visibilidad, SEO, Smart CTA), sus bloques y el último contenido de cada uno, más el tema y el fondo. NO copia lo que es único
+   * por sitio: dominios propios, códigos QR, analítica, identificadores de medición, formularios, servicios, productos, pruebas A/B,
+   * campañas, miembros, cursos, tarjeta ni página de suscripción. Los bloques que apuntaban a un formulario, servicios o productos
+   * del origen quedan sin configurar (mismo criterio que duplicar un cliente de agencia, F9.5c).
+   *
+   * Todo ocurre en una sola transacción, con el límite del plan comprobado adentro (igual que `createSite`): o queda la copia
+   * completa o no queda nada.
+   */
+  async duplicateSite(organizationId: string, actorId: string, sourceSiteId: string, name: string, slug: string): Promise<Site> {
+    const source = await this.getSiteOrThrow(organizationId, sourceSiteId);
+    if (source.status === SiteStatus.ARCHIVED) {
+      throw new ConflictException("Un sitio archivado no se puede duplicar.");
+    }
+    await this.assertSlugAvailable(slug);
+
+    let created: Site;
+    let counts = { pages: 0, blocks: 0, blocksSkipped: 0 };
+    try {
+      created = await this.prisma.$transaction(
+        async (tx) => {
+          await this.plansService.assertWithinLimit(tx, organizationId, "sites");
+
+          const pages = await tx.page.findMany({
+            where: { siteId: source.id, deletedAt: null },
+            orderBy: [{ position: "asc" }, { id: "asc" }],
+            include: { blocks: { orderBy: { position: "asc" }, include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } } } },
+          });
+
+          const site = await tx.site.create({
+            data: {
+              organizationId,
+              name,
+              slug,
+              status: SiteStatus.DRAFT,
+              // Mismo tema y mismo fondo: son de la misma organización, así que su paleta y sus medios siguen siendo válidos.
+              themeId: source.themeId,
+              background: source.background === null ? Prisma.DbNull : (source.background as Prisma.InputJsonValue),
+              // Únicos por sitio: la visita de la copia no puede ir a la cuenta de medición del origen.
+              ga4MeasurementId: null,
+              metaPixelId: null,
+            },
+          });
+
+          const pageRows: Prisma.PageCreateManyInput[] = [];
+          const blockRows: Prisma.BlockCreateManyInput[] = [];
+          const versionRows: Prisma.BlockVersionCreateManyInput[] = [];
+          let skipped = 0;
+
+          for (const page of pages) {
+            const pageId = randomUUID();
+            const blockIdMap = new Map<string, string>();
+            for (const block of page.blocks) {
+              const config = block.versions[0]?.config;
+              const definition = getBlockDefinition(block.type);
+              if (!definition || block.configSchemaVersion > definition.version || config === null || config === undefined || typeof config !== "object" || Array.isArray(config)) {
+                skipped += 1;
+                continue;
+              }
+              const cleaned = clearBlockReferences(block.type, config as Record<string, unknown>).config;
+              if (!definition.schema.safeParse(cleaned).success) {
+                skipped += 1;
+                continue;
+              }
+              const blockId = randomUUID();
+              blockIdMap.set(block.id, blockId);
+              blockRows.push({
+                id: blockId,
+                pageId,
+                type: block.type,
+                position: block.position,
+                configSchemaVersion: block.configSchemaVersion,
+                visible: block.visible,
+                scheduledStart: block.scheduledStart,
+                scheduledEnd: block.scheduledEnd,
+                isPrimary: block.isPrimary,
+              });
+              versionRows.push({ blockId, versionNumber: 1, config: cleaned as Prisma.InputJsonValue });
+            }
+
+            const smartCta = remapSmartCta(page.smartCta, blockIdMap);
+            pageRows.push({
+              id: pageId,
+              siteId: site.id,
+              slug: page.slug,
+              position: page.position,
+              visibility: page.visibility,
+              // Todo en borrador: la copia se revisa y se publica a propósito.
+              status: "DRAFT",
+              isHome: page.isHome,
+              membersOnly: page.membersOnly,
+              seoMeta: page.seoMeta === null ? Prisma.DbNull : (page.seoMeta as Prisma.InputJsonValue),
+              smartCta: smartCta.value === null ? Prisma.DbNull : (smartCta.value as Prisma.InputJsonValue),
+            });
+          }
+
+          // Un sitio siempre tiene su página de inicio (F2.3): si el origen no la tuviera, la copia nace con una vacía.
+          if (!pageRows.some((row) => row.isHome === true)) {
+            pageRows.push({ siteId: site.id, slug: HOME_PAGE_SLUG, position: pageRows.length, isHome: true });
+          }
+          await tx.page.createMany({ data: pageRows });
+          if (blockRows.length > 0) {
+            await tx.block.createMany({ data: blockRows });
+            await tx.blockVersion.createMany({ data: versionRows });
+          }
+          counts = { pages: pageRows.length, blocks: blockRows.length, blocksSkipped: skipped };
+          return site;
+        },
+        { timeout: 20_000 },
+      );
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException("Ese slug ya está en uso.");
+      }
+      throw error;
+    }
+
+    await this.auditService.record({
+      organizationId,
+      actorId,
+      action: "site.duplicated",
+      targetType: "Site",
+      targetId: created.id,
+      metadata: { sourceSiteId: source.id, slug: created.slug, ...counts },
+    });
+
+    return created;
   }
 
   async listSites(organizationId: string): Promise<Site[]> {

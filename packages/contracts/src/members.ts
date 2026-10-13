@@ -20,8 +20,8 @@ export const siteMemberResponse = z.object({
   email: z.string(),
   name: z.string().nullable(),
   status: z.enum(["ACTIVE", "REVOKED"]),
-  /** `INVITED`: lo dio de alta el negocio. `PURCHASED`: entró pagando (F10.2) y su acceso depende de su periodo. */
-  source: z.enum(["INVITED", "PURCHASED"]),
+  /** `INVITED`: lo dio de alta el negocio. `PURCHASED`: entró pagando (F10.2) y su acceso depende de su periodo. `FREE`: se suscribió gratis. */
+  source: z.enum(["INVITED", "PURCHASED", "FREE"]),
   /** Hasta cuándo llega su acceso pagado (solo `PURCHASED` con un periodo vigente); `null` si no aplica o ya venció. */
   paidUntil: isoDateTime.nullable(),
   lastAccessAt: isoDateTime.nullable(),

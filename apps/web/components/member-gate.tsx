@@ -141,7 +141,7 @@ function goToCheckout(url: string, method: "GET" | "POST", fields: Record<string
   form.submit();
 }
 
-function PlanList({
+export function PlanList({
   siteSlug,
   plans,
   providers,

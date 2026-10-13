@@ -56,6 +56,8 @@ export const BLOCK_TYPES = [
   "stats",
   "steps",
   "feature",
+  // Extra F10: botón «Suscribirme» que lleva a la página de suscripción del sitio (`/:sitio/s`)
+  "subscribe",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -446,6 +448,15 @@ export const newsletterBlockSchema = z.object({
 });
 
 /**
+ * Botón «Suscribirme» del portal (extra F10, ADR-029): solo el texto. Lleva a la página de suscripción del sitio, donde la
+ * persona se suscribe gratis o con un plan de pago; ahí vive el formulario, no en la portada.
+ */
+export const subscribeBlockSchema = z.object({
+  label: plainTextSchema(40).default("Suscríbete"),
+  description: plainTextSchema(80).optional(),
+});
+
+/**
  * Entrada del catálogo.
  *
  * `version` es el `config_schema_version` que se guarda con el bloque: sube cuando el esquema de
@@ -499,6 +510,7 @@ export const BLOCK_CATALOG: Readonly<Record<BlockType, BlockDefinition>> = {
   music: { type: "music", version: 1, schema: musicSchema, richTextPaths: [] },
   events: { type: "events", version: 1, schema: eventsSchema, richTextPaths: [] },
   newsletter: { type: "newsletter", version: 1, schema: newsletterBlockSchema, richTextPaths: [] },
+  subscribe: { type: "subscribe", version: 1, schema: subscribeBlockSchema, richTextPaths: [] },
   works_wheel: { type: "works_wheel", version: 1, schema: worksWheelSchema, richTextPaths: [] },
   marquee: { type: "marquee", version: 1, schema: marqueeSchema, richTextPaths: [] },
   showcase: { type: "showcase", version: 1, schema: showcaseSchema, richTextPaths: [] },
@@ -573,3 +585,4 @@ export type MusicBlockConfig = z.infer<typeof musicSchema>;
 export type EventsBlockConfig = z.infer<typeof eventsSchema>;
 export type EventItem = z.infer<typeof eventItemSchema>;
 export type NewsletterBlockConfig = z.infer<typeof newsletterBlockSchema>;
+export type SubscribeBlockConfig = z.infer<typeof subscribeBlockSchema>;

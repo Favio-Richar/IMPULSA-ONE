@@ -159,7 +159,7 @@ export interface CourseAccessInput {
 }
 
 export interface MemberAccessInput {
-  source: "INVITED" | "PURCHASED";
+  source: "INVITED" | "PURCHASED" | "FREE";
   /** Compras pagadas del miembro, con el plan de cada una. */
   purchases: Array<PurchaseForAccess & { planId: string }>;
 }
@@ -173,7 +173,7 @@ export interface MemberAccessInput {
 export function canAccessCourse(course: CourseAccessInput, member: MemberAccessInput | null, now: Date): boolean {
   if (course.access === "OPEN") return true;
   if (!member) return false;
-  if (course.access === "MEMBERS") return member.source === "INVITED" || member.purchases.some((purchase) => purchaseGrantsAccess(purchase, now));
+  if (course.access === "MEMBERS") return member.source === "INVITED" || member.source === "FREE" || member.purchases.some((purchase) => purchaseGrantsAccess(purchase, now));
   return member.purchases.some((purchase) => course.planIds.includes(purchase.planId) && purchaseGrantsAccess(purchase, now));
 }
 

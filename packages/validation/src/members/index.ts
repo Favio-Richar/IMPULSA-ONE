@@ -188,11 +188,11 @@ export function purchaseGrantsAccess(purchase: PurchaseForAccess, now: Date): bo
 }
 
 /**
- * Acceso de un miembro a las páginas protegidas. Un miembro INVITADO entra mientras esté activo; uno que se hizo miembro
- * PAGANDO entra solo mientras tenga un periodo pagado vigente.
+ * Acceso de un miembro a las páginas protegidas. Un miembro INVITADO (o suscrito GRATIS) entra mientras esté activo; uno que
+ * se hizo miembro PAGANDO entra solo mientras tenga un periodo pagado vigente.
  */
-export function memberHasAccess(member: { source: "INVITED" | "PURCHASED" }, purchases: PurchaseForAccess[], now: Date): boolean {
-  if (member.source === "INVITED") return true;
+export function memberHasAccess(member: { source: "INVITED" | "PURCHASED" | "FREE" }, purchases: PurchaseForAccess[], now: Date): boolean {
+  if (member.source === "INVITED" || member.source === "FREE") return true;
   return purchases.some((purchase) => purchaseGrantsAccess(purchase, now));
 }
 

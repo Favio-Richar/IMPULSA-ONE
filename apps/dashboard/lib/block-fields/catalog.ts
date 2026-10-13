@@ -858,4 +858,13 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
     ],
     seedConfig: () => ({ title: "Recibe nuestras novedades", description: "Un correo al mes con lo nuevo. Sin spam.", askName: false, buttonLabel: "Suscribirme" }),
   },
+
+  // Extra F10 (ADR-029): un botón que lleva a la página de suscripción del sitio. El formulario y los planes viven allá.
+  subscribe: {
+    fields: [
+      { name: "label", label: "Texto del botón", helperText: "Lleva a tu página de suscripción (se arma en «Suscripción» del sitio).", control: { kind: "text", maxLength: 40 } },
+      { name: "description", label: "Subtítulo", optional: true, helperText: "Una línea corta bajo el texto, por ejemplo «Contenido exclusivo».", control: { kind: "text", maxLength: 80 } },
+    ],
+    seedConfig: () => ({ label: "Suscríbete", description: "Contenido exclusivo" }),
+  },
 };

@@ -240,7 +240,9 @@ function MembersList({ organizationId, siteId }: { organizationId: string; siteI
                       ? member.paidUntil
                         ? `Pagó · vigente hasta ${dateFormat.format(new Date(member.paidUntil))}`
                         : "Pagó · sin periodo vigente"
-                      : "Invitado"}
+                      : member.source === "FREE"
+                        ? "Suscriptor gratuito"
+                        : "Invitado"}
                     {" · "}
                     {member.lastAccessAt ? `Último acceso ${dateFormat.format(new Date(member.lastAccessAt))}` : "Aún no ha entrado"}
                   </span>

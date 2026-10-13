@@ -661,7 +661,7 @@ describe("Aislamiento multi-tenant (F1.9)", () => {
       // identificadores de GA4 y del píxel de Meta, públicos por naturaleza (van en el HTML de
       // cualquier sitio que los usa) y no son ids de Impulza. `homePageSlug` (F7.7, ADR-022) es el
       // slug de la página que se sirve en la raíz (una campaña que toma el inicio): un slug público.
-      expect(Object.keys(publicSite.body).sort()).toEqual(["background", "homePageSlug", "measurement", "name", "pages", "slug", "theme"]);
+      expect(Object.keys(publicSite.body).sort()).toEqual(["background", "faviconUrl", "homePageSlug", "measurement", "name", "pages", "slug", "theme"]);
       expect(publicSite.body).not.toHaveProperty("id");
       expect(publicSite.body).not.toHaveProperty("organizationId");
       expect(JSON.stringify(publicSite.body)).not.toContain(orgB.id);

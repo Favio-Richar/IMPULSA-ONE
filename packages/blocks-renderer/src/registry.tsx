@@ -8,6 +8,7 @@ import {
   mapSchema,
   musicSchema,
   newsletterBlockSchema,
+  subscribeBlockSchema,
   pricingSchema,
   contactActionsSchema,
   contactFormSchema,
@@ -43,6 +44,7 @@ import { EventsBlock } from "./blocks/events.js";
 import { MapBlock } from "./blocks/map.js";
 import { MusicBlock } from "./blocks/music.js";
 import { NewsletterBlock } from "./blocks/newsletter.js";
+import { SubscribeBlock } from "./blocks/subscribe.js";
 import { PricingBlock } from "./blocks/pricing.js";
 import { ContactFormBlock } from "./blocks/contact-form.js";
 import { DividerBlock } from "./blocks/divider.js";
@@ -243,6 +245,10 @@ export function RenderBlock({
     case "newsletter": {
       const parsed = newsletterBlockSchema.safeParse(block.config);
       return parsed.success ? <NewsletterBlock config={parsed.data} siteSlug={siteSlug} mode={mode} glass={buttonVariant === "glass"} /> : null;
+    }
+    case "subscribe": {
+      const parsed = subscribeBlockSchema.safeParse(block.config);
+      return parsed.success ? <SubscribeBlock config={parsed.data} siteSlug={siteSlug} buttonVariant={buttonVariant} mono={mono} /> : null;
     }
     default:
       return null;

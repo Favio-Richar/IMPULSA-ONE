@@ -16,6 +16,8 @@ import { MembershipLifecycleRunner } from "./membership-lifecycle.runner.js";
 import { MembershipLifecycleService } from "./membership-lifecycle.service.js";
 import { MembershipPlansService } from "./membership-plans.service.js";
 import { PublicMembersController } from "./public-members.controller.js";
+import { PublicSubscribePageController, SubscribePageController } from "./subscribe-page.controllers.js";
+import { SubscribePageService } from "./subscribe-page.service.js";
 
 // Miembros de sitio, contenido protegido (F10.1) y planes de membresía con cobro por la cuenta del negocio (F10.2, ADR-029).
 // `AuthModule` aporta el adaptador de correo; `PublicSitesModule`, el render de la página y la invalidación de caché;
@@ -28,11 +30,13 @@ import { PublicMembersController } from "./public-members.controller.js";
     PublicMembersController,
     PublicMembershipPlansController,
     PublicMembershipStatusController,
+    PublicSubscribePageController,
     MembershipPaymentWebhookController,
     WebpayMembershipReturnController,
     MembershipPlansController,
+    SubscribePageController,
     MembersController,
   ],
-  providers: [MembersService, MembershipPlansService, MembershipCheckoutService, MembershipLifecycleService, MembershipLifecycleRunner],
+  providers: [MembersService, SubscribePageService, MembershipPlansService, MembershipCheckoutService, MembershipLifecycleService, MembershipLifecycleRunner],
 })
 export class MembersModule {}

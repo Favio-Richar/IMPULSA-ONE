@@ -850,6 +850,7 @@ model Site {
   membershipPlans     MembershipPlan[]
   courses             Course[]
   digitalCard         DigitalCard?
+  subscribePage       SubscribePage?
 
   @@index([organizationId])
   @@map("sites")
@@ -3024,6 +3025,8 @@ model SiteMemberSession {
 enum SiteMemberSource {
   INVITED
   PURCHASED
+  // Se suscribio gratis desde la pagina de suscripcion del sitio (misma regla de acceso que INVITED: entra mientras este activo).
+  FREE
 }
 
 enum MembershipPeriod {
@@ -3356,4 +3359,31 @@ model MarketplaceInstall {
   @@unique([organizationId, listingId], map: "marketplace_installs_org_listing_key")
   @@index([listingId])
   @@map("marketplace_installs")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Pagina de suscripcion del sitio (extra F10, ADR-029): el boton «Suscribirme» del portal lleva a /:sitio/s, una pagina que el
+// negocio personaliza (titulo, descripcion, beneficios, imagen). Ahi la persona se suscribe gratis (miembro FREE, enlace por
+// correo) o elige un plan de pago (los planes y el cobro ya existen: MembershipPlan). Una por sitio.
+// ---------------------------------------------------------------------------------------------
+
+model SubscribePage {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  siteId         String   @unique @map("site_id") @db.Uuid
+  enabled        Boolean  @default(false)
+  title          String
+  description    String?
+  // string[]: beneficios que se muestran como lista (acotados al validar).
+  benefits       Json     @default("[]")
+  // Ofrecer la suscripcion gratuita ademas de los planes de pago.
+  freeEnabled    Boolean  @default(true) @map("free_enabled")
+  imageUrl       String?  @map("image_url")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("subscribe_pages")
 }

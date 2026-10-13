@@ -37,6 +37,7 @@ export {
   eventsSchema,
   eventItemSchema,
   newsletterBlockSchema,
+  subscribeBlockSchema,
   worksWheelSchema,
   worksWheelItemSchema,
   WORKS_WHEEL_MIN_ITEMS,
@@ -91,6 +92,7 @@ export {
   type EventsBlockConfig,
   type EventItem,
   type NewsletterBlockConfig,
+  type SubscribeBlockConfig,
 } from "./catalog.js";
 export { parseStoredBlock, type StoredBlockResult } from "./stored-block.js";
 export { collectRichTextPaths } from "./rich-text-paths.js";

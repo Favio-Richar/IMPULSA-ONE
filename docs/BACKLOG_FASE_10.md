@@ -304,3 +304,17 @@ Pedido del propietario: «el álbum muestra pocas cosas, no es nada profesional 
 - **Menú del sitio** con nombres legibles («Álbum», «Música», «Catálogo»…) en vez del slug.
 - **Pruebas:** esquemas, render del servidor, API (aplicar plantilla, páginas compañeras, 402 por plan, aislamiento), y Playwright del álbum (filtros, ver más, visor, teclado, foco, CSP) en teléfono y escritorio.
 - **Reservas honestas:** las fotos son de ejemplo y el negocio debe reemplazarlas; el visor navega el álbum filtrado pero no tiene zoom con pellizco; la subida masiva de fotos en un solo paso sigue pendiente (hoy se elige foto por foto desde la biblioteca de medios); la auditoría del panel contra la competencia y los componentes de 21st.dev como bloques propios siguen como próximos pasos de este extra.
+
+## Extra F10 — Suscripción: botón en el portal y página de suscripción propia (2026-10-13)
+
+Pedido del propietario: el portal biográfico lleva **un solo botón «Suscribirme»** (como Patreon, Stan o Beacons); al tocarlo, la persona llega a una **página personalizada por cada creador** donde se suscribe, gratis o de pago según lo que ofrezca. Nada de formularios ni cifras en la portada; las páginas internas viven en su propia ruta.
+
+- **Botón:** bloque `subscribe` (`label`, `description`): un `<a>` de la pila de botones que lleva a `/:sitio/s`. El creador lo agrega desde el constructor.
+- **Página `/:sitio/s`** (`apps/web/app/[siteSlug]/s`): portada, título, descripción y lista de beneficios que edita el negocio (panel `/sitios/:id/suscripcion`, modelo `SubscribePage`, permiso `member.manage`), más:
+  - **Gratis:** correo (y nombre) → miembro `FREE` + enlace de acceso por correo. Misma respuesta pase lo que pase (sin enumeración), tope por correo, campo trampa, tope de miembros del sitio, revocados no reciben nada.
+  - **De pago:** los `MembershipPlan` y el cobro por la cuenta del negocio que ya existían (Mercado Pago / Webpay Plus); sin cuenta de cobro conectada no se ofrecen.
+  - Apagada o inexistente: 404 (API y web).
+- **API:** `GET/PUT /organizations/:o/sites/:s/subscribe-page` (panel), `GET /public/sites/:slug/subscribe`, `POST /public/sites/:slug/subscribe/free`. OpenAPI regenerado.
+- **Vistas y «me gusta»:** sin cambios (el bloque `engagement` de siempre).
+- **Pruebas:** API 7/7 (`subscribe-page.e2e.test.ts`, incluye aislamiento entre organizaciones), validación 5, bloque 3, y Playwright `suscripcion.spec.ts` (panel, portada con un solo botón y sin formularios, suscripción gratis, 404) en teléfono y escritorio.
+- **Reservas honestas:** (1) los templates **no** traen el bloque `subscribe` todavía (el creador lo agrega a mano); (2) no hay contador público de suscriptores; (3) quien tiene solo plan de pago y vuelve no tiene un «entrar» propio en esta página (usa el de las páginas de miembros); (4) el correo de bienvenida es solo el enlace de acceso; (5) el valor `FREE` del enum no se puede revertir con la reversa; (6) sin Lighthouse/auditoría externa.

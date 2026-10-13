@@ -16,8 +16,8 @@ import { parseStoredBlock } from "./stored-block.js";
 
 describe("catálogo de bloques (F2.4)", () => {
   it("cubre los 15 bloques del MVP de ST §9, reservas y tienda (F5) y los cinco de F7.3, el newsletter y la rueda de trabajos, sin repetir", () => {
-    expect(BLOCK_TYPES).toHaveLength(32);
-    expect(new Set(BLOCK_TYPES).size).toBe(32);
+    expect(BLOCK_TYPES).toHaveLength(33);
+    expect(new Set(BLOCK_TYPES).size).toBe(33);
     for (const type of ["countdown", "pricing", "map", "music", "events"]) {
       expect(BLOCK_TYPES).toContain(type);
     }
@@ -93,6 +93,7 @@ describe("catálogo de bloques (F2.4)", () => {
       music: { music: "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC" },
       events: { timeZone: "America/Santiago", items: [{ name: "Lanzamiento", start: "2031-11-01T19:00" }] },
       newsletter: { title: "Novedades" },
+      subscribe: {},
       marquee: { items: ["Fotografía", "Moda"] },
       engagement: {},
       album: { photos: [{ image: { url: "https://cdn.ejemplo.cl/a.jpg", alt: "a" } }] },

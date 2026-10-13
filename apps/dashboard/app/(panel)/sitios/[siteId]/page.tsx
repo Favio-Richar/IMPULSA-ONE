@@ -107,6 +107,7 @@ function SiteDetailContent({ organizationId, siteId }: { organizationId: string;
       <EngagementSummary organizationId={organizationId} siteId={siteId} />
       <MembersShortcut siteId={siteId} />
       <CoursesShortcut siteId={siteId} />
+      <SubscribeShortcut siteId={siteId} />
       <DigitalCardShortcut siteId={siteId} />
       <CampaignModeShortcut siteId={siteId} />
       <CustomDomains organizationId={organizationId} siteId={siteId} />
@@ -579,6 +580,23 @@ function CoursesShortcut({ siteId }: { siteId: string }): React.JSX.Element {
         <p className="text-sm text-muted-foreground">Módulos y lecciones de texto o video, con avance por alumno y acceso por membresía.</p>
         <Link href={`/sitios/${siteId}/cursos`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
           Administrar cursos
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Acceso a la página de suscripción del sitio (extra F10), que tiene su propia pantalla. */
+function SubscribeShortcut({ siteId }: { siteId: string }): React.JSX.Element {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Suscripción</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">La página a la que lleva el botón «Suscribirme» de tu portal: suscripción gratuita y planes de pago.</p>
+        <Link href={`/sitios/${siteId}/suscripcion`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+          Administrar suscripción
         </Link>
       </CardContent>
     </Card>

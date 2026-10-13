@@ -5547,7 +5547,8 @@
                       "page_header",
                       "stats",
                       "steps",
-                      "feature"
+                      "feature",
+                      "subscribe"
                     ]
                   },
                   "config": {},
@@ -10884,6 +10885,10 @@
                     "homePageSlug": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "faviconUrl": {
+                      "nullable": true,
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -10997,6 +11002,13 @@
                             "title"
                           ],
                           "additionalProperties": false
+                        },
+                        "structuredData": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -22545,6 +22557,13 @@
                             "title"
                           ],
                           "additionalProperties": false
+                        },
+                        "structuredData": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -23088,6 +23107,187 @@
           }
         },
         "summary": "Estado de una compra de membresía con su enlace",
+        "tags": [
+          "public-members"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/subscribe": {
+      "get": {
+        "description": "Los planes de pago se piden aparte, en `/members/plans`.",
+        "operationId": "PublicSubscribePageController_page",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La página activa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "benefits": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "freeEnabled": {
+                      "type": "boolean"
+                    },
+                    "imageUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "siteName": {
+                      "type": "string"
+                    },
+                    "siteSlug": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "description",
+                    "benefits",
+                    "freeEnabled",
+                    "imageUrl",
+                    "siteName",
+                    "siteSlug"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El sitio no existe o su página de suscripción no está activa."
+          },
+          "429": {
+            "description": "Más de 120 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Página de suscripción del sitio",
+        "tags": [
+          "public-members"
+        ]
+      }
+    },
+    "/api/v1/public/sites/{siteSlug}/subscribe/free": {
+      "post": {
+        "description": "Crea al suscriptor y le envía su enlace de acceso. Responde lo mismo pase lo que pase (sin enumeración). Límite por IP y por correo; campo trampa.",
+        "operationId": "PublicSubscribePageController_free",
+        "parameters": [
+          {
+            "name": "siteSlug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 240
+                  },
+                  "website": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Solicitud recibida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sent": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "sent"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Correo inválido."
+          },
+          "404": {
+            "description": "La página no existe, no está activa o no ofrece la suscripción gratuita."
+          },
+          "429": {
+            "description": "Más de 10 peticiones en 600 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "summary": "Suscribirse gratis",
         "tags": [
           "public-members"
         ]
@@ -23911,6 +24111,325 @@
         ]
       }
     },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/subscribe-page": {
+      "get": {
+        "description": "`page` es `null` mientras no se haya creado. Incluye la dirección pública.",
+        "operationId": "SubscribePageController_get",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La página y su estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "benefits": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "freeEnabled": {
+                          "type": "boolean"
+                        },
+                        "imageUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "description",
+                        "benefits",
+                        "freeEnabled",
+                        "imageUrl",
+                        "enabled",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "publicUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "activeMembers": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "page",
+                    "publicUrl",
+                    "activeMembers"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio no encontrado en esta organización."
+          },
+          "429": {
+            "description": "Más de 120 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Página de suscripción del sitio",
+        "tags": [
+          "members"
+        ]
+      },
+      "put": {
+        "description": "Una por sitio. Mientras `enabled` sea falso, la página pública y la suscripción responden 404.",
+        "operationId": "SubscribePageController_save",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "description": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 1200
+                  },
+                  "benefits": {
+                    "maxItems": 8,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 240
+                    }
+                  },
+                  "freeEnabled": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "imageUrl": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "title"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "La página guardada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "benefits": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "freeEnabled": {
+                          "type": "boolean"
+                        },
+                        "imageUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "description",
+                        "benefits",
+                        "freeEnabled",
+                        "imageUrl",
+                        "enabled",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "publicUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "activeMembers": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "page",
+                    "publicUrl",
+                    "activeMembers"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Sitio no encontrado en esta organización."
+          },
+          "429": {
+            "description": "Más de 60 peticiones en 60 s desde la misma IP. Reintentar después de la ventana."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Crear o actualizar la página de suscripción",
+        "tags": [
+          "members"
+        ]
+      }
+    },
     "/api/v1/organizations/{organizationId}/sites/{siteId}/members": {
       "get": {
         "description": "Búsqueda por correo o nombre, filtro de estado y paginación en el servidor.",
@@ -23985,7 +24504,8 @@
                             "type": "string",
                             "enum": [
                               "INVITED",
-                              "PURCHASED"
+                              "PURCHASED",
+                              "FREE"
                             ]
                           },
                           "paidUntil": {
@@ -24165,7 +24685,8 @@
                       "type": "string",
                       "enum": [
                         "INVITED",
-                        "PURCHASED"
+                        "PURCHASED",
+                        "FREE"
                       ]
                     },
                     "paidUntil": {
@@ -24574,7 +25095,8 @@
                       "type": "string",
                       "enum": [
                         "INVITED",
-                        "PURCHASED"
+                        "PURCHASED",
+                        "FREE"
                       ]
                     },
                     "paidUntil": {
@@ -24712,7 +25234,8 @@
                       "type": "string",
                       "enum": [
                         "INVITED",
-                        "PURCHASED"
+                        "PURCHASED",
+                        "FREE"
                       ]
                     },
                     "paidUntil": {

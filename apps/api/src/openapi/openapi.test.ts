@@ -112,6 +112,8 @@ describe("Documento OpenAPI", () => {
       "PUT /api/v1/public/sites/{siteSlug}/courses/{courseSlug}/lessons/{lessonId}/progress",
       "DELETE /api/v1/public/sites/{siteSlug}/courses/{courseSlug}/lessons/{lessonId}/progress",
       // Membresías (F10.2): planes que se pueden comprar, compra por la cuenta del negocio y «Tu membresía» con su enlace.
+      "GET /api/v1/public/sites/{siteSlug}/subscribe",
+      "POST /api/v1/public/sites/{siteSlug}/subscribe/free",
       "GET /api/v1/public/sites/{siteSlug}/members/plans",
       "POST /api/v1/public/sites/{siteSlug}/members/plans/{planId}/checkout",
       "GET /api/v1/public/memberships/purchases/{token}",

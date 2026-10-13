@@ -28,6 +28,11 @@ export function updateSite(
   });
 }
 
+/** Duplica un sitio de la organización (extra F10): la copia nace en borrador. 402 = límite de sitios del plan; 409 = slug en uso. */
+export function duplicateSite(organizationId: string, siteId: string, body: { name: string; slug: string }): Promise<SiteResponse> {
+  return apiFetch<SiteResponse>(`/organizations/${organizationId}/sites/${siteId}/duplicate`, { method: "POST", body });
+}
+
 export function archiveSite(organizationId: string, siteId: string): Promise<SiteResponse> {
   return apiFetch<SiteResponse>(`/organizations/${organizationId}/sites/${siteId}/archive`, {
     method: "POST",

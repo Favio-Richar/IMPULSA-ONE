@@ -33,7 +33,7 @@ export function CustomDomains({ organizationId, siteId }: { organizationId: stri
   const domainsQuery = useSiteDomains(organizationId, siteId);
 
   return (
-    <Card>
+    <Card id="dominio-propio" className="scroll-mt-6">
       <CardHeader>
         <CardTitle>Dominio propio</CardTitle>
         <CardDescription>

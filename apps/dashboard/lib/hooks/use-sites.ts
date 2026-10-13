@@ -4,6 +4,7 @@ import {
   archiveSite,
   assignSiteTheme,
   createSite,
+  duplicateSite,
   getSite,
   getSiteBackground,
   getSiteMeasurement,
@@ -43,6 +44,18 @@ export function useCreateSite(organizationId: string) {
     mutationFn: ({ name, slug }: { name: string; slug: string }) => createSite(organizationId, name, slug),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["sites", organizationId] });
+    },
+  });
+}
+
+export function useDuplicateSite(organizationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ siteId, name, slug }: { siteId: string; name: string; slug: string }) => duplicateSite(organizationId, siteId, { name, slug }),
+    onSuccess: () => {
+      // La copia cuenta contra el límite del plan: se refresca la lista de sitios y el uso del plan.
+      void queryClient.invalidateQueries({ queryKey: ["sites", organizationId] });
+      void queryClient.invalidateQueries({ queryKey: ["organization-plan", organizationId] });
     },
   });
 }

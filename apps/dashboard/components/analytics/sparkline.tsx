@@ -27,7 +27,7 @@ export function Sparkline({ series }: { series: readonly AnalyticsSeriesPoint[] 
   return (
     <div className="h-10 w-full" aria-hidden="true" data-testid="visits-sparkline">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={[...series]} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+        <AreaChart data={[...series]} margin={{ top: 2, right: 0, bottom: 0, left: 0 }} accessibilityLayer={false}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={CHART_COLORS.series} stopOpacity={0.18} />

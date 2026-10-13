@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { Sparkline } from "../analytics/sparkline";
 import type { Organization } from "../../lib/api/organizations";
 import { useAgenda } from "../../lib/hooks/use-agenda";
 import { useAnalyticsOverview } from "../../lib/hooks/use-analytics";
@@ -111,6 +112,7 @@ export function BusinessHome({
                 value={totals ? numberFormat.format(totals.pageViews) : null}
                 hint={totals ? `${numberFormat.format(totals.visitors)} visitantes` : undefined}
                 loading={analyticsQuery.isPending}
+                trend={analyticsQuery.data ? <Sparkline series={analyticsQuery.data.series} /> : null}
               />
               <StatCard
                 href="/contactos"
@@ -241,7 +243,10 @@ function StatCard({
   hint,
   loading = false,
   emphasis = false,
+  trend = null,
 }: {
+  /** Curva opcional bajo el número; el componente decide por sí mismo si hay datos para dibujarla. */
+  trend?: React.ReactNode;
   href: string;
   icon: LucideIcon;
   label: string;
@@ -267,6 +272,7 @@ function StatCard({
           {loading ? <span className="text-muted-foreground">…</span> : (value ?? "—")}
         </span>
         {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
+        {trend}
       </Link>
     </li>
   );

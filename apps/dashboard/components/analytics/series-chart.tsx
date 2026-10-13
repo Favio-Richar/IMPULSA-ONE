@@ -20,7 +20,7 @@ import { formatInteger, formatLongDay, formatShortDay } from "./format";
 // (--color-primary, --color-border, --color-muted-foreground). Van literales y no como
 // `var(--...)` porque Recharts los escribe como atributos de presentación SVG (`stroke="..."`),
 // donde una variable CSS no se resuelve en todos los navegadores.
-const CHART_COLORS = {
+export const CHART_COLORS = {
   series: "#0f6f6b",
   grid: "#dde5e3",
   axis: "#475569",

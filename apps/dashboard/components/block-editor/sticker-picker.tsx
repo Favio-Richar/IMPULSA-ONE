@@ -105,7 +105,7 @@ export function StickerPicker({
                     selected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-[var(--site-color-background)] hover:border-border-strong",
                   )}
                 >
-                  <StickerBlock config={{ stickerId: sticker.id, size: "sm", rotation: 0, alignment: "center" }} />
+                  <StickerBlock config={{ stickerId: sticker.id, size: "sm", rotation: 0, alignment: "center", color: "primary" }} />
                 </button>
               </li>
             );

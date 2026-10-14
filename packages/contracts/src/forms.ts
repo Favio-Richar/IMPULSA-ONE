@@ -48,6 +48,25 @@ export const formResponse = z.object({
   updatedAt: isoDateTime,
 });
 
+// --- Envíos recibidos (lectura para el panel) ----------------------------------------------------
+
+export const formSubmissionResponse = z.object({
+  id: uuid,
+  formId: uuid,
+  contactId: uuid.nullable(),
+  /** Respuestas tal como las envió la persona: `{ [fieldId]: valor }`. Solo texto/booleanos/números. */
+  payload: z.record(z.string(), z.unknown()),
+  source: z.string().nullable(),
+  createdAt: isoDateTime,
+});
+
+export const formSubmissionListResponse = z.object({
+  items: z.array(formSubmissionResponse),
+  total: z.number().int(),
+  limit: z.number().int(),
+  offset: z.number().int(),
+});
+
 // --- Público (sin sesión) -----------------------------------------------------------------------
 //
 // Mismo criterio de minimización que `public.ts`: sin `siteId`, sin timestamps, sin nada que un
@@ -78,4 +97,6 @@ export type FormFieldResponse = z.infer<typeof formFieldResponse>;
 export type FormResponse = z.infer<typeof formResponse>;
 export type PublicFormFieldResponse = z.infer<typeof publicFormFieldResponse>;
 export type PublicFormResponse = z.infer<typeof publicFormResponse>;
+export type FormSubmissionResponse = z.infer<typeof formSubmissionResponse>;
+export type FormSubmissionListResponse = z.infer<typeof formSubmissionListResponse>;
 export type FormSubmissionAckResponse = z.infer<typeof formSubmissionAckResponse>;

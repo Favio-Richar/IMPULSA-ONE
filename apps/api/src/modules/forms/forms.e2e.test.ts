@@ -228,4 +228,26 @@ describe("Forms (e2e) — F3.2", () => {
     const stillThere = await orgA.agent.get(`${orgA.basePath}/${form.body.id}`).expect(200);
     expect(stillThere.body.name).toBe("De A");
   });
+it("lista los envíos recibidos, paginados y del más reciente al más antiguo; otra organización no los ve", async () => {
+    const orgA = await createSiteWithOwner();
+    const form = await orgA.agent.post(orgA.basePath).set(CSRF_HEADERS).send({ name: "Con envíos" }).expect(201);
+    const empty = await orgA.agent.get(`${orgA.basePath}/${form.body.id}/submissions`).expect(200);
+    expect(empty.body).toMatchObject({ items: [], total: 0, limit: 25, offset: 0 });
+
+    for (const nombre of ["Primero", "Segundo", "Tercero"]) {
+      await prisma.formSubmission.create({ data: { formId: form.body.id, payload: { nombre }, source: "test" } });
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    const page = await orgA.agent.get(`${orgA.basePath}/${form.body.id}/submissions?limit=2`).expect(200);
+    expect(page.body.total).toBe(3);
+    expect(page.body.items).toHaveLength(2);
+    expect(page.body.items[0].payload).toEqual({ nombre: "Tercero" });
+    const rest = await orgA.agent.get(`${orgA.basePath}/${form.body.id}/submissions?limit=2&offset=2`).expect(200);
+    expect(rest.body.items.map((item: { payload: unknown }) => item.payload)).toEqual([{ nombre: "Primero" }]);
+
+    const orgB = await createSiteWithOwner();
+    await orgB.agent
+      .get(`/api/v1/organizations/${orgB.organizationId}/sites/${orgA.siteId}/forms/${form.body.id}/submissions`)
+      .expect(404);
+  });
 });

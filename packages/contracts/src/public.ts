@@ -161,3 +161,12 @@ export type PublicOpenGraphResponse = z.infer<typeof publicOpenGraphResponse>;
 export type PublicStructuredDataNode = z.infer<typeof publicStructuredDataNode>;
 export type PublicSeoResponse = z.infer<typeof publicSeoResponse>;
 export type PublicPageResponse = z.infer<typeof publicPageResponse>;
+
+/** Disponibilidad de una dirección pública (onboarding, paso 5): comprobación en vivo, sin sesión. */
+export const slugAvailabilityResponse = z.object({
+  slug: z.string(),
+  available: z.boolean(),
+  /** `free` libre; `taken` otro sitio o una redirección viva la usa; `reserved` es de la plataforma; `invalid` no cumple el formato. */
+  reason: z.enum(["free", "taken", "reserved", "invalid"]),
+});
+export type SlugAvailabilityResponse = z.infer<typeof slugAvailabilityResponse>;

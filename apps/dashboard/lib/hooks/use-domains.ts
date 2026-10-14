@@ -6,7 +6,7 @@ function key(organizationId: string, siteId: string) {
 }
 
 export function useSiteDomains(organizationId: string, siteId: string) {
-  return useQuery({ queryKey: key(organizationId, siteId), queryFn: () => listSiteDomains(organizationId, siteId) });
+  return useQuery({ queryKey: key(organizationId, siteId), queryFn: () => listSiteDomains(organizationId, siteId), enabled: organizationId !== "" && siteId !== "" });
 }
 
 export function useAddSiteDomain(organizationId: string, siteId: string) {

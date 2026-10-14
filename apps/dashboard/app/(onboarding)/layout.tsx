@@ -44,8 +44,13 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="flex h-14 items-center justify-between gap-3 border-b border-border px-4">
+    <div className="relative flex min-h-screen flex-col overflow-x-clip bg-background">
+      <div aria-hidden="true" className="onb-aurora">
+        <span className="onb-blob onb-blob-a -left-24 -top-24 size-[28rem]" />
+        <span className="onb-blob onb-blob-b -bottom-32 -right-24 size-[32rem]" />
+        <span className="onb-grid" />
+      </div>
+      <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-border/70 bg-background/80 px-4 backdrop-blur">
         <span className="text-sm font-semibold text-foreground">
           {brandingQuery.data?.logoLightUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -58,7 +63,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
           Salir del asistente
         </Link>
       </header>
-      <main className="flex-1 px-4 py-6 md:py-10">{children}</main>
+      <main className="relative z-10 flex-1 px-4 py-6 md:py-10">{children}</main>
     </div>
   );
 }

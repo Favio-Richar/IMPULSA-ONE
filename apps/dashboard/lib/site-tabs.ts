@@ -1,7 +1,7 @@
 // Pestañas del detalle de un sitio. La activa viaja en la URL (`?tab=apariencia`): un valor desconocido o ausente cae en «resumen»,
 // nunca en una pantalla vacía. Puro, para poder probarlo solo.
 
-export const SITE_TAB_VALUES = ["resumen", "apariencia", "paginas", "comercio", "contenido", "dominio"] as const;
+export const SITE_TAB_VALUES = ["resumen", "apariencia", "paginas", "comercio", "contenido", "formularios", "seo", "dominio"] as const;
 export type SiteTab = (typeof SITE_TAB_VALUES)[number];
 export const DEFAULT_SITE_TAB: SiteTab = "resumen";
 

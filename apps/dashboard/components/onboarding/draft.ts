@@ -1,5 +1,5 @@
 import type { TemplateResponse } from "@impulza/contracts";
-import { detectSocialNetwork, templatePersonalizationSchema, type TemplatePersonalization } from "@impulza/validation";
+import { detectSocialNetwork, TEMPLATE_MAX_IMPORTED_LINKS, templatePersonalizationSchema, type TemplatePersonalization } from "@impulza/validation";
 import type { OnboardingDraft } from "../../lib/onboarding-store";
 
 /** Tipo de la acción principal de la plantilla: decide qué pide el paso "Perfil y acción principal". */
@@ -14,6 +14,9 @@ export function primaryActionType(template: TemplateResponse): string | null {
  */
 export function draftToPersonalization(draft: OnboardingDraft, template: TemplateResponse | null): TemplatePersonalization | undefined {
   const primaryType = template ? primaryActionType(template) : null;
+  const secondaryLabel = (draft.secondaryLinkLabel ?? "").trim();
+  const secondaryUrl = (draft.secondaryLinkUrl ?? "").trim();
+  const links = [...(secondaryLabel && secondaryUrl ? [{ label: secondaryLabel, url: secondaryUrl }] : []), ...draft.links].slice(0, TEMPLATE_MAX_IMPORTED_LINKS);
   const candidate: TemplatePersonalization = {
     ...(draft.displayName.trim() ? { name: draft.displayName.trim() } : {}),
     ...(draft.headline.trim() ? { headline: draft.headline.trim() } : {}),
@@ -25,7 +28,7 @@ export function draftToPersonalization(draft: OnboardingDraft, template: Templat
     ...(draft.socials.length > 0
       ? { socials: draft.socials.map((url) => ({ network: detectSocialNetwork(url) ?? "website", url })) }
       : {}),
-    ...(draft.links.length > 0 ? { links: draft.links } : {}),
+    ...(links.length > 0 ? { links } : {}),
   };
 
   const parsed = templatePersonalizationSchema.safeParse(candidate);

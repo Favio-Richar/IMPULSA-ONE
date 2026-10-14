@@ -390,3 +390,84 @@ Pedido del propietario: igualar el nivel de CONTROL granular de las apps de enla
 
 ### Reservas honestas
 - (1) El editor no edita la paleta alterna de día/noche ni el movimiento del tema: se conservan. (2) «Editar» un tema propio que ya está aplicado a un sitio lo cambia en vivo para ese sitio (comportamiento del backend; el panel avisa al guardar que queda aplicado). (3) Una fuente nueva solo se descarga cuando una página usa un tema que la nombra. (4) Los stickers no se pueden poner encima de otro bloque: ocupan su propia fila de la columna. (5) No hay stickers animados.
+
+## Extra F10 — Rediseño visual del asistente de bienvenida (2026-10-13)
+
+Pedido del propietario: el onboarding de 11 pasos se veía básico (tarjetas planas, sin íconos, sin vista previa salvo en el paso 9). Es solo presentación: no se tocó `useOnboardingStore`, los esquemas zod, el orden ni los campos de los pasos, las llamadas a `createOrganization`/`createSite`/`applyTemplate`/`publishPage`, ni los hooks de API. Todo dentro de `components/onboarding/` y `app/(onboarding)/`.
+
+- **Estructura:** fondo con degradado de marca y cabecera de vidrio (`layout.tsx`); tarjeta central con esquinas grandes y sombra; barra de pasos numerada con check en los completados, ícono en el actual y conectores (decorativa: el avance accesible sigue siendo `role="progressbar"` + «Paso N de 11»); cada paso lleva su ícono junto al título; transición fundido + deslizamiento (la `section` conserva `motion-fade`; el deslizamiento va en un contenedor interno).
+- **Vista previa lateral persistente** (`shell.tsx`, solo pantallas ≥ lg, `aria-hidden` e `inert`): desde el paso 4 (nombre) un teléfono que se arma a medida que avanzas — primero un portal con tu nombre y la forma de una página de enlaces; al elegir plantilla, la **plantilla real** (`TemplatePreview`, el mismo componente de la galería y de la vista previa grande) con los datos del borrador. Lo que se escribe aparece **mientras se escribe** (nombre, dirección, frase y «sobre ti»), mediante un contexto de interfaz que no toca el borrador y se limpia al salir del paso. No aparece en el paso 9 (ya hay vista grande) ni en el 11.
+- **Opciones** (`choice-cards.tsx`): ícono por opción (cuenta, objetivo, 11 industrias), borde y fondo de color primario al elegir, círculo con check (es el radio nativo real, visible y enfocable), elevación al pasar el mouse.
+- **Campos** (`fields.tsx`, `IconInput`): mismo contrato de accesibilidad que `Input` (etiqueta asociada, `aria-invalid`, `aria-describedby`, error con `role="alert"`) con ícono contextual dentro del campo y, en la dirección, el dominio como prefijo; la dirección final se muestra como chip.
+- **Plantillas:** la galería es compartida con el constructor (fuera del alcance pedido), así que se reviste desde el asistente con estilos acotados: tarjetas más amplias con miniatura más alta, filtros en un panel y la insignia «Elegida» sólida. Sin cambiar la galería.
+- **Logro final:** ícono de éxito grande con animación, «¡Tu página ya está en línea!», y tarjetas de siguientes pasos con íconos. Publicación: filas con ícono y estado por color.
+- **Accesibilidad:** nuevo barrido axe (WCAG 2.2 AA) de los 11 pasos en teléfono y escritorio. Encontró y se corrigió un defecto que ya existía (`dl` con botones dentro en la vista previa → lista de tarjetas con su `dl`).
+- **Pruebas:** `onboarding-diseno.spec.ts` 8/8 (axe en los 11 pasos, íconos y estado seleccionado, vista previa lateral que sigue lo escrito y muestra la plantilla, insignia «Elegida») y las previas del asistente sin cambios: `onboarding-animaciones` y `plantillas` (18/18 en total). Capturas en `docs/design/capturas/onboarding/`.
+- **Decisiones no especificadas:** en teléfono no hay columna lateral (no cabe sin romper la lectura) y los pasos anchos (plantillas, vista previa) usan todo el ancho sin el marco de la tarjeta, porque la vista previa a escala necesita ese ancho para que sus controles sigan sobre el tamaño táctil mínimo; la barra de pasos numerada solo se muestra desde `sm` (en teléfono, la barra de progreso de siempre).
+- **Reservas honestas:** el interior de la plantilla en la vista previa lateral es una miniatura a escala (no interactiva a propósito); la galería de plantillas se estiliza desde fuera con selectores sobre su marcado, lo que acopla este paso a su estructura (si se quiere un diseño propio de tarjeta, hay que tocar `components/templates/template-gallery.tsx`, que es compartida).
+
+## Extra F10 — Funciones nuevas de los 11 pasos del asistente de bienvenida (2026-10-13)
+
+Cada paso ganó una función real, de forma aditiva (borradores viejos siguen válidos: los campos nuevos son opcionales).
+
+| Paso | Función | Dónde / cómo |
+|---|---|---|
+| 1 Tipo de cuenta | Logo o foto de perfil | `LogoPicker` en `steps.tsx`; el archivo vive en memoria (`lib/onboarding-logo.ts`) y se sube al publicar (`uploadImage`) y se pone como `avatar` del bloque de perfil. Si falla, la publicación sigue. |
+| 2 Objetivo | Objetivo secundario (opcional) | `draft.secondaryObjective`; se muestra como pista en el paso de plantilla. |
+| 3 Industria | Búsqueda sobre las categorías (sin tildes) | `IndustryStep`. |
+| 4 Nombre | Frases cortas sugeridas por rubro | `INDUSTRY_HEADLINES` (texto propio, sin IA); guarda `draft.headline`. |
+| 5 Dirección | Disponibilidad en vivo | **Nuevo endpoint** `GET /api/v1/public/site-slugs/{slug}/availability` (`slug-availability.controller.ts`, 60/min/IP) + `useSlugAvailability`. La creación sigue validando en el servidor. |
+| 6 Redes y enlaces | Importar desde Linktree/Beacons/Bio.link | **Nuevo endpoint** `POST /api/v1/imports/link-in-bio` (`modules/link-import`): lista cerrada de dominios, https, sin redirecciones fuera de la plataforma, 7 s y 1,5 MB, 10/min, sesión + CSRF. Parser puro con pruebas. No guarda nada: la persona revisa antes de continuar. |
+| 7 Plantilla | Favoritas con estrella, «Solo favoritas», «Ver más como esta» | `TemplateGallery` (props opcionales `favoriteCodes`/`onToggleFavorite`); favoritas en `localStorage` (`lib/template-favorites.ts`). |
+| 8 Perfil | Botón secundario | `draft.secondaryLinkLabel/Url`; entra como primer enlace adicional en `draftToPersonalization`. |
+| 9 Vista previa | Enlace temporal compartible (48 h) | `apps/web/app/vista-previa`: los datos viajan en el fragmento de la URL (no llegan al servidor), la página rechaza el enlace vencido y es `noindex`. |
+| 10 Publicación | Dominio propio opcional | Al publicar se llama `POST …/sites/:id/domains`; un fallo (plan, duplicado) no bloquea la publicación. |
+| 11 Checklist | Seguimiento real | Publicada, QR creado, visitas > 0, primer contacto y dominio verificado se marcan solos con las consultas existentes; barra de avance y «Actualizar». |
+
+Pruebas: `packages/e2e/tests/onboarding-funciones.spec.ts` (11 casos, móvil y escritorio) + axe de los 11 pasos en `onboarding-diseno.spec.ts`; API: `modules/link-import/link-import.test.ts`. OpenAPI regenerado.
+
+Limitaciones honestas: la vista previa compartida no es un recurso del servidor (el vencimiento lo aplica la propia página; cualquiera con el enlace puede verla hasta entonces); el importador depende del HTML público de cada plataforma y puede devolver «sin enlaces» si cambian su estructura; la disponibilidad es informativa (la fuente de verdad es la creación del sitio).
+
+## Extra F10 — Frente 3: formularios, SEO y revisión de módulos del panel
+
+Pedido del propietario (2026-10-13): construir lo que faltaba en formularios y SEO, y evaluar el resto de los módulos con criterios
+explícitos. Todo es aditivo: no se borró ni cambió ninguna ruta ni pantalla existente.
+
+### Construido
+
+| Pieza | Qué hace | Dónde |
+|---|---|---|
+| Pestaña **Formularios** del sitio | Crear (con campos de partida), editar nombre/tipo/mensaje de éxito/redirección, borrar con confirmación, administrar campos (agregar, renombrar, obligatorio, reordenar, borrar) y ver los **envíos recibidos** (paginados, con CSV de la página visible y protección contra fórmulas). Aviso de límite de plan al crear. | `apps/dashboard/components/site/forms-manager.tsx` |
+| `GET /organizations/:org/sites/:site/forms/:formId/submissions` | **Endpoint nuevo.** Envíos del más reciente al más antiguo, `limit` 1–100 (25 por defecto) y `offset`. 404 ante formulario de otra organización (ADR-002). Lectura con el mismo criterio que Contactos (miembro activo). | `apps/api/src/modules/forms/` + contrato `formSubmissionListResponse` |
+| Pestaña **SEO** del sitio | Todas las páginas en un panel: vista previa tipo buscador, contadores de largo, indicadores de título/descripción, robots y guardado rápido con el mismo `PATCH .../pages/:id` (`seoMeta`). Enlace a la pantalla de la página para canonical, Open Graph e IA. | `apps/dashboard/components/site/seo-overview.tsx` |
+| Hooks y cliente | `useUpdateForm`, `useDeleteForm`, `useFormFieldActions`, `useFormSubmissions` | `apps/dashboard/lib/{api,hooks}/forms|use-forms` |
+| Pestañas | `formularios` y `seo` en `SITE_TAB_VALUES` (un valor desconocido sigue cayendo en «resumen») | `apps/dashboard/lib/site-tabs.ts` |
+
+### Pruebas
+
+- API: `forms.e2e.test.ts` +1 caso (paginación, orden y aislamiento entre organizaciones); `openapi.test.ts` pasa con OpenAPI regenerado (355 rutas).
+- E2E (`packages/e2e/tests/sitio-formularios-seo.spec.ts`, escritorio y móvil): crear formulario, agregar campo, recibir un envío real por la API pública y verlo en la tabla, borrar; editar y persistir SEO; axe WCAG 2.2 AA en ambas pestañas.
+- Defectos encontrados y corregidos al probar en móvil: la grilla se ensanchaba por el contenido de la tabla (desborde horizontal) y la región con scroll no era enfocable.
+
+### Revisión de los demás módulos (criterios del pedido)
+
+Método: (1) cobertura de la API — de 334 operaciones autenticadas del OpenAPI, 332 tienen uso en el panel (las 2 sin uso:
+`POST /memberships/{id}/accept`, que va por el enlace de invitación, y `GET .../brand-profile/resolved`, de uso interno);
+(2) estados de carga/vacío/error y confirmaciones por módulo; (3) avisos de límite de plan donde la API los define (`ApiPlanLimited`).
+
+| Módulo | Veredicto | Evidencia | Lo que sigue pendiente |
+|---|---|---|---|
+| Reservas | Completo | 7 componentes, estados y confirmaciones en 5 | — |
+| Cursos | Funcional | estados y confirmación | no revisado a fondo en esta pasada |
+| Newsletter / secuencias / campañas | Funcional | estados y confirmaciones en cada pantalla | no revisado a fondo en esta pasada |
+| IA | Funcional | aviso de límite de plan, estado de proveedor | no revisado a fondo en esta pasada |
+| Marketplace | Funcional | estados y confirmación | — |
+| Embudos | Funcional | página con estados y confirmación; aviso de historial por plan | — |
+| Smart CTA | Funcional | estados, regla vacía explicada | — |
+| Tarjeta digital | Funcional | estados | — |
+| Mediciones / reportes | Completo | estados, confirmaciones, límite de historial por plan | — |
+| SEO | Funcional → **construido arriba** | | sitemap/robots por sitio y metadatos por defecto del sitio (requiere migración: no se hizo) |
+| Formularios | Completo para el caso base → **construido arriba** | | filtrar o borrar envíos individuales (no hay endpoint); descarga completa en un solo CSV (hoy solo la página visible) |
+
+Límites honestos: el veredicto es por evidencia de código y pruebas, no una prueba manual de cada flujo; «Funcional» significa que
+el modelo y la interfaz cubren el caso real, con las mejoras de la última columna aún sin construir.

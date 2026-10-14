@@ -27,6 +27,7 @@ import { MembersModule } from "./modules/members/members.module.js";
 import { EngagementModule } from "./modules/engagement/engagement.module.js";
 import { PublicLinksModule } from "./modules/public-links/public-links.module.js";
 import { PublicSitesModule } from "./modules/public-sites/public-sites.module.js";
+import { LinkImportModule } from "./modules/link-import/link-import.module.js";
 import { QrCodesModule } from "./modules/qr-codes/qr-codes.module.js";
 import { ShortLinksModule } from "./modules/short-links/short-links.module.js";
 import { SitesModule } from "./modules/sites/sites.module.js";
@@ -76,6 +77,7 @@ import { PageCampaignsModule } from "./modules/page-campaigns/page-campaigns.mod
     ShortLinksModule,
     QrCodesModule,
     PublicSitesModule,
+    LinkImportModule,
     PublicFormsModule,
     ModerationModule,
     MembersModule,

@@ -316,6 +316,46 @@ export class FormsService {
     return this.getForm(organizationId, siteId, formId);
   }
 
+  /** Envíos recibidos por un formulario, del más reciente al más antiguo. Paginado: nunca devuelve todo de una vez. */
+  async listSubmissions(
+    organizationId: string,
+    siteId: string,
+    formId: string,
+    limit: number,
+    offset: number,
+  ): Promise<{
+    items: Array<{ id: string; formId: string; contactId: string | null; payload: unknown; source: string | null; createdAt: Date }>;
+    total: number;
+    limit: number;
+    offset: number;
+  }> {
+    await this.getFormOrThrow(organizationId, siteId, formId);
+
+    const [rows, total] = await Promise.all([
+      this.prisma.formSubmission.findMany({
+        where: { formId },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      this.prisma.formSubmission.count({ where: { formId } }),
+    ]);
+
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        formId: row.formId,
+        contactId: row.contactId,
+        payload: row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {},
+        source: row.source,
+        createdAt: row.createdAt,
+      })),
+      total,
+      limit,
+      offset,
+    };
+  }
+
   async deleteField(
     organizationId: string,
     actorId: string,

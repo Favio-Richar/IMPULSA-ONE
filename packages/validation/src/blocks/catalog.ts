@@ -1,4 +1,4 @@
-import { isStickerId, STICKER_ALIGNMENTS, STICKER_ROTATION_MAX, STICKER_ROTATION_MIN, STICKER_SIZES } from "../stickers/index.js";
+import { isStickerId, STICKER_ALIGNMENTS, STICKER_COLORS, STICKER_ROTATION_MAX, STICKER_ROTATION_MIN, STICKER_SIZES } from "../stickers/index.js";
 import { z } from "zod";
 import {
   emailSchema,
@@ -470,6 +470,7 @@ export const stickerSchema = z.object({
   size: z.enum(STICKER_SIZES).default("md"),
   rotation: z.number().int().min(STICKER_ROTATION_MIN).max(STICKER_ROTATION_MAX).default(0),
   alignment: z.enum(STICKER_ALIGNMENTS).default("center"),
+  color: z.enum(STICKER_COLORS).default("primary"),
 });
 
 /**

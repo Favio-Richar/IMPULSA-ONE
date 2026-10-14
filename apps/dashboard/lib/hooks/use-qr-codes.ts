@@ -5,6 +5,7 @@ export function useQrCodes(organizationId: string) {
   return useQuery({
     queryKey: ["qr-codes", organizationId],
     queryFn: () => listQrCodes(organizationId),
+    enabled: organizationId !== "",
   });
 }
 

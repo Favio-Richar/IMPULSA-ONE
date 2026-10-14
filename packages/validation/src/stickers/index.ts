@@ -47,6 +47,13 @@ export type StickerSize = (typeof STICKER_SIZES)[number];
 export const STICKER_SIZE_PX: Record<StickerSize, number> = { sm: 56, md: 96, lg: 160 };
 export const STICKER_ALIGNMENTS = ["left", "center", "right"] as const;
 export type StickerAlignment = (typeof STICKER_ALIGNMENTS)[number];
+/**
+ * Color del sticker por ROL del tema (no hex): `primary` conserva los colores propios del dibujo; `ink` lo pinta con el color de
+ * texto del tema (y lo que iba sobre el acento, con el fondo); `surface` con la superficie (y lo de encima, con el texto). Todos
+ * son pares ya verificados AA por el tema.
+ */
+export const STICKER_COLORS = ["primary", "ink", "surface"] as const;
+export type StickerColor = (typeof STICKER_COLORS)[number];
 export const STICKER_ROTATION_MIN = -30;
 export const STICKER_ROTATION_MAX = 30;
 

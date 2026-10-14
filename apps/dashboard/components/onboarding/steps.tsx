@@ -8,6 +8,7 @@ import {
   ONBOARDING_ACCOUNT_TYPES,
   phoneSchema,
   publicSlugSchema,
+  requestImageUploadSchema,
   safeUrlSchema,
   SOCIAL_NETWORK_LABELS,
   TEMPLATE_INDUSTRIES,
@@ -18,9 +19,52 @@ import {
   TEMPLATE_OBJECTIVES,
   type TemplateObjective,
 } from "@impulza/validation";
-import { Button, ErrorState, Input, LoadingState, Textarea } from "@impulza/ui";
-import { Plus, Trash2 } from "lucide-react";
+import { Button, ErrorState, LoadingState, Textarea } from "@impulza/ui";
+import {
+  ArrowLeft,
+  ArrowRight,
+  AtSign,
+  Briefcase,
+  CalendarCheck,
+  Clapperboard,
+  Globe,
+  GraduationCap,
+  HeartPulse,
+  Images,
+  LayoutTemplate,
+  Lightbulb,
+  Link2,
+  Megaphone,
+  Camera,
+  Check,
+  CircleAlert,
+  Download,
+  Loader2,
+  Phone,
+  Plane,
+  Search,
+  PartyPopper,
+  Plus,
+  Share2,
+  ShoppingBag,
+  Signature,
+  Sparkles,
+  Store,
+  Trash2,
+  Type,
+  UserRound,
+  Users,
+  UtensilsCrossed,
+  Wrench,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { useState } from "react";
+import { ApiError } from "../../lib/api-client";
+import { importLinkInBio } from "../../lib/api/link-import";
+import { setOnboardingLogo, useOnboardingLogo } from "../../lib/onboarding-logo";
+import { useTemplateFavorites } from "../../lib/template-favorites";
+import { useSlugAvailability } from "../../lib/use-slug-availability";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { env } from "../../lib/env";
@@ -31,6 +75,8 @@ import { TemplateGallery } from "../templates/template-gallery";
 import { DevicePreview } from "../templates/template-preview-dialog";
 import { ChoiceCards } from "./choice-cards";
 import { draftToPersonalization, primaryActionType } from "./draft";
+import { IconInput } from "./fields";
+import { useLiveField } from "./shell";
 
 export interface StepProps {
   onNext: () => void;
@@ -56,9 +102,10 @@ export function StepActions({
   secondary?: React.ReactNode;
 }) {
   return (
-    <div className="mt-6 flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-8 flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
       {onBack ? (
         <Button type="button" variant="ghost" onClick={onBack} disabled={loading}>
+          <ArrowLeft className="size-4" aria-hidden="true" />
           Atrás
         </Button>
       ) : (
@@ -66,8 +113,9 @@ export function StepActions({
       )}
       <div className="flex flex-col-reverse gap-2 sm:flex-row">
         {secondary}
-        <Button type={form ? "submit" : "button"} form={form} onClick={onNext} disabled={nextDisabled} loading={loading}>
+        <Button type={form ? "submit" : "button"} form={form} onClick={onNext} disabled={nextDisabled} loading={loading} className="min-h-11 px-6">
           {nextLabel}
+          <ArrowRight className="size-4" aria-hidden="true" />
         </Button>
       </div>
     </div>
@@ -85,6 +133,78 @@ export function normalizeUrl(value: string): string {
 
 // --- 1-3: tipo de cuenta, objetivo, industria --------------------------------------------------
 
+const ACCOUNT_ICONS: Record<(typeof ONBOARDING_ACCOUNT_TYPES)[number], LucideIcon> = { personal: UserRound, negocio: Store, agencia: Users };
+
+/** Logo o foto de perfil (opcional): se elige aquí y se sube al publicar, cuando ya existe tu cuenta. */
+function LogoPicker() {
+  const logo = useOnboardingLogo();
+  const [error, setError] = useState<string | null>(null);
+
+  function onPick(file: File | undefined): void {
+    setError(null);
+    if (!file) {
+      return;
+    }
+    const check = requestImageUploadSchema.safeParse({ fileName: file.name, contentType: file.type, sizeBytes: file.size });
+    if (!check.success) {
+      setError(check.error.issues[0]?.message ?? "Ese archivo no es válido. Usa una imagen JPG, PNG o WebP.");
+      return;
+    }
+    setOnboardingLogo(file);
+  }
+
+  return (
+    <section className="mt-6 rounded-2xl border border-border bg-surface/50 p-5" aria-labelledby="onboarding-logo-title">
+      <h2 id="onboarding-logo-title" className="flex items-center gap-2 text-base font-semibold text-foreground">
+        <Camera className="size-4 text-muted-foreground" aria-hidden="true" />
+        Tu logo o foto de perfil (opcional)
+      </h2>
+      <p className="mb-4 text-sm text-muted-foreground">Aparecerá en tu página. La subimos al publicar; también puedes cambiarla después.</p>
+      <div className="flex flex-wrap items-center gap-4">
+        <span
+          aria-hidden="true"
+          className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-strong bg-background text-muted-foreground"
+        >
+          {logo.previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:), no pasa por el optimizador
+            <img src={logo.previewUrl} alt="" className="size-full object-cover" />
+          ) : (
+            <UserRound className="size-8" />
+          )}
+        </span>
+        <div className="flex flex-col gap-2">
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-border-strong bg-background px-4 text-sm font-medium text-foreground hover:bg-surface focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
+            <Camera className="size-4" aria-hidden="true" />
+            {logo.file ? "Cambiar imagen" : "Elegir imagen"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="sr-only"
+              onChange={(event) => {
+                onPick(event.target.files?.[0]);
+                event.target.value = "";
+              }}
+            />
+          </label>
+          {logo.file ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="max-w-[14rem] truncate">{logo.file.name}</span>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setOnboardingLogo(null)} aria-label="Quitar la imagen elegida">
+                <Trash2 className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {error ? (
+        <p role="alert" className="mt-3 text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 export function AccountStep({ onNext }: StepProps) {
   const value = useOnboardingStore((state) => state.draft.accountType);
   const update = useOnboardingStore((state) => state.update);
@@ -95,10 +215,11 @@ export function AccountStep({ onNext }: StepProps) {
         legend="Tipo de cuenta"
         name="accountType"
         columns={3}
-        choices={ONBOARDING_ACCOUNT_TYPES.map((type) => ({ value: type, ...ONBOARDING_ACCOUNT_TYPE_LABELS[type] }))}
+        choices={ONBOARDING_ACCOUNT_TYPES.map((type) => ({ value: type, icon: ACCOUNT_ICONS[type], ...ONBOARDING_ACCOUNT_TYPE_LABELS[type] }))}
         value={value}
         onChange={(accountType) => update({ accountType })}
       />
+      <LogoPicker />
       <StepActions onNext={onNext} nextDisabled={!value} />
     </>
   );
@@ -112,8 +233,17 @@ const OBJECTIVE_DESCRIPTIONS: Record<TemplateObjective, string> = {
   compartir: "Todos tus enlaces y redes en un lugar.",
 };
 
+const OBJECTIVE_ICONS: Record<TemplateObjective, LucideIcon> = {
+  captar: Megaphone,
+  vender: ShoppingBag,
+  reservar: CalendarCheck,
+  mostrar: Images,
+  compartir: Share2,
+};
+
 export function ObjectiveStep({ onNext, onBack }: StepProps) {
   const value = useOnboardingStore((state) => state.draft.objective);
+  const secondary = useOnboardingStore((state) => state.draft.secondaryObjective ?? null);
   const update = useOnboardingStore((state) => state.update);
 
   return (
@@ -123,37 +253,129 @@ export function ObjectiveStep({ onNext, onBack }: StepProps) {
         name="objective"
         choices={TEMPLATE_OBJECTIVES.map((objective) => ({
           value: objective,
+          icon: OBJECTIVE_ICONS[objective],
           label: TEMPLATE_OBJECTIVE_LABELS[objective],
           description: OBJECTIVE_DESCRIPTIONS[objective],
         }))}
         value={value}
         onChange={(objective) => update({ objective })}
       />
+      {value ? (
+        <fieldset className="mt-6 rounded-2xl border border-border bg-surface/50 p-4">
+          <legend className="px-1 text-sm font-semibold text-foreground">¿Algo más que quieras lograr? (opcional)</legend>
+          <p className="mb-3 text-sm text-muted-foreground">Un objetivo secundario nos ayuda a sugerirte plantillas que también lo cubran.</p>
+          <div className="flex flex-wrap gap-2">
+            {TEMPLATE_OBJECTIVES.filter((objective) => objective !== value).map((objective) => {
+              const Icon = OBJECTIVE_ICONS[objective];
+              const active = secondary === objective;
+              return (
+                <button
+                  key={objective}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => update({ secondaryObjective: active ? null : objective })}
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] ${
+                    active ? "border-primary bg-primary text-primary-foreground" : "border-border-strong bg-background text-foreground hover:bg-surface"
+                  }`}
+                >
+                  <Icon className="size-4" aria-hidden="true" />
+                  {TEMPLATE_OBJECTIVE_LABELS[objective]}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      ) : null}
       <StepActions onBack={onBack} onNext={onNext} nextDisabled={!value} />
     </>
   );
 }
 
+const INDUSTRY_ICONS: Record<(typeof TEMPLATE_INDUSTRIES)[number], LucideIcon> = {
+  profesional: Briefcase,
+  "servicios-locales": Wrench,
+  "belleza-bienestar": Sparkles,
+  salud: HeartPulse,
+  gastronomia: UtensilsCrossed,
+  turismo: Plane,
+  eventos: PartyPopper,
+  comercio: ShoppingBag,
+  creador: Clapperboard,
+  emprendimiento: Lightbulb,
+  educacion: GraduationCap,
+};
+
 export function IndustryStep({ onNext, onBack }: StepProps) {
   const value = useOnboardingStore((state) => state.draft.industry);
   const update = useOnboardingStore((state) => state.update);
+  const [query, setQuery] = useState("");
+  const needle = query
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const industries = TEMPLATE_INDUSTRIES.filter((industry) =>
+    needle === ""
+      ? true
+      : `${TEMPLATE_INDUSTRY_LABELS[industry]} ${industry}`
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .includes(needle),
+  );
 
   return (
     <>
-      <ChoiceCards
-        legend="Industria"
-        name="industry"
-        columns={3}
-        choices={TEMPLATE_INDUSTRIES.map((industry) => ({ value: industry, label: TEMPLATE_INDUSTRY_LABELS[industry] }))}
-        value={value}
-        onChange={(industry) => update({ industry })}
-      />
+      <div className="mb-5">
+        <IconInput
+          label="Busca tu rubro"
+          icon={Search}
+          type="search"
+          placeholder="Belleza, comida, turismo…"
+          autoComplete="off"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          helperText={`${industries.length} de ${TEMPLATE_INDUSTRIES.length} categorías`}
+        />
+      </div>
+      {industries.length === 0 ? (
+        <div className="flex flex-col items-start gap-3 rounded-2xl border border-dashed border-border-strong bg-surface/50 p-5">
+          <p className="text-sm text-foreground">Ninguna categoría coincide con «{query}». Prueba con otra palabra.</p>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setQuery("")}>
+            Ver todas las categorías
+          </Button>
+        </div>
+      ) : (
+        <ChoiceCards
+          legend="Industria"
+          name="industry"
+          columns={3}
+          choices={industries.map((industry) => ({ value: industry, icon: INDUSTRY_ICONS[industry], label: TEMPLATE_INDUSTRY_LABELS[industry] }))}
+          value={value}
+          onChange={(industry) => update({ industry })}
+        />
+      )}
       <StepActions onBack={onBack} onNext={onNext} nextDisabled={!value} />
     </>
   );
 }
 
 // --- 4-5: nombre y dirección -------------------------------------------------------------------
+
+/** Frases cortas de partida por rubro: texto propio, sin IA ni servicio externo; la persona las edita después. */
+const INDUSTRY_HEADLINES: Record<(typeof TEMPLATE_INDUSTRIES)[number], string[]> = {
+  profesional: ["Asesoría profesional clara y a tu medida", "Experiencia al servicio de tus proyectos", "Resultados concretos, trato directo"],
+  "servicios-locales": ["Servicio confiable cerca de ti", "Rápidos, ordenados y con garantía", "Pide tu cotización hoy"],
+  "belleza-bienestar": ["Realzamos tu belleza natural", "Cuida de ti, reserva tu hora", "Bienestar a tu medida"],
+  salud: ["Tu salud, en buenas manos", "Atención cercana y profesional", "Agenda tu consulta en minutos"],
+  gastronomia: ["Sabores que se disfrutan", "Hecho con ingredientes frescos cada día", "Reserva tu mesa o pide para llevar"],
+  turismo: ["Vive experiencias que no olvidarás", "Tu próxima aventura empieza aquí", "Descubre, explora y reserva"],
+  eventos: ["Hacemos de tu evento un momento único", "Producción y detalles sin estrés", "Cotiza tu próxima celebración"],
+  comercio: ["Productos que te van a encantar", "Compra fácil, envío rápido", "Descubre lo nuevo de la tienda"],
+  creador: ["Contenido, música y proyectos que me mueven", "Todo lo que hago, en un solo lugar", "Sígueme y no te pierdas nada"],
+  emprendimiento: ["Una idea hecha realidad", "Hecho con pasión, para ti", "Conoce el proyecto y sé parte"],
+  educacion: ["Aprende a tu ritmo, con guía real", "Clases y cursos que sí funcionan", "Da el siguiente paso en tu formación"],
+};
 
 const nameSchema = z.object({
   displayName: z.string().trim().min(2, "Mínimo 2 caracteres.").max(120, "Máximo 120 caracteres."),
@@ -166,8 +388,11 @@ export function NameStep({ onNext, onBack }: StepProps) {
     resolver: zodResolver(nameSchema),
     defaultValues: { displayName: draft.displayName },
   });
+  // Lo que se escribe aparece al instante en la vista previa lateral.
+  useLiveField("displayName", useWatch({ control: form.control, name: "displayName" }));
   const label =
     draft.accountType === "negocio" ? "Nombre del negocio" : draft.accountType === "agencia" ? "Nombre de la marca que vas a publicar" : "Tu nombre o el de tu marca";
+  const suggestions = draft.industry ? INDUSTRY_HEADLINES[draft.industry] : [];
 
   return (
     <form
@@ -179,13 +404,41 @@ export function NameStep({ onNext, onBack }: StepProps) {
         onNext();
       })}
     >
-      <Input
+      <IconInput
         label={label}
+        icon={Signature}
+        id="onboarding-display-name"
         helperText="Es lo primero que verán tus visitantes, arriba de tu página."
         autoComplete="organization"
         error={form.formState.errors.displayName?.message}
         {...form.register("displayName")}
       />
+      {suggestions.length > 0 ? (
+        <fieldset className="mt-6 rounded-2xl border border-border bg-surface/50 p-4">
+          <legend className="px-1 text-sm font-semibold text-foreground">Frase corta sugerida para tu rubro</legend>
+          <p className="mb-3 text-sm text-muted-foreground">Toca una para usarla bajo tu nombre. Podrás editarla en el paso «Perfil».</p>
+          <ul className="flex flex-col gap-2">
+            {suggestions.map((phrase) => {
+              const active = draft.headline === phrase;
+              return (
+                <li key={phrase}>
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => update({ headline: active ? "" : phrase })}
+                    className={`flex min-h-11 w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] ${
+                      active ? "border-primary bg-primary/10 text-foreground" : "border-border bg-background text-foreground hover:bg-surface"
+                    }`}
+                  >
+                    {active ? <Check className="size-4 shrink-0 text-primary" aria-hidden="true" /> : <Sparkles className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+                    {phrase}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </fieldset>
+      ) : null}
       <StepActions onBack={onBack} form="onboarding-name" />
     </form>
   );
@@ -202,6 +455,9 @@ export function SlugStep({ onNext, onBack, conflictMessage }: StepProps & { conf
   });
   const slug = useWatch({ control: form.control, name: "slug" });
   const base = env.NEXT_PUBLIC_WEB_BASE_URL.replace(/\/+$/, "");
+  const host = base.replace(/^https?:\/\//, "");
+  useLiveField("slug", slug);
+  const availability = useSlugAvailability(slug);
 
   return (
     <form
@@ -217,16 +473,40 @@ export function SlugStep({ onNext, onBack, conflictMessage }: StepProps & { conf
           {conflictMessage}
         </p>
       ) : null}
-      <Input
+      <IconInput
         label="Dirección de tu página"
+        icon={Link2}
+        prefix={`${host}/`}
         helperText={form.formState.errors.slug ? undefined : "Minúsculas, números y guiones. Si ya está en uso, te avisamos al publicar."}
         autoCapitalize="none"
         spellCheck={false}
         error={form.formState.errors.slug?.message}
         {...form.register("slug", { setValueAs: (value: string) => value.trim().toLowerCase() })}
       />
-      <p className="mt-3 break-all text-sm text-muted-foreground">
-        Tu página quedará en <span className="font-medium text-foreground">{base}/{slug || "tu-direccion"}</span>
+      <p role="status" aria-live="polite" className="mt-3 flex min-h-6 items-center gap-2 text-sm">
+        {availability.state === "checking" ? (
+          <>
+            <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden="true" />
+            <span className="text-muted-foreground">Comprobando disponibilidad…</span>
+          </>
+        ) : availability.state === "taken" ? (
+          <>
+            <CircleAlert className="size-4 text-danger" aria-hidden="true" />
+            <span className="font-medium text-danger">Esa dirección ya está en uso. Prueba con otra.</span>
+          </>
+        ) : availability.state === "free" ? (
+          <>
+            <Check className="size-4 text-success" aria-hidden="true" />
+            <span className="font-medium text-foreground">Parece disponible. La confirmamos al publicar.</span>
+          </>
+        ) : null}
+      </p>
+      <p className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        Tu página quedará en
+        <span className="inline-flex max-w-full items-center gap-1.5 break-all rounded-full bg-primary/10 px-3 py-1 font-medium text-foreground">
+          <Globe className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+          {base}/{slug || "tu-direccion"}
+        </span>
       </p>
       <StepActions onBack={onBack} form="onboarding-slug" />
     </form>
@@ -251,6 +531,39 @@ export function ImportStep({ onNext, onBack }: StepProps) {
   const [socials, setSocials] = useState<string[]>(draft.socials.length > 0 ? draft.socials : [""]);
   const [links, setLinks] = useState<Array<{ label: string; url: string }>>(draft.links);
   const [submitted, setSubmitted] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+
+  async function runImport(): Promise<void> {
+    setImporting(true);
+    setImportMessage(null);
+    try {
+      const result = await importLinkInBio(importUrl.trim());
+      setSocials((current) => {
+        const known = new Set(current.map((item) => normalizeUrl(item)));
+        const merged = [...current.filter((item) => item.trim() !== ""), ...result.socials.filter((item) => !known.has(item))];
+        return (merged.length > 0 ? merged : [""]).slice(0, TEMPLATE_MAX_IMPORTED_SOCIALS);
+      });
+      setLinks((current) => {
+        const known = new Set(current.map((item) => normalizeUrl(item.url)));
+        return [...current, ...result.links.filter((item) => !known.has(item.url))].slice(0, TEMPLATE_MAX_IMPORTED_LINKS);
+      });
+      setImportMessage({
+        tone: "ok",
+        text: `Importamos ${result.links.length} enlace(s) y ${result.socials.length} red(es). Revísalos abajo antes de continuar.`,
+      });
+    } catch (caught) {
+      const serverMessage =
+        caught instanceof ApiError && caught.status === 422 && typeof (caught.body as { message?: unknown } | null)?.message === "string"
+          ? (caught.body as { message: string }).message
+          : null;
+      const text = serverMessage ?? "No pudimos importar esa página ahora. Puedes agregar tus enlaces a mano.";
+      setImportMessage({ tone: "error", text });
+    } finally {
+      setImporting(false);
+    }
+  }
 
   const socialErrors = socials.map((url) => (url.trim() !== "" && !isValidUrl(normalizeUrl(url)) ? "Pega la dirección completa del perfil." : null));
   const linkErrors = links.map((link) => ({
@@ -275,9 +588,42 @@ export function ImportStep({ onNext, onBack }: StepProps) {
 
   return (
     <div className="flex flex-col gap-6">
+      <section className="rounded-2xl border border-primary/30 bg-primary/5 p-5" aria-labelledby="onboarding-import-title">
+        <h2 id="onboarding-import-title" className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <Download className="size-4 text-primary" aria-hidden="true" />
+          ¿Ya tienes un Linktree o Beacons?
+        </h2>
+        <p className="mb-3 text-sm text-muted-foreground">Pega su dirección y traemos tus enlaces y redes. Tú decides cuáles dejar.</p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <IconInput
+              icon={Link2}
+              label="Dirección de tu página"
+              placeholder="linktr.ee/tu-usuario"
+              inputMode="url"
+              autoCapitalize="none"
+              spellCheck={false}
+              value={importUrl}
+              onChange={(event) => setImportUrl(event.target.value)}
+            />
+          </div>
+          <Button type="button" onClick={() => void runImport()} loading={importing} disabled={importUrl.trim().length < 4}>
+            Importar
+          </Button>
+        </div>
+        <p
+          role="status"
+          aria-live="polite"
+          className={`mt-3 text-sm ${importMessage?.tone === "error" ? "text-danger" : "text-foreground"} ${importMessage ? "" : "sr-only"}`}
+        >
+          {importMessage?.text ?? ""}
+        </p>
+      </section>
+
       <section className="flex flex-col gap-3" aria-labelledby="onboarding-socials">
         <div>
-          <h2 id="onboarding-socials" className="text-sm font-semibold text-foreground">
+          <h2 id="onboarding-socials" className="flex items-center gap-2 text-base font-semibold text-foreground">
+            <AtSign className="size-4 text-primary" aria-hidden="true" />
             Tus redes sociales
           </h2>
           <p className="text-sm text-muted-foreground">Pega la dirección de cada perfil. Reconocemos la red sola.</p>
@@ -287,7 +633,8 @@ export function ImportStep({ onNext, onBack }: StepProps) {
           return (
             <div key={index} className="flex items-start gap-2">
               <div className="flex-1">
-                <Input
+                <IconInput
+                  icon={AtSign}
                   label={`Red ${index + 1}`}
                   placeholder="instagram.com/tu-perfil"
                   inputMode="url"
@@ -322,7 +669,8 @@ export function ImportStep({ onNext, onBack }: StepProps) {
 
       <section className="flex flex-col gap-3" aria-labelledby="onboarding-links">
         <div>
-          <h2 id="onboarding-links" className="text-sm font-semibold text-foreground">
+          <h2 id="onboarding-links" className="flex items-center gap-2 text-base font-semibold text-foreground">
+            <Link2 className="size-4 text-primary" aria-hidden="true" />
             Otros enlaces
           </h2>
           <p className="text-sm text-muted-foreground">
@@ -330,15 +678,17 @@ export function ImportStep({ onNext, onBack }: StepProps) {
           </p>
         </div>
         {links.map((link, index) => (
-          <div key={index} className="grid grid-cols-1 items-start gap-2 rounded-md border border-border p-3 sm:grid-cols-[1fr_1fr_auto]">
-            <Input
+          <div key={index} className="grid grid-cols-1 items-start gap-3 rounded-2xl border border-border bg-surface/50 p-4 sm:grid-cols-[1fr_1fr_auto]">
+            <IconInput
+              icon={Type}
               label="Texto del botón"
               placeholder="Ver mi tienda"
               value={link.label}
               error={submitted ? (linkErrors[index]?.label ?? undefined) : undefined}
               onChange={(event) => setLinks((current) => current.map((item, i) => (i === index ? { ...item, label: event.target.value } : item)))}
             />
-            <Input
+            <IconInput
+              icon={Link2}
               label="Dirección"
               placeholder="tutienda.cl"
               inputMode="url"
@@ -389,22 +739,42 @@ export function ImportStep({ onNext, onBack }: StepProps) {
 export function TemplateStep({ onNext, onBack }: StepProps) {
   const draft = useOnboardingStore((state) => state.draft);
   const update = useOnboardingStore((state) => state.update);
+  const favorites = useTemplateFavorites();
 
   return (
     <>
-      <p className="mb-4 text-sm text-muted-foreground">
+      <p className="mb-5 flex items-start gap-2.5 rounded-xl bg-primary/5 p-3.5 text-sm text-foreground">
+        <LayoutTemplate className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+        <span>
         Te mostramos primero las pensadas para {draft.industry ? TEMPLATE_INDUSTRY_LABELS[draft.industry].toLowerCase() : "tu rubro"}
-        {draft.objective ? ` y para ${TEMPLATE_OBJECTIVE_LABELS[draft.objective].toLowerCase()}` : ""}. Cambia los filtros para
-        ver otras.
+        {draft.objective ? ` y para ${TEMPLATE_OBJECTIVE_LABELS[draft.objective].toLowerCase()}` : ""}
+        {draft.secondaryObjective ? ` (y también para ${TEMPLATE_OBJECTIVE_LABELS[draft.secondaryObjective].toLowerCase()})` : ""}. Cambia los
+        filtros, guarda tus favoritas con la estrella o usa «Ver más como esta».
+        </span>
       </p>
-      <TemplateGallery
-        initialFilters={{ industry: draft.industry ?? undefined, objective: draft.objective ?? undefined }}
-        selectedCode={draft.templateCode}
-        onUse={(template) => {
-          update({ templateCode: template.code });
-          onNext();
-        }}
-      />
+      {/* La galería es compartida con el constructor: aquí solo se reviste con estilos del asistente (tarjetas más amplias, filtros
+          en un panel y una insignia «Elegida» sólida), sin tocar su lógica ni su marcado. */}
+      <div
+        className={[
+          "[&_[aria-label='Filtrar plantillas']]:rounded-2xl [&_[aria-label='Filtrar plantillas']]:border [&_[aria-label='Filtrar plantillas']]:border-border [&_[aria-label='Filtrar plantillas']]:bg-surface [&_[aria-label='Filtrar plantillas']]:p-4",
+          "[&_ul[aria-label='Plantillas']]:gap-5",
+          "[&_li[data-template-code]]:rounded-2xl [&_li[data-template-code]]:border-2 [&_li[data-template-code]]:p-4 [&_li[data-template-code]]:shadow-sm [&_li[data-template-code]]:transition-shadow hover:[&_li[data-template-code]]:shadow-lg",
+          "[&_li[data-template-code].border-primary]:bg-primary/5 [&_li[data-template-code].border-primary]:shadow-md",
+          "[&_li[data-template-code]>div[aria-hidden='true']]:!h-[420px] [&_li[data-template-code]>div[aria-hidden='true']]:rounded-xl [&_li[data-template-code]>div[aria-hidden='true']]:bg-gradient-to-b [&_li[data-template-code]>div[aria-hidden='true']]:from-surface [&_li[data-template-code]>div[aria-hidden='true']]:to-border/40",
+          "[&_li[data-template-code]_h3]:text-base [&_li[data-template-code]_h3>span]:rounded-full [&_li[data-template-code]_h3>span]:bg-primary [&_li[data-template-code]_h3>span]:px-2.5 [&_li[data-template-code]_h3>span]:py-1 [&_li[data-template-code]_h3>span]:text-primary-foreground",
+        ].join(" ")}
+      >
+        <TemplateGallery
+          initialFilters={{ industry: draft.industry ?? undefined, objective: draft.objective ?? undefined }}
+          selectedCode={draft.templateCode}
+          favoriteCodes={favorites.codes}
+          onToggleFavorite={favorites.toggle}
+          onUse={(template) => {
+            update({ templateCode: template.code });
+            onNext();
+          }}
+        />
+      </div>
       <StepActions onBack={onBack} onNext={onNext} nextDisabled={!draft.templateCode} nextLabel="Continuar con la elegida" />
     </>
   );
@@ -430,6 +800,8 @@ const profileFormSchema = z.object({
   whatsappPhone: z.string().trim(),
   primaryLinkLabel: z.string().trim().max(80, "Máximo 80 caracteres."),
   primaryLinkUrl: z.string().trim(),
+  secondaryLinkLabel: z.string().trim().max(80, "Máximo 80 caracteres."),
+  secondaryLinkUrl: z.string().trim(),
 });
 
 export function ProfileStep({ onNext, onBack }: StepProps) {
@@ -439,6 +811,15 @@ export function ProfileStep({ onNext, onBack }: StepProps) {
   const primaryType = template ? primaryActionType(template) : null;
 
   const schema = profileFormSchema.superRefine((values, ctx) => {
+    const hasSecondary = values.secondaryLinkLabel !== "" || values.secondaryLinkUrl !== "";
+    if (hasSecondary) {
+      if (values.secondaryLinkLabel === "") {
+        ctx.addIssue({ code: "custom", path: ["secondaryLinkLabel"], message: "Escribe el texto del botón." });
+      }
+      if (!safeUrlSchema.safeParse(normalizeUrl(values.secondaryLinkUrl)).success) {
+        ctx.addIssue({ code: "custom", path: ["secondaryLinkUrl"], message: "Pega una dirección válida (https://…)." });
+      }
+    }
     if (primaryType === "whatsapp" && !phoneSchema.safeParse(values.whatsappPhone).success) {
       ctx.addIssue({ code: "custom", path: ["whatsappPhone"], message: "Usa formato internacional, por ejemplo +56912345678." });
     }
@@ -460,8 +841,14 @@ export function ProfileStep({ onNext, onBack }: StepProps) {
       whatsappPhone: draft.whatsappPhone,
       primaryLinkLabel: draft.primaryLinkLabel,
       primaryLinkUrl: draft.primaryLinkUrl,
+      secondaryLinkLabel: draft.secondaryLinkLabel ?? "",
+      secondaryLinkUrl: draft.secondaryLinkUrl ?? "",
     },
   });
+
+  // Lo que se escribe aparece al instante en la vista previa lateral.
+  useLiveField("headline", useWatch({ control: form.control, name: "headline" }));
+  useLiveField("bio", useWatch({ control: form.control, name: "bio" }));
 
   if (isPending) {
     return <LoadingState label="Cargando tu plantilla…" />;
@@ -486,12 +873,17 @@ export function ProfileStep({ onNext, onBack }: StepProps) {
       noValidate
       className="flex flex-col gap-4"
       onSubmit={form.handleSubmit((values) => {
-        update({ ...values, primaryLinkUrl: values.primaryLinkUrl ? normalizeUrl(values.primaryLinkUrl) : "" });
+        update({
+          ...values,
+          primaryLinkUrl: values.primaryLinkUrl ? normalizeUrl(values.primaryLinkUrl) : "",
+          secondaryLinkUrl: values.secondaryLinkUrl ? normalizeUrl(values.secondaryLinkUrl) : "",
+        });
         onNext();
       })}
     >
-      <Input
+      <IconInput
         label="Frase corta"
+        icon={Type}
         placeholder="Qué haces, en una línea"
         helperText="Aparece bajo tu nombre. Opcional."
         error={form.formState.errors.headline?.message}
@@ -505,13 +897,17 @@ export function ProfileStep({ onNext, onBack }: StepProps) {
         error={form.formState.errors.bio?.message}
         {...form.register("bio")}
       />
-      <div className="rounded-lg border border-border p-4">
-        <h2 className="text-sm font-semibold text-foreground">Tu acción principal</h2>
+      <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-5">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <Zap className="size-4 text-primary" aria-hidden="true" />
+          Tu acción principal
+        </h2>
         <p className="mb-3 text-sm text-muted-foreground">
           Es el botón destacado de tu página y, en el teléfono, queda fijo abajo.
         </p>
         {primaryType === "whatsapp" ? (
-          <Input
+          <IconInput
+            icon={Phone}
             label="Tu número de WhatsApp"
             placeholder="+56912345678"
             inputMode="tel"
@@ -523,14 +919,16 @@ export function ProfileStep({ onNext, onBack }: StepProps) {
           />
         ) : primaryType === "link" ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Input
+            <IconInput
+              icon={Type}
               label="Texto del botón"
               placeholder="Escucha mi nuevo tema"
               required
               error={form.formState.errors.primaryLinkLabel?.message}
               {...form.register("primaryLinkLabel")}
             />
-            <Input
+            <IconInput
+              icon={Link2}
               label="Dirección del botón"
               placeholder="https://…"
               inputMode="url"
@@ -545,6 +943,32 @@ export function ProfileStep({ onNext, onBack }: StepProps) {
           <p className="text-sm text-muted-foreground">Esta plantilla no tiene acción principal. Puedes elegir una en el constructor.</p>
         )}
       </div>
+      <div className="rounded-2xl border border-border bg-surface/50 p-5">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <Link2 className="size-4 text-muted-foreground" aria-hidden="true" />
+          Botón secundario (opcional)
+        </h2>
+        <p className="mb-3 text-sm text-muted-foreground">Una segunda acción debajo de la principal: tu tienda, tu carta, tu agenda…</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <IconInput
+            icon={Type}
+            label="Texto del botón secundario"
+            placeholder="Ver mi catálogo"
+            error={form.formState.errors.secondaryLinkLabel?.message}
+            {...form.register("secondaryLinkLabel")}
+          />
+          <IconInput
+            icon={Link2}
+            label="Dirección del botón secundario"
+            placeholder="https://…"
+            inputMode="url"
+            autoCapitalize="none"
+            spellCheck={false}
+            error={form.formState.errors.secondaryLinkUrl?.message}
+            {...form.register("secondaryLinkUrl")}
+          />
+        </div>
+      </div>
       <StepActions onBack={onBack} form="onboarding-profile" />
     </form>
   );
@@ -552,9 +976,19 @@ export function ProfileStep({ onNext, onBack }: StepProps) {
 
 // --- 9: vista previa ---------------------------------------------------------------------------
 
+const PREVIEW_LINK_HOURS = 48;
+
+/** Enlace temporal de vista previa: los datos viajan en el fragmento de la URL (nunca al servidor) y la página lo rechaza vencido. */
+function buildPreviewLink(code: string, personalization: ReturnType<typeof draftToPersonalization>): string {
+  const payload = { c: code, p: personalization ?? {}, e: Date.now() + PREVIEW_LINK_HOURS * 60 * 60 * 1000 };
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return `${env.NEXT_PUBLIC_WEB_BASE_URL.replace(/\/+$/, "")}/vista-previa#${encoded}`;
+}
+
 export function PreviewStep({ onNext, onBack, onEdit }: StepProps & { onEdit: (stepIndex: number) => void }) {
   const draft = useOnboardingStore((state) => state.draft);
   const { template, isPending, isError, retry } = useChosenTemplate();
+  const [shareState, setShareState] = useState<"idle" | "copied" | "failed">("idle");
 
   if (isPending) {
     return <LoadingState label="Preparando tu vista previa…" />;
@@ -571,19 +1005,49 @@ export function PreviewStep({ onNext, onBack, onEdit }: StepProps & { onEdit: (s
 
   return (
     <>
-      <dl className="mb-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+      {/* Una lista de tarjetas, cada una con su par término/valor: la lista de definición solo contiene términos y valores, y el
+          botón «Cambiar» va fuera de ella (un botón dentro de `dl` no es una estructura válida). */}
+      <ul className="mb-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3" aria-label="Resumen de tu página">
         {summary.map((item) => (
-          <div key={item.label} className="flex items-start justify-between gap-2 rounded-md border border-border p-3">
-            <div className="min-w-0">
+          <li key={item.label} className="flex items-start justify-between gap-2 rounded-2xl border border-border bg-background p-4 shadow-sm">
+            <dl className="min-w-0">
               <dt className="text-muted-foreground">{item.label}</dt>
               <dd className="break-all font-medium text-foreground">{item.value}</dd>
-            </div>
+            </dl>
             <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(item.step)} aria-label={`Cambiar ${item.label.toLowerCase()}`}>
               Cambiar
             </Button>
-          </div>
+          </li>
         ))}
-      </dl>
+      </ul>
+      <section className="mb-5 flex flex-col gap-3 rounded-2xl border border-border bg-surface/50 p-4 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="onboarding-share-title">
+        <div>
+          <h2 id="onboarding-share-title" className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Share2 className="size-4 text-primary" aria-hidden="true" />
+            Compártela antes de publicar
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Enlace temporal ({PREVIEW_LINK_HOURS} horas) para que alguien la vea y te dé su opinión. No se indexa en buscadores.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            const link = buildPreviewLink(template.code, draftToPersonalization(draft, template));
+            navigator.clipboard.writeText(link).then(
+              () => setShareState("copied"),
+              () => setShareState("failed"),
+            );
+          }}
+        >
+          <Link2 className="size-4" aria-hidden="true" />
+          {shareState === "copied" ? "Enlace copiado" : "Copiar enlace de vista previa"}
+        </Button>
+        <span role="status" aria-live="polite" className="sr-only">
+          {shareState === "copied" ? "Enlace de vista previa copiado." : shareState === "failed" ? "No se pudo copiar el enlace." : ""}
+        </span>
+      </section>
       <DevicePreview template={template} personalization={draftToPersonalization(draft, template)} />
       <StepActions onBack={onBack} onNext={onNext} nextLabel="Se ve bien, continuar" />
     </>

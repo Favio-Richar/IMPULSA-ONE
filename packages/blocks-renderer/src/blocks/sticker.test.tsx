@@ -33,6 +33,6 @@ describe("bloque sticker (extra F10)", () => {
   });
 
   it("un id que ya no existe no pinta nada (en vez de romper la página)", () => {
-    expect(renderToStaticMarkup(<StickerBlock config={{ stickerId: "ya-no-existe", size: "md", rotation: 0, alignment: "center" }} />)).toBe("");
+    expect(renderToStaticMarkup(<StickerBlock config={{ stickerId: "ya-no-existe", size: "md", rotation: 0, alignment: "center", color: "primary" }} />)).toBe("");
   });
 });

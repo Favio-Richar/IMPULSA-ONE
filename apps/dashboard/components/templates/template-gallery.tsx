@@ -12,7 +12,7 @@ import {
   type ThemeFamily,
 } from "@impulza/validation";
 import { Button, EmptyState, ErrorState, LoadingState, Select } from "@impulza/ui";
-import { Check, Eye } from "lucide-react";
+import { Check, Eye, Sparkles, Star } from "lucide-react";
 import { useState } from "react";
 import type { TemplateFilters } from "../../lib/api/templates";
 import { useTemplates } from "../../lib/hooks/use-templates";
@@ -42,6 +42,8 @@ export function TemplateGallery({
   onUse,
   useLabel = "Usar esta plantilla",
   busyCode,
+  favoriteCodes,
+  onToggleFavorite,
 }: {
   initialFilters?: TemplateFilters;
   selectedCode?: string | null;
@@ -49,10 +51,17 @@ export function TemplateGallery({
   useLabel?: string;
   /** Plantilla que se está aplicando: su botón muestra la carga y los demás quedan deshabilitados. */
   busyCode?: string | null;
+  /** Si se pasan junto con `onToggleFavorite`, cada tarjeta trae una estrella y hay un filtro «Solo favoritas». */
+  favoriteCodes?: readonly string[];
+  onToggleFavorite?: (code: string) => void;
 }) {
   const [filters, setFilters] = useState<TemplateFilters>(initialFilters);
   const [previewing, setPreviewing] = useState<TemplateResponse | null>(null);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
   const templatesQuery = useTemplates(filters);
+  const favorites = favoriteCodes ?? [];
+  const canFavorite = Boolean(onToggleFavorite);
+  const visible = templatesQuery.data ? (canFavorite && onlyFavorites ? templatesQuery.data.filter((template) => favorites.includes(template.code)) : templatesQuery.data) : [];
   const hasFilters = Boolean(filters.industry || filters.objective || filters.family);
 
   function use(template: TemplateResponse): void {
@@ -86,10 +95,29 @@ export function TemplateGallery({
         />
       </div>
 
+      {canFavorite ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" size="sm" variant={onlyFavorites ? "primary" : "secondary"} aria-pressed={onlyFavorites} onClick={() => setOnlyFavorites((value) => !value)}>
+            <Star className="size-4" aria-hidden="true" />
+            Solo favoritas ({favorites.length})
+          </Button>
+        </div>
+      ) : null}
+
       {templatesQuery.isPending ? (
         <LoadingState label="Cargando plantillas…" />
       ) : templatesQuery.isError ? (
         <ErrorState title="No pudimos cargar las plantillas" onRetry={() => void templatesQuery.refetch()} />
+      ) : visible.length === 0 && canFavorite && onlyFavorites ? (
+        <EmptyState
+          title="Aún no tienes favoritas"
+          description="Toca la estrella de una plantilla para guardarla aquí y compararla después."
+          action={
+            <Button type="button" variant="secondary" onClick={() => setOnlyFavorites(false)}>
+              Ver todas las plantillas
+            </Button>
+          }
+        />
       ) : templatesQuery.data.length === 0 ? (
         <EmptyState
           title="No hay plantillas con esos filtros"
@@ -104,7 +132,7 @@ export function TemplateGallery({
         />
       ) : (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Plantillas">
-          {templatesQuery.data.map((template, index) => {
+          {visible.map((template, index) => {
             const selected = selectedCode === template.code;
             return (
               <li
@@ -118,6 +146,17 @@ export function TemplateGallery({
                 <TemplateThumbnail template={template} />
                 <div className="flex flex-col gap-1">
                   <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    {canFavorite ? (
+                      <button
+                        type="button"
+                        aria-pressed={favorites.includes(template.code)}
+                        aria-label={`${favorites.includes(template.code) ? "Quitar de favoritas" : "Guardar en favoritas"}: ${template.name}`}
+                        onClick={() => onToggleFavorite?.(template.code)}
+                        className="-ml-1 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+                      >
+                        <Star className={`size-4 ${favorites.includes(template.code) ? "fill-current text-primary" : ""}`} aria-hidden="true" />
+                      </button>
+                    ) : null}
                     {template.name}
                     {selected ? (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
@@ -145,6 +184,21 @@ export function TemplateGallery({
                   >
                     {useLabel}
                   </Button>
+                  {canFavorite ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Ver más como ${template.name}`}
+                      onClick={() => {
+                        setOnlyFavorites(false);
+                        setFilters({ industry: template.industryTags[0], family: template.family });
+                      }}
+                    >
+                      <Sparkles className="size-4" aria-hidden="true" />
+                      Ver más como esta
+                    </Button>
+                  ) : null}
                 </div>
               </li>
             );

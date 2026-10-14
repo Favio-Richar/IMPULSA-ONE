@@ -5,6 +5,7 @@ export function useAnalyticsOverview(organizationId: string, filters: AnalyticsO
   return useQuery({
     queryKey: ["analytics-overview", organizationId, filters],
     queryFn: () => getAnalyticsOverview(organizationId, filters),
+    enabled: organizationId !== "",
     // Al cambiar de rango o de sitio se mantiene visible el resumen anterior mientras llega el
     // nuevo, en vez de vaciar toda la pantalla a un estado de carga en cada clic de filtro.
     placeholderData: keepPreviousData,

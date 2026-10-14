@@ -896,8 +896,21 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
           ],
         },
       },
+      {
+        name: "color",
+        label: "Color",
+        helperText: "Usa los colores de tu tema: el acento, el color del texto o la superficie. Siempre legible.",
+        control: {
+          kind: "select",
+          options: [
+            { value: "primary", label: "Acento del tema" },
+            { value: "ink", label: "Color del texto" },
+            { value: "surface", label: "Superficie" },
+          ],
+        },
+      },
       { name: "rotation", label: "Rotación (de −30° a 30°)", helperText: "Un giro pequeño le da un toque a mano. 0 = derecho.", control: { kind: "number", min: -30, max: 30, step: 1 } },
     ],
-    seedConfig: () => ({ stickerId: "estrella", size: "md", rotation: 0, alignment: "center" }),
+    seedConfig: () => ({ stickerId: "estrella", size: "md", rotation: 0, alignment: "center", color: "primary" }),
   },
 };

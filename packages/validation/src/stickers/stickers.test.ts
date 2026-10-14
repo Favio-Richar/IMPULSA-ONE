@@ -53,7 +53,7 @@ describe("catálogo de stickers (extra F10)", () => {
 
 describe("bloque sticker (extra F10)", () => {
   it("valores por defecto y rangos", () => {
-    expect(stickerSchema.parse({ stickerId: "flecha-derecha" })).toEqual({ stickerId: "flecha-derecha", size: "md", rotation: 0, alignment: "center" });
+    expect(stickerSchema.parse({ stickerId: "flecha-derecha" })).toEqual({ stickerId: "flecha-derecha", size: "md", rotation: 0, alignment: "center", color: "primary" });
     expect(stickerSchema.safeParse({ stickerId: "flecha-derecha", rotation: 31 }).success).toBe(false);
     expect(stickerSchema.safeParse({ stickerId: "flecha-derecha", rotation: -31 }).success).toBe(false);
     expect(stickerSchema.safeParse({ stickerId: "flecha-derecha", rotation: 12.5 }).success).toBe(false);

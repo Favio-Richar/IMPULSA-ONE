@@ -66,3 +66,55 @@
     animation: impulza-slide-left 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
 }
+
+/* Asistente de registro: fondo vivo, brillo y flotación de la vista previa. Solo con movimiento permitido; sin él, quedan
+   estáticos (los degradados siguen visibles, no se anima nada). */
+.onb-aurora {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.onb-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.55;
+  background: color-mix(in srgb, var(--color-primary) 38%, transparent);
+}
+.onb-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(color-mix(in srgb, var(--color-primary) 22%, transparent) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(70% 55% at 50% 0%, #000, transparent);
+  opacity: 0.5;
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes onb-drift-a {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(6rem, 4rem) scale(1.15); }
+  }
+  @keyframes onb-drift-b {
+    0%, 100% { transform: translate(0, 0) scale(1.1); }
+    50% { transform: translate(-5rem, -3rem) scale(0.95); }
+  }
+  @keyframes onb-float {
+    0%, 100% { transform: translateY(0) rotate(0.6deg); }
+    50% { transform: translateY(-10px) rotate(-0.6deg); }
+  }
+  @keyframes onb-shimmer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
+  .onb-blob-a { animation: onb-drift-a 18s ease-in-out infinite; }
+  .onb-blob-b { animation: onb-drift-b 22s ease-in-out infinite; }
+  .onb-float { animation: onb-float 7s ease-in-out infinite; }
+  .onb-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+    animation: onb-shimmer 2.4s ease-in-out infinite;
+  }
+}

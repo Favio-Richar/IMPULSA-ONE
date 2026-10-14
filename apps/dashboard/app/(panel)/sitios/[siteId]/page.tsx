@@ -23,7 +23,7 @@ import {
   Tabs,
   type TabItem,
 } from "@impulza/ui";
-import { ArrowDown, ArrowUp, FileText, LayoutDashboard, Globe, Palette, ShoppingBag, Sparkles } from "lucide-react";
+import { ArrowDown, ArrowUp, ClipboardList, FileText, LayoutDashboard, Globe, Palette, Search, ShoppingBag, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -34,6 +34,8 @@ import { AppearancePanel } from "../../../../components/site/appearance-panel";
 import { CustomDomains } from "../../../../components/site/custom-domains";
 import { EngagementSummary } from "../../../../components/site/engagement-summary";
 import { MeasurementSettings } from "../../../../components/site/measurement-settings";
+import { FormsManager } from "../../../../components/site/forms-manager";
+import { SeoOverview } from "../../../../components/site/seo-overview";
 import { SiteWorkspace } from "../../../../components/site/site-workspace";
 import { useActiveOrgStore } from "../../../../lib/active-org-store";
 import { ApiError } from "../../../../lib/api-client";
@@ -114,6 +116,8 @@ const SITE_TABS: readonly (TabItem & { value: SiteTab })[] = [
   { value: "paginas", label: "Páginas", icon: <FileText className="size-4" /> },
   { value: "comercio", label: "Comercio y reservas", icon: <ShoppingBag className="size-4" /> },
   { value: "contenido", label: "Contenido", icon: <Sparkles className="size-4" /> },
+  { value: "formularios", label: "Formularios", icon: <ClipboardList className="size-4" /> },
+  { value: "seo", label: "SEO", icon: <Search className="size-4" /> },
   { value: "dominio", label: "Dominio y medición", icon: <Globe className="size-4" /> },
 ];
 
@@ -162,6 +166,8 @@ function SiteSections({ organizationId, siteId, name, slug }: { organizationId: 
           <AbTestsShortcut siteId={siteId} />
         </div>
       ) : null}
+      {tab === "formularios" ? <FormsManager organizationId={organizationId} siteId={siteId} /> : null}
+      {tab === "seo" ? <SeoOverview organizationId={organizationId} siteId={siteId} siteSlug={slug} /> : null}
       {tab === "dominio" ? (
         <div className="flex flex-col gap-6">
           <CustomDomains organizationId={organizationId} siteId={siteId} />

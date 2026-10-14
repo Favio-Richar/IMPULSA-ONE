@@ -89,6 +89,7 @@ describe("Documento OpenAPI", () => {
       "POST /api/v1/auth/forgot-password",
       "POST /api/v1/auth/reset-password",
       "GET /api/v1/public/sites/{siteSlug}",
+      "GET /api/v1/public/site-slugs/{slug}/availability",
       "GET /api/v1/public/sites/{siteSlug}/pages/{pageSlug}",
       "GET /api/v1/public/sites/{siteSlug}/forms/{formId}",
       "POST /api/v1/public/sites/{siteSlug}/forms/{formId}/submissions",

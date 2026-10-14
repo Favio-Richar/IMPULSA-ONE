@@ -11159,6 +11159,76 @@
         ]
       }
     },
+    "/api/v1/public/site-slugs/{slug}/availability": {
+      "get": {
+        "description": "Responde `free`, `taken`, `reserved` o `invalid` para el slug dado. No requiere sesión.",
+        "operationId": "SlugAvailabilityController_check",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado de la dirección.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "available": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "free",
+                        "taken",
+                        "reserved",
+                        "invalid"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "available",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Límite de peticiones superado (60 por minuto y IP)."
+          }
+        },
+        "summary": "¿Está libre esta dirección pública?",
+        "tags": [
+          "public-sites"
+        ]
+      }
+    },
     "/api/v1/organizations/{organizationId}/sites": {
       "post": {
         "description": "Requiere el permiso `site.create`. El slug es la identidad pública del sitio (`slug.dominio`) y es único en toda la plataforma, no solo dentro de la organización.",
@@ -16199,6 +16269,177 @@
           }
         ],
         "summary": "Borrar un formulario",
+        "tags": [
+          "forms"
+        ]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/sites/{siteId}/forms/{formId}/submissions": {
+      "get": {
+        "description": "Del más reciente al más antiguo, paginado (`limit` 1–100, por defecto 25; `offset`).",
+        "operationId": "FormsController_listSubmissions",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "description": "Organización dueña del recurso. Resuelve el tenant antes de tocar nada (ADR-002).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteId",
+            "required": true,
+            "in": "path",
+            "description": "Sitio dueño del formulario.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "formId",
+            "required": true,
+            "in": "path",
+            "description": "Formulario cuyos envíos se listan.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Máximo de envíos (1–100, por defecto 25).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "description": "Cuántos saltar (por defecto 0).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envíos del formulario, con el total.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "formId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "contactId": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "payload": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "source": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "formId",
+                          "contactId",
+                          "payload",
+                          "source",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total",
+                    "limit",
+                    "offset"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Sin membresía activa en la organización, sin el permiso requerido, o petición sin la cabecera anti-CSRF."
+          },
+          "404": {
+            "description": "Formulario no encontrado: no existe, o el sitio pertenece a otra organización (ADR-002)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Listar los envíos recibidos de un formulario",
         "tags": [
           "forms"
         ]
@@ -21740,6 +21981,129 @@
         "summary": "Borrar un código QR",
         "tags": [
           "qr-codes"
+        ]
+      }
+    },
+    "/api/v1/imports/link-in-bio": {
+      "post": {
+        "description": "Lee la página pública indicada (solo `linktr.ee`, `beacons.ai`, `bio.link`; lista cerrada, sin seguir otros destinos) y devuelve las redes y enlaces encontrados. No guarda nada: el cliente los revisa antes de usarlos.",
+        "operationId": "LinkImportController_importLinks",
+        "parameters": [
+          {
+            "name": "X-Requested-With",
+            "in": "header",
+            "required": false,
+            "description": "Obligatoria con valor `impulza-one` en toda petición que modifica estado. Ver CsrfGuard.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "impulza-one"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "url"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Redes y enlaces encontrados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "linktree",
+                        "beacons",
+                        "biolink",
+                        "other"
+                      ]
+                    },
+                    "title": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "socials": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "links": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "url"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "title",
+                    "socials",
+                    "links"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entrada inválida (detalle en `issues`)."
+          },
+          "401": {
+            "description": "Sin sesión válida."
+          },
+          "403": {
+            "description": "Petición que modifica estado sin la cabecera anti-CSRF `X-Requested-With`."
+          },
+          "422": {
+            "description": "`LINK_IMPORT_INVALID_URL`, `LINK_IMPORT_UNSUPPORTED_SOURCE`, `LINK_IMPORT_NOT_FOUND`, `LINK_IMPORT_EMPTY` o `LINK_IMPORT_FAILED`."
+          },
+          "429": {
+            "description": "Límite de peticiones superado (10 por minuto)."
+          }
+        },
+        "security": [
+          {
+            "sesion": []
+          }
+        ],
+        "summary": "Importar enlaces desde Linktree, Beacons o Bio.link",
+        "tags": [
+          "link-import"
         ]
       }
     },

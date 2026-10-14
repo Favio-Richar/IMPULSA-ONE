@@ -1,6 +1,6 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, UseGuards } from "@nestjs/common";
-import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { formResponse } from "@impulza/contracts";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { ApiCookieAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { formResponse, formSubmissionListResponse } from "@impulza/contracts";
 import { PERMISSIONS, type User } from "@impulza/database";
 import { CsrfGuard } from "../../common/csrf.guard.js";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe.js";
@@ -65,6 +65,30 @@ export class FormsController {
     @Param("formId") formId: string,
   ) {
     return this.formsService.getForm(organizationId, siteId, formId);
+  }
+
+  // Los envíos traen datos de contacto: se leen igual que la lista de Contactos (miembro activo de la organización).
+  @Get(":formId/submissions")
+  @ApiOperation({
+    summary: "Listar los envíos recibidos de un formulario",
+    description: "Del más reciente al más antiguo, paginado (`limit` 1–100, por defecto 25; `offset`).",
+  })
+  @ApiUuidParam("siteId", "Sitio dueño del formulario.")
+  @ApiUuidParam("formId", "Formulario cuyos envíos se listan.")
+  @ApiQuery({ name: "limit", required: false, description: "Máximo de envíos (1–100, por defecto 25)." })
+  @ApiQuery({ name: "offset", required: false, description: "Cuántos saltar (por defecto 0)." })
+  @ApiZodResponse(200, formSubmissionListResponse, "Envíos del formulario, con el total.")
+  @ApiResponse({ status: 404, description: FORM_NOT_FOUND })
+  async listSubmissions(
+    @Param("organizationId") organizationId: string,
+    @Param("siteId") siteId: string,
+    @Param("formId") formId: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+  ) {
+    const limit = Math.min(100, Math.max(1, Number.parseInt(limitRaw ?? "25", 10) || 25));
+    const offset = Math.max(0, Number.parseInt(offsetRaw ?? "0", 10) || 0);
+    return this.formsService.listSubmissions(organizationId, siteId, formId, limit, offset);
   }
 
   @Post()

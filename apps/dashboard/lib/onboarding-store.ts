@@ -35,6 +35,11 @@ export interface OnboardingDraft {
   whatsappPhone: string;
   primaryLinkLabel: string;
   primaryLinkUrl: string;
+  /** Objetivo secundario (opcional): orienta la sugerencia de plantillas; el principal manda. Ausente en borradores viejos. */
+  secondaryObjective?: TemplateObjective | null;
+  /** Botón secundario del perfil (opcional): entra como primer enlace adicional de la página. */
+  secondaryLinkLabel?: string;
+  secondaryLinkUrl?: string;
 }
 
 /**
@@ -64,6 +69,9 @@ const EMPTY_DRAFT: OnboardingDraft = {
   whatsappPhone: "",
   primaryLinkLabel: "",
   primaryLinkUrl: "",
+  secondaryObjective: null,
+  secondaryLinkLabel: "",
+  secondaryLinkUrl: "",
 };
 
 const EMPTY_PROGRESS: OnboardingProgress = {

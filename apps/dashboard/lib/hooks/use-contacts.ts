@@ -18,6 +18,7 @@ export function useContacts(organizationId: string, filters: ContactFilters) {
   return useQuery({
     queryKey: ["contacts", organizationId, filters],
     queryFn: () => listContacts(organizationId, filters),
+    enabled: organizationId !== "",
   });
 }
 

@@ -46,13 +46,13 @@ const DEEP_DIVES = [
 ];
 
 export default async function ProductoPage() {
-  const { bienvenidaHref, loginHref } = getDashboardLinks();
+  const { registroHref, loginHref } = getDashboardLinks();
   const branding = await getPlatformBranding();
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
       <JsonLd nodes={[impulzaOrganizationNode(branding)]} />
-      <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <BrandedMarketingHeader registroHref={registroHref} loginHref={loginHref} />
 
       <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-20">
         <MarketingHeroBackground />
@@ -129,7 +129,7 @@ export default async function ProductoPage() {
               Probá Impulza One con tu propio contenido.
             </h2>
             <a
-              href={bienvenidaHref}
+              href={registroHref}
               className="relative rounded-[10px] bg-[#0f6f6b] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               Crear mi portal gratis
@@ -138,7 +138,7 @@ export default async function ProductoPage() {
         </Reveal>
       </section>
 
-      <MarketingFooter bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <MarketingFooter registroHref={registroHref} loginHref={loginHref} />
     </div>
   );
 }

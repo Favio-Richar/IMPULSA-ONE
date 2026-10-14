@@ -8,7 +8,7 @@ import {
 } from "../../lib/marketing/integraciones";
 import { Reveal } from "./reveal";
 
-export function IntegracionesDirectory({ bienvenidaHref }: { bienvenidaHref: string }): React.JSX.Element {
+export function IntegracionesDirectory({ registroHref }: { registroHref: string }): React.JSX.Element {
   const [selectedCategoria, setSelectedCategoria] = useState<IntegracionCategoria | "todas">("todas");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -131,7 +131,7 @@ export function IntegracionesDirectory({ bienvenidaHref }: { bienvenidaHref: str
                 </span>
                 <div className="mt-4 flex items-center justify-end">
                   <a
-                    href={bienvenidaHref}
+                    href={registroHref}
                     className="text-xs font-semibold text-[#0f6f6b] hover:underline"
                   >
                     Activar en tu portal →

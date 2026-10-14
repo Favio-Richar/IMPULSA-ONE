@@ -105,11 +105,11 @@ export function TemplateCardLink({ template, href, className = "" }: { template:
 export function PlanCard({
   plan,
   isRecommended,
-  bienvenidaHref,
+  registroHref,
 }: {
   plan: PlanResponse;
   isRecommended: boolean;
-  bienvenidaHref: string;
+  registroHref: string;
 }) {
   return (
     <div
@@ -133,7 +133,7 @@ export function PlanCard({
         <li>{plan.limits.members === null ? "Equipo ilimitado" : `${plan.limits.members} integrante(s)`}</li>
       </ul>
       <a
-        href={bienvenidaHref}
+        href={registroHref}
         className={
           isRecommended
             ? "rounded-[10px] bg-[#0f6f6b] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"

@@ -17,7 +17,7 @@ import {
   Briefcase,
   type LucideIcon,
 } from "lucide-react";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ONBOARDING_STEPS, useOnboardingStore } from "../../lib/onboarding-store";
 import { TemplatePreview } from "../templates/template-preview";
 import { draftToPersonalization } from "./draft";
@@ -46,6 +46,8 @@ interface LiveOverrides {
   headline?: string | undefined;
   bio?: string | undefined;
   slug?: string | undefined;
+  /** Qué parte del teléfono mostrar en el paso de redes y enlaces: `social` (redes) o `link` (otros enlaces). */
+  focus?: string | undefined;
 }
 const LiveContext = createContext<{ overrides: LiveOverrides; setOverrides: (changes: LiveOverrides) => void } | null>(null);
 
@@ -137,6 +139,34 @@ export function LivePreviewPanel({ stepKey, template }: { stepKey: (typeof ONBOA
   const live = { ...draft, ...Object.fromEntries(Object.entries(overrides).filter(([, value]) => value !== undefined)) } as typeof draft;
   const name = live.displayName.trim() || "Tu nombre";
   const hint = HINTS[stepKey];
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const sliderTarget = stepKey === "import" ? (overrides.focus === "social" ? '[data-block-type="social"]' : '[data-block-type="link"]') : null;
+
+  // En el paso de redes y enlaces, el teléfono se desplaza hasta donde aparecen esos botones (la plantilla es más alta que la
+  // pantalla). Es solo presentación: se aplica directo al elemento, sin estado, y se recalcula cuando el contenido cambia de alto.
+  useEffect(() => {
+    const slider = sliderRef.current;
+    if (!slider) {
+      return;
+    }
+    const apply = (): void => {
+      const target = sliderTarget ? slider.querySelector<HTMLElement>(sliderTarget) : null;
+      if (!target) {
+        slider.style.transform = "";
+        return;
+      }
+      const offset = (target.getBoundingClientRect().top - slider.getBoundingClientRect().top) / SCALE;
+      // Sin pasarse del final: el contenido nunca deja un hueco en blanco debajo.
+      const screenHeight = slider.parentElement?.clientHeight ?? 0;
+      const maxShift = Math.max(0, slider.offsetHeight * SCALE - screenHeight);
+      const shift = Math.min(Math.max(0, offset - 56) * SCALE, maxShift);
+      slider.style.transform = `translateY(${-shift}px)`;
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(slider);
+    return () => observer.disconnect();
+  }, [sliderTarget, template, live.socials.length, live.links.length]);
 
   return (
     <aside aria-hidden="true" className="hidden lg:block">
@@ -148,8 +178,10 @@ export function LivePreviewPanel({ stepKey, template }: { stepKey: (typeof ONBOA
           <div className="relative h-[34rem] overflow-hidden rounded-[1.9rem] bg-background">
             <div className="absolute left-1/2 top-2 z-10 h-4 w-20 -translate-x-1/2 rounded-full bg-[#0f172a]" />
             {template ? (
-              <div inert className="pointer-events-none absolute left-0 top-0 origin-top-left" style={{ width: SCREEN_WIDTH, transform: `scale(${SCALE})` }}>
-                <TemplatePreview template={template} personalization={draftToPersonalization(live, template)} thumbnail />
+              <div ref={sliderRef} className="absolute inset-x-0 top-0 transition-transform duration-500 motion-reduce:transition-none">
+                <div inert className="pointer-events-none origin-top-left" style={{ width: SCREEN_WIDTH, transform: `scale(${SCALE})` }}>
+                  <TemplatePreview template={template} personalization={draftToPersonalization(live, template)} thumbnail />
+                </div>
               </div>
             ) : (
               <SkeletonPortal name={name} slug={live.slug} />

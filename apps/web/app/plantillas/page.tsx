@@ -20,15 +20,15 @@ export const metadata = {
 
 export default async function PlantillasPage() {
   const [templates, branding] = await Promise.all([getTemplateCatalog(), getPlatformBranding()]);
-  const { bienvenidaHref, loginHref } = getDashboardLinks();
+  const { registroHref, loginHref } = getDashboardLinks();
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
       <JsonLd nodes={[impulzaOrganizationNode(branding)]} />
-      <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <BrandedMarketingHeader registroHref={registroHref} loginHref={loginHref} />
 
       {/* Portada: un rubro por diapositiva, cada uno con su plantilla real. */}
-      <RubrosCarousel bienvenidaHref={bienvenidaHref} />
+      <RubrosCarousel registroHref={registroHref} />
 
       <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-16">
         <MarketingHeroBackground />
@@ -53,7 +53,7 @@ export default async function PlantillasPage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {templates.map((template, index) => (
               <Reveal key={template.code} delayMs={index * 60}>
-                <TemplateCardLink template={template} href={bienvenidaHref} />
+                <TemplateCardLink template={template} href={registroHref} />
               </Reveal>
             ))}
           </div>
@@ -72,7 +72,7 @@ export default async function PlantillasPage() {
               ¿Ninguna plantilla calza exacto? Igual podés empezar y editarla toda.
             </h2>
             <a
-              href={bienvenidaHref}
+              href={registroHref}
               className="relative rounded-[10px] bg-[#0f6f6b] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               Crear mi portal gratis
@@ -81,7 +81,7 @@ export default async function PlantillasPage() {
         </Reveal>
       </section>
 
-      <MarketingFooter bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <MarketingFooter registroHref={registroHref} loginHref={loginHref} />
     </div>
   );
 }

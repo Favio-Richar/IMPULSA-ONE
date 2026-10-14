@@ -21,7 +21,7 @@ export const templateIndustry = z.enum([
   "educacion",
 ]);
 
-export const templateObjective = z.enum(["captar", "vender", "reservar", "mostrar", "compartir"]);
+export const templateObjective = z.enum(["captar", "vender", "reservar", "mostrar", "compartir", "fidelizar", "donaciones", "educar"]);
 
 export const templateFamily = z.enum(["oscuro", "minimal", "ejecutivo", "vibrante", "clasico"]);
 

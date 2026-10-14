@@ -91,10 +91,10 @@ const SECTIONS: Array<{ id: string; title: string; paragraphs: string[] }> = [
 ];
 
 export default function TerminosPage() {
-  const { bienvenidaHref, loginHref } = getDashboardLinks();
+  const { registroHref, loginHref } = getDashboardLinks();
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <BrandedMarketingHeader registroHref={registroHref} loginHref={loginHref} />
       <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Términos del servicio</h1>
         <p className="mt-3 text-sm text-[#475569]">Vigentes desde el 29 de septiembre de 2026.</p>
@@ -126,7 +126,7 @@ export default function TerminosPage() {
           ))}
         </div>
       </main>
-      <MarketingFooter bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <MarketingFooter registroHref={registroHref} loginHref={loginHref} />
     </div>
   );
 }

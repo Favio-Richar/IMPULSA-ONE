@@ -20,13 +20,13 @@ export const metadata = {
 
 export default async function PlanesPage() {
   const [plansRaw, branding] = await Promise.all([getPlanCatalog(), getPlatformBranding()]);
-  const { bienvenidaHref, loginHref } = getDashboardLinks();
+  const { registroHref, loginHref } = getDashboardLinks();
   const plans: PlanResponse[] = [...plansRaw].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
       <JsonLd nodes={[impulzaOrganizationNode(branding), marketingFaqNode(FAQ_ITEMS)]} />
-      <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <BrandedMarketingHeader registroHref={registroHref} loginHref={loginHref} />
 
       <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-20">
         <MarketingHeroBackground />
@@ -52,7 +52,7 @@ export default async function PlanesPage() {
               const isRecommended = index === 1 && plans.length > 2;
               return (
                 <Reveal key={plan.code} delayMs={index * 80}>
-                  <PlanCard plan={plan} isRecommended={isRecommended} bienvenidaHref={bienvenidaHref} />
+                  <PlanCard plan={plan} isRecommended={isRecommended} registroHref={registroHref} />
                 </Reveal>
               );
             })}
@@ -100,7 +100,7 @@ export default async function PlanesPage() {
               Tu identidad digital, lista para el mercado.
             </h2>
             <a
-              href={bienvenidaHref}
+              href={registroHref}
               className="relative rounded-[10px] bg-[#0f6f6b] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               Crear mi portal gratis
@@ -109,7 +109,7 @@ export default async function PlanesPage() {
         </Reveal>
       </section>
 
-      <MarketingFooter bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <MarketingFooter registroHref={registroHref} loginHref={loginHref} />
     </div>
   );
 }

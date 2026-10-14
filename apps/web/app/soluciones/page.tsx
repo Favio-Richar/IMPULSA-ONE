@@ -13,11 +13,11 @@ export const metadata = {
 };
 
 export default function SolucionesPage(): React.JSX.Element {
-  const { bienvenidaHref, loginHref } = getDashboardLinks();
+  const { registroHref, loginHref } = getDashboardLinks();
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <BrandedMarketingHeader registroHref={registroHref} loginHref={loginHref} />
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-20">
@@ -134,7 +134,7 @@ export default function SolucionesPage(): React.JSX.Element {
                         Ver plantilla →
                       </Link>
                       <a
-                        href={bienvenidaHref}
+                        href={registroHref}
                         className="rounded-md bg-[#0f6f6b] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90"
                       >
                         Empezar
@@ -162,7 +162,7 @@ export default function SolucionesPage(): React.JSX.Element {
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <a
-                href={bienvenidaHref}
+                href={registroHref}
                 className="rounded-[10px] bg-[#0f6f6b] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
               >
                 Crear mi portal gratis
@@ -178,7 +178,7 @@ export default function SolucionesPage(): React.JSX.Element {
         </div>
       </section>
 
-      <MarketingFooter bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <MarketingFooter registroHref={registroHref} loginHref={loginHref} />
     </div>
   );
 }

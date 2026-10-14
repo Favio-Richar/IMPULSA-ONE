@@ -13,11 +13,11 @@ export const metadata = {
 };
 
 export default function RecursosPage(): React.JSX.Element {
-  const { bienvenidaHref, loginHref } = getDashboardLinks();
+  const { registroHref, loginHref } = getDashboardLinks();
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <BrandedMarketingHeader registroHref={registroHref} loginHref={loginHref} />
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-20">
@@ -78,7 +78,7 @@ export default function RecursosPage(): React.JSX.Element {
 
                 <div className="mt-6 border-t border-[#e2e8f0] pt-3 flex items-center justify-between">
                   <span className="text-xs font-semibold text-[#0f6f6b]">Disponible en la plataforma</span>
-                  <a href={bienvenidaHref} className="text-xs font-medium text-[#0f6f6b] hover:underline">
+                  <a href={registroHref} className="text-xs font-medium text-[#0f6f6b] hover:underline">
                     Aplicar ahora →
                   </a>
                 </div>
@@ -141,7 +141,7 @@ export default function RecursosPage(): React.JSX.Element {
                 Ir a Soporte
               </a>
               <a
-                href={bienvenidaHref}
+                href={registroHref}
                 className="rounded-lg bg-[#0f6f6b] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90"
               >
                 Crear cuenta
@@ -164,7 +164,7 @@ export default function RecursosPage(): React.JSX.Element {
             </p>
             <div className="mt-6 flex justify-center">
               <a
-                href={bienvenidaHref}
+                href={registroHref}
                 className="rounded-[10px] bg-[#0f6f6b] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
               >
                 Crear mi portal gratis
@@ -174,7 +174,7 @@ export default function RecursosPage(): React.JSX.Element {
         </div>
       </section>
 
-      <MarketingFooter bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <MarketingFooter registroHref={registroHref} loginHref={loginHref} />
     </div>
   );
 }

@@ -31,14 +31,14 @@ export default async function MarketingHomePage() {
     getPlanCatalog(),
     getPlatformBranding(),
   ]);
-  const { bienvenidaHref, loginHref } = getDashboardLinks();
+  const { registroHref, loginHref } = getDashboardLinks();
   const carouselTemplates = templates.slice(0, 8);
   const plans: PlanResponse[] = [...plansRaw].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
       <JsonLd nodes={[impulzaOrganizationNode(branding)]} />
-      <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} branding={branding} />
+      <MarketingHeader registroHref={registroHref} loginHref={loginHref} branding={branding} />
 
       {/* Portada: corredor de fotos de negocios detrás del mensaje principal. */}
       <CorridorHero>
@@ -55,7 +55,7 @@ export default async function MarketingHomePage() {
         </p>
         <div className="mt-7 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
           <a
-            href={bienvenidaHref}
+            href={registroHref}
             className="rounded-[10px] bg-[#0f6f6b] px-6 py-3.5 text-center text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Crear mi portal gratis
@@ -200,7 +200,7 @@ export default async function MarketingHomePage() {
           </Reveal>
 
           <Reveal className="mt-12" delayMs={80}>
-            <TemplateCarousel templates={carouselTemplates} bienvenidaHref={bienvenidaHref} />
+            <TemplateCarousel templates={carouselTemplates} registroHref={registroHref} />
           </Reveal>
 
           <Reveal className="mt-4 text-center">
@@ -224,7 +224,7 @@ export default async function MarketingHomePage() {
                 const isRecommended = index === 1 && plans.length > 2;
                 return (
                   <Reveal key={plan.code} delayMs={index * 80}>
-                    <PlanCard plan={plan} isRecommended={isRecommended} bienvenidaHref={bienvenidaHref} />
+                    <PlanCard plan={plan} isRecommended={isRecommended} registroHref={registroHref} />
                   </Reveal>
                 );
               })}
@@ -248,7 +248,7 @@ export default async function MarketingHomePage() {
               Tu identidad digital, lista para el mercado.
             </h2>
             <a
-              href={bienvenidaHref}
+              href={registroHref}
               className="relative rounded-[10px] bg-[#0f6f6b] px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               Crear mi portal gratis
@@ -257,7 +257,7 @@ export default async function MarketingHomePage() {
         </Reveal>
       </section>
 
-      <MarketingFooter bienvenidaHref={bienvenidaHref} loginHref={loginHref} branding={branding} />
+      <MarketingFooter registroHref={registroHref} loginHref={loginHref} branding={branding} />
     </div>
   );
 }

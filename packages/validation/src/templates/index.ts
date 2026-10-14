@@ -23,7 +23,7 @@ import { getCatalogTheme, THEME_FAMILIES } from "../themes/catalog.js";
  * Objetivos del plan maestro (§7.1 punto 4, §14.1 "página guiada por objetivo"). Cerrados: son los
  * filtros de la galería y la respuesta del paso "Objetivo principal" del onboarding (§8.2).
  */
-export const TEMPLATE_OBJECTIVES = ["captar", "vender", "reservar", "mostrar", "compartir"] as const;
+export const TEMPLATE_OBJECTIVES = ["captar", "vender", "reservar", "mostrar", "compartir", "fidelizar", "donaciones", "educar"] as const;
 export type TemplateObjective = (typeof TEMPLATE_OBJECTIVES)[number];
 
 export const TEMPLATE_OBJECTIVE_LABELS: Record<TemplateObjective, string> = {
@@ -32,6 +32,9 @@ export const TEMPLATE_OBJECTIVE_LABELS: Record<TemplateObjective, string> = {
   reservar: "Recibir reservas",
   mostrar: "Mostrar mi trabajo",
   compartir: "Compartir mis enlaces",
+  fidelizar: "Crear una comunidad",
+  donaciones: "Recibir propinas o donaciones",
+  educar: "Enseñar o educar",
 };
 
 /**

@@ -1,9 +1,11 @@
 "use client";
 
-import { cn } from "@impulza/ui";
+import { Button, cn } from "@impulza/ui";
+import { CircleHelp, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChecklistStep, PublishStep } from "../../../components/onboarding/publish-step";
+import { AssistantSidePanels } from "../../../components/onboarding/side-panels";
 import { LivePreviewPanel, LivePreviewProvider, STEP_ICONS, StepRail, stepShowsLivePreview } from "../../../components/onboarding/shell";
 import {
   AccountStep,
@@ -34,6 +36,21 @@ const STEP_INTROS: Record<(typeof ONBOARDING_STEPS)[number]["key"], string> = {
   checklist: "Tu página está lista. Estos pasos te ayudan a sacarle partido.",
 };
 
+/** Ayuda contextual de cada paso («¿Cómo funciona esto?»): qué se pide, para qué sirve y qué pasa si lo dejas pendiente. */
+const STEP_HELP: Record<(typeof ONBOARDING_STEPS)[number]["key"], string> = {
+  account: "Elegimos las plantillas, los textos sugeridos y los pasos siguientes según si eres una persona, un negocio o una agencia. Puedes cambiarlo más adelante.",
+  objective: "Tu objetivo decide qué botón destaca primero en tu página (por ejemplo, escribirte por WhatsApp o reservar). Puedes sumar un objetivo secundario.",
+  industry: "El rubro solo ordena las plantillas para mostrarte primero las más parecidas a lo tuyo. No limita lo que puedes elegir.",
+  name: "Es el nombre que se ve en la parte superior de tu página y en Google. Puedes editarlo cuando quieras desde el panel.",
+  slug: "Es la dirección pública de tu página. Revisamos en vivo si está libre. Cambiarla después rompe los enlaces que ya hayas compartido.",
+  import: "Pega tus redes o importa los enlaces de Linktree, Beacons o Bio.link. No guardamos nada de esas cuentas. Si no tienes nada, puedes omitir este paso.",
+  template: "La plantilla es solo el punto de partida: colores, fuentes y bloques se pueden cambiar después sin perder tu contenido.",
+  profile: "Aquí van tu foto o logo, tu descripción y el botón principal. Todo es editable luego y se ve de inmediato en la vista previa.",
+  preview: "Es una simulación con tus datos: todavía no está publicada. Puedes volver a cualquier paso para ajustar algo antes de continuar.",
+  publish: "Al publicar creamos tu sitio con lo que elegiste. Después sigue siendo editable en el constructor y en Apariencia.",
+  checklist: "Estas tareas te ayudan a completar tu página. Ninguna es obligatoria y puedes retomarlas cuando quieras desde el panel.",
+};
+
 /** Columna de la vista previa: la plantilla elegida (si ya hay una) con los datos del borrador. */
 function PreviewColumn({ stepKey }: { stepKey: (typeof ONBOARDING_STEPS)[number]["key"] }): React.JSX.Element {
   const { template } = useChosenTemplate();
@@ -51,6 +68,8 @@ export default function OnboardingPage(): React.JSX.Element | null {
   const progress = useOnboardingStore((state) => state.progress);
   const [slugConflict, setSlugConflict] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [helpStep, setHelpStep] = useState<number | null>(null);
+  const [cancelStep, setCancelStep] = useState<number | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // El borrador vive en sessionStorage: se lee después de montar (nunca en el render del servidor) y
@@ -68,6 +87,7 @@ export default function OnboardingPage(): React.JSX.Element | null {
   useEffect(() => {
     headingRef.current?.focus();
   }, [stepIndex]);
+  
 
   if (!hydrated) {
     return null;
@@ -87,13 +107,21 @@ export default function OnboardingPage(): React.JSX.Element | null {
     reset();
     router.push("/");
   }
+  /** Cancelar el asistente: descarta el borrador local y vuelve al panel. */
+  function cancel(): void {
+    reset();
+    router.push("/");
+  }
 
+  const helpOpen = helpStep === stepIndex;
+  const confirmingCancel = cancelStep === stepIndex;
   const wide = step.key === "template" || step.key === "preview";
   const showPreview = stepShowsLivePreview(step.key);
   const StepIcon = STEP_ICONS[step.key];
 
   return (
     <LivePreviewProvider>
+      <AssistantSidePanels />
       <div className={cn("mx-auto flex w-full flex-col gap-6 overflow-x-clip", "max-w-6xl")}>
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
@@ -142,8 +170,23 @@ export default function OnboardingPage(): React.JSX.Element | null {
                   {step.title}
                 </h1>
                 <p className="mt-1 text-sm text-muted-foreground">{STEP_INTROS[step.key]}</p>
+                <button
+                  type="button"
+                  aria-expanded={helpOpen}
+                  aria-controls="onboarding-step-help"
+                  onClick={() => setHelpStep(helpOpen ? null : stepIndex)}
+                  className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+                >
+                  <CircleHelp className="size-4" aria-hidden="true" />
+                  ¿Cómo funciona esto?
+                </button>
               </div>
             </div>
+            {helpOpen ? (
+              <div id="onboarding-step-help" role="note" className="-mt-2 mb-6 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+                {STEP_HELP[step.key]}
+              </div>
+            ) : null}
 
             <section aria-label={step.title} key={step.key} className="motion-fade">
               <div className="motion-slide-left">
@@ -182,6 +225,31 @@ export default function OnboardingPage(): React.JSX.Element | null {
 
           {showPreview ? <PreviewColumn stepKey={step.key} /> : null}
         </div>
+
+        {step.key === "checklist" ? null : (
+          <div className="flex flex-col items-center gap-3">
+            {confirmingCancel ? (
+              <div role="alertdialog" aria-label="Cancelar el asistente" className="flex flex-col items-center gap-3 rounded-xl border border-border bg-background/90 p-4 text-center">
+                <p className="text-sm text-foreground">
+                  {locked ? "Tu página ya está creada; saldrás del asistente y la seguirás editando desde el panel." : "Saldrás del asistente y se descartará lo que llevas escrito."}
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button type="button" variant="secondary" onClick={() => setCancelStep(null)}>
+                    Seguir aquí
+                  </Button>
+                  <Button type="button" onClick={cancel}>
+                    Sí, volver al panel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button type="button" variant="ghost" onClick={() => setCancelStep(stepIndex)}>
+                <LogOut className="size-4" aria-hidden="true" />
+                Cancelar y volver al panel
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </LivePreviewProvider>
   );

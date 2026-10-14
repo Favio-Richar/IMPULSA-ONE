@@ -35,7 +35,9 @@ export interface OnboardingDraft {
   whatsappPhone: string;
   primaryLinkLabel: string;
   primaryLinkUrl: string;
-  /** Objetivo secundario (opcional): orienta la sugerencia de plantillas; el principal manda. Ausente en borradores viejos. */
+  /** Objetivos secundarios (opcional, varios): orientan la sugerencia de plantillas; el principal manda. Ausente en borradores viejos. */
+  secondaryObjectives?: TemplateObjective[];
+  /** Antiguo objetivo secundario único. Solo se lee en borradores viejos (ver `secondaryObjectivesOf`); ya no se escribe. */
   secondaryObjective?: TemplateObjective | null;
   /** Botón secundario del perfil (opcional): entra como primer enlace adicional de la página. */
   secondaryLinkLabel?: string;
@@ -69,6 +71,7 @@ const EMPTY_DRAFT: OnboardingDraft = {
   whatsappPhone: "",
   primaryLinkLabel: "",
   primaryLinkUrl: "",
+  secondaryObjectives: [],
   secondaryObjective: null,
   secondaryLinkLabel: "",
   secondaryLinkUrl: "",
@@ -82,6 +85,14 @@ const EMPTY_PROGRESS: OnboardingProgress = {
   templateApplied: false,
   published: false,
 };
+
+/** Objetivos secundarios del borrador, también en borradores viejos que guardaron un único `secondaryObjective`. */
+export function secondaryObjectivesOf(draft: Pick<OnboardingDraft, "secondaryObjectives" | "secondaryObjective">): TemplateObjective[] {
+  if (Array.isArray(draft.secondaryObjectives)) {
+    return draft.secondaryObjectives;
+  }
+  return draft.secondaryObjective ? [draft.secondaryObjective] : [];
+}
 
 interface OnboardingState {
   /** Dueño del borrador: si en la misma pestaña entra otra cuenta, el borrador no es suyo. */

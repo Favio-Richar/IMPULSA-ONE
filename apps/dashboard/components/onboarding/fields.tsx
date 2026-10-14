@@ -2,7 +2,7 @@
 
 import { cn } from "@impulza/ui";
 import type { LucideIcon } from "lucide-react";
-import { type InputHTMLAttributes, forwardRef, useId } from "react";
+import { type InputHTMLAttributes, type ReactNode, forwardRef, useId } from "react";
 
 export interface IconInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -10,6 +10,8 @@ export interface IconInputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string | undefined;
   /** Ícono contextual a la izquierda, dentro del campo. */
   icon?: LucideIcon;
+  /** Ícono ya armado (logo de marca, etc.). Si viene, reemplaza a `icon`. Decorativo. */
+  iconNode?: ReactNode;
   /** Texto fijo a la izquierda del valor (p. ej. el dominio de la dirección), como chip. */
   prefix?: string;
 }
@@ -20,7 +22,7 @@ export interface IconInputProps extends InputHTMLAttributes<HTMLInputElement> {
  * El ícono y el prefijo son decorativos (`aria-hidden`): el nombre accesible sigue siendo la etiqueta.
  */
 export const IconInput = forwardRef<HTMLInputElement, IconInputProps>(
-  ({ className, label, helperText, error, id, required, icon: Icon, prefix, ...props }, ref) => {
+  ({ className, label, helperText, error, id, required, icon: Icon, iconNode, prefix, ...props }, ref) => {
     const generatedId = useId();
     const inputId = id ?? generatedId;
     const helperId = `${inputId}-helper`;
@@ -45,7 +47,11 @@ export const IconInput = forwardRef<HTMLInputElement, IconInputProps>(
             error ? "border-danger focus-within:ring-danger" : "border-border-strong",
           )}
         >
-          {Icon ? (
+          {iconNode ? (
+            <span aria-hidden="true" className="flex w-11 shrink-0 items-center justify-center text-foreground">
+              {iconNode}
+            </span>
+          ) : Icon ? (
             <span aria-hidden="true" className="flex w-11 shrink-0 items-center justify-center text-muted-foreground">
               <Icon className="size-4" />
             </span>

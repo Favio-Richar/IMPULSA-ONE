@@ -16,11 +16,11 @@ const RUBROS: HeroCarouselItem[] = [
   { id: "portada-minimal", title: "Portafolios\ny creativos", image: unsplash(PHOTOS.fotografia.id, 1600), imageAlt: PHOTOS.fotografia.alt, credit: "Plantilla Minimal", meta: ["Galería", "Contacto", "Dominio propio"], accent: "#334155" },
 ];
 
-export function RubrosCarousel({ bienvenidaHref }: { bienvenidaHref: string }) {
+export function RubrosCarousel({ registroHref }: { registroHref: string }) {
   return (
     <HeroCarousel items={RUBROS} defaultIndex={0} brand="Impulza One · Plantillas" label="Plantillas por rubro" className="h-[88vh] max-h-[860px] min-h-[36rem]">
       <a
-        href={bienvenidaHref}
+        href={registroHref}
         className="order-last w-full rounded-[10px] bg-white px-5 py-3 text-center text-sm font-semibold text-[#0f172a] shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:order-none sm:w-auto"
       >
         Crear mi portal gratis

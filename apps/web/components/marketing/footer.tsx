@@ -3,11 +3,11 @@ import { getPlatformBranding } from "../../lib/api";
 
 /** Servidor: si no recibe la marca, la pide (F9.1) — así todas las páginas comerciales usan la misma. */
 export async function MarketingFooter({
-  bienvenidaHref,
+  registroHref,
   loginHref,
   branding,
 }: {
-  bienvenidaHref: string;
+  registroHref: string;
   loginHref: string;
   branding?: {
     name: string;
@@ -99,7 +99,7 @@ export async function MarketingFooter({
 
         <div className="flex flex-col gap-2 text-sm">
           <span className="font-semibold text-[#0f172a]">Cuenta</span>
-          <a href={bienvenidaHref} className="text-[#64748b] hover:text-[#0f172a]">
+          <a href={registroHref} className="text-[#64748b] hover:text-[#0f172a]">
             Crear mi portal gratis
           </a>
           <a href={loginHref} className="text-[#64748b] hover:text-[#0f172a]">

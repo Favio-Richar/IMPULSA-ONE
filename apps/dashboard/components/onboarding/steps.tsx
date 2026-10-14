@@ -11,6 +11,7 @@ import {
   requestImageUploadSchema,
   safeUrlSchema,
   SOCIAL_NETWORK_LABELS,
+  type SocialNetwork,
   TEMPLATE_INDUSTRIES,
   TEMPLATE_INDUSTRY_LABELS,
   TEMPLATE_MAX_IMPORTED_LINKS,
@@ -19,6 +20,7 @@ import {
   TEMPLATE_OBJECTIVES,
   type TemplateObjective,
 } from "@impulza/validation";
+import { NetworkIcon } from "@impulza/blocks-renderer";
 import { Button, ErrorState, LoadingState, Textarea } from "@impulza/ui";
 import {
   ArrowLeft,
@@ -38,6 +40,8 @@ import {
   Camera,
   Check,
   CircleAlert,
+  HandCoins,
+  HeartHandshake,
   Download,
   Loader2,
   Phone,
@@ -69,7 +73,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { env } from "../../lib/env";
 import { useTemplates } from "../../lib/hooks/use-templates";
-import { useOnboardingStore } from "../../lib/onboarding-store";
+import { secondaryObjectivesOf, useOnboardingStore } from "../../lib/onboarding-store";
 import { slugify } from "../../lib/slugify";
 import { TemplateGallery } from "../templates/template-gallery";
 import { DevicePreview } from "../templates/template-preview-dialog";
@@ -231,6 +235,9 @@ const OBJECTIVE_DESCRIPTIONS: Record<TemplateObjective, string> = {
   reservar: "Que agenden una hora o una mesa.",
   mostrar: "Un portafolio de tu trabajo.",
   compartir: "Todos tus enlaces y redes en un lugar.",
+  fidelizar: "Reunir seguidores o suscriptores alrededor de lo que haces.",
+  donaciones: "Que te apoyen con propinas o donaciones.",
+  educar: "Enseñar o compartir contenido educativo.",
 };
 
 const OBJECTIVE_ICONS: Record<TemplateObjective, LucideIcon> = {
@@ -239,11 +246,15 @@ const OBJECTIVE_ICONS: Record<TemplateObjective, LucideIcon> = {
   reservar: CalendarCheck,
   mostrar: Images,
   compartir: Share2,
+  fidelizar: HeartHandshake,
+  donaciones: HandCoins,
+  educar: GraduationCap,
 };
 
 export function ObjectiveStep({ onNext, onBack }: StepProps) {
   const value = useOnboardingStore((state) => state.draft.objective);
-  const secondary = useOnboardingStore((state) => state.draft.secondaryObjective ?? null);
+  const draft = useOnboardingStore((state) => state.draft);
+  const secondary = secondaryObjectivesOf(draft);
   const update = useOnboardingStore((state) => state.update);
 
   return (
@@ -258,22 +269,31 @@ export function ObjectiveStep({ onNext, onBack }: StepProps) {
           description: OBJECTIVE_DESCRIPTIONS[objective],
         }))}
         value={value}
-        onChange={(objective) => update({ objective })}
+        // El principal es uno solo (decide la acción principal de la página); si ya estaba entre los secundarios, sale de ahí.
+        onChange={(objective) => update({ objective, secondaryObjectives: secondary.filter((item) => item !== objective), secondaryObjective: null })}
       />
       {value ? (
         <fieldset className="mt-6 rounded-2xl border border-border bg-surface/50 p-4">
           <legend className="px-1 text-sm font-semibold text-foreground">¿Algo más que quieras lograr? (opcional)</legend>
-          <p className="mb-3 text-sm text-muted-foreground">Un objetivo secundario nos ayuda a sugerirte plantillas que también lo cubran.</p>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Puedes marcar varios. Nos ayudan a sugerirte plantillas que también los cubran.
+            {secondary.length > 0 ? ` Elegidos: ${secondary.length}.` : ""}
+          </p>
           <div className="flex flex-wrap gap-2">
             {TEMPLATE_OBJECTIVES.filter((objective) => objective !== value).map((objective) => {
               const Icon = OBJECTIVE_ICONS[objective];
-              const active = secondary === objective;
+              const active = secondary.includes(objective);
               return (
                 <button
                   key={objective}
                   type="button"
                   aria-pressed={active}
-                  onClick={() => update({ secondaryObjective: active ? null : objective })}
+                  onClick={() =>
+                    update({
+                      secondaryObjectives: active ? secondary.filter((item) => item !== objective) : [...secondary, objective],
+                      secondaryObjective: null,
+                    })
+                  }
                   className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] ${
                     active ? "border-primary bg-primary text-primary-foreground" : "border-border-strong bg-background text-foreground hover:bg-surface"
                   }`}
@@ -525,6 +545,44 @@ function isValidUrl(value: string): boolean {
  * cuenta de ninguna red ni se leen datos de ellas: eso exigiría integraciones con cada plataforma,
  * que el plan maestro ubica en Integraciones (§9.15), fuera de este paso.
  */
+/** Plataformas que se pueden agregar desde la lista, con el comienzo de su dirección (la persona solo completa su usuario). */
+const PLATFORM_CHOICES: ReadonlyArray<{ network: SocialNetwork; start: string }> = [
+  { network: "instagram", start: "https://instagram.com/" },
+  { network: "whatsapp", start: "https://wa.me/" },
+  { network: "tiktok", start: "https://tiktok.com/@" },
+  { network: "facebook", start: "https://facebook.com/" },
+  { network: "youtube", start: "https://youtube.com/@" },
+  { network: "linkedin", start: "https://linkedin.com/in/" },
+  { network: "x", start: "https://x.com/" },
+  { network: "threads", start: "https://threads.net/@" },
+  { network: "telegram", start: "https://t.me/" },
+  { network: "spotify", start: "https://open.spotify.com/" },
+  { network: "calendly", start: "https://calendly.com/" },
+  { network: "googlemaps", start: "https://maps.app.goo.gl/" },
+  { network: "pinterest", start: "https://pinterest.com/" },
+  { network: "github", start: "https://github.com/" },
+  { network: "twitch", start: "https://twitch.tv/" },
+  { network: "snapchat", start: "https://snapchat.com/add/" },
+  { network: "discord", start: "https://discord.gg/" },
+  { network: "patreon", start: "https://patreon.com/" },
+  { network: "soundcloud", start: "https://soundcloud.com/" },
+  { network: "applemusic", start: "https://music.apple.com/" },
+  { network: "vimeo", start: "https://vimeo.com/" },
+  { network: "behance", start: "https://behance.net/" },
+  { network: "dribbble", start: "https://dribbble.com/" },
+  { network: "medium", start: "https://medium.com/@" },
+  { network: "etsy", start: "https://etsy.com/shop/" },
+  { network: "kick", start: "https://kick.com/" },
+  { network: "onlyfans", start: "https://onlyfans.com/" },
+];
+const PLATFORM_STARTS = new Set(PLATFORM_CHOICES.map((choice) => choice.start));
+
+/** Logo de la plataforma que se reconoce en la dirección; sin texto o sin plataforma conocida, el ícono genérico de enlace. */
+function PlatformIcon({ url }: { url: string }) {
+  const network = url.trim() === "" ? null : detectSocialNetwork(normalizeUrl(url));
+  return network ? <NetworkIcon network={network} className="size-4" /> : <Link2 className="size-4" />;
+}
+
 export function ImportStep({ onNext, onBack }: StepProps) {
   const draft = useOnboardingStore((state) => state.draft);
   const update = useOnboardingStore((state) => state.update);
@@ -534,6 +592,19 @@ export function ImportStep({ onNext, onBack }: StepProps) {
   const [importUrl, setImportUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // El teléfono se desplaza a las redes o a los enlaces según la sección donde la persona está escribiendo.
+  const [previewArea, setPreviewArea] = useState<"social" | "link">("link");
+  useLiveField("focus", previewArea);
+
+  /** Agrega una red desde la lista: una fila nueva con el comienzo de la dirección, o la reutiliza si ya hay una vacía. */
+  function addPlatform(start: string): void {
+    setSocials((current) => {
+      const filled = current.filter((item) => item.trim() !== "");
+      return [...filled, start].slice(0, TEMPLATE_MAX_IMPORTED_SOCIALS);
+    });
+    setPickerOpen(false);
+  }
 
   async function runImport(): Promise<void> {
     setImporting(true);
@@ -578,7 +649,8 @@ export function ImportStep({ onNext, onBack }: StepProps) {
       return;
     }
     update({
-      socials: socials.map(normalizeUrl).filter((url) => url !== ""),
+      // Una fila con solo el comienzo de la dirección (sin usuario) no es una red: no se guarda.
+      socials: socials.map(normalizeUrl).filter((url) => url !== "" && !PLATFORM_STARTS.has(url)),
       links: links
         .filter((link) => link.label.trim() !== "" && link.url.trim() !== "")
         .map((link) => ({ label: link.label.trim(), url: normalizeUrl(link.url) })),
@@ -620,7 +692,7 @@ export function ImportStep({ onNext, onBack }: StepProps) {
         </p>
       </section>
 
-      <section className="flex flex-col gap-3" aria-labelledby="onboarding-socials">
+      <section className="flex flex-col gap-3" aria-labelledby="onboarding-socials" onFocusCapture={() => setPreviewArea("social")}>
         <div>
           <h2 id="onboarding-socials" className="flex items-center gap-2 text-base font-semibold text-foreground">
             <AtSign className="size-4 text-primary" aria-hidden="true" />
@@ -634,7 +706,7 @@ export function ImportStep({ onNext, onBack }: StepProps) {
             <div key={index} className="flex items-start gap-2">
               <div className="flex-1">
                 <IconInput
-                  icon={AtSign}
+                  iconNode={<PlatformIcon url={url} />}
                   label={`Red ${index + 1}`}
                   placeholder="instagram.com/tu-perfil"
                   inputMode="url"
@@ -660,14 +732,37 @@ export function ImportStep({ onNext, onBack }: StepProps) {
           );
         })}
         {socials.length < TEMPLATE_MAX_IMPORTED_SOCIALS ? (
-          <Button type="button" variant="secondary" size="sm" className="self-start" onClick={() => setSocials((current) => [...current, ""])}>
-            <Plus className="size-4" aria-hidden="true" />
-            Agregar red
-          </Button>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" size="sm" onClick={() => setSocials((current) => [...current, ""])}>
+                <Plus className="size-4" aria-hidden="true" />
+                Agregar red
+              </Button>
+              <Button type="button" variant="ghost" size="sm" aria-expanded={pickerOpen} aria-controls="onboarding-platforms" onClick={() => setPickerOpen((open) => !open)}>
+                {pickerOpen ? "Ocultar la lista" : "Elegir de la lista de plataformas"}
+              </Button>
+            </div>
+            {pickerOpen ? (
+              <ul id="onboarding-platforms" aria-label="Plataformas disponibles" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {PLATFORM_CHOICES.map((choice) => (
+                  <li key={choice.network}>
+                    <button
+                      type="button"
+                      onClick={() => addPlatform(choice.start)}
+                      className="flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-border bg-background px-3 text-left text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+                    >
+                      <NetworkIcon network={choice.network} className="size-5 shrink-0" />
+                      {SOCIAL_NETWORK_LABELS[choice.network]}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         ) : null}
       </section>
 
-      <section className="flex flex-col gap-3" aria-labelledby="onboarding-links">
+      <section className="flex flex-col gap-3" aria-labelledby="onboarding-links" onFocusCapture={() => setPreviewArea("link")}>
         <div>
           <h2 id="onboarding-links" className="flex items-center gap-2 text-base font-semibold text-foreground">
             <Link2 className="size-4 text-primary" aria-hidden="true" />
@@ -688,7 +783,7 @@ export function ImportStep({ onNext, onBack }: StepProps) {
               onChange={(event) => setLinks((current) => current.map((item, i) => (i === index ? { ...item, label: event.target.value } : item)))}
             />
             <IconInput
-              icon={Link2}
+              iconNode={<PlatformIcon url={link.url} />}
               label="Dirección"
               placeholder="tutienda.cl"
               inputMode="url"
@@ -729,7 +824,7 @@ export function ImportStep({ onNext, onBack }: StepProps) {
           Revisa las direcciones marcadas.
         </p>
       ) : null}
-      <StepActions onBack={onBack} onNext={submit} nextLabel={socials.some((url) => url.trim()) || links.length > 0 ? "Continuar" : "Omitir por ahora"} />
+      <StepActions onBack={onBack} onNext={submit} nextLabel={socials.some((url) => url.trim() && !PLATFORM_STARTS.has(normalizeUrl(url))) || links.length > 0 ? "Continuar" : "Omitir por ahora"} />
     </div>
   );
 }
@@ -748,7 +843,11 @@ export function TemplateStep({ onNext, onBack }: StepProps) {
         <span>
         Te mostramos primero las pensadas para {draft.industry ? TEMPLATE_INDUSTRY_LABELS[draft.industry].toLowerCase() : "tu rubro"}
         {draft.objective ? ` y para ${TEMPLATE_OBJECTIVE_LABELS[draft.objective].toLowerCase()}` : ""}
-        {draft.secondaryObjective ? ` (y también para ${TEMPLATE_OBJECTIVE_LABELS[draft.secondaryObjective].toLowerCase()})` : ""}. Cambia los
+        {secondaryObjectivesOf(draft).length > 0
+          ? ` (y también para ${secondaryObjectivesOf(draft)
+              .map((objective) => TEMPLATE_OBJECTIVE_LABELS[objective].toLowerCase())
+              .join(", ")})`
+          : ""}. Cambia los
         filtros, guarda tus favoritas con la estrella o usa «Ver más como esta».
         </span>
       </p>

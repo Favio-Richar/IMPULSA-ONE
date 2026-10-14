@@ -144,7 +144,7 @@ test("el onboarding de 11 pasos crea y publica la página desde una plantilla, c
 
   await expect(heading("Primeros pasos")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(`/${slug}`)).toBeVisible();
-  for (const item of ["Crea el QR de tu página", "Mira tus primeras visitas", "Recibe tu primer contacto", "Conecta tu dominio propio"]) {
+  for (const item of ["Crea el QR de tu página", "Consigue tus primeras visitas", "Recibe tu primer contacto", "Conecta tu dominio propio"]) {
     await expect(page.getByText(item)).toBeVisible();
   }
   await expectNoHorizontalScroll(page);

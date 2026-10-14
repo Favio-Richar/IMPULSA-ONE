@@ -9,10 +9,10 @@ import { TemplateCardLink } from "./shared";
 // existe en /api/v1/templates.
 export function TemplateCarousel({
   templates,
-  bienvenidaHref,
+  registroHref,
 }: {
   templates: TemplateResponse[];
-  bienvenidaHref: string;
+  registroHref: string;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +34,7 @@ export function TemplateCarousel({
           <TemplateCardLink
             key={template.code}
             template={template}
-            href={bienvenidaHref}
+            href={registroHref}
             className="w-[260px] shrink-0 snap-start sm:w-[280px]"
           />
         ))}

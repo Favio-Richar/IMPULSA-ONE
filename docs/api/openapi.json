@@ -3806,7 +3806,10 @@
                 "vender",
                 "reservar",
                 "mostrar",
-                "compartir"
+                "compartir",
+                "fidelizar",
+                "donaciones",
+                "educar"
               ],
               "type": "string"
             }
@@ -3897,7 +3900,10 @@
                             "vender",
                             "reservar",
                             "mostrar",
-                            "compartir"
+                            "compartir",
+                            "fidelizar",
+                            "donaciones",
+                            "educar"
                           ]
                         }
                       },
@@ -4119,7 +4125,10 @@
                           "vender",
                           "reservar",
                           "mostrar",
-                          "compartir"
+                          "compartir",
+                          "fidelizar",
+                          "donaciones",
+                          "educar"
                         ]
                       }
                     },
@@ -4470,7 +4479,10 @@
                           "vender",
                           "reservar",
                           "mostrar",
-                          "compartir"
+                          "compartir",
+                          "fidelizar",
+                          "donaciones",
+                          "educar"
                         ]
                       },
                       "industry": {
@@ -4772,7 +4784,10 @@
                             "vender",
                             "reservar",
                             "mostrar",
-                            "compartir"
+                            "compartir",
+                            "fidelizar",
+                            "donaciones",
+                            "educar"
                           ]
                         }
                       },
@@ -5060,7 +5075,10 @@
                           "vender",
                           "reservar",
                           "mostrar",
-                          "compartir"
+                          "compartir",
+                          "fidelizar",
+                          "donaciones",
+                          "educar"
                         ]
                       }
                     },
@@ -32216,7 +32234,10 @@
                                 "vender",
                                 "reservar",
                                 "mostrar",
-                                "compartir"
+                                "compartir",
+                                "fidelizar",
+                                "donaciones",
+                                "educar"
                               ]
                             }
                           },
@@ -60143,7 +60164,10 @@
                           "vender",
                           "reservar",
                           "mostrar",
-                          "compartir"
+                          "compartir",
+                          "fidelizar",
+                          "donaciones",
+                          "educar"
                         ]
                       },
                       "startsAt": {
@@ -60289,7 +60313,10 @@
                       "vender",
                       "reservar",
                       "mostrar",
-                      "compartir"
+                      "compartir",
+                      "fidelizar",
+                      "donaciones",
+                      "educar"
                     ]
                   },
                   "pageId": {
@@ -60367,7 +60394,10 @@
                         "vender",
                         "reservar",
                         "mostrar",
-                        "compartir"
+                        "compartir",
+                        "fidelizar",
+                        "donaciones",
+                        "educar"
                       ]
                     },
                     "startsAt": {
@@ -60547,7 +60577,10 @@
                         "vender",
                         "reservar",
                         "mostrar",
-                        "compartir"
+                        "compartir",
+                        "fidelizar",
+                        "donaciones",
+                        "educar"
                       ]
                     },
                     "startsAt": {
@@ -60702,7 +60735,10 @@
                       "vender",
                       "reservar",
                       "mostrar",
-                      "compartir"
+                      "compartir",
+                      "fidelizar",
+                      "donaciones",
+                      "educar"
                     ]
                   },
                   "pageId": {
@@ -60771,7 +60807,10 @@
                         "vender",
                         "reservar",
                         "mostrar",
-                        "compartir"
+                        "compartir",
+                        "fidelizar",
+                        "donaciones",
+                        "educar"
                       ]
                     },
                     "startsAt": {
@@ -61026,7 +61065,10 @@
                         "vender",
                         "reservar",
                         "mostrar",
-                        "compartir"
+                        "compartir",
+                        "fidelizar",
+                        "donaciones",
+                        "educar"
                       ]
                     },
                     "startsAt": {

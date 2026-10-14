@@ -471,3 +471,31 @@ Método: (1) cobertura de la API — de 334 operaciones autenticadas del OpenAPI
 
 Límites honestos: el veredicto es por evidencia de código y pruebas, no una prueba manual de cada flujo; «Funcional» significa que
 el modelo y la interfaz cubren el caso real, con las mejoras de la última columna aún sin construir.
+
+### Extra F10 — Paso 6: logos de plataforma y lista de redes
+
+- Cada campo de «Tus redes sociales» y de «Otros enlaces → Dirección» muestra el logo de la plataforma detectada (misma
+  `detectSocialNetwork` y `NetworkIcon` del render público: `simple-icons`, CC0). Sin texto o sin plataforma conocida: ícono genérico de enlace.
+- Lista «Elegir de la lista de plataformas» (27 plataformas): agrega la red con el comienzo de su dirección; una fila con solo ese
+  comienzo no se guarda ni cuenta como red.
+- El teléfono de la vista previa se desplaza a las redes o a los enlaces según la sección donde se escribe (presentación, sin estado
+  persistente). Los botones de «Otros enlaces» llevan el ícono genérico, salvo que su dirección sea de una plataforma conocida
+  (p. ej. Calendly), igual que en la página publicada.
+- Íconos que faltan: LinkedIn no está en `simple-icons` (la marca lo retiró): usa un ícono lineal genérico de maletín, como ya hacía el
+  render público. Substack, Shopify y sitio web quedan fuera de la lista (dirección por subdominio o libre): se detectan al pegar la URL.
+- Evaluado y NO construido: elegir «funciones del sistema» (reservas, catálogo, cursos) en los pasos 2, 6 y 8. El borrador del
+  asistente y la personalización de plantillas no tienen dónde guardarlo; exige ampliar `TemplatePersonalization` y el servidor
+  (decisión de producto pendiente).
+
+## Extra F10 — Paso 2: objetivos secundarios múltiples, 3 objetivos nuevos y paneles laterales
+
+- **Objetivos nuevos** en `TEMPLATE_OBJECTIVES` (`fidelizar`, `donaciones`, `educar`): sin migración (las columnas `objective`/`objective_tags` son texto). Actualizados los enums de `packages/contracts` (templates y campañas) y `docs/api/openapi.json`. Aún sin plantillas asignadas: solo sirven como objetivo y filtro.
+- **Secundarios múltiples**: `draft.secondaryObjectives: TemplateObjective[]` (solo en el navegador; el servidor sigue recibiendo solo el principal). `secondaryObjectivesOf()` lee también el antiguo `secondaryObjective` de borradores viejos. El principal sigue siendo único.
+- **Paneles laterales** (`components/onboarding/side-panels.tsx`): solo ≥1700 px, `aria-hidden`, sin foco. Pendiente: subir el video de demo y poner su ruta en `ONBOARDING_PROMO.videoUrl`.
+
+## Extra F10 — Botón «Crear mi portal gratis» y pantalla «Crear sitio»
+
+- **Web pública**: todos los botones de creación de `apps/web` (header, hero, planes, plantillas, soluciones, recursos, integraciones, footer) van a `/registro` del panel (`registroHref` en `lib/dashboard-links.ts`); antes iban a `/bienvenida`, que sin sesión rebotaba a `/login`.
+- **Cuenta nueva**: `login/page.tsx` envía a `/bienvenida` a quien inicia sesión sin ninguna organización; «Cancelar y volver al panel» sigue llevando al panel (el redirect no está en el panel para no crear un bucle).
+- **Crear sitio** (`sitios/nuevo`): tres caminos — en blanco (como antes), desde una plantilla (galería + vista previa; `createSite` → `applyTemplate` sobre la página de inicio, misma operación del asistente, hook `useApplyTemplate`) y duplicar un sitio existente (`useDuplicateSite`). Dirección con comprobación en vivo, aviso de límite del plan y reintento sin duplicar el sitio si la plantilla falla.
+- No publica: el sitio queda en borrador; se publica desde el constructor.

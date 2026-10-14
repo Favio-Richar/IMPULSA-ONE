@@ -10,11 +10,11 @@ export const metadata = {
 };
 
 export default function PrivacidadPage(): React.JSX.Element {
-  const { bienvenidaHref, loginHref } = getDashboardLinks();
+  const { registroHref, loginHref } = getDashboardLinks();
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <BrandedMarketingHeader registroHref={registroHref} loginHref={loginHref} />
       <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl text-[#0f172a]">
           Política de Privacidad
@@ -73,7 +73,7 @@ export default function PrivacidadPage(): React.JSX.Element {
           ))}
         </div>
       </main>
-      <MarketingFooter bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <MarketingFooter registroHref={registroHref} loginHref={loginHref} />
     </div>
   );
 }

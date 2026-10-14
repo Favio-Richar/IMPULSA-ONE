@@ -18,11 +18,11 @@ export const metadata = {
 };
 
 export default function IntegracionesPage(): React.JSX.Element {
-  const { bienvenidaHref, loginHref } = getDashboardLinks();
+  const { registroHref, loginHref } = getDashboardLinks();
 
   return (
     <div className="min-h-screen bg-white text-[#0f172a]">
-      <BrandedMarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <BrandedMarketingHeader registroHref={registroHref} loginHref={loginHref} />
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-[#e2e8f0] bg-[radial-gradient(circle_at_top,_#e6f5f3,_#ffffff_60%)] py-20">
@@ -45,7 +45,7 @@ export default function IntegracionesPage(): React.JSX.Element {
 
       {/* Catálogo de integraciones */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <IntegracionesDirectory bienvenidaHref={bienvenidaHref} />
+        <IntegracionesDirectory registroHref={registroHref} />
       </section>
 
       {/* F10.6: lo que publican los socios y la plataforma aprobó */}
@@ -65,7 +65,7 @@ export default function IntegracionesPage(): React.JSX.Element {
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <a
-                href={bienvenidaHref}
+                href={registroHref}
                 className="rounded-[10px] bg-[#0f6f6b] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
               >
                 Empezar gratis
@@ -81,7 +81,7 @@ export default function IntegracionesPage(): React.JSX.Element {
         </div>
       </section>
 
-      <MarketingFooter bienvenidaHref={bienvenidaHref} loginHref={loginHref} />
+      <MarketingFooter registroHref={registroHref} loginHref={loginHref} />
     </div>
   );
 }

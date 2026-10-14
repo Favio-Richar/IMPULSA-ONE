@@ -6,7 +6,7 @@ import { MarketingHeader } from "./header";
  * pedir datos al servidor; esta envoltura sí, y así **todas** las páginas comerciales muestran la
  * misma marca (antes solo la portada la recibía).
  */
-export async function BrandedMarketingHeader({ bienvenidaHref, loginHref }: { bienvenidaHref: string; loginHref: string }) {
+export async function BrandedMarketingHeader({ registroHref, loginHref }: { registroHref: string; loginHref: string }) {
   const branding = await getPlatformBranding();
-  return <MarketingHeader bienvenidaHref={bienvenidaHref} loginHref={loginHref} branding={branding} />;
+  return <MarketingHeader registroHref={registroHref} loginHref={loginHref} branding={branding} />;
 }

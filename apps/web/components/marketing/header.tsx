@@ -13,11 +13,11 @@ const NAV_LINKS = [
 ];
 
 export function MarketingHeader({
-  bienvenidaHref,
+  registroHref,
   loginHref,
   branding,
 }: {
-  bienvenidaHref: string;
+  registroHref: string;
   loginHref: string;
   branding?: {
     name: string;
@@ -73,7 +73,7 @@ export function MarketingHeader({
             Iniciar sesión
           </a>
           <a
-            href={bienvenidaHref}
+            href={registroHref}
             className="rounded-[10px] bg-[#0f6f6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Crear mi portal gratis
@@ -115,7 +115,7 @@ export function MarketingHeader({
               Iniciar sesión
             </a>
             <a
-              href={bienvenidaHref}
+              href={registroHref}
               className="rounded-[10px] bg-[#0f6f6b] px-4 py-2.5 text-center text-sm font-semibold text-white"
             >
               Crear mi portal gratis

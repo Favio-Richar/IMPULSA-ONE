@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { ApiError } from "../../../lib/api-client";
 import { login } from "../../../lib/api/auth";
+import { listMyOrganizations } from "../../../lib/api/organizations";
 
 const loginFormSchema = z.object({
   email: z.email("Ingresa un correo válido."),
@@ -16,6 +17,20 @@ const loginFormSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
+
+/**
+ * Una cuenta recién creada (sin ninguna organización todavía) entra directo al asistente de bienvenida en vez de a un panel vacío.
+ * Solo se decide al iniciar sesión: «Cancelar y volver al panel» del asistente sigue llevando al panel. Si la consulta falla,
+ * se va al panel, que ya maneja ese error.
+ */
+async function landingAfterLogin(): Promise<string> {
+  try {
+    const organizations = await listMyOrganizations();
+    return organizations.length === 0 ? "/bienvenida" : "/";
+  } catch {
+    return "/";
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,7 +46,7 @@ export default function LoginPage() {
     setServerError(null);
     try {
       await login(values.email, values.password);
-      router.push("/");
+      router.push(await landingAfterLogin());
     } catch (error) {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         const body = error.body as { message?: string } | undefined;

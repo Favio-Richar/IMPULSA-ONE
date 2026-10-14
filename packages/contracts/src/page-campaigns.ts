@@ -11,7 +11,7 @@ export const pageCampaignResponse = z.object({
   /** Slug vigente de la página, o `null` si la página está en la papelera. */
   pageSlug: z.string().nullable(),
   name: z.string(),
-  objective: z.enum(["captar", "vender", "reservar", "mostrar", "compartir"]),
+  objective: z.enum(["captar", "vender", "reservar", "mostrar", "compartir", "fidelizar", "donaciones", "educar"]),
   startsAt: isoDateTime,
   endsAt: isoDateTime,
   replaceHome: z.boolean(),

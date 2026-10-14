@@ -10,6 +10,7 @@ export { RichText } from "./ui/rich-text.js";
 export { SiteImage } from "./ui/site-image.js";
 export { SiteBackdrop } from "./ui/site-backdrop.js";
 export { SURFACE_SCOPE } from "./ui/surface.js";
+export { NetworkIcon } from "./ui/network-icon.js";
 
 export { sanitizeRichText } from "./lib/sanitize.js";
 

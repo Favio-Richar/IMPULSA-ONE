@@ -1,6 +1,7 @@
 import type { GalleryBlockConfig } from "@impulza/validation";
 import { SiteImage } from "../ui/site-image.js";
 import { stackSurfaceClass } from "../ui/stack-button.js";
+import { GallerySphere } from "./gallery-sphere.js";
 
 /**
  * "Carrusel" sin una línea de JavaScript: una fila con `scroll-snap`, que el navegador ya sabe
@@ -15,6 +16,11 @@ import { stackSurfaceClass } from "../ui/stack-button.js";
  */
 export function GalleryBlock({ config, glass = false }: { config: GalleryBlockConfig; glass?: boolean }) {
   const surface = stackSurfaceClass(glass ? "glass" : "secondary");
+
+  // Esfera 3D (editor de portales): componente de cliente; sin JavaScript muestra una cuadrícula.
+  if (config.layout === "sphere") {
+    return <GallerySphere config={config} />;
+  }
 
   if (config.layout === "carousel") {
     return (

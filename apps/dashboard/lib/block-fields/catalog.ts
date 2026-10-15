@@ -282,11 +282,13 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
       {
         name: "layout",
         label: "Diseño",
+        helperText: "«Esfera 3D» acomoda las fotos en una esfera que gira y se arrastra; tocar una foto la abre en grande.",
         control: {
           kind: "select",
           options: [
             { value: "grid", label: "Cuadrícula" },
             { value: "carousel", label: "Carrusel" },
+            { value: "sphere", label: "Esfera 3D" },
           ],
         },
       },
@@ -521,8 +523,10 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
           options: [
             { value: "stack", label: "Una tarjeta por fila (ancha)" },
             { value: "grid", label: "Dos por fila (en pantallas medianas)" },
+            { value: "index", label: "Índice con portada (estilo discografía)" },
           ],
         },
+        helperText: "«Índice con portada» muestra una lista sobria; al pasar o enfocar una fila, su foto aparece de fondo.",
       },
       {
         name: "items",

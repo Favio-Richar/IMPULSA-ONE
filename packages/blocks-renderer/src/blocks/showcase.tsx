@@ -1,6 +1,7 @@
 import type { ShowcaseBlockConfig } from "@impulza/validation";
 import { OUTBOUND_LINK } from "../ui/outbound.js";
 import { SiteImage } from "../ui/site-image.js";
+import { ShowcaseIndex } from "./showcase-index.js";
 
 /**
  * Colecciones (F10): tarjetas grandes con portada que llevan al álbum, la galería completa, la página web o a otro perfil
@@ -10,6 +11,10 @@ import { SiteImage } from "../ui/site-image.js";
  * así el contraste no depende de la foto. La tarjeta entera es un solo enlace con un nombre accesible claro.
  */
 export function ShowcaseBlock({ config }: { config: ShowcaseBlockConfig }) {
+  // Índice con portada (editor de portales): lista tipo discografía, componente de cliente.
+  if (config.layout === "index") {
+    return <ShowcaseIndex config={config} />;
+  }
   const grid = config.layout === "grid";
   return (
     <section aria-label={config.title ?? "Colecciones"} className="flex flex-col gap-4">

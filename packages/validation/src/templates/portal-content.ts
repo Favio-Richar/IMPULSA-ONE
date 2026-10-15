@@ -88,6 +88,47 @@ const PHOTO_IDS = {
   guitars: "photo-1511379938547-c1f69419868d",
   microphone: "photo-1511671782779-c97d3d27a1d4",
   festival: "photo-1492684223066-81342ee5ff30",
+  // Plantillas del editor de portales (verificadas con una petición real a Unsplash, 2026-10-15)
+  lawGavel: "photo-1589829545856-d10d557cf95f",
+  lawLibrary: "photo-1505664194779-8beaceb93744",
+  finance: "photo-1554224155-6726b3ff858f",
+  dentist: "photo-1606811971618-4486d14f3f99",
+  dentalClinic: "photo-1588776814546-1ffcf47267a5",
+  vetDog: "photo-1576201836106-db1758fd1c97",
+  dog: "photo-1583337130417-3346a1be7dee",
+  houseKeys: "photo-1560518883-ce09059eeffa",
+  modernHouse: "photo-1600596542815-ffad4c1539a9",
+  houseInterior: "photo-1600585154340-be6161a56a0c",
+  wedding: "photo-1519741497674-611481863552",
+  weddingRings: "photo-1511285560929-80b456fea0bc",
+  pottery: "photo-1452860606245-08befc0ff44b",
+  handmade: "photo-1513519245088-0e12902e5a38",
+  tattoo: "photo-1611501275019-9b5cda994e8d",
+  carRepair: "photo-1487754180451-c456f719a1fc",
+  garage: "photo-1619642751034-765dfdf7c58e",
+  electrician: "photo-1621905251189-08b45d6a269e",
+  plumbing: "photo-1585704032915-c3400ca199e7",
+  spaMassage: "photo-1544161515-4ab6ce6db874",
+  spaStones: "photo-1540555700478-4be289fbecef",
+  gamingSetup: "photo-1542751371-adc38448a05e",
+  gamingPad: "photo-1593305841991-05c297ba4575",
+  streamer: "photo-1598550476439-6847785fcea6",
+  camera: "photo-1492619375914-88005aa9e8fb",
+  filming: "photo-1574717024653-61fd2cf4d44d",
+  cooking: "photo-1556910103-1c02745aae4d",
+  catering: "photo-1555244162-803834f70033",
+  signing: "photo-1450101499163-c8848c66ca85",
+  soccer: "photo-1574629810360-7efbbe195018",
+  stadium: "photo-1517649763962-0c623066013b",
+  classroom: "photo-1524178232363-1fb2b075b655",
+  study: "photo-1509062522246-3755977927d7",
+  designDesk: "photo-1561070791-2526d30994b5",
+  laptopCode: "photo-1498050108023-c5249f4df085",
+  beach: "photo-1507525428034-b723cf961d3e",
+  makeup: "photo-1487412947147-5cebf100ffc2",
+  party: "photo-1530103862676-de8c9debad1d",
+  hairSalon: "photo-1522337360788-8b13dee7a37e",
+  hairStylist: "photo-1560066984-138dadb4c035",
 } as const;
 
 export type PhotoKey = keyof typeof PHOTO_IDS;
@@ -106,14 +147,15 @@ const rich = (html: string): string => html;
 
 // ---------------------------------------------------------------- constructores de bloques
 
-const profile = (name: string, headline: string, bio: string, cover?: { key: PhotoKey; alt: string }): Seed =>
+/** Con portada, la cabecera es de cuerpo entero (`hero`) salvo que se pida otra: `banner` o `cutout` (editor de portales). */
+const profile = (name: string, headline: string, bio: string, cover?: { key: PhotoKey; alt: string }, layout?: "hero" | "banner" | "cutout"): Seed =>
   block("profile", {
     name,
     headline,
     bio: rich(`<p>${bio}</p>`),
     verified: false,
     shareButton: true,
-    ...(cover ? { cover: img(cover.key, cover.alt), layout: "hero" } : {}),
+    ...(cover ? { cover: img(cover.key, cover.alt), layout: layout ?? "hero" } : layout ? { layout } : {}),
   });
 
 const whatsapp = (label: string, message: string, primary = true): Seed => block("whatsapp", { phone: PHONE, label, prefilledMessage: message }, primary);
@@ -173,10 +215,14 @@ const album = (
     showFilters: true,
     photos: photos.map(([key, alt, photoTitle, category]) => ({ image: img(key, alt), title: photoTitle, ...(category ? { category } : {}) })),
   });
-const showcase = (title: string, items: Array<{ title: string; subtitle: string; badge?: string; photo: PhotoKey; alt: string; page: string }>): Seed =>
+const showcase = (
+  title: string,
+  items: Array<{ title: string; subtitle: string; badge?: string; photo: PhotoKey; alt: string; page: string }>,
+  layout: "stack" | "grid" | "index" = "stack",
+): Seed =>
   block("showcase", {
     title,
-    layout: "stack",
+    layout,
     actionLabel: "Ver",
     items: items.map((item) => ({
       title: item.title,
@@ -233,8 +279,8 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "profesional-servicios": {
     home: [
       profile("Tu Estudio Profesional", "Asesoría contable y tributaria para pymes", `${PROMISE} A quién ayudas, en qué te especializas y por qué confiar en ti.`),
+      engagement(),
       whatsapp("Agenda una asesoría", "Hola, quiero agendar una asesoría."),
-      subscribe(),
       showcase("Cómo puedo ayudarte", [
         { title: "Servicios y tarifas", subtitle: "Asesorías, planes mensuales y metodología", badge: "3 planes", photo: "meeting", alt: "reunión de trabajo", page: "servicios" },
         { title: "Agenda tu primera reunión", subtitle: "Cuéntanos tu caso y te respondemos hoy", photo: "office", alt: "oficina luminosa", page: "contacto" },
@@ -244,7 +290,6 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
         ["Me ordenó la contabilidad en un mes y por fin entiendo mis números. Reseña de ejemplo.", "Dueña de pyme de ejemplo"],
         ["Respuestas claras y a tiempo, sin letra chica. Reseña de ejemplo.", "Emprendedor de ejemplo"],
       ]),
-      engagement(),
       social(["linkedin", "instagram"]),
     ],
     pages: [
@@ -289,15 +334,14 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "cafe-gastronomia": {
     home: [
       profile("Tu Café de Barrio", "Café de especialidad y pastelería de la casa", `${PROMISE} Tu historia, tu horario y dónde encontrarte.`, { key: "cafe", alt: "interior de una cafetería con plantas" }),
+      engagement(),
       whatsapp("Haz tu pedido por WhatsApp", "Hola, quiero hacer un pedido."),
-      subscribe(),
       showcase("Todo lo que ofrecemos", [
         { title: "Nuestra carta", subtitle: "Café, pastelería y platos del día", badge: "Precios de ejemplo", photo: "coffee", alt: "tazas de café con arte latte", page: "carta" },
         { title: "Visítanos", subtitle: "Horarios, mapa y reservas de mesa", photo: "terrace", alt: "terraza de un local", page: "contacto" },
       ]),
       stats([["+40", "tipos de café y té"], ["100 %", "pastelería de la casa"], ["7 días", "abiertos a la semana"]]),
       testimonials([["El mejor café del barrio y el pastel de limón es una locura. Reseña de ejemplo.", "Cliente de ejemplo"]]),
-      engagement(),
       social(["instagram", "tiktok"]),
     ],
     pages: [
@@ -336,15 +380,14 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "comercio-tienda": {
     home: [
       profile("Tu Tienda", "Accesorios hechos a mano, envíos a todo el país", `${PROMISE} Qué vendes, cómo haces los envíos y tus medios de pago.`, { key: "store", alt: "tienda con productos exhibidos" }),
+      engagement(),
       whatsapp("Compra por WhatsApp", "Hola, quiero comprar un producto."),
-      subscribe(),
       showcase("Descubre la tienda", [
         { title: "Catálogo completo", subtitle: "Productos, fotos y precios", badge: "Nuevos", photo: "boutique", alt: "prendas en un perchero", page: "catalogo" },
         { title: "Pregunta por tu pedido", subtitle: "Envíos, cambios y medios de pago", photo: "openShop", alt: "letrero de tienda abierta", page: "contacto" },
       ]),
       stats([["+1.000", "pedidos entregados"], ["48 h", "despacho"], ["30 días", "para cambios"]]),
       testimonials([["Llegó rapidísimo y bien embalado. Reseña de ejemplo.", "Clienta de ejemplo"]]),
-      engagement(),
       social(["instagram", "facebook", "tiktok"]),
     ],
     pages: [
@@ -390,6 +433,7 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "creador-personal": {
     home: [
       profile("Tu Nombre", "Música, contenido y colaboraciones", `${PROMISE} Quién eres y qué compartes con tu comunidad.`, { key: "yellowHat", alt: "persona con sombrero sobre fondo amarillo" }),
+      engagement(),
       link("Escucha mi nuevo lanzamiento", "lanzamiento", "Mi último trabajo, con todo el detrás de cámaras", true),
       subscribe(),
       showcase("Mi universo", [
@@ -397,7 +441,6 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
         { title: "Colaboraciones y prensa", subtitle: "Marcas, medios y proyectos conjuntos", photo: "podcast", alt: "grabación de un podcast", page: "contacto" },
       ]),
       stats([["+120 mil", "seguidores"], ["+3 M", "reproducciones"], ["+40", "marcas aliadas"]]),
-      engagement(),
       social(["instagram", "tiktok", "youtube", "spotify"]),
     ],
     pages: [
@@ -438,15 +481,14 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "salud-bienestar": {
     home: [
       profile("Tu Consulta", "Kinesiología y bienestar integral", `${PROMISE} Tu especialidad, tus títulos y cómo atiendes.`, { key: "wellness", alt: "persona haciendo yoga al atardecer" }),
+      engagement(),
       whatsapp("Reserva tu hora", "Hola, quiero reservar una hora."),
-      subscribe(),
       showcase("Cómo te acompaño", [
         { title: "Tratamientos", subtitle: "Evaluación, terapia y seguimiento", badge: "Primera sesión", photo: "treatment", alt: "tratamiento en una consulta", page: "tratamientos" },
         { title: "Reserva y ubicación", subtitle: "Horarios, convenios y cómo llegar", photo: "plants", alt: "sala con plantas", page: "contacto" },
       ]),
       stats([["+1.500", "pacientes atendidos"], ["10 años", "de experiencia"], ["98 %", "recomendaría la consulta"]]),
       testimonials([["Me sentí escuchada desde la primera sesión. Reseña de ejemplo.", "Paciente de ejemplo"]]),
-      engagement(),
       social(["instagram", "facebook"]),
     ],
     pages: [
@@ -491,15 +533,14 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "eventos-turismo": {
     home: [
       profile("Tu Experiencia", "Tours y experiencias al aire libre", `${PROMISE} Qué experiencias ofreces, dónde y para quién.`, { key: "climber", alt: "persona frente a un mar de nubes" }),
+      engagement(),
       whatsapp("Reserva tu cupo", "Hola, quiero reservar un cupo."),
-      subscribe(),
       showcase("Vive la experiencia", [
         { title: "Experiencias y fechas", subtitle: "Salidas confirmadas, con cupos limitados", badge: "Cupos limitados", photo: "festival", alt: "público en un evento", page: "experiencias" },
         { title: "Reservas y grupos", subtitle: "Empresas, familias y experiencias a medida", photo: "city", alt: "ciudad al atardecer", page: "contacto" },
       ]),
       stats([["+3.000", "viajeros felices"], ["4,9 / 5", "valoración promedio"], ["12", "experiencias distintas"]]),
       testimonials([["Una experiencia inolvidable, muy bien organizada. Reseña de ejemplo.", "Viajera de ejemplo"]]),
-      engagement(),
       social(["instagram", "facebook", "youtube"]),
     ],
     pages: [
@@ -548,6 +589,7 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "fotografia-moda": {
     home: [
       profile("Tu Nombre Artístico", "Fotografía de moda · Editorial · Retrato", `${PROMISE} Tu estilo, tu trayectoria y con qué marcas o personas has trabajado.`, { key: "boutique", alt: "perchero de una boutique" }),
+      engagement(),
       marquee(["Fotografía", "Moda", "Editorial", "Retrato", "Belleza"]),
       whatsapp("Reserva tu sesión", "Hola, quiero reservar una sesión de fotos."),
       subscribe(),
@@ -568,7 +610,6 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
         ["Entendió la marca desde la primera reunión. Reseña de ejemplo.", "Directora creativa de ejemplo"],
         ["Las fotos superaron lo que imaginaba. Reseña de ejemplo.", "Modelo de ejemplo"],
       ]),
-      engagement(),
       social(["instagram", "tiktok", "youtube"]),
     ],
     pages: [
@@ -631,15 +672,14 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "belleza-barberia": {
     home: [
       profile("Tu Barbería", "Cortes clásicos y perfilado de barba", `${PROMISE} Tu estilo, tu equipo y tu horario.`, { key: "barber", alt: "barbero afeitando a un cliente" }),
+      engagement(),
       whatsapp("Reserva tu hora", "Hola, quiero reservar una hora."),
-      subscribe(),
       showcase("Todo en un lugar", [
         { title: "Servicios y precios", subtitle: "Cortes, barba y tratamientos", badge: "Desde $12.000", photo: "salon", alt: "sillones de una peluquería", page: "servicios" },
         { title: "Cómo llegar y horarios", subtitle: "Mapa, atención y reservas", photo: "brushes", alt: "brochas y herramientas", page: "contacto" },
       ]),
       stats([["+5.000", "cortes realizados"], ["4,9 / 5", "valoración"], ["6 años", "en el barrio"]]),
       testimonials([["Siempre salgo conforme y puntuales con la hora. Reseña de ejemplo.", "Cliente de ejemplo"]]),
-      engagement(),
       social(["instagram", "tiktok"]),
     ],
     pages: [
@@ -678,6 +718,7 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "portada-minimal": {
     home: [
       profile("Tu Nombre", "Marca personal y asesorías", `${PROMISE} Quién eres, qué haces y cómo trabajar contigo.`, { key: "portraitWoman", alt: "retrato de mujer" }),
+      engagement(),
       link("Agenda una sesión", "agenda", "Una hora para ordenar tus ideas", true),
       subscribe(),
       showcase("Conóceme", [
@@ -686,7 +727,6 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
       ]),
       stats([["+80", "proyectos"], ["+500", "horas de asesoría"], ["4,9 / 5", "valoración"]]),
       testimonials([["Muy clara y cercana, salí con un plan concreto. Reseña de ejemplo.", "Clienta de ejemplo"]]),
-      engagement(),
       social(["instagram", "tiktok", "linkedin"]),
     ],
     pages: [
@@ -729,6 +769,7 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "academia-talleres": {
     home: [
       profile("Tu Academia de Formación", "Cursos prácticos, talleres y formación continua", `${PROMISE} Tu metodología, tus docentes y tus temáticas.`, { key: "workshop", alt: "taller colaborativo" }),
+      engagement(),
       whatsapp("Consulta sobre talleres", "Hola, me interesa inscribirme en un taller."),
       subscribe(),
       showcase("Aprende con nosotros", [
@@ -737,7 +778,6 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
       ]),
       stats([["+2.500", "estudiantes"], ["15", "docentes especialistas"], ["96 %", "recomienda los cursos"]]),
       testimonials([["Excelente taller, contenido directo y muy aplicable. Reseña de ejemplo.", "Estudiante de ejemplo"]]),
-      engagement(),
       social(["instagram", "youtube", "linkedin"]),
     ],
     pages: [
@@ -781,6 +821,7 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "fitness-entrenamiento": {
     home: [
       profile("Tu Espacio de Entrenamiento", "Entrenamiento personalizado, funcional y acondicionamiento físico", `${PROMISE} Tu enfoque deportivo y tus certificaciones.`, { key: "barbell", alt: "persona levantando una barra" }),
+      engagement(),
       booking("Reserva tu clase de prueba"),
       subscribe(),
       link("Conoce horarios y ubicación", "contacto", "Cuándo abrimos y cómo llegar"),
@@ -790,7 +831,6 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
       ]),
       stats([["+400", "alumnos activos"], ["25", "clases a la semana"], ["6:30", "abrimos temprano"]]),
       testimonials([["Logré mis metas de fuerza en 3 meses con el plan. Reseña de ejemplo.", "Alumno de ejemplo"]]),
-      engagement(),
       social(["instagram", "tiktok", "youtube"]),
     ],
     pages: [
@@ -836,6 +876,7 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "musico-banda": {
     home: [
       profile("Tu Proyecto Musical", "Música original, presentaciones en vivo y lanzamientos", `${PROMISE} Tu estilo sonoro y tus próximos proyectos.`, { key: "concertOrange", alt: "concierto con luces naranjas" }),
+      engagement(),
       link("Escucha nuestro nuevo álbum", "musica", "Disponible en Spotify, Apple Music y todas las plataformas", true),
       subscribe(),
       showcase("Nuestra música", [
@@ -843,7 +884,6 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
         { title: "Contrataciones", subtitle: "Shows, eventos privados y prensa", photo: "guitars", alt: "guitarras", page: "contacto" },
       ]),
       stats([["+60", "shows en vivo"], ["+1 M", "reproducciones"], ["3", "discos publicados"]]),
-      engagement(),
       social(["spotify", "youtube", "instagram", "tiktok"]),
     ],
     pages: [
@@ -887,15 +927,14 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
   "restaurante-menu": {
     home: [
       profile("Tu Restaurante de Autor", "Cocina de temporada, pescados frescos y coctelería de autor", `${PROMISE} Tu propuesta culinaria y horarios de cocina.`, { key: "restaurant", alt: "salón de un restaurante" }),
+      engagement(),
       whatsapp("Reserva tu mesa por WhatsApp", "Hola, quiero reservar una mesa para cenar."),
-      subscribe(),
       showcase("Una experiencia completa", [
         { title: "La carta", subtitle: "Entradas, fondos, postres y coctelería", badge: "Menú de temporada", photo: "dishes", alt: "platos de autor", page: "carta" },
         { title: "Reservas y ubicación", subtitle: "Mesa para dos, grupos y eventos privados", photo: "terrace", alt: "terraza del restaurante", page: "reservas" },
       ]),
       stats([["12", "años de cocina"], ["+80", "etiquetas de vino"], ["4,8 / 5", "valoración de comensales"]]),
       testimonials([["Un servicio impecable y platos para recordar. Reseña de ejemplo.", "Comensal de ejemplo"]]),
-      engagement(),
       social(["instagram", "facebook", "tiktok"]),
     ],
     pages: [
@@ -934,4 +973,38 @@ export const PORTAL_CONTENT: Record<string, PortalDefinition> = {
       },
     ],
   },
+};
+
+/** Constructores y fotos compartidos con las plantillas del editor de portales (`portal-content-extra.ts`). */
+export {
+  album,
+  block,
+  booking,
+  contactActions,
+  engagement,
+  events,
+  faq,
+  feature,
+  header,
+  img,
+  link,
+  map,
+  marquee,
+  music,
+  newsletter,
+  pricing,
+  profile,
+  PROMISE,
+  service,
+  serviceInfo,
+  showcase,
+  social,
+  stats,
+  steps,
+  subscribe,
+  testimonials,
+  text,
+  video,
+  wheel,
+  whatsapp,
 };

@@ -134,7 +134,8 @@ export const imageBlockSchema = z.object({
 
 export const gallerySchema = z.object({
   images: z.array(imageSchema).min(1).max(24),
-  layout: z.enum(["grid", "carousel"]).default("grid"),
+  // `sphere` (editor de portales): las fotos en una esfera 3D que gira y se arrastra, con visor; sin JavaScript se ve la cuadrícula.
+  layout: z.enum(["grid", "carousel", "sphere"]).default("grid"),
 });
 
 /**
@@ -184,7 +185,8 @@ export const showcaseItemSchema = z.object({
 export const showcaseSchema = z.object({
   title: plainTextSchema(80).optional(),
   /** `stack`: una tarjeta por fila, ancha y cinematográfica. `grid`: dos por fila en pantallas medianas y grandes. */
-  layout: z.enum(["stack", "grid"]).default("stack"),
+  // `index` (editor de portales): lista tipo discografía; al pasar o enfocar una fila, su portada aparece de fondo.
+  layout: z.enum(["stack", "grid", "index"]).default("stack"),
   /** Texto accesible y visible de la flecha de cada tarjeta. */
   actionLabel: plainTextSchema(24).default("Ver"),
   items: z.array(showcaseItemSchema).min(1).max(SHOWCASE_MAX_ITEMS),

@@ -1,5 +1,8 @@
 import type { TemplateBlockSeed, TemplateDefinition } from "./index.js";
 import { PORTAL_CONTENT } from "./portal-content.js";
+import { PORTAL_TEMPLATES_CREADORES } from "./portal-extra-creadores.js";
+import { PORTAL_TEMPLATES_OFICIOS } from "./portal-extra-oficios.js";
+import { PORTAL_TEMPLATES_PROFESIONALES } from "./portal-extra-profesionales.js";
 
 /**
  * Catálogo de plantillas de la plataforma (PL3). Lo siembra `packages/database/prisma/seed.ts`,
@@ -1072,8 +1075,8 @@ function withEngagement(blocks: TemplateDefinition["blocksSeed"]): TemplateDefin
   return [...blocks.slice(0, socialIndex), ENGAGEMENT_BLOCK, ...blocks.slice(socialIndex)];
 }
 
-/** El catálogo que se siembra: cada plantilla con sus páginas compañeras (las que sus botones enlazan). */
-export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = BASE_TEMPLATES.map((template): TemplateDefinition => {
+/** Plantillas base con sus páginas compañeras (las que sus botones enlazan). */
+const BASE_CATALOG: readonly TemplateDefinition[] = BASE_TEMPLATES.map((template): TemplateDefinition => {
   // Los portales completos (F10) traen su contenido de `portal-content.ts`: inicio + dos páginas, con álbum, cifras,
   // pasos, preguntas y acción clara. El contenido base de arriba queda como respaldo de una plantilla sin portal.
   const portal = PORTAL_CONTENT[template.code];
@@ -1086,3 +1089,9 @@ export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = BASE_TEMPLATES.ma
     ...(COMPANION_PAGES[template.code] ? { companionPages: COMPANION_PAGES[template.code] } : {}),
   };
 });
+
+/**
+ * El catálogo que se siembra: las plantillas base con sus portales, más las del editor de portales (rubros nuevos, inicio + dos
+ * páginas cada una, ver `portal-extra-*.ts`).
+ */
+export const TEMPLATE_CATALOG: readonly TemplateDefinition[] = [...BASE_CATALOG, ...PORTAL_TEMPLATES_CREADORES, ...PORTAL_TEMPLATES_PROFESIONALES, ...PORTAL_TEMPLATES_OFICIOS];

@@ -76,12 +76,15 @@ export const BLOCK_FIELD_SETS: Partial<Record<BlockType, BlockFieldSet>> = {
       {
         name: "layout",
         label: "Diseño de la cabecera",
-        helperText: "«Portada de cuerpo entero» usa la portada como foto principal, a lo alto, sin la foto redonda.",
+        helperText:
+          "«Portada de cuerpo entero» usa la portada como foto principal. «Banner» deja la portada ancha arriba y tu foto más chica en la esquina, con el texto a la izquierda. «Recorte» muestra tu foto en un recorte vertical con las esquinas del estilo de tu tema.",
         control: {
           kind: "select",
           options: [
             { value: "avatar", label: "Foto redonda sobre la portada" },
             { value: "hero", label: "Portada de cuerpo entero" },
+            { value: "banner", label: "Banner con foto en la esquina" },
+            { value: "cutout", label: "Recorte con esquinas del tema" },
           ],
         },
       },

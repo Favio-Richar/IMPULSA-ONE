@@ -4,6 +4,7 @@ import type {
   AnalyticsOverviewResponse,
   AnalyticsSeriesPoint,
   AnalyticsSubjectRow,
+  BlockClicksResponse,
 } from "@impulza/contracts";
 import type { PrismaClient } from "@impulza/database";
 import { PRISMA } from "../../database/prisma.module.js";
@@ -224,6 +225,42 @@ export class AnalyticsReportsService {
       shortLinks: await this.topShortLinks(organizationId, metrics.withPrefix("short_link_click:subject:")),
       qrCodes: await this.topQrCodes(organizationId, metrics.withPrefix("qr_visit:subject:")),
     };
+  }
+
+  /**
+   * Clics de un bloque en los últimos `days` días, para el panel del bloque en el editor. Lee los mismos agregados diarios que el
+   * ranking de bloques (`block_click` y `whatsapp_click` con el bloque como sujeto): sin tocar el evento crudo ni el esquema. El
+   * bloque tiene que ser de la organización (si no, 404, sin datos). El rango se acota al historial del plan en vez de responder
+   * 402: el panel muestra lo que el plan permite, sin pedir nada. El último día es hoy (UTC).
+   */
+  async blockClicks(organizationId: string, blockId: string, days: number): Promise<BlockClicksResponse> {
+    const block = await this.prisma.block.findFirst({
+      where: { id: blockId, page: { site: { organizationId } } },
+      select: { id: true, page: { select: { siteId: true } } },
+    });
+    if (!block) {
+      throw new NotFoundException("Bloque no encontrado.");
+    }
+    const { plan } = await this.plansService.resolveEffectivePlan(organizationId);
+    const allowed = plan.limits.analyticsHistoryDays === null ? days : Math.min(days, plan.limits.analyticsHistoryDays);
+    const to = new Date().toISOString().slice(0, 10);
+    const from = new Date(Date.parse(`${to}T00:00:00.000Z`) - (allowed - 1) * DAY_MS).toISOString().slice(0, 10);
+
+    const rows = await this.prisma.analyticsAggregate.findMany({
+      where: {
+        organizationId,
+        siteId: block.page.siteId,
+        period: { gte: from, lte: to },
+        metric: { in: [`block_click:subject:${block.id}`, `whatsapp_click:subject:${block.id}`] },
+      },
+      select: { period: true, value: true },
+    });
+    const byDay = new Map<string, number>();
+    for (const row of rows) {
+      byDay.set(row.period, (byDay.get(row.period) ?? 0) + row.value);
+    }
+    const series = daysBetween(from, to).map((date) => ({ date, clicks: byDay.get(date) ?? 0 }));
+    return { blockId: block.id, days: allowed, from, to, total: series.reduce((sum, point) => sum + point.clicks, 0), series };
   }
 
   private breakdown(values: Map<string, number>, label: (key: string) => string): AnalyticsBreakdownRow[] {

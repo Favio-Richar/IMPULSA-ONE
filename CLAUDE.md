@@ -70,7 +70,10 @@ de esas plataformas. El motor ya soporta esto (temas claros existentes + degrada
 `medianoche`/`grafito`/`ciruela` + fondo de imagen/video con overlay AA, ver ADR-008). Sigue
 aplicando siempre, sin excepción: WCAG 2.2 AA en todo par de texto/fondo, bordes moderados (nada de
 "pill" extremo salvo que ADR-008 lo autorice para un componente específico), sombras discretas,
-responsive real, estados de carga/vacío/error/éxito. El resto del producto (dashboard, panel,
+responsive real, estados de carga/vacío/error/éxito. **Excepción acotada (ADR-031, 2026-10-14):** el
+dueño de un sitio puede elegir en su tema propio un radio "redondeado" (1.25rem, sin píldora) y
+sombras "marcada" o "sólida" para su página pública; los temas del catálogo y el resto del producto
+siguen sobrios. El resto del producto (dashboard, panel,
 constructor, sitio comercial de Impulza) **sigue** con fondo claro y estilo profesional/sobrio — este
 cambio es solo para la página pública del sitio del cliente final. Usar las skills de diseño
 disponibles (`design-system`, `design-critique`, `accessibility-review`, `design-handoff`,

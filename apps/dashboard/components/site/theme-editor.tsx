@@ -6,6 +6,8 @@ import {
   DENSITY_SCALES,
   RADIUS_SCALES,
   SHADOW_SCALES,
+  themeRadiusValue,
+  themeShadowValue,
   themeTokensSchema,
   themeTokensToCssVariables,
   type ThemeTokens,
@@ -26,7 +28,7 @@ import {
   type EditablePalette,
   type PaletteKey,
 } from "../../lib/theme-contrast";
-import { FONT_FAMILY_OPTIONS, FONT_GROUPS } from "../../lib/theme-fonts";
+import { FONT_FAMILY_OPTIONS, FONT_GROUPS, type FontFamily } from "../../lib/theme-fonts";
 import { PagePreview, previewButtonStyle, type Device } from "./page-preview";
 
 const COLOR_GROUPS: ReadonlyArray<{ title: string; description: string; colors: ReadonlyArray<{ key: PaletteKey; label: string; hint: string }> }> = [
@@ -57,9 +59,9 @@ const COLOR_GROUPS: ReadonlyArray<{ title: string; description: string; colors: 
   },
 ];
 
-const RADIUS_LABELS: Record<ThemeTokens["radius"], string> = { none: "Recto", subtle: "Sutil", moderate: "Moderado" };
+const RADIUS_LABELS: Record<ThemeTokens["radius"], string> = { none: "Recto", subtle: "Sutil", moderate: "Moderado", rounded: "Redondeado" };
 const DENSITY_LABELS: Record<ThemeTokens["density"], string> = { compact: "Compacta", comfortable: "Cómoda" };
-const SHADOW_LABELS: Record<ThemeTokens["shadow"], string> = { none: "Sin sombra", subtle: "Sutil" };
+const SHADOW_LABELS: Record<ThemeTokens["shadow"], string> = { none: "Sin sombra", subtle: "Sutil", strong: "Marcada", hard: "Sólida" };
 const BUTTON_LABELS: Record<ThemeTokens["buttonStyle"], string> = { solid: "Sólido", outline: "Contorno", glass: "Cristal", mono: "Monocromo" };
 
 /** Mensaje del servidor para mostrar tal cual (422 de contraste, 403, 409…). El editor ya evita el 422 comprobando antes. */
@@ -76,7 +78,7 @@ function saveErrorMessage(error: unknown): string {
 
 /**
  * Editor de un tema propio (el del catálogo se duplica primero). Controla TODOS los campos de `ThemeTokens` —los 7 colores, la
- * tipografía, el radio, la densidad, la sombra y el estilo de botón— con una vista previa en vivo, y comprueba el contraste AA de
+ * fuente del texto y, si se quiere, otra para los títulos, el radio, la densidad, la sombra y el estilo de botón— con una vista previa en vivo, y comprueba el contraste AA de
  * cada par mientras se edita: «Guardar» queda deshabilitado, con el motivo exacto, hasta que todos pasen. La paleta de día/noche y
  * el movimiento del tema original se conservan tal cual (no se editan acá).
  */
@@ -99,6 +101,8 @@ export function ThemeEditor({
   const [name, setName] = useState(theme.name);
   const [palette, setPalette] = useState<EditablePalette>({ ...original.palette });
   const [fontFamily, setFontFamily] = useState(original.fontFamily);
+  // `null` = los títulos usan la fuente del texto (el comportamiento de siempre; no se guarda la clave).
+  const [headingFont, setHeadingFont] = useState<FontFamily | null>(original.headingFontFamily ?? null);
   const [radius, setRadius] = useState(original.radius);
   const [density, setDensity] = useState(original.density);
   const [shadow, setShadow] = useState(original.shadow);
@@ -116,7 +120,8 @@ export function ThemeEditor({
   const livePalette = Object.fromEntries(
     (Object.keys(palette) as PaletteKey[]).map((key) => [key, isHex(palette[key]) ? palette[key].toLowerCase() : original.palette[key]]),
   ) as ThemeTokens["palette"];
-  const draft: ThemeTokens = { ...original, palette: livePalette, fontFamily, radius, density, shadow, buttonStyle };
+  // `headingFontFamily: undefined` no viaja en el JSON: un tema sin fuente de títulos propia se guarda igual que antes.
+  const draft: ThemeTokens = { ...original, palette: livePalette, fontFamily, headingFontFamily: headingFont ?? undefined, radius, density, shadow, buttonStyle };
 
   async function save(): Promise<void> {
     setFailed(null);
@@ -209,35 +214,41 @@ export function ThemeEditor({
             <h3 id="editor-tipografia" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Tipografía
             </h3>
-            {FONT_GROUPS.map((group) => (
-              <fieldset key={group.id} className="flex flex-col gap-2">
-                <legend className="mb-1 text-sm font-medium text-foreground">{group.label}</legend>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {FONT_FAMILY_OPTIONS.filter((option) => option.group === group.id).map((option) => {
-                    const vars = themeTokensToCssVariables({ ...draft, fontFamily: option.value });
-                    return (
-                      <label
-                        key={option.value}
-                        className={cn(
-                          "flex cursor-pointer flex-col gap-1 rounded-lg border p-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-focus-ring)]",
-                          fontFamily === option.value ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-border-strong",
-                        )}
-                      >
-                        <input type="radio" name="theme-font" value={option.value} checked={fontFamily === option.value} onChange={() => setFontFamily(option.value)} className="sr-only" />
-                        <span className="text-2xl leading-none text-foreground" aria-hidden="true" style={{ fontFamily: vars["--site-font-heading"] }}>
-                          Aa{" "}
-                          <span className="text-sm" style={{ fontFamily: vars["--site-font-family"] }}>
-                            Tu texto se ve así
-                          </span>
-                        </span>
-                        <span className="text-sm font-medium text-foreground">{option.label}</span>
-                        <span className="text-xs text-muted-foreground">{option.description}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </fieldset>
-            ))}
+            <FontPicker
+              title="Fuente del texto"
+              name="theme-font"
+              value={fontFamily}
+              onChange={setFontFamily}
+              // Con los títulos en la misma fuente, cada muestra enseña la pareja completa (título + texto) como siempre.
+              sampleVars={(option) => themeTokensToCssVariables({ ...draft, fontFamily: option })}
+            />
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-focus-ring)]">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={headingFont === null}
+                onChange={(event) => setHeadingFont(event.target.checked ? null : fontFamily)}
+                className="peer sr-only"
+              />
+              <span
+                aria-hidden="true"
+                className="relative mt-0.5 inline-flex h-5 w-9 shrink-0 rounded-full bg-border-strong transition-colors after:absolute after:left-0.5 after:top-0.5 after:size-4 after:rounded-full after:border after:border-border after:bg-background after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-4 motion-reduce:after:transition-none"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">Títulos con la misma fuente</span>
+                <span className="text-xs text-muted-foreground">Desactívalo para elegir otra fuente solo para tu nombre y los títulos.</span>
+              </span>
+            </label>
+            {headingFont !== null ? (
+              <FontPicker
+                title="Fuente de los títulos"
+                name="theme-heading-font"
+                value={headingFont}
+                onChange={setHeadingFont}
+                headingOnly
+                sampleVars={(option) => themeTokensToCssVariables({ ...draft, headingFontFamily: option })}
+              />
+            ) : null}
           </section>
 
           <section aria-labelledby="editor-forma" className="flex flex-col gap-5">
@@ -280,10 +291,19 @@ export function ThemeEditor({
               options={SHADOW_SCALES.map((value) => ({
                 value,
                 label: SHADOW_LABELS[value],
+                // La sombra real de la página, con el radio y los colores que se están editando (la sólida toma el texto de la página).
                 sample: (
                   <span
-                    className="block h-8 w-14 rounded-md border border-border bg-background"
-                    style={{ boxShadow: value === "none" ? "none" : "0 3px 8px 0 rgb(15 23 42 / 0.22)" }}
+                    className="block h-8 w-14 border"
+                    style={
+                      {
+                        "--site-color-foreground": livePalette.foreground,
+                        backgroundColor: livePalette.surface,
+                        borderColor: livePalette.border,
+                        borderRadius: draftRadius(radius),
+                        boxShadow: themeShadowValue(value),
+                      } as React.CSSProperties
+                    }
                   />
                 ),
               }))}
@@ -338,9 +358,9 @@ export function ThemeEditor({
   );
 }
 
-const RADIUS_PX: Record<ThemeTokens["radius"], string> = { none: "0px", subtle: "0.375rem", moderate: "0.75rem" };
+/** El mismo radio que pinta la página (un solo lugar para los valores: `@impulza/validation`). */
 function draftRadius(radius: ThemeTokens["radius"]): string {
-  return RADIUS_PX[radius];
+  return themeRadiusValue(radius);
 }
 
 /** Muestra de un botón con el estilo elegido y los colores que se están editando (los mismos que pinta la página). */
@@ -353,6 +373,67 @@ function buttonSampleStyle(style: ThemeTokens["buttonStyle"], palette: ThemeToke
     "--site-color-foreground": palette.foreground,
   } as React.CSSProperties;
   return { ...vars, ...previewButtonStyle(style) };
+}
+
+/**
+ * Selector de fuente agrupado por estilo. `headingOnly`: la muestra enseña solo el título (para la fuente de los títulos); si no,
+ * la pareja título + texto. Cada muestra usa las variables reales que pintaría la página con esa opción.
+ */
+function FontPicker({
+  title,
+  name,
+  value,
+  onChange,
+  sampleVars,
+  headingOnly = false,
+}: {
+  title: string;
+  name: string;
+  value: FontFamily;
+  onChange: (value: FontFamily) => void;
+  sampleVars: (option: FontFamily) => ReturnType<typeof themeTokensToCssVariables>;
+  headingOnly?: boolean;
+}): React.JSX.Element {
+  return (
+    <fieldset className="flex flex-col gap-3">
+      <legend className="mb-1 text-sm font-semibold text-foreground">{title}</legend>
+      {FONT_GROUPS.map((group) => (
+        <fieldset key={group.id} className="flex flex-col gap-2">
+          <legend className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{group.label}</legend>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {FONT_FAMILY_OPTIONS.filter((option) => option.group === group.id).map((option) => {
+              const vars = sampleVars(option.value);
+              return (
+                <label
+                  key={option.value}
+                  className={cn(
+                    "flex cursor-pointer flex-col gap-1 rounded-lg border p-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-focus-ring)]",
+                    value === option.value ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-border-strong",
+                  )}
+                >
+                  <input type="radio" name={name} value={option.value} checked={value === option.value} onChange={() => onChange(option.value)} className="sr-only" />
+                  <span className="text-2xl leading-none text-foreground" aria-hidden="true" style={{ fontFamily: vars["--site-font-heading"] }}>
+                    {headingOnly ? (
+                      "Tu nombre"
+                    ) : (
+                      <>
+                        Aa{" "}
+                        <span className="text-sm" style={{ fontFamily: vars["--site-font-family"] }}>
+                          Tu texto se ve así
+                        </span>
+                      </>
+                    )}
+                  </span>
+                  <span className="text-sm font-medium text-foreground">{option.label}</span>
+                  <span className="text-xs text-muted-foreground">{option.description}</span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      ))}
+    </fieldset>
+  );
 }
 
 function VisualOptions<T extends string>({

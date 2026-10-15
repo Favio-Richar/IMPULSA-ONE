@@ -61,12 +61,13 @@ export const FONT_FAMILIES = [
   "caveat",
 ] as const;
 
-// "Bordes moderados, nada excesivamente redondo" es dirección visual obligatoria (CLAUDE.md), así
-// que no existe una opción "pill" para el marco general del tema.
-export const RADIUS_SCALES = ["none", "subtle", "moderate"] as const;
+// Radio y sombra del tema. Hasta el editor de portales eran 3 radios (sin "redondeado") y 2 sombras (sin sombra / sutil), por la
+// regla de "bordes moderados y sombras discretas". ADR-031 (decisión de Favio) suma `rounded` y las sombras `strong` y `hard`
+// como **opciones que elige el dueño del sitio** para su página pública; los temas del catálogo siguen usando las sobrias y
+// ningún tema existente cambia. `rounded` no llega a píldora (ver `RADIUS_VALUES`).
+export const RADIUS_SCALES = ["none", "subtle", "moderate", "rounded"] as const;
 export const DENSITY_SCALES = ["compact", "comfortable"] as const;
-// "Sombras discretas" — tampoco hay una opción pesada.
-export const SHADOW_SCALES = ["none", "subtle"] as const;
+export const SHADOW_SCALES = ["none", "subtle", "strong", "hard"] as const;
 /**
  * `glass` (PL5, ADR-008): los botones secundarios son translúcidos sobre el fondo —el patrón de las
  * apps de enlace en bio sobre foto o fondo oscuro—; la acción principal sigue sólida. Su texto es el
@@ -93,6 +94,11 @@ export const themeTokensSchema = z
   .object({
     palette: paletteSchema,
     fontFamily: z.enum(FONT_FAMILIES),
+    /**
+     * Fuente de los títulos, independiente de la del texto (editor de portales). Opcional: sin la clave, los títulos usan la de
+     * `fontFamily` como siempre (en las parejas, su fuente de títulos), así que ningún tema guardado cambia.
+     */
+    headingFontFamily: z.enum(FONT_FAMILIES).optional(),
     radius: z.enum(RADIUS_SCALES),
     density: z.enum(DENSITY_SCALES),
     shadow: z.enum(SHADOW_SCALES),

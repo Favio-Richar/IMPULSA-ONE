@@ -5,6 +5,7 @@ import {
   FONT_FAMILIES,
   RADIUS_SCALES,
   SHADOW_SCALES,
+  themeTokensSchema,
 } from "./tokens.js";
 import { THEME_CATALOG } from "./catalog.js";
 import { themeTokensToCssVariables } from "./css-variables.js";
@@ -61,6 +62,38 @@ describe("themeTokensToCssVariables (F2.7)", () => {
       // "Sombras discretas": nunca más de dos capas de sombra.
       expect(vars["--site-shadow"].split(",").length).toBeLessThanOrEqual(2);
     }
+  });
+
+  it("ADR-031: cuatro radios y cuatro sombras; «redondeado» no llega a píldora y la sólida toma el texto de la página", () => {
+    expect(RADIUS_SCALES).toEqual(["none", "subtle", "moderate", "rounded"]);
+    expect(SHADOW_SCALES).toEqual(["none", "subtle", "strong", "hard"]);
+    const radii = RADIUS_SCALES.map((radius) => Number.parseFloat(themeTokensToCssVariables({ ...baseTokens, radius })["--site-radius"]));
+    // Escala estrictamente creciente, y el mayor por debajo de la mitad de un botón de la pila (56 px = 3.5rem).
+    expect([...radii].sort((a, b) => a - b)).toEqual(radii);
+    expect(new Set(radii).size).toBe(radii.length);
+    expect(radii.at(-1)!).toBeLessThan(1.75);
+    // El color del texto de la página (ajustado por el fondo para AA), no el del tema: visible sobre fondo claro y oscuro.
+    expect(themeTokensToCssVariables({ ...baseTokens, shadow: "hard" })["--site-shadow"]).toBe("4px 4px 0 0 var(--site-color-foreground)");
+    expect(themeTokensToCssVariables({ ...baseTokens, shadow: "strong" })["--site-shadow"]).toMatch(/^0 12px 28px/);
+    // Un tema guardado antes (sutil/moderado) se pinta exactamente igual que siempre.
+    expect(themeTokensToCssVariables({ ...baseTokens, radius: "moderate", shadow: "subtle" })).toMatchObject({
+      "--site-radius": "0.75rem",
+      "--site-shadow": "0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.08)",
+    });
+  });
+
+  it("fuente de títulos independiente: sin la clave nada cambia; con ella, solo los títulos usan la otra fuente", () => {
+    for (const fontFamily of FONT_FAMILIES) {
+      const before = themeTokensToCssVariables({ ...baseTokens, fontFamily });
+      // Un tema guardado sin `headingFontFamily` (o con la misma) se pinta igual que siempre.
+      expect(themeTokensToCssVariables({ ...baseTokens, fontFamily, headingFontFamily: undefined })).toEqual(before);
+      expect(themeTokensToCssVariables({ ...baseTokens, fontFamily, headingFontFamily: fontFamily })).toEqual(before);
+    }
+    const mixed = themeTokensToCssVariables({ ...baseTokens, fontFamily: "dmsans", headingFontFamily: "playfair" });
+    expect(mixed["--site-font-family"]).toContain("DM Sans Variable");
+    expect(mixed["--site-font-heading"]).toContain("Playfair Display Variable");
+    expect(themeTokensSchema.safeParse({ ...baseTokens, headingFontFamily: "playfair" }).success).toBe(true);
+    expect(themeTokensSchema.safeParse({ ...baseTokens, headingFontFamily: "Comic Sans MS" }).success).toBe(false);
   });
 
   it("las parejas tipográficas (PP4) separan títulos y texto, y siempre caen a una fuente del sistema", () => {

@@ -64,3 +64,4 @@ especulado). Reabrir significa proponer un ADR nuevo, no editar el existente.
 | [ADR-028](./ADR-028-agencias-marca-blanca-y-marca-configurable.md) | Agencias, marca blanca y marca configurable por el dueño de la plataforma y por cada organización (resuelve #8 y #9) | Aceptado |
 | [ADR-029](./ADR-029-version-2-membresias-cursos-wallet-pwa-marketplace.md) | Versión 2: membresías y cursos, wallet y tarjeta digital, PWA y marketplace (de integraciones y plantillas, sin custodia de dinero) | Aceptado |
 | [ADR-030](./ADR-030-webpay-plus-como-medio-de-cobro-del-negocio.md) | Webpay Plus como segundo medio de cobro del negocio, con sus propias credenciales y sin custodia de dinero | Aceptado |
+| [ADR-031](./ADR-031-sombras-y-radios-elegibles-por-el-dueno-del-sitio.md) | Sombras marcada/sólida y radio redondeado como opción del dueño del sitio (excepción acotada a "sombras discretas") | Aceptado |

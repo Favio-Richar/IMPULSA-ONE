@@ -5,13 +5,22 @@ import type { ResolvedSiteBackground, ThemeTokens } from "@impulza/validation";
 
 export type Device = "phone" | "desktop";
 
-/** Estilo de un botón de la página según el `buttonStyle` del tema (las mismas variantes que pinta el sitio público). */
+/**
+ * Estilo de un botón de la página según el `buttonStyle` del tema, con los mismos pares de color que `stackSurfaceClass` del sitio
+ * público: el contorno usa el color de enlace **de la página** (cambia con el fondo) y la superficie usa la paleta **del tema**
+ * (`--site-theme-*`, que el fondo no toca), así un tema claro sobre un fondo oscuro no deja texto claro sobre una tarjeta clara.
+ * Fuera de `SiteBackdrop` (muestras sueltas) cae a las variables de siempre.
+ */
 export function previewButtonStyle(buttonStyle: ThemeTokens["buttonStyle"]): React.CSSProperties {
   switch (buttonStyle) {
     case "outline":
-      return { border: "2px solid var(--site-color-primary)", color: "var(--site-color-primary)" };
+      return { border: "2px solid var(--site-color-link, var(--site-color-primary))", color: "var(--site-color-link, var(--site-color-primary))" };
     case "mono":
-      return { border: "1px solid var(--site-color-border)", background: "var(--site-color-surface)", color: "var(--site-color-foreground)" };
+      return {
+        border: "1px solid var(--site-theme-border, var(--site-color-border))",
+        background: "var(--site-color-surface)",
+        color: "var(--site-theme-foreground, var(--site-color-foreground))",
+      };
     case "glass":
       return {
         border: "1px solid color-mix(in srgb, var(--site-color-foreground) 24%, transparent)",
@@ -39,7 +48,8 @@ export function PagePreview({
       <div className="mx-auto flex h-full w-full max-w-xs flex-col items-center justify-center gap-3 px-5 py-6 text-center" style={{ fontFamily: "var(--site-font-family)" }}>
         <span
           className="flex size-16 items-center justify-center rounded-full border-4 text-xl font-semibold"
-          style={{ background: "var(--site-color-surface)", color: "var(--site-color-foreground)", borderColor: "var(--site-color-background)", fontFamily: "var(--site-font-heading)" }}
+          // Como el monograma real (PP8): el par primario del tema, verificado AA, sobre cualquier fondo.
+          style={{ background: "var(--site-color-primary)", color: "var(--site-color-primary-foreground)", borderColor: "var(--site-color-background)", fontFamily: "var(--site-font-heading)" }}
         >
           T
         </span>

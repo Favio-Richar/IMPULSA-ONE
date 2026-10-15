@@ -27,6 +27,12 @@ export function ProfileBlock({ config, glass = false }: { config: ProfileBlockCo
   if (config.layout === "hero") {
     return <HeroProfile config={config} glass={glass} />;
   }
+  if (config.layout === "banner") {
+    return <BannerProfile config={config} glass={glass} />;
+  }
+  if (config.layout === "cutout") {
+    return <CutoutProfile config={config} glass={glass} />;
+  }
   const hasCover = config.cover !== undefined;
 
   return (
@@ -115,10 +121,119 @@ function HeroProfile({ config, glass }: { config: ProfileBlockConfig; glass: boo
   );
 }
 
-/** Nombre con verificación, frase, bio y redes: lo mismo en las dos cabeceras. */
-function ProfileText({ config, glass, large = false }: { config: ProfileBlockConfig; glass: boolean; large?: boolean }) {
+/**
+ * Banner: portada ancha y baja (3:1) y la foto **más chica** (88 px) montada sobre la esquina inferior izquierda, con el
+ * nombre y la bio alineados a la izquierda — la cabecera de un perfil profesional, no la de una tarjeta centrada. Sin
+ * portada, una franja de la superficie del tema del mismo alto: la estructura no cambia al subir la foto después. Igual que
+ * en la clásica, sobre la portada no va texto.
+ */
+function BannerProfile({ config, glass }: { config: ProfileBlockConfig; glass: boolean }) {
   return (
-    <div className="mt-4 flex w-full flex-col items-center gap-3">
+    <div className="relative flex flex-col text-left" data-profile-layout="banner">
+      <PageShare config={config} />
+      <div
+        data-profile-cover=""
+        className="aspect-[3/1] w-full overflow-hidden rounded-[var(--site-radius)] bg-[var(--site-color-surface)]"
+      >
+        {config.cover ? <SiteImage image={config.cover} priority sizes="(min-width: 640px) 640px, 100vw" className="h-full w-full object-cover" /> : null}
+      </div>
+      <div className="relative -mt-11 px-4">
+        <ProfilePhoto config={config} size="sm" shape="circle" framed />
+      </div>
+      <ProfileText config={config} glass={glass} align="start" />
+    </div>
+  );
+}
+
+/**
+ * Recorte: la foto en un rectángulo vertical (4:5) con las esquinas del **radio del tema** —recto en un tema recto, suave en
+ * uno moderado o redondeado—, en vez del círculo de siempre. Con portada, el recorte se monta sobre su borde inferior.
+ */
+function CutoutProfile({ config, glass }: { config: ProfileBlockConfig; glass: boolean }) {
+  const hasCover = config.cover !== undefined;
+  return (
+    <div className="relative flex flex-col items-center text-center" data-profile-layout="cutout">
+      <PageShare config={config} />
+      {config.cover ? (
+        <div data-profile-cover="" className="aspect-[16/8] w-full overflow-hidden rounded-[var(--site-radius)] bg-[var(--site-color-surface)]">
+          <SiteImage image={config.cover} priority className="h-full w-full object-cover" />
+        </div>
+      ) : null}
+      <div className={hasCover ? "relative -mt-20" : "relative"}>
+        <ProfilePhoto config={config} size="lg" shape="cutout" framed={hasCover} />
+      </div>
+      <ProfileText config={config} glass={glass} />
+    </div>
+  );
+}
+
+const PHOTO_SIZES = {
+  // Banner: más chica que la clásica, como pide una cabecera de portada ancha.
+  sm: { box: "h-[5.5rem] w-[5.5rem]", text: "text-2xl", pixels: 88, height: 88 },
+  // Recorte vertical 4:5.
+  lg: { box: "h-40 w-32", text: "text-4xl", pixels: 128, height: 160 },
+} as const;
+
+/**
+ * Foto (o monograma, sin foto) de las cabeceras banner y recorte. `cutout` toma las esquinas del radio del tema multiplicado
+ * —un radio de 0 deja el recorte recto—; `framed` le pone el marco del color de fondo que la separa de la portada.
+ */
+function ProfilePhoto({
+  config,
+  size,
+  shape,
+  framed,
+}: {
+  config: ProfileBlockConfig;
+  size: keyof typeof PHOTO_SIZES;
+  shape: "circle" | "cutout";
+  framed: boolean;
+}) {
+  const dims = PHOTO_SIZES[size];
+  const rounding = shape === "circle" ? "rounded-full" : "rounded-[min(calc(var(--site-radius)*2),2rem)]";
+  const frame = framed
+    ? "border-4 border-[var(--site-color-background)] bg-[var(--site-color-background)]"
+    : "border border-[var(--site-color-border)]";
+  if (config.avatar) {
+    return (
+      <SiteImage
+        image={config.avatar}
+        priority
+        sizes={`${dims.pixels}px`}
+        width={dims.pixels}
+        height={dims.height}
+        data-profile-photo={shape}
+        className={`${dims.box} ${rounding} ${frame} object-cover shadow-[var(--site-shadow)]`}
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      data-profile-monogram=""
+      data-profile-photo={shape}
+      className={`flex ${dims.box} ${rounding} ${framed ? "border-4 border-[var(--site-color-background)]" : ""} items-center justify-center bg-[var(--site-color-primary)] ${dims.text} font-semibold text-[var(--site-color-primary-foreground)] shadow-[var(--site-shadow)]`}
+      style={{ fontFamily: "var(--site-font-heading)" }}
+    >
+      {initials(config.name)}
+    </span>
+  );
+}
+
+/** Nombre con verificación, frase, bio y redes: lo mismo en todas las cabeceras (`start`: alineado a la izquierda, banner). */
+function ProfileText({
+  config,
+  glass,
+  large = false,
+  align = "center",
+}: {
+  config: ProfileBlockConfig;
+  glass: boolean;
+  large?: boolean;
+  align?: "center" | "start";
+}) {
+  return (
+    <div className={`mt-4 flex w-full flex-col gap-3 ${align === "start" ? "items-start px-1" : "items-center"}`}>
       <div className="flex items-center gap-1.5">
         <h1 className={`${large ? "text-3xl sm:text-4xl" : "text-2xl sm:text-3xl"} font-semibold tracking-tight text-[var(--site-color-foreground)]`}>
           {config.name}

@@ -27,6 +27,7 @@ import { isAiTaskAvailable, useAiStatus } from "../../lib/hooks/use-ai";
 import { useUpdateBlock } from "../../lib/hooks/use-blocks";
 import { BlockAbSection } from "../ab-tests/block-ab-section";
 import { BlockAiDialog } from "../ai/ai-assistant-dialogs";
+import { BlockClicksSection, blockHasClicks } from "./block-clicks-section";
 import { ContactFormPicker } from "./contact-form-picker";
 import { PrimaryActionToggle } from "./primary-action-toggle";
 
@@ -225,6 +226,7 @@ export function BlockConfigPanel({
           canTranslate={isAiTaskAvailable(aiStatus.data, "translate") && translateFieldsFor(type, block.config).length > 0}
           onOpen={(mode) => void openAssistant(mode)}
         />
+        {blockHasClicks(type) ? <BlockClicksSection organizationId={organizationId} blockId={block.id} /> : null}
         {isAbTestBlockType(type) ? (
           <BlockAbSection
             organizationId={organizationId}

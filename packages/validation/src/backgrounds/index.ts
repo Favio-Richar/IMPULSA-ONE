@@ -164,6 +164,97 @@ export function colorTextPalette(color: string, theme: ThemeTokens | null): Back
   return null;
 }
 
+// --- Patrones (editor de portales) ----------------------------------------------------------
+
+/**
+ * Patrones del fondo: una textura sutil repetida (puntos, líneas, cuadrícula o grano) dibujada con un **color del patrón**
+ * sobre un **color base**, los dos elegidos por el usuario. Catálogo cerrado: lo guardado es un código y dos hex, nunca CSS ni
+ * SVG libre; el SVG lo arma `patternCss` a partir del catálogo.
+ *
+ * `alpha` es la opacidad máxima del trazo. Sin capa de legibilidad (es sutil por diseño), así que el contraste se garantiza
+ * **en el peor punto**: el texto tiene que leerse sobre el color base y también sobre el base con el trazo encima a esa
+ * opacidad (`patternTextPalette`).
+ */
+export interface BackgroundPattern {
+  code: string;
+  name: string;
+  alpha: number;
+  /** Lado de la baldosa que se repite, en px. */
+  tile: number;
+}
+
+export const BACKGROUND_PATTERNS = [
+  { code: "puntos", name: "Puntos", alpha: 0.3, tile: 22 },
+  { code: "lineas", name: "Líneas finas", alpha: 0.2, tile: 14 },
+  { code: "cuadricula", name: "Cuadrícula", alpha: 0.18, tile: 28 },
+  { code: "grano", name: "Grano sutil", alpha: 0.22, tile: 180 },
+] as const satisfies readonly BackgroundPattern[];
+
+export type BackgroundPatternCode = (typeof BACKGROUND_PATTERNS)[number]["code"];
+const PATTERN_CODES = BACKGROUND_PATTERNS.map((pattern) => pattern.code) as [BackgroundPatternCode, ...BackgroundPatternCode[]];
+
+export function getBackgroundPattern(code: string): BackgroundPattern | undefined {
+  return BACKGROUND_PATTERNS.find((pattern) => pattern.code === code);
+}
+
+/**
+ * Paleta de texto para un fondo con patrón: la del tema si se lee sobre el base **y** sobre el punto más marcado del trazo; si
+ * no, la oscura o la clara con la misma condición. `null`: ningún texto alcanza AA con esa combinación.
+ */
+export function patternTextPalette(base: string, ink: string, patternCode: string, theme: ThemeTokens | null): BackgroundTextPalette | null {
+  const pattern = getBackgroundPattern(patternCode);
+  if (!pattern) {
+    return null;
+  }
+  const marked = blendHex(base, ink, pattern.alpha);
+  const readable = (palette: { foreground: string; mutedForeground: string }) => paletteReadableOn(palette, base) && paletteReadableOn(palette, marked);
+  // Con la paleta del tema, los enlaces de texto usan su primario: también tiene que leerse en los dos puntos.
+  const linkReadable = (link: string) => contrastRatio(link, base) >= AA_NORMAL_TEXT && contrastRatio(link, marked) >= AA_NORMAL_TEXT;
+  if (theme && readable(theme.palette) && linkReadable(theme.palette.primary)) {
+    return "theme";
+  }
+  if (readable(ON_BACKGROUND_TEXT.dark)) {
+    return "dark";
+  }
+  if (readable(ON_BACKGROUND_TEXT.light)) {
+    return "light";
+  }
+  return null;
+}
+
+/** SVG de una baldosa del patrón, con el color del trazo ya validado como hex (nunca texto libre). */
+function patternSvg(pattern: BackgroundPattern, ink: string): string {
+  const t = pattern.tile;
+  const stroke = `stroke='${ink}' stroke-opacity='${pattern.alpha}'`;
+  switch (pattern.code) {
+    case "puntos":
+      return `<svg xmlns='http://www.w3.org/2000/svg' width='${t}' height='${t}'><circle cx='${t / 2}' cy='${t / 2}' r='1.6' fill='${ink}' fill-opacity='${pattern.alpha}'/></svg>`;
+    case "lineas":
+      // Diagonales que continúan de una baldosa a la siguiente (las esquinas completan el trazo).
+      return `<svg xmlns='http://www.w3.org/2000/svg' width='${t}' height='${t}'><path d='M-2 2L2 -2M0 ${t}L${t} 0M${t - 2} ${t + 2}L${t + 2} ${t - 2}' ${stroke} stroke-width='1'/></svg>`;
+    case "cuadricula":
+      return `<svg xmlns='http://www.w3.org/2000/svg' width='${t}' height='${t}'><path d='M${t} 0.5H0.5V${t}' fill='none' ${stroke} stroke-width='1'/></svg>`;
+    default: {
+      // Grano: ruido fractal teñido con el color del trazo; su canal alfa queda acotado por `alpha` (el peor punto validado).
+      const [r, g, b] = hexToRgb(ink).map((value) => (value / 255).toFixed(3));
+      return `<svg xmlns='http://www.w3.org/2000/svg' width='${t}' height='${t}'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 ${r} 0 0 0 0 ${g} 0 0 0 0 ${b} 0 0 0 ${pattern.alpha} 0'/></filter><rect width='100%' height='100%' filter='url(#g)'/></svg>`;
+    }
+  }
+}
+
+/** Estilos del fondo con patrón: color base + baldosa SVG en línea (`data:`, permitido por la CSP de imágenes). */
+export function patternCss(patternCode: string, base: string, ink: string): { backgroundColor: string; backgroundImage?: string; backgroundSize?: string } {
+  const pattern = getBackgroundPattern(patternCode);
+  if (!pattern) {
+    return { backgroundColor: base };
+  }
+  return {
+    backgroundColor: base,
+    backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(patternSvg(pattern, ink))}")`,
+    backgroundSize: `${pattern.tile}px ${pattern.tile}px`,
+  };
+}
+
 // --- Videos curados -------------------------------------------------------------------------
 
 export interface BackgroundVideo {
@@ -198,6 +289,13 @@ export const siteBackgroundSchema = z.discriminatedUnion("kind", [
     }),
   }),
   z.object({ kind: z.literal("gradient"), gradient: z.enum(GRADIENT_CODES) }),
+  // Patrón (editor de portales): mismo control AA que el color sólido, pero en el peor punto (base con el trazo encima).
+  z
+    .object({ kind: z.literal("pattern"), pattern: z.enum(PATTERN_CODES), color: hexColorSchema, ink: hexColorSchema })
+    .refine((background) => patternTextPalette(background.color, background.ink, background.pattern, null) !== null, {
+      message: "Con ese color base y ese color del patrón ningún texto alcanza el contraste mínimo. Aclara u oscurece el base, o suaviza el patrón.",
+      path: ["color"],
+    }),
   z.object({ kind: z.literal("image"), image: z.object({ url: safeUrlSchema }), overlay: overlaySchema, effect: effectSchema.optional() }),
   z.object({
     kind: z.literal("video"),
@@ -218,6 +316,13 @@ export type SiteBackground = z.infer<typeof siteBackgroundSchema>;
 export const resolvedSiteBackgroundSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("color"), color: hexColorSchema, text: z.enum(BACKGROUND_TEXT_PALETTES) }),
   z.object({ kind: z.literal("gradient"), gradient: z.enum(GRADIENT_CODES), text: z.enum(BACKGROUND_TEXT_PALETTES) }),
+  z.object({
+    kind: z.literal("pattern"),
+    pattern: z.enum(PATTERN_CODES),
+    color: hexColorSchema,
+    ink: hexColorSchema,
+    text: z.enum(BACKGROUND_TEXT_PALETTES),
+  }),
   z.object({ kind: z.literal("image"), image: z.object({ url: z.string() }), overlay: overlaySchema, text: z.enum(BACKGROUND_TEXT_PALETTES), effect: effectSchema.optional() }),
   z.object({
     kind: z.literal("video"),
@@ -250,6 +355,10 @@ export function resolveSiteBackground(
     }
     case "gradient":
       return { kind: "gradient", gradient: background.gradient, text: getBackgroundGradient(background.gradient)!.text };
+    case "pattern": {
+      const text = patternTextPalette(background.color, background.ink, background.pattern, theme);
+      return text ? { kind: "pattern", pattern: background.pattern, color: background.color, ink: background.ink, text } : null;
+    }
     case "image":
       return {
         kind: "image",

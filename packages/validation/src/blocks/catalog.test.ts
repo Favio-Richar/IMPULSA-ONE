@@ -277,11 +277,12 @@ describe("compartir (PL8)", () => {
 });
 
 describe("cabecera de cuerpo entero (PL7)", () => {
-  it("acepta `layout` avatar o hero, rechaza otro valor, y sin él la configuración anterior no cambia", () => {
+  it("acepta los cuatro `layout` (avatar, hero, banner, recorte), rechaza otro valor, y sin él la configuración anterior no cambia", () => {
     const schema = BLOCK_CATALOG.profile.schema;
-    expect(schema.safeParse({ name: "Ana", layout: "hero" }).success).toBe(true);
-    expect(schema.safeParse({ name: "Ana", layout: "avatar" }).success).toBe(true);
-    expect(schema.safeParse({ name: "Ana", layout: "banner" }).success).toBe(false);
+    for (const layout of ["avatar", "hero", "banner", "cutout"]) {
+      expect(schema.safeParse({ name: "Ana", layout }).success, layout).toBe(true);
+    }
+    expect(schema.safeParse({ name: "Ana", layout: "hexagon" }).success).toBe(false);
     const stored = { name: "Ana", verified: false };
     expect(parseStoredBlock("profile", 1, stored)).toEqual({ renderable: true, config: stored });
   });

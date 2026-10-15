@@ -5,6 +5,7 @@ import {
   mediaSrcSet,
   OVERLAY_COLORS,
   overlayCss,
+  patternCss,
   type ResolvedSiteBackground,
   themeAltCssVariables,
   themeTokensToCssVariables,
@@ -24,6 +25,9 @@ function baseStyle(background: ResolvedSiteBackground): CSSProperties {
       const gradient = getBackgroundGradient(background.gradient)!;
       return { backgroundColor: gradient.stops[0], backgroundImage: gradientCss(gradient) };
     }
+    case "pattern":
+      // Sin capa de legibilidad: el contraste ya se garantizó en el peor punto del trazo (`patternTextPalette`).
+      return patternCss(background.pattern, background.color, background.ink);
     case "image":
     case "video":
       return { backgroundColor: OVERLAY_COLORS[background.overlay.tone] };
@@ -65,6 +69,10 @@ export function SiteBackdrop({
     // tarjeta se dibuja por fuera, sobre el fondo de la página. Ver `styles/site.css`.
     "--site-focus": "var(--site-color-link)",
     fontFamily: "var(--site-font-family)",
+    // Con un fondo elegido, la raíz toma su color base (el del patrón o el color, el primero del degradado, el tono de la capa
+    // de una foto o video) en vez del fondo del tema: lo que asoma al estirar la página en el teléfono o antes de pintar la
+    // capa del fondo es del mismo tono que el texto ya espera, nunca el blanco de un tema claro bajo texto claro.
+    ...(background ? { backgroundColor: baseStyle(background).backgroundColor } : {}),
   } as CSSProperties;
 
   return (

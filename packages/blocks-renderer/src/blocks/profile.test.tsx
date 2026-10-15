@@ -85,4 +85,44 @@ describe("ProfileBlock — encabezado de perfil (PP4)", () => {
       expect(html).toContain("-mt-16");
     });
   });
+
+  describe("banner (editor de portales)", () => {
+    it("portada ancha 3:1, foto más chica y circular montada en la esquina, texto alineado a la izquierda", () => {
+      const html = renderToStaticMarkup(<ProfileBlock config={{ name: "Ana", avatar, cover, verified: false, layout: "banner" }} />);
+      expect(html).toContain('data-profile-layout="banner"');
+      expect(html).toContain("aspect-[3/1]");
+      expect(html).toMatch(/<img[^>]*data-profile-photo="circle"[^>]*h-\[5\.5rem\] w-\[5\.5rem\] rounded-full/);
+      expect(html).toContain('alt="Ana sonriendo"');
+      expect(html).toContain("text-left");
+      expect(html).toMatch(/items-start[^"]*"><div[^>]*><h1/);
+      // Las dos imágenes se piden primero (LCP), igual que la clásica.
+      expect(html.match(/<img[^>]*fetchPriority="high"/gi)).toHaveLength(2);
+    });
+
+    it("sin portada ni foto mantiene la franja y muestra las iniciales en la esquina", () => {
+      const html = renderToStaticMarkup(<ProfileBlock config={{ name: "Ana Rojas", verified: false, layout: "banner" }} />);
+      expect(html).toMatch(/data-profile-cover=""[^>]*aspect-\[3\/1\][^>]*><\/div>/);
+      expect(html).toMatch(/data-profile-monogram=""[^>]*>AR</);
+    });
+  });
+
+  describe("recorte (editor de portales)", () => {
+    it("la foto no es un círculo: recorte vertical con las esquinas del radio del tema", () => {
+      const html = renderToStaticMarkup(<ProfileBlock config={{ name: "Ana", avatar, verified: false, layout: "cutout" }} />);
+      expect(html).toContain('data-profile-layout="cutout"');
+      // Toma el radio del tema (doble), con tope: un tema «redondeado» no lo convierte en óvalo.
+      expect(html).toContain('data-profile-photo="cutout"');
+      expect(html).toContain("h-40 w-32 rounded-[min(calc(var(--site-radius)*2),2rem)]");
+      expect(html).not.toContain("rounded-full");
+      expect(html).not.toContain("data-profile-cover");
+    });
+
+    it("con portada, el recorte se monta sobre su borde con el marco del fondo", () => {
+      const html = renderToStaticMarkup(<ProfileBlock config={{ name: "Ana", avatar, cover, verified: true, layout: "cutout" }} />);
+      expect(html).toContain("data-profile-cover");
+      expect(html).toContain("-mt-20");
+      expect(html).toMatch(/data-profile-photo="cutout"[^>]*border-4 border-\[var\(--site-color-background\)\]/);
+      expect(html).toContain('aria-label="Perfil verificado"');
+    });
+  });
 });

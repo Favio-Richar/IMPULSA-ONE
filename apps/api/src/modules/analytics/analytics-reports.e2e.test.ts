@@ -1,7 +1,7 @@
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type { EmailAdapter, EmailMessage } from "@impulza/auth";
-import { analyticsOverviewResponse } from "@impulza/contracts";
+import { analyticsOverviewResponse, blockClicksResponse } from "@impulza/contracts";
 import type { PrismaClient } from "@impulza/database";
 import cookieParser from "cookie-parser";
 import type { Redis } from "ioredis";
@@ -223,6 +223,47 @@ describe("Dashboard de conversión (e2e) — F3.7", () => {
     it("sin sesión, 401", async () => {
       const a = await organizationWithActivity(0);
       await request(httpServer).get(overviewPath(a.organizationId, { from: today(-1), to: today() })).expect(401);
+    });
+  });
+
+  describe("clics de un bloque (editor de portales)", () => {
+    function clicksPath(organizationId: string, blockId: string, days?: string): string {
+      return `/api/v1/organizations/${organizationId}/analytics/blocks/${blockId}/clicks${days ? `?days=${days}` : ""}`;
+    }
+
+    it("devuelve el total y una serie de 30 días sin huecos, con el clic real del pipeline en el día de hoy", async () => {
+      const { agent, organizationId, blockId } = await organizationWithActivity(1);
+      const body = blockClicksResponse.parse((await agent.get(clicksPath(organizationId, blockId)).expect(200)).body);
+      expect(body).toMatchObject({ blockId, days: 30, to: today(), from: today(-29), total: 1 });
+      expect(body.series).toHaveLength(30);
+      expect(body.series.at(-1)).toEqual({ date: today(), clicks: 1 });
+      expect(body.series.slice(0, 29).every((point) => point.clicks === 0)).toBe(true);
+    });
+
+    it("se acota al historial del plan (Gratis: 30 días) en vez de responder 402, y valida los parámetros", async () => {
+      const { agent, organizationId, blockId } = await organizationWithActivity(0);
+      const free = blockClicksResponse.parse((await agent.get(clicksPath(organizationId, blockId, "90")).expect(200)).body);
+      expect(free.days).toBe(30);
+      expect(free.series).toHaveLength(30);
+      await assignRoomyPlan(prisma, organizationId);
+      expect(blockClicksResponse.parse((await agent.get(clicksPath(organizationId, blockId, "90")).expect(200)).body).days).toBe(90);
+
+      await agent.get(clicksPath(organizationId, blockId, "0")).expect(400);
+      await agent.get(clicksPath(organizationId, blockId, "91")).expect(400);
+      await agent.get(clicksPath(organizationId, blockId, "abc")).expect(400);
+      await agent.get(clicksPath(organizationId, "no-es-un-uuid")).expect(400);
+    });
+
+    it("aislamiento (ADR-002): el bloque de otra organización es 404 sin datos, y la ruta ajena no es alcanzable", async () => {
+      const a = await organizationWithActivity(0);
+      const b = await organizationWithActivity(1);
+
+      const foreign = await a.agent.get(clicksPath(a.organizationId, b.blockId)).expect(404);
+      expect(JSON.stringify(foreign.body)).not.toContain('"total"');
+      const crossed = await a.agent.get(clicksPath(b.organizationId, b.blockId));
+      expect([403, 404]).toContain(crossed.status);
+      expect(JSON.stringify(crossed.body)).not.toContain('"total"');
+      await request(httpServer).get(clicksPath(b.organizationId, b.blockId)).expect(401);
     });
   });
 

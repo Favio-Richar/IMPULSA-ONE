@@ -3,6 +3,9 @@ import { AA_NORMAL_TEXT, contrastRatio } from "../contrast.js";
 import { THEME_CATALOG } from "../themes/catalog.js";
 import {
   BACKGROUND_GRADIENTS,
+  BACKGROUND_PATTERNS,
+  patternCss,
+  patternTextPalette,
   backgroundTextCssVariables,
   blendHex,
   colorTextPalette,
@@ -158,5 +161,54 @@ describe("efecto de movimiento de una foto de fondo (F10)", () => {
     const passthrough = (key: string) => key;
     expect(resolveSiteBackground({ ...base, effect: "none" }, theme, passthrough)).not.toHaveProperty("effect");
     expect(resolveSiteBackground({ ...base, effect: "drift" }, theme, passthrough)).toMatchObject({ kind: "image", effect: "drift" });
+  });
+});
+
+describe("fondo con patrón (editor de portales)", () => {
+  const light = { kind: "pattern", pattern: "puntos", color: "#f8fafc", ink: "#64748b" } as const;
+
+  it("acepta los cuatro patrones del catálogo sobre una base legible, y rechaza un código o un color que no son del catálogo", () => {
+    for (const pattern of BACKGROUND_PATTERNS) {
+      expect(siteBackgroundSchema.safeParse({ ...light, pattern: pattern.code }).success, pattern.code).toBe(true);
+    }
+    expect(siteBackgroundSchema.safeParse({ ...light, pattern: "estrellas" }).success).toBe(false);
+    expect(siteBackgroundSchema.safeParse({ ...light, ink: "red" }).success).toBe(false);
+    expect(siteBackgroundSchema.safeParse({ ...light, color: "#fff; background:url(x)" }).success).toBe(false);
+  });
+
+  it("verifica AA en el peor punto: un trazo oscuro y marcado sobre una base clara que sola sí alcanzaría se rechaza", () => {
+    // La base clara sola se lee con texto oscuro…
+    expect(patternTextPalette("#ffffff", "#ffffff", "puntos", null)).toBe("dark");
+    // …pero un trazo negro al 30 % la oscurece hasta donde el texto oscuro ya no llega y el claro tampoco.
+    const result = siteBackgroundSchema.safeParse({ ...light, color: "#cbd5e1", ink: "#000000" });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["color"]);
+    for (const pattern of BACKGROUND_PATTERNS) {
+      const verdict = patternTextPalette("#cbd5e1", "#000000", pattern.code, null);
+      if (verdict) {
+        const palette = ON_BACKGROUND_TEXT[verdict === "theme" ? "dark" : verdict];
+        const marked = blendHex("#cbd5e1", "#000000", pattern.alpha);
+        expect(contrastRatio(palette.mutedForeground, marked), pattern.code).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
+      }
+    }
+  });
+
+  it("resuelve con la paleta del tema solo si su texto y sus enlaces se leen en los dos puntos; si no, la clara u oscura", () => {
+    expect(resolveSiteBackground(light, theme, noVideo)).toEqual({ ...light, text: "theme" });
+    const dark = { kind: "pattern", pattern: "cuadricula", color: "#0f172a", ink: "#94a3b8" } as const;
+    expect(resolveSiteBackground(dark, theme, noVideo)).toEqual({ ...dark, text: "light" });
+  });
+
+  it("el CSS sale del catálogo: base sólida, baldosa SVG codificada con el color del trazo y su tamaño", () => {
+    for (const pattern of BACKGROUND_PATTERNS) {
+      const css = patternCss(pattern.code, "#f8fafc", "#64748b");
+      expect(css.backgroundColor).toBe("#f8fafc");
+      expect(css.backgroundImage).toMatch(/^url\("data:image\/svg\+xml,%3Csvg/);
+      // Codificado: ni comillas dobles ni ángulos sueltos que cierren el `url("…")` o el atributo `style`.
+      expect(css.backgroundImage!.slice(5, -2)).not.toMatch(/["<>]/);
+      expect(decodeURIComponent(css.backgroundImage!)).toContain(pattern.code === "grano" ? "feTurbulence" : "#64748b");
+      expect(css.backgroundSize).toBe(`${pattern.tile}px ${pattern.tile}px`);
+    }
+    expect(patternCss("desconocido", "#f8fafc", "#64748b")).toEqual({ backgroundColor: "#f8fafc" });
   });
 });

@@ -23,6 +23,23 @@ describe("SiteBackdrop (PP3)", () => {
     expect(html).toContain(`--site-color-foreground:${theme.palette.foreground}`);
   });
 
+  it("patrón: base sólida con la baldosa SVG del catálogo, texto según el servidor, y la raíz del mismo tono (nunca el blanco del tema)", () => {
+    const html = render({ kind: "pattern", pattern: "cuadricula", color: "#0f172a", ink: "#94a3b8", text: "light" });
+    expect(html).toContain('data-background="pattern"');
+    expect(html).toMatch(/data-site-backdrop=""[^>]*style="background-color:#0f172a;background-image:url\(&quot;data:image\/svg\+xml,/);
+    expect(html).toContain("background-size:28px 28px");
+    expect(html).toContain("--site-color-foreground:#ffffff");
+    // La raíz (lo que asoma al estirar la página) toma la base del fondo.
+    expect(html).toMatch(/data-site-root=""[^>]*/);
+    expect(html.match(/^<div style="[^"]*background-color:#0f172a/)).not.toBeNull();
+    // Sin capa de legibilidad: el patrón es sutil por diseño.
+    expect(html).not.toContain("data-overlay");
+  });
+
+  it("sin fondo propio, la raíz conserva el fondo del tema (nada cambia para los sitios sin fondo elegido)", () => {
+    expect(render(null)).not.toMatch(/^<div style="[^"]*background-color:/);
+  });
+
   it("un degradado oscuro pinta el degradado del catálogo y aclara el texto de la página", () => {
     const html = render({ kind: "gradient", gradient: "medianoche", text: "light" });
     expect(html).toContain("linear-gradient(160deg, #0f172a 0%, #1e3a8a 100%)");

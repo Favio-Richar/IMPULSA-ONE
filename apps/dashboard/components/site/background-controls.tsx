@@ -6,6 +6,8 @@ import {
   BACKGROUND_EFFECTS,
   type BackgroundEffect,
   BACKGROUND_GRADIENTS,
+  BACKGROUND_PATTERNS,
+  type BackgroundPatternCode,
   colorTextPalette,
   getBackgroundGradient,
   gradientCss,
@@ -15,6 +17,8 @@ import {
   OVERLAY_STRENGTHS,
   type OverlayStrength,
   type OverlayTone,
+  patternCss,
+  patternTextPalette,
   resolveSiteBackground,
   type ResolvedSiteBackground,
   type SiteBackground,
@@ -46,6 +50,7 @@ const KIND_LABELS: Record<Kind, string> = {
   theme: "Del tema",
   color: "Color",
   gradient: "Degradado",
+  pattern: "Patrón",
   image: "Imagen",
   video: "Video",
 };
@@ -90,6 +95,10 @@ export function useBackgroundDraft({
   const [kind, setKind] = useState<Kind>(saved?.kind === "own_video" ? "video" : (saved?.kind ?? "theme"));
   const [color, setColor] = useState(saved?.kind === "color" ? saved.color : "#0f172a");
   const [gradient, setGradient] = useState<string>(saved?.kind === "gradient" ? saved.gradient : BACKGROUND_GRADIENTS[0].code);
+  // Patrón: textura del catálogo, color base y color del trazo. Por defecto, gris pizarra suave sobre casi blanco (AA holgado).
+  const [pattern, setPattern] = useState<BackgroundPatternCode>(saved?.kind === "pattern" ? saved.pattern : BACKGROUND_PATTERNS[0].code);
+  const [patternBase, setPatternBase] = useState(saved?.kind === "pattern" ? saved.color : "#f8fafc");
+  const [patternInk, setPatternInk] = useState(saved?.kind === "pattern" ? saved.ink : "#64748b");
   const [image, setImage] = useState<{ url: string; tones: ImageTones | null } | null>(
     saved?.kind === "image" ? { url: saved.image.url, tones: null } : null,
   );
@@ -116,6 +125,9 @@ export function useBackgroundDraft({
   const videoConfigured = library.data?.videoConfigured ?? false;
 
   const colorValid = HEX_COLOR_PATTERN.test(color) && colorTextPalette(color.toLowerCase(), null) !== null;
+  const patternColorsWellFormed = HEX_COLOR_PATTERN.test(patternBase) && HEX_COLOR_PATTERN.test(patternInk);
+  // Mismo criterio que el servidor: el texto tiene que leerse sobre el base y sobre el trazo en su punto más marcado.
+  const patternValid = patternColorsWellFormed && patternTextPalette(patternBase.toLowerCase(), patternInk.toLowerCase(), pattern, null) !== null;
   // Un video curado se aprueba con tonos que alcanzan AA en toda intensidad; la API igual verifica.
   const strengthsFor = (tone: OverlayTone): OverlayStrength[] =>
     kind === "image"
@@ -133,6 +145,8 @@ export function useBackgroundDraft({
         return { kind: "color", color: color.toLowerCase() };
       case "gradient":
         return { kind: "gradient", gradient: gradient as Extract<SiteBackground, { kind: "gradient" }>["gradient"] };
+      case "pattern":
+        return { kind: "pattern", pattern, color: patternBase.toLowerCase(), ink: patternInk.toLowerCase() };
       case "image":
         return image ? { kind: "image", image: { url: image.url }, overlay, ...(effect !== "none" ? { effect } : {}) } : null;
       case "video":
@@ -148,6 +162,7 @@ export function useBackgroundDraft({
     kind === "theme" ||
     (kind === "color" && colorValid) ||
     kind === "gradient" ||
+    (kind === "pattern" && patternValid) ||
     (kind === "image" && image !== null && allowedStrengths.includes(overlay.strength)) ||
     (kind === "video" && video !== null && allowedStrengths.includes(overlay.strength));
   // Por valor: lo guardado vuelve de JSONB con las claves en otro orden.
@@ -185,7 +200,7 @@ export function useBackgroundDraft({
   }
 
   const offerVideo = videos.length > 0 || ownVideos.length > 0 || videoConfigured;
-  const kinds: Kind[] = ["theme", "color", "gradient", "image", ...(offerVideo ? (["video"] as const) : [])];
+  const kinds: Kind[] = ["theme", "color", "gradient", "pattern", "image", ...(offerVideo ? (["video"] as const) : [])];
   const videoOptions: VideoOption[] = [
     ...ownVideos.map((item) => ({
       key: item.id,
@@ -202,6 +217,14 @@ export function useBackgroundDraft({
     setColor,
     gradient,
     setGradient,
+    pattern,
+    setPattern,
+    patternBase,
+    setPatternBase,
+    patternInk,
+    setPatternInk,
+    patternColorsWellFormed,
+    patternValid,
     image,
     video,
     overlay,
@@ -235,6 +258,14 @@ export function BackgroundControls({ organizationId, draft }: { organizationId: 
     setColor,
     gradient,
     setGradient,
+    pattern,
+    setPattern,
+    patternBase,
+    setPatternBase,
+    patternInk,
+    setPatternInk,
+    patternColorsWellFormed,
+    patternValid,
     image,
     video,
     overlay,
@@ -331,6 +362,51 @@ export function BackgroundControls({ organizationId, draft }: { organizationId: 
             ))}
           </div>
         </fieldset>
+      ) : null}
+
+      {kind === "pattern" ? (
+        <div className="flex flex-col gap-4">
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium text-foreground">Patrón</legend>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {BACKGROUND_PATTERNS.map((option) => {
+                const checked = pattern === option.code;
+                // Cada muestra se pinta con los colores elegidos: lo que se ve es lo que queda en la página.
+                const swatch = patternColorsWellFormed
+                  ? patternCss(option.code, patternBase.toLowerCase(), patternInk.toLowerCase())
+                  : { backgroundColor: "#f8fafc" };
+                return (
+                  <label
+                    key={option.code}
+                    data-pattern-option={option.code}
+                    className={cn(
+                      "flex cursor-pointer flex-col gap-1.5 rounded-md border p-1.5 text-xs has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-focus-ring)]",
+                      checked ? "border-primary ring-1 ring-primary" : "border-border hover:border-border-strong",
+                    )}
+                  >
+                    <input type="radio" name={`${colorId}-pattern`} value={option.code} checked={checked} onChange={() => setPattern(option.code)} className="sr-only" />
+                    <span className="relative h-12 rounded-sm border border-border/60" style={swatch}>
+                      {checked ? <Check className="absolute right-1 top-1 size-4 rounded-full bg-background p-0.5 text-primary" aria-hidden="true" /> : null}
+                    </span>
+                    <span className="font-medium text-foreground">{option.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <HexColorField label="Color base" value={patternBase} onChange={setPatternBase} />
+            <HexColorField label="Color del patrón" value={patternInk} onChange={setPatternInk} />
+          </div>
+          {patternColorsWellFormed && !patternValid ? (
+            <p role="alert" className="text-sm text-danger">
+              Con estos colores el texto no se leería bien sobre el patrón. Aclara u oscurece el color base, o acerca el color del patrón al del
+              base.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Es una textura sutil: no lleva capa encima y el texto se lee igual sobre el base y sobre el patrón.</p>
+          )}
+        </div>
       ) : null}
 
       {kind === "image" ? (
@@ -434,6 +510,43 @@ export function BackgroundControls({ organizationId, draft }: { organizationId: 
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** Color en hex con su selector nativo al lado. Valida la forma; el contraste lo evalúa quien lo usa. */
+function HexColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }): React.JSX.Element {
+  const id = useId();
+  const valid = HEX_COLOR_PATTERN.test(value);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-sm font-medium text-foreground">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          aria-label={`Elegir ${label.toLowerCase()}`}
+          value={valid ? value.toLowerCase() : "#000000"}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-10 w-12 cursor-pointer rounded-md border border-border-strong bg-background p-1"
+        />
+        <input
+          id={id}
+          type="text"
+          value={value}
+          maxLength={7}
+          onChange={(event) => onChange(event.target.value.trim())}
+          aria-invalid={!valid}
+          aria-describedby={valid ? undefined : `${id}-error`}
+          className="h-10 w-32 rounded-md border border-border-strong bg-background px-3 font-mono text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+        />
+      </div>
+      {valid ? null : (
+        <p id={`${id}-error`} role="alert" className="text-sm text-danger">
+          Escribe un color como #64748b.
+        </p>
+      )}
     </div>
   );
 }

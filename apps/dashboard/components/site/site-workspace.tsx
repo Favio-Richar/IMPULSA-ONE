@@ -2,9 +2,11 @@
 
 import { Button, buttonVariants, Card, CardContent, CardHeader, CardTitle, EmptyState, ErrorState, LoadingState } from "@impulza/ui";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { BarChart3, CalendarDays, Check, Copy, ExternalLink, Images, Inbox, Plus, ShoppingBag } from "lucide-react";
+import { NetworkIcon } from "@impulza/blocks-renderer";
+import { BarChart3, CalendarDays, Check, Copy, ExternalLink, Images, Inbox, Mail, Plus, Share2, ShoppingBag } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
+import { shareIntents } from "../../lib/share-intents";
 import { listBlocks } from "../../lib/api/blocks";
 import { listCourses } from "../../lib/api/courses";
 import { env } from "../../lib/env";
@@ -19,6 +21,9 @@ const ALWAYS = [
   { href: "/pedidos", label: "Pedidos", icon: ShoppingBag },
   { href: "/analitica", label: "Estadísticas", icon: BarChart3 },
 ] as const;
+
+/** Texto que acompaña el enlace al compartir. Neutro: sirve para un negocio, una marca o una persona. */
+const SHARE_TEXT = "Te comparto mi página";
 
 /**
  * «Mi sistema» (F10): un solo lugar para administrar el sitio según lo que contiene. Cada área (fotos, servicios,
@@ -37,6 +42,13 @@ export function SiteWorkspace({ organizationId, siteId, slug }: { organizationId
   // Los cursos piden el permiso `course.manage`: sin él la consulta falla y el área simplemente no aparece.
   const coursesQuery = useQuery({ queryKey: ["courses", organizationId, siteId], queryFn: () => listCourses(organizationId, siteId), retry: false });
   const [copied, setCopied] = useState(false);
+  const shareLabelId = useId();
+  // Solo en el navegador: en el servidor no existe `navigator` y así no hay diferencia de hidratación.
+  const canNativeShare = useSyncExternalStore(
+    () => () => {},
+    () => typeof navigator.share === "function",
+    () => false,
+  );
   const url = `${env.NEXT_PUBLIC_WEB_BASE_URL.replace(/\/+$/, "")}/${slug}`;
 
   if (pagesQuery.isPending) return <LoadingState label="Preparando tu sistema…" />;
@@ -61,6 +73,15 @@ export function SiteWorkspace({ organizationId, siteId, slug }: { organizationId
   }));
   const areas = buildWorkspaceAreas(siteId, workspacePages, { courses: coursesQuery.data ? coursesQuery.data.items.length : null });
   const publication = summarizePublication(workspacePages);
+
+  /** Hoja de compartir del sistema (teléfono, Safari, Edge): ahí aparecen también las apps que la persona tiene instaladas. */
+  async function nativeShare(): Promise<void> {
+    try {
+      await navigator.share({ title: SHARE_TEXT, url });
+    } catch {
+      // Cancelar la hoja no es un error que mostrar.
+    }
+  }
 
   async function copyLink(): Promise<void> {
     try {
@@ -93,6 +114,32 @@ export function SiteWorkspace({ organizationId, siteId, slug }: { organizationId
                 {copied ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
                 {copied ? "Enlace copiado" : "Copiar enlace"}
               </Button>
+              {canNativeShare ? (
+                <Button type="button" variant="secondary" size="sm" onClick={() => void nativeShare()}>
+                  <Share2 className="size-4" aria-hidden="true" /> Más opciones
+                </Button>
+              ) : null}
+            </div>
+            <div className="mt-1 flex flex-col gap-2">
+              <p id={shareLabelId} className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Compartir en
+              </p>
+              <ul aria-labelledby={shareLabelId} className="flex flex-wrap gap-2" data-testid="share-intents">
+                {shareIntents(url, SHARE_TEXT).map((intent) => (
+                  <li key={intent.id}>
+                    <a
+                      href={intent.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Compartir en ${intent.label} (se abre en una pestaña nueva)`}
+                      title={intent.label}
+                      className="flex size-10 items-center justify-center rounded-md border border-border bg-background text-foreground transition-colors hover:border-border-strong hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+                    >
+                      {intent.id === "email" ? <Mail className="size-5" aria-hidden="true" /> : <NetworkIcon network={intent.id} className="size-5" />}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
           <div className="shrink-0 self-start rounded-md border border-border bg-white p-2" aria-label="Código QR de tu página">

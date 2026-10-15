@@ -5,6 +5,8 @@ import { themeTokensToCssVariables } from "../themes/css-variables.js";
 import { GLASS_ALPHA } from "../themes/tokens.js";
 import {
   BACKGROUND_GRADIENTS,
+  BACKGROUND_PATTERNS,
+  getBackgroundPattern,
   backgroundForDisplay,
   backgroundTextCssVariables,
   blendHex,
@@ -37,6 +39,9 @@ function backdropColors(background: ResolvedSiteBackground | null, themeBackgrou
       return [background.color];
     case "gradient":
       return [...BACKGROUND_GRADIENTS.find((gradient) => gradient.code === background.gradient)!.stops];
+    case "pattern":
+      // El color base y el punto más marcado del trazo.
+      return [background.color, blendHex(background.color, background.ink, getBackgroundPattern(background.pattern)!.alpha)];
     case "image":
     case "video": {
       // Foto desconocida: se mezcla la capa sobre sus extremos posibles (negro y blanco).
@@ -52,6 +57,11 @@ const BACKGROUNDS: Array<{ name: string; stored: unknown }> = [
   ...BACKGROUND_GRADIENTS.map((gradient) => ({ name: `degradado ${gradient.code}`, stored: { kind: "gradient", gradient: gradient.code } })),
   { name: "color oscuro", stored: { kind: "color", color: "#0b1f3a" } },
   { name: "color claro", stored: { kind: "color", color: "#fef3c7" } },
+  // Cada patrón en sus dos usos típicos: trazo gris sobre base clara y trazo claro sobre base oscura.
+  ...BACKGROUND_PATTERNS.flatMap((pattern) => [
+    { name: `patrón ${pattern.code} claro`, stored: { kind: "pattern", pattern: pattern.code, color: "#f8fafc", ink: "#64748b" } },
+    { name: `patrón ${pattern.code} oscuro`, stored: { kind: "pattern", pattern: pattern.code, color: "#0f172a", ink: "#94a3b8" } },
+  ]),
   // Sobre una foto cualquiera solo se acepta una capa que alcance AA en el peor punto: la fuerte.
   ...OVERLAY_TONES.map((tone) => ({
     name: `imagen con capa ${tone} fuerte`,

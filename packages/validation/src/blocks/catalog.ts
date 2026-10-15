@@ -69,6 +69,10 @@ const alignmentSchema = z.enum(["left", "center", "right"]).default("left");
 
 const socialLinkSchema = z.object({ network: socialNetworkSchema, url: safeUrlSchema });
 
+/** Diseños de la cabecera de perfil. Sin la clave en la configuración vale `avatar` (la de siempre). */
+export const PROFILE_LAYOUTS = ["avatar", "hero", "banner", "cutout"] as const;
+export type ProfileLayout = (typeof PROFILE_LAYOUTS)[number];
+
 // Encabezado de perfil (PP4): `cover` (portada detrás del avatar) y `socials` (fila de redes bajo la
 // bio) son opcionales y se agregaron sin subir la versión del esquema: una configuración anterior
 // sigue siendo válida tal cual, y un despliegue anterior que lea una nueva simplemente los ignora
@@ -83,7 +87,9 @@ export const profileSchema = z.object({
   socials: z.array(socialLinkSchema).max(8).optional(),
   // PL7: `hero` = portada de cuerpo entero sin avatar redondo. Opcional y sin valor por defecto: un
   // perfil guardado antes se lee igual (sin la clave = `avatar`).
-  layout: z.enum(["avatar", "hero"]).optional(),
+  // Editor de portales: `banner` = portada ancha y baja con la foto más chica en la esquina y el texto alineado a la
+  // izquierda; `cutout` = la foto en un recorte vertical con las esquinas del radio del tema (no un círculo).
+  layout: z.enum(PROFILE_LAYOUTS).optional(),
   // PL8: botón para compartir la página. Opcional y apagado sin la clave: nada publicado cambia.
   shareButton: z.boolean().optional(),
 });

@@ -73,6 +73,22 @@ export const analyticsOverviewResponse = z.object({
   qrCodes: z.array(analyticsSubjectRow),
 });
 
+/**
+ * Clics de un bloque en los últimos días (editor de portales): lo que muestra el panel del bloque. Mismos agregados diarios que
+ * el ranking de bloques del resumen (`block_click` + `whatsapp_click` con el bloque como sujeto). `days` puede ser menor que el
+ * pedido si el plan muestra menos historial.
+ */
+export const blockClicksResponse = z.object({
+  blockId: uuid,
+  days: z.number().int().positive(),
+  from: day,
+  to: day,
+  total: z.number().int().nonnegative(),
+  /** Un punto por día del rango, también los días sin clics. */
+  series: z.array(z.object({ date: day, clicks: z.number().int().nonnegative() })),
+});
+
+export type BlockClicksResponse = z.infer<typeof blockClicksResponse>;
 export type AnalyticsSeriesPoint = z.infer<typeof analyticsSeriesPoint>;
 export type AnalyticsBreakdownRow = z.infer<typeof analyticsBreakdownRow>;
 export type AnalyticsSubjectRow = z.infer<typeof analyticsSubjectRow>;

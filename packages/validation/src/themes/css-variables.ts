@@ -59,14 +59,31 @@ const RADIUS_VALUES: Record<ThemeTokens["radius"], string> = {
   none: "0px",
   subtle: "0.375rem",
   moderate: "0.75rem",
+  // ADR-031: bien redondeado sin llegar a píldora (un botón de la pila mide 56 px de alto; la píldora sería 28 px de radio).
+  rounded: "1.25rem",
 };
 
-// Mismo par que `--shadow-sm`/`--shadow-md` de packages/ui/src/styles/tokens.css — "discretas",
-// nunca la sombra pesada de plantillas genéricas.
+// `subtle`: mismo par que `--shadow-sm`/`--shadow-md` de packages/ui/src/styles/tokens.css. `strong` y `hard` (ADR-031) son
+// opciones del dueño del sitio: `strong` es una sombra difusa marcada; `hard`, una sombra sólida desplazada sin desenfoque, del
+// color del texto **de la página** (`--site-color-foreground`, que el fondo ajusta para AA): oscura sobre un fondo claro y
+// clara sobre uno oscuro, así siempre se distingue. `--site-shadow` se declara en la raíz junto con la paleta del fondo, y ahí
+// se resuelve: las tarjetas que vuelven a la paleta del tema heredan ya el color de la página. Ninguna lleva texto encima.
 const SHADOW_VALUES: Record<ThemeTokens["shadow"], string> = {
   none: "none",
   subtle: "0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.08)",
+  strong: "0 12px 28px -8px rgb(15 23 42 / 0.32), 0 4px 10px -4px rgb(15 23 42 / 0.18)",
+  hard: "4px 4px 0 0 var(--site-color-foreground)",
 };
+
+/** Valor CSS de un radio del tema: el mismo que pinta la página (lo usan las muestras del editor de temas). */
+export function themeRadiusValue(radius: ThemeTokens["radius"]): string {
+  return RADIUS_VALUES[radius];
+}
+
+/** Valor CSS de una sombra del tema. `hard` usa `--site-color-foreground`: quien lo pinte fuera del sitio tiene que definirla. */
+export function themeShadowValue(shadow: ThemeTokens["shadow"]): string {
+  return SHADOW_VALUES[shadow];
+}
 
 /** Ritmo vertical: separación entre bloques y relleno de sección. */
 const DENSITY_VALUES: Record<ThemeTokens["density"], { gap: string; sectionPadding: string }> = {
@@ -128,7 +145,9 @@ export function themeTokensToCssVariables(tokens: ThemeTokens): ThemeCssVariable
     "--site-theme-muted-foreground": tokens.palette.mutedForeground,
     "--site-theme-border": tokens.palette.border,
     "--site-font-family": FONT_STACKS[tokens.fontFamily].body,
-    "--site-font-heading": FONT_STACKS[tokens.fontFamily].heading,
+    // Títulos: la fuente elegida aparte si la hay (su pila de títulos, la misma que muestra la muestra del editor), si no la del
+    // texto. Sin `headingFontFamily` queda exactamente como antes.
+    "--site-font-heading": FONT_STACKS[tokens.headingFontFamily ?? tokens.fontFamily].heading,
     "--site-radius": RADIUS_VALUES[tokens.radius],
     "--site-shadow": SHADOW_VALUES[tokens.shadow],
     "--site-gap": density.gap,

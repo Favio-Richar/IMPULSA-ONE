@@ -1,4 +1,4 @@
-import type { AnalyticsOverviewResponse } from "@impulza/contracts";
+import type { AnalyticsOverviewResponse, BlockClicksResponse } from "@impulza/contracts";
 import { apiFetch } from "../api-client";
 
 export interface AnalyticsOverviewFilters {
@@ -17,4 +17,9 @@ export function getAnalyticsOverview(
     params.set("siteId", filters.siteId);
   }
   return apiFetch<AnalyticsOverviewResponse>(`/organizations/${organizationId}/analytics/overview?${params.toString()}`);
+}
+
+/** Clics de un bloque en los últimos `days` días (30 por defecto; el servidor lo acota al historial del plan). */
+export function getBlockClicks(organizationId: string, blockId: string, days = 30): Promise<BlockClicksResponse> {
+  return apiFetch<BlockClicksResponse>(`/organizations/${organizationId}/analytics/blocks/${blockId}/clicks?days=${days}`);
 }

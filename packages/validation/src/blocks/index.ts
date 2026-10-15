@@ -12,6 +12,8 @@ export {
   // Esquema y tipo por bloque — el render público (F2.7) y, más adelante, el constructor (F2.9)
   // necesitan la forma exacta de cada `config`, no `unknown`.
   profileSchema,
+  PROFILE_LAYOUTS,
+  type ProfileLayout,
   heroSchema,
   textSchema,
   linkSchema,

@@ -161,7 +161,14 @@ export default function OnboardingPage(): React.JSX.Element | null {
             <div className="mb-6 flex items-start gap-4">
               <span
                 aria-hidden="true"
-                className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/30"
+                className={cn(
+                  "flex size-14 shrink-0 items-center justify-center rounded-lg text-primary-foreground shadow-lg",
+                  // Paso 1: el azul `info` del sistema como acento secundario, visible de entrada (no solo al elegir); el resto de
+                  // los pasos mantiene solo el color de marca.
+                  step.key === "account"
+                    ? "bg-gradient-to-br from-info to-primary shadow-info/30"
+                    : "bg-gradient-to-br from-primary to-primary/70 shadow-primary/30",
+                )}
               >
                 <StepIcon className="size-7" />
               </span>

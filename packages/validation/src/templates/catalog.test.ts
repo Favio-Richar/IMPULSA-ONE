@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getCatalogTheme } from "../themes/catalog.js";
 import { TEMPLATE_CATALOG } from "./catalog.js";
-import { templateSchema, type TemplateIndustry } from "./index.js";
+import { TEMPLATE_INDUSTRIES, templateSchema, type TemplateIndustry } from "./index.js";
 
 // PL3 — criterios de aceptación del catálogo semilla, verificados sobre el catálogo real.
 
@@ -32,6 +32,13 @@ describe("TEMPLATE_CATALOG (PL3)", () => {
     for (const [segment, industries] of required) {
       const covered = TEMPLATE_CATALOG.some((template) => industries.every((tag) => template.industryTags.includes(tag)));
       expect(covered, segment).toBe(true);
+    }
+  });
+
+  it("toda industria tiene al menos una plantilla (el paso de plantilla filtra por la industria elegida)", () => {
+    for (const industry of TEMPLATE_INDUSTRIES) {
+      const covered = TEMPLATE_CATALOG.some((template) => (template.industryTags as readonly string[]).includes(industry));
+      expect(covered, industry).toBe(true);
     }
   });
 

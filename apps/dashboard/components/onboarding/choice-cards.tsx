@@ -24,6 +24,8 @@ export function ChoiceCards<T extends string>({
   value,
   onChange,
   columns = 2,
+  variant = "default",
+  accent = "primary",
 }: {
   legend: string;
   name: string;
@@ -31,8 +33,16 @@ export function ChoiceCards<T extends string>({
   value: T | null;
   onChange: (value: T) => void;
   columns?: 2 | 3;
+  /** `compact`: tarjeta horizontal más baja (ícono a la izquierda), para listas largas de opciones secundarias. */
+  variant?: "default" | "compact";
+  /**
+   * `info`: suma el azul `info` del sistema como acento secundario de lo elegido (degradado primario→info en el ícono y el
+   * fondo). El borde y el radio siguen en el color de marca. Por defecto, solo el color de marca.
+   */
+  accent?: "primary" | "info";
 }) {
   const id = useId();
+  const compact = variant === "compact";
 
   return (
     <fieldset className="flex flex-col gap-3">
@@ -47,31 +57,46 @@ export function ChoiceCards<T extends string>({
               key={choice.value}
               htmlFor={inputId}
               className={cn(
-                "group relative flex cursor-pointer flex-col items-start gap-3 overflow-hidden rounded-2xl border-2 p-5 pr-12 transition-all duration-200 ease-out motion-reduce:transform-none motion-reduce:transition-none",
-                "hover:-translate-y-1 hover:shadow-lg",
+                "group relative flex cursor-pointer overflow-hidden border-2 transition-all duration-200 ease-out motion-reduce:transform-none motion-reduce:transition-none",
+                compact ? "flex-row items-center gap-3 rounded-lg p-3.5 pr-11 hover:-translate-y-0.5 hover:shadow-md" : "flex-col items-start gap-3 rounded-lg p-5 pr-12 hover:-translate-y-1 hover:shadow-lg",
+                // En dos columnas con un total impar, la última ocupa la fila entera en vez de quedar sola a la izquierda.
+                compact && columns === 2 && "sm:[&:last-child:nth-child(odd)]:col-span-2",
                 "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-focus-ring)] has-[:focus-visible]:ring-offset-2",
                 checked
-                  ? "border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-md shadow-primary/10"
-                  : "border-border bg-background/90 hover:border-primary/40",
+                  ? accent === "info"
+                    ? "border-primary bg-gradient-to-br from-primary/10 via-info/5 to-transparent shadow-md shadow-info/15"
+                    : "border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-md shadow-primary/10"
+                  : accent === "info"
+                    ? "border-border bg-background/90 hover:border-info/50"
+                    : "border-border bg-background/90 hover:border-primary/40",
               )}
             >
               {Icon ? (
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "flex size-12 shrink-0 items-center justify-center rounded-xl transition-all duration-200 group-hover:scale-105",
-                    checked ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" : "bg-surface text-muted-foreground group-hover:text-foreground",
+                    "flex shrink-0 items-center justify-center transition-all duration-200 group-hover:scale-105",
+                    compact ? "size-10 rounded-md" : "size-12 rounded-md",
+                    checked
+                      ? accent === "info"
+                        ? "bg-gradient-to-br from-primary to-info text-primary-foreground shadow-lg shadow-info/30"
+                        : "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                      : accent === "info"
+                        ? "bg-info/10 text-info group-hover:bg-info/20"
+                        : "bg-surface text-muted-foreground group-hover:text-foreground",
                   )}
                 >
                   <Icon className="size-5" />
                 </span>
               ) : null}
-              <span className="flex min-w-0 flex-1 flex-col gap-1">
-                <span className="text-base font-semibold tracking-tight text-foreground">{choice.label}</span>
-                {choice.description ? <span className="text-sm leading-snug text-muted-foreground">{choice.description}</span> : null}
+              <span className={cn("flex min-w-0 flex-1 flex-col", compact ? "gap-0.5" : "gap-1")}>
+                <span className={cn("font-semibold tracking-tight text-foreground", compact ? "text-sm leading-snug" : "text-base")}>{choice.label}</span>
+                {choice.description ? (
+                  <span className={cn("leading-snug text-muted-foreground", compact ? "text-[13px]" : "text-sm")}>{choice.description}</span>
+                ) : null}
               </span>
               {/* El radio real, con apariencia de círculo con check (visible, enfocable y operable como cualquier radio). */}
-              <span className="absolute right-4 top-4 size-6 shrink-0">
+              <span className={cn("absolute size-6 shrink-0", compact ? "right-3 top-1/2 -translate-y-1/2" : "right-4 top-4")}>
                 <input
                   id={inputId}
                   type="radio"

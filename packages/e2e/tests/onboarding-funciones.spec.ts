@@ -297,5 +297,12 @@ test.describe("paneles laterales decorativos", () => {
     const box = await panels.locator("aside").first().boundingBox();
     expect(box!.y + box!.height).toBeGreaterThan(900 - 40);
     expect(box!.height).toBeGreaterThan(700);
+    // Secciones estructurales pegadas al borde de la ventana, no tarjetas flotantes con aire alrededor.
+    expect(box!.x).toBe(0);
+    const right = await panels.locator("aside").last().boundingBox();
+    expect(Math.round(right!.x + right!.width)).toBe(1800);
+    // Mientras el video carga se ve su primer cuadro real (póster), nunca el fondo de color de marca.
+    await expect(video).toHaveAttribute("poster", "/onboarding/demo-portal-poster.jpg");
+    expect(await panels.locator("aside").first().evaluate((el) => getComputedStyle(el).backgroundImage)).toBe("none");
   });
 });

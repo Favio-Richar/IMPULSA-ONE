@@ -4,7 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { TemplateResponse } from "@impulza/contracts";
 import {
   detectSocialNetwork,
-  ONBOARDING_ACCOUNT_TYPE_LABELS,
+  ONBOARDING_ACCOUNT_OPTION_KEYS,
+  ONBOARDING_ACCOUNT_OPTIONS,
+  type OnboardingAccountOptionKey,
   ONBOARDING_ACCOUNT_TYPES,
   phoneSchema,
   publicSlugSchema,
@@ -21,7 +23,7 @@ import {
   type TemplateObjective,
 } from "@impulza/validation";
 import { NetworkIcon } from "@impulza/blocks-renderer";
-import { Button, ErrorState, LoadingState, Textarea } from "@impulza/ui";
+import { Button, cn, ErrorState, LoadingState, Textarea } from "@impulza/ui";
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,6 +31,8 @@ import {
   Briefcase,
   CalendarCheck,
   Clapperboard,
+  Crown,
+  Gamepad2,
   Globe,
   GraduationCap,
   HeartPulse,
@@ -37,8 +41,12 @@ import {
   Lightbulb,
   Link2,
   Megaphone,
+  Mic,
+  MonitorPlay,
+  Dumbbell,
   Camera,
   Check,
+  ChevronDown,
   CircleAlert,
   HandCoins,
   HeartHandshake,
@@ -49,9 +57,12 @@ import {
   Search,
   PartyPopper,
   Plus,
+  Presentation,
+  Scissors,
   Share2,
   ShoppingBag,
   Signature,
+  Smartphone,
   Sparkles,
   Store,
   Trash2,
@@ -63,7 +74,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import { importLinkInBio } from "../../lib/api/link-import";
 import { setOnboardingLogo, useOnboardingLogo } from "../../lib/onboarding-logo";
@@ -73,7 +84,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { env } from "../../lib/env";
 import { useTemplates } from "../../lib/hooks/use-templates";
-import { secondaryObjectivesOf, useOnboardingStore } from "../../lib/onboarding-store";
+import { secondaryObjectivesOf, useOnboardingStore, type OnboardingDraft } from "../../lib/onboarding-store";
 import { slugify } from "../../lib/slugify";
 import { TemplateGallery } from "../templates/template-gallery";
 import { DevicePreview } from "../templates/template-preview-dialog";
@@ -137,7 +148,6 @@ export function normalizeUrl(value: string): string {
 
 // --- 1-3: tipo de cuenta, objetivo, industria --------------------------------------------------
 
-const ACCOUNT_ICONS: Record<(typeof ONBOARDING_ACCOUNT_TYPES)[number], LucideIcon> = { personal: UserRound, negocio: Store, agencia: Users };
 
 /** Logo o foto de perfil (opcional): se elige aquí y se sube al publicar, cuando ya existe tu cuenta. */
 function LogoPicker() {
@@ -209,9 +219,67 @@ function LogoPicker() {
   );
 }
 
+/** Opciones de "Tipo de cuenta" que van bajo «Ver más opciones»: todas menos los tres tipos originales, en el orden definido. */
+const MORE_ACCOUNT_OPTIONS = ONBOARDING_ACCOUNT_OPTION_KEYS.filter((key) => !(ONBOARDING_ACCOUNT_TYPES as readonly string[]).includes(key));
+
+const ACCOUNT_OPTION_ICONS: Record<OnboardingAccountOptionKey, LucideIcon> = {
+  personal: UserRound,
+  negocio: Store,
+  agencia: Users,
+  streaming: Gamepad2,
+  "tiktok-video-corto": Smartphone,
+  youtube: MonitorPlay,
+  "contenido-suscripcion": Crown,
+  docencia: Presentation,
+  "barberia-estetica": Scissors,
+  "fotografia-video": Camera,
+  "musica-podcast": Mic,
+  "fitness-coaching": Dumbbell,
+};
+
+function accountChoice(key: OnboardingAccountOptionKey) {
+  const { label, description } = ONBOARDING_ACCOUNT_OPTIONS[key];
+  return { value: key, icon: ACCOUNT_OPTION_ICONS[key], label, description };
+}
+
+/**
+ * Paso 1: una sola pregunta, "Tipo de cuenta". Siempre se ven Personal, Negocio y Agencia; «Ver más opciones» despliega, en la
+ * misma pregunta, perfiles más concretos (Docente, Barbería…). Cada opción fija el tipo de cuenta real y, si es un perfil, deja
+ * su rubro elegido en el paso 3 (se puede cambiar ahí). Personal, Negocio y Agencia se comportan igual que siempre: solo fijan
+ * el tipo de cuenta.
+ */
 export function AccountStep({ onNext }: StepProps) {
-  const value = useOnboardingStore((state) => state.draft.accountType);
+  const draft = useOnboardingStore((state) => state.draft);
   const update = useOnboardingStore((state) => state.update);
+  // Borradores viejos no tienen `accountOption`: ahí se marca la tarjeta de su tipo de cuenta.
+  const selected: OnboardingAccountOptionKey | null = draft.accountOption ?? draft.accountType;
+  const selectedIsMore = selected !== null && MORE_ACCOUNT_OPTIONS.includes(selected);
+  const [expanded, setExpanded] = useState(selectedIsMore);
+  const moreId = useId();
+  const moreRef = useRef<HTMLDivElement>(null);
+  const showMore = expanded || selectedIsMore;
+
+  function choose(key: OnboardingAccountOptionKey): void {
+    const option = ONBOARDING_ACCOUNT_OPTIONS[key];
+    const previous = selected ? ONBOARDING_ACCOUNT_OPTIONS[selected] : null;
+    const changes: Partial<OnboardingDraft> = { accountType: option.accountType, accountOption: key };
+    if (option.industry) {
+      changes.industry = option.industry;
+    } else if (previous?.industry && draft.industry === previous.industry) {
+      // El rubro lo había puesto el perfil anterior y nadie lo cambió en el paso 3: se quita junto con él.
+      changes.industry = null;
+    }
+    update(changes);
+  }
+
+  function toggleMore(): void {
+    const opening = !showMore;
+    setExpanded(opening);
+    if (opening) {
+      // Al desplegar, el foco va a la primera opción nueva: con teclado no hay que buscarla.
+      requestAnimationFrame(() => moreRef.current?.querySelector<HTMLInputElement>("input[type='radio']")?.focus());
+    }
+  }
 
   return (
     <>
@@ -219,12 +287,42 @@ export function AccountStep({ onNext }: StepProps) {
         legend="Tipo de cuenta"
         name="accountType"
         columns={3}
-        choices={ONBOARDING_ACCOUNT_TYPES.map((type) => ({ value: type, icon: ACCOUNT_ICONS[type], ...ONBOARDING_ACCOUNT_TYPE_LABELS[type] }))}
-        value={value}
-        onChange={(accountType) => update({ accountType })}
+        accent="info"
+        choices={ONBOARDING_ACCOUNT_TYPES.map(accountChoice)}
+        value={selected}
+        onChange={choose}
       />
+      <div className="mt-4 flex flex-col gap-3">
+        {/* Con un perfil elegido, la lista queda abierta y sin este botón: cerrarla escondería la respuesta marcada. */}
+        {selectedIsMore ? null : (
+          <button
+            type="button"
+            aria-expanded={showMore}
+            aria-controls={moreId}
+            onClick={toggleMore}
+            className="inline-flex min-h-11 items-center gap-2 self-start rounded-lg px-1 text-sm font-semibold text-info transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+          >
+            {showMore ? "Menos opciones" : `Ver más opciones (${MORE_ACCOUNT_OPTIONS.length})`}
+            <ChevronDown className={cn("size-4 transition-transform duration-200 motion-reduce:transition-none", showMore && "rotate-180")} aria-hidden="true" />
+          </button>
+        )}
+        {showMore ? (
+          <div id={moreId} ref={moreRef} className="motion-fade">
+            <ChoiceCards
+              legend="Más tipos de cuenta"
+              name="accountType"
+              columns={2}
+              variant="compact"
+              accent="info"
+              choices={MORE_ACCOUNT_OPTIONS.map(accountChoice)}
+              value={selected}
+              onChange={choose}
+            />
+          </div>
+        ) : null}
+      </div>
       <LogoPicker />
-      <StepActions onNext={onNext} nextDisabled={!value} />
+      <StepActions onNext={onNext} nextDisabled={!draft.accountType} />
     </>
   );
 }
@@ -323,6 +421,31 @@ const INDUSTRY_ICONS: Record<(typeof TEMPLATE_INDUSTRIES)[number], LucideIcon> =
   creador: Clapperboard,
   emprendimiento: Lightbulb,
   educacion: GraduationCap,
+  streaming: Gamepad2,
+  "tiktok-video-corto": Smartphone,
+  youtube: MonitorPlay,
+  "contenido-suscripcion": Crown,
+  docencia: Presentation,
+  "barberia-estetica": Scissors,
+  "fotografia-video": Camera,
+  "musica-podcast": Mic,
+  "fitness-coaching": Dumbbell,
+};
+
+/**
+ * Palabras con que la gente busca su rubro aunque no estén en la etiqueta («barbero», «tiktoker»).
+ * Solo alimentan el buscador; nunca se muestran.
+ */
+const INDUSTRY_SEARCH_TERMS: Partial<Record<(typeof TEMPLATE_INDUSTRIES)[number], string>> = {
+  streaming: "streamer twitch kick gamer videojuegos directos en vivo",
+  "tiktok-video-corto": "tiktoker reels shorts videos cortos verticales influencer creador de contenido ugc instagram",
+  youtube: "youtuber canal videos vlog vlogger creador de video influencer",
+  "contenido-suscripcion": "suscripcion suscriptores membresia contenido exclusivo fans",
+  docencia: "profesor profesora docente maestro clases particulares tutor tutorias",
+  "barberia-estetica": "barbero barber barba corte de pelo peluqueria hombre",
+  "fotografia-video": "fotografo fotografa camarografo videografo filmmaker sesiones bodas audiovisual",
+  "musica-podcast": "musico musica cantante banda dj productor podcaster podcast locutor",
+  "fitness-coaching": "entrenador entrenadora personal trainer coach gimnasio gym deporte nutricion",
 };
 
 export function IndustryStep({ onNext, onBack }: StepProps) {
@@ -337,7 +460,7 @@ export function IndustryStep({ onNext, onBack }: StepProps) {
   const industries = TEMPLATE_INDUSTRIES.filter((industry) =>
     needle === ""
       ? true
-      : `${TEMPLATE_INDUSTRY_LABELS[industry]} ${industry}`
+      : `${TEMPLATE_INDUSTRY_LABELS[industry]} ${industry} ${INDUSTRY_SEARCH_TERMS[industry] ?? ""}`
           .toLowerCase()
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
@@ -395,6 +518,15 @@ const INDUSTRY_HEADLINES: Record<(typeof TEMPLATE_INDUSTRIES)[number], string[]>
   creador: ["Contenido, música y proyectos que me mueven", "Todo lo que hago, en un solo lugar", "Sígueme y no te pierdas nada"],
   emprendimiento: ["Una idea hecha realidad", "Hecho con pasión, para ti", "Conoce el proyecto y sé parte"],
   educacion: ["Aprende a tu ritmo, con guía real", "Clases y cursos que sí funcionan", "Da el siguiente paso en tu formación"],
+  streaming: ["En vivo, juegos y comunidad", "Mis directos, horarios y redes en un solo lugar", "Súmate al próximo stream"],
+  "tiktok-video-corto": ["Contenido nuevo todas las semanas", "Todas mis redes en un solo lugar", "Colaboremos: escríbeme para marcas"],
+  youtube: ["Videos nuevos cada semana", "Mi canal, mis series y mis redes en un lugar", "Suscríbete y no te pierdas nada"],
+  "contenido-suscripcion": ["Contenido exclusivo para quienes me apoyan", "Únete y accede a todo lo nuevo primero", "Gracias por ser parte de la comunidad"],
+  docencia: ["Clases claras, a tu ritmo", "Aprende con acompañamiento real", "Reserva tu clase hoy"],
+  "barberia-estetica": ["Cortes y barba con oficio", "Tu estilo, en buenas manos", "Reserva tu hora sin esperar"],
+  "fotografia-video": ["Historias contadas en imágenes", "Mira mi trabajo y agenda tu sesión", "Fotografía y video con mirada propia"],
+  "musica-podcast": ["Escucha lo nuevo", "Música, episodios y fechas en un solo lugar", "Sígueme en todas las plataformas"],
+  "fitness-coaching": ["Entrena con un plan hecho para ti", "Resultados reales, acompañamiento real", "Reserva tu primera sesión"],
 };
 
 const nameSchema = z.object({

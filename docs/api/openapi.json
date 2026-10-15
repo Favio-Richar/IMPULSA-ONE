@@ -3830,7 +3830,16 @@
                 "comercio",
                 "creador",
                 "emprendimiento",
-                "educacion"
+                "educacion",
+                "streaming",
+                "tiktok-video-corto",
+                "youtube",
+                "contenido-suscripcion",
+                "docencia",
+                "barberia-estetica",
+                "fotografia-video",
+                "musica-podcast",
+                "fitness-coaching"
               ],
               "type": "string"
             }
@@ -3887,7 +3896,16 @@
                             "comercio",
                             "creador",
                             "emprendimiento",
-                            "educacion"
+                            "educacion",
+                            "streaming",
+                            "tiktok-video-corto",
+                            "youtube",
+                            "contenido-suscripcion",
+                            "docencia",
+                            "barberia-estetica",
+                            "fotografia-video",
+                            "musica-podcast",
+                            "fitness-coaching"
                           ]
                         }
                       },
@@ -4112,7 +4130,16 @@
                           "comercio",
                           "creador",
                           "emprendimiento",
-                          "educacion"
+                          "educacion",
+                          "streaming",
+                          "tiktok-video-corto",
+                          "youtube",
+                          "contenido-suscripcion",
+                          "docencia",
+                          "barberia-estetica",
+                          "fotografia-video",
+                          "musica-podcast",
+                          "fitness-coaching"
                         ]
                       }
                     },
@@ -4498,7 +4525,16 @@
                           "comercio",
                           "creador",
                           "emprendimiento",
-                          "educacion"
+                          "educacion",
+                          "streaming",
+                          "tiktok-video-corto",
+                          "youtube",
+                          "contenido-suscripcion",
+                          "docencia",
+                          "barberia-estetica",
+                          "fotografia-video",
+                          "musica-podcast",
+                          "fitness-coaching"
                         ]
                       }
                     },
@@ -4771,7 +4807,16 @@
                             "comercio",
                             "creador",
                             "emprendimiento",
-                            "educacion"
+                            "educacion",
+                            "streaming",
+                            "tiktok-video-corto",
+                            "youtube",
+                            "contenido-suscripcion",
+                            "docencia",
+                            "barberia-estetica",
+                            "fotografia-video",
+                            "musica-podcast",
+                            "fitness-coaching"
                           ]
                         }
                       },
@@ -5062,7 +5107,16 @@
                           "comercio",
                           "creador",
                           "emprendimiento",
-                          "educacion"
+                          "educacion",
+                          "streaming",
+                          "tiktok-video-corto",
+                          "youtube",
+                          "contenido-suscripcion",
+                          "docencia",
+                          "barberia-estetica",
+                          "fotografia-video",
+                          "musica-podcast",
+                          "fitness-coaching"
                         ]
                       }
                     },
@@ -32216,7 +32270,16 @@
                                 "comercio",
                                 "creador",
                                 "emprendimiento",
-                                "educacion"
+                                "educacion",
+                                "streaming",
+                                "tiktok-video-corto",
+                                "youtube",
+                                "contenido-suscripcion",
+                                "docencia",
+                                "barberia-estetica",
+                                "fotografia-video",
+                                "musica-podcast",
+                                "fitness-coaching"
                               ]
                             }
                           },

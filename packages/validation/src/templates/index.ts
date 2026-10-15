@@ -54,6 +54,18 @@ export const TEMPLATE_INDUSTRIES = [
   "creador",
   "emprendimiento",
   "educacion",
+  // Rubros de creador y oficios: los preselecciona el paso 1 (`ONBOARDING_ACCOUNT_OPTIONS`) y se
+  // buscan por su nombre en el paso 3. Sin plantilla dedicada todavía: se etiquetan en las plantillas
+  // existentes que más calzan.
+  "streaming",
+  "tiktok-video-corto",
+  "youtube",
+  "contenido-suscripcion",
+  "docencia",
+  "barberia-estetica",
+  "fotografia-video",
+  "musica-podcast",
+  "fitness-coaching",
 ] as const;
 export type TemplateIndustry = (typeof TEMPLATE_INDUSTRIES)[number];
 
@@ -69,6 +81,15 @@ export const TEMPLATE_INDUSTRY_LABELS: Record<TemplateIndustry, string> = {
   creador: "Creadores y artistas",
   emprendimiento: "Emprendedores",
   educacion: "Educación y talleres",
+  streaming: "Streaming y gaming",
+  "tiktok-video-corto": "Video corto (TikTok/Reels)",
+  youtube: "YouTube y video",
+  "contenido-suscripcion": "Creador de contenido por suscripción",
+  docencia: "Clases y docencia",
+  "barberia-estetica": "Barbería y estética",
+  "fotografia-video": "Fotografía y video",
+  "musica-podcast": "Música y podcast",
+  "fitness-coaching": "Fitness y coaching",
 };
 
 export const templateCodeSchema = z
@@ -248,6 +269,67 @@ export const ONBOARDING_ACCOUNT_TYPE_LABELS: Record<OnboardingAccountType, { lab
   personal: { label: "Personal o marca personal", description: "Profesional independiente, creador o artista." },
   negocio: { label: "Negocio", description: "Un local, una tienda o una empresa de servicios." },
   agencia: { label: "Agencia", description: "Gestionas la presencia digital de tus clientes." },
+};
+
+/**
+ * Opciones de la pregunta "Tipo de cuenta" del paso 1. Las tres primeras son los tipos de cuenta tal
+ * cual (solo fijan `accountType`). Las demás son perfiles más concretos que, al elegirlos, fijan **dos**
+ * respuestas que ya existían: el `accountType` real (el que vale para la organización; nunca un cuarto
+ * valor) y el rubro (`industry`, el mismo del paso 3, que queda preseleccionado y se puede cambiar).
+ * No hay campo nuevo en el servidor: la opción elegida solo vive en el borrador del asistente.
+ */
+export interface OnboardingAccountOption {
+  label: string;
+  description: string;
+  accountType: OnboardingAccountType;
+  /** `null` en los tres tipos de cuenta originales: no preseleccionan rubro. */
+  industry: TemplateIndustry | null;
+}
+
+export const ONBOARDING_ACCOUNT_OPTION_KEYS = [
+  ...ONBOARDING_ACCOUNT_TYPES,
+  "streaming",
+  "tiktok-video-corto",
+  "youtube",
+  "contenido-suscripcion",
+  "docencia",
+  "barberia-estetica",
+  "fotografia-video",
+  "musica-podcast",
+  "fitness-coaching",
+] as const;
+export type OnboardingAccountOptionKey = (typeof ONBOARDING_ACCOUNT_OPTION_KEYS)[number];
+
+export const ONBOARDING_ACCOUNT_OPTIONS: Record<OnboardingAccountOptionKey, OnboardingAccountOption> = {
+  personal: { ...ONBOARDING_ACCOUNT_TYPE_LABELS.personal, accountType: "personal", industry: null },
+  negocio: { ...ONBOARDING_ACCOUNT_TYPE_LABELS.negocio, accountType: "negocio", industry: null },
+  agencia: { ...ONBOARDING_ACCOUNT_TYPE_LABELS.agencia, accountType: "agencia", industry: null },
+  // Perfiles de una persona que es su propia marca: cuenta personal.
+  streaming: { label: "Streamer y gaming", description: "Transmites en vivo, juegas o creas comunidad.", accountType: "personal", industry: "streaming" },
+  "tiktok-video-corto": {
+    label: "Creador de video corto (TikTok/Reels)",
+    description: "Publicas videos cortos y verticales.",
+    accountType: "personal",
+    industry: "tiktok-video-corto",
+  },
+  youtube: { label: "YouTuber y creador de video", description: "Tienes un canal con videos largos o series.", accountType: "personal", industry: "youtube" },
+  "contenido-suscripcion": {
+    label: "Creador de contenido por suscripción",
+    description: "Ofreces contenido exclusivo a quienes te apoyan.",
+    accountType: "personal",
+    industry: "contenido-suscripcion",
+  },
+  docencia: { label: "Docente", description: "Das clases, tutorías o cursos.", accountType: "personal", industry: "docencia" },
+  "fotografia-video": { label: "Fotografía y video", description: "Muestras tu portafolio y tomas encargos.", accountType: "personal", industry: "fotografia-video" },
+  "musica-podcast": { label: "Música y podcast", description: "Compartes tu música, tus episodios o tus shows.", accountType: "personal", industry: "musica-podcast" },
+  "fitness-coaching": {
+    label: "Fitness y coaching",
+    description: "Entrenas, acompañas o asesoras a tus clientes.",
+    accountType: "personal",
+    industry: "fitness-coaching",
+  },
+  // Un local con atención al público: negocio.
+  "barberia-estetica": { label: "Barbería y estética", description: "Atiendes con hora: cortes, barba o estética.", accountType: "negocio", industry: "barberia-estetica" },
 };
 
 export const TEMPLATE_MAX_IMPORTED_LINKS = 5;

@@ -82,6 +82,20 @@
   opacity: 0.55;
   background: color-mix(in srgb, var(--color-primary) 38%, transparent);
 }
+/* Desde 1700 px los paneles laterales del asistente (`side-panels.tsx`, 16rem cada uno, bajo el encabezado de 3.5rem) ocupan
+   los costados: la aurora se recorta a la franja central para no asomar por las esquinas redondeadas de los paneles ni bajo el
+   encabezado translúcido, y el círculo de abajo a la derecha (el que quedaba como mancha verde junto a la vista previa y al
+   panel «Consejos») baja su intensidad. Mismo corte que `WIDE_QUERY` en `side-panels.tsx`. */
+@media (min-width: 1700px) {
+  .onb-aurora {
+    inset: 3.5rem 16rem 0 16rem;
+  }
+  /* El panel lateral derecho («Consejos») es un bloque sólido pegado a esa esquina: cualquier resto del
+     blob verde ahí se nota como una mancha asomando detrás. Se apaga del todo en vez de solo atenuarlo. */
+  .onb-blob-b {
+    opacity: 0;
+  }
+}
 .onb-grid {
   position: absolute;
   inset: 0;

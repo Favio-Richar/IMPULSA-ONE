@@ -1,4 +1,11 @@
-import type { OnboardingAccountType, TemplateIndustry, TemplateObjective } from "@impulza/validation";
+import {
+  ONBOARDING_ACCOUNT_OPTION_KEYS,
+  TEMPLATE_INDUSTRIES,
+  type OnboardingAccountOptionKey,
+  type OnboardingAccountType,
+  type TemplateIndustry,
+  type TemplateObjective,
+} from "@impulza/validation";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -23,6 +30,12 @@ export type OnboardingStepKey = (typeof ONBOARDING_STEPS)[number]["key"];
 
 export interface OnboardingDraft {
   accountType: OnboardingAccountType | null;
+  /**
+   * Cuál de las opciones de "Tipo de cuenta" se eligió en el paso 1 (p. ej. «Docente»). Solo sirve para marcar la tarjeta: lo que
+   * cuenta son `accountType` e `industry`, que la opción fija al elegirla. Nunca se envía al servidor. Ausente en borradores
+   * viejos: ahí se marca la tarjeta de `accountType`.
+   */
+  accountOption?: OnboardingAccountOptionKey | null;
   objective: TemplateObjective | null;
   industry: TemplateIndustry | null;
   displayName: string;
@@ -59,6 +72,7 @@ export interface OnboardingProgress {
 
 const EMPTY_DRAFT: OnboardingDraft = {
   accountType: null,
+  accountOption: null,
   objective: null,
   industry: null,
   displayName: "",
@@ -126,6 +140,23 @@ export const useOnboardingStore = create<OnboardingState>()(
       setProgress: (changes) => set((state) => ({ progress: { ...state.progress, ...changes } })),
       reset: () => set({ stepIndex: 0, draft: EMPTY_DRAFT, progress: EMPTY_PROGRESS }),
     }),
-    { name: "impulza-onboarding", version: 1, storage: createJSONStorage(() => sessionStorage) },
+    {
+      name: "impulza-onboarding",
+      version: 1,
+      storage: createJSONStorage(() => sessionStorage),
+      // Un borrador guardado antes de que cambiara la lista de rubros u opciones puede traer un valor que ya no existe: se
+      // descarta (la persona lo vuelve a elegir) en vez de mandarlo a la galería o a la API, que lo rechazarían.
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<OnboardingState>;
+        const draft = { ...current.draft, ...saved.draft };
+        if (draft.industry && !(TEMPLATE_INDUSTRIES as readonly string[]).includes(draft.industry)) {
+          draft.industry = null;
+        }
+        if (draft.accountOption && !(ONBOARDING_ACCOUNT_OPTION_KEYS as readonly string[]).includes(draft.accountOption)) {
+          draft.accountOption = null;
+        }
+        return { ...current, ...saved, draft };
+      },
+    },
   ),
 );

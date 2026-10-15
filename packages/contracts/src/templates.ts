@@ -19,6 +19,15 @@ export const templateIndustry = z.enum([
   "creador",
   "emprendimiento",
   "educacion",
+  "streaming",
+  "tiktok-video-corto",
+  "youtube",
+  "contenido-suscripcion",
+  "docencia",
+  "barberia-estetica",
+  "fotografia-video",
+  "musica-podcast",
+  "fitness-coaching",
 ]);
 
 export const templateObjective = z.enum(["captar", "vender", "reservar", "mostrar", "compartir", "fidelizar", "donaciones", "educar"]);

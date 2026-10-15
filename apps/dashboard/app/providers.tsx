@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { TemplateIntentCapture } from "../components/template-intent-capture";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -16,5 +17,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }),
   );
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      {/* Plantilla elegida en la galería pública del sitio comercial (`?plantilla=`). */}
+      <TemplateIntentCapture />
+      {children}
+    </QueryClientProvider>
+  );
 }

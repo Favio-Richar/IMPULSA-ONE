@@ -167,13 +167,19 @@ for (const path of ["/", "/plantillas"]) {
       // `load` y no `networkidle`: las miniaturas piden avatares a un servicio externo que no importa acá.
       await page.waitForLoadState("load");
 
-      const cards = page.getByRole("link", { name: /^Usar la plantilla / });
+      // En la portada, tarjetas que llevan al registro; en /plantillas, la galería (cada tarjeta abre la página de la plantilla).
+      const cards =
+        path === "/plantillas"
+          ? page.locator('ul[aria-label^="Plantillas, página"] > li a')
+          : page.getByRole("link", { name: /^Usar la plantilla / });
       expect(await cards.count()).toBeGreaterThan(0);
       expect(await page.evaluate(() => document.querySelectorAll("a a").length)).toBe(0);
       await cards.first().click({ trial: true });
-      // Con teclado, la tarjeta muestra el foco (el enlace va superpuesto, el contorno tiene que verse).
+      // Con teclado, la tarjeta muestra el foco (el enlace va superpuesto, el contorno tiene que verse: en la galería lo dibuja
+      // la tarjeta entera).
       await cards.first().focus();
-      expect(await cards.first().evaluate((link) => getComputedStyle(link).outlineStyle)).not.toBe("none");
+      const outlined = path === "/plantillas" ? cards.first().locator("xpath=ancestor::article[1]") : cards.first();
+      expect(await outlined.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe("none");
       expect(errors, `${path} con movimiento ${reducedMotion}`).toEqual([]);
       page.off("console", onConsole);
       });

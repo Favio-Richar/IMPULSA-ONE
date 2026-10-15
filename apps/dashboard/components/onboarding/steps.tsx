@@ -74,7 +74,7 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ApiError } from "../../lib/api-client";
 import { importLinkInBio } from "../../lib/api/link-import";
 import { setOnboardingLogo, useOnboardingLogo } from "../../lib/onboarding-logo";
@@ -86,6 +86,7 @@ import { env } from "../../lib/env";
 import { useTemplates } from "../../lib/hooks/use-templates";
 import { secondaryObjectivesOf, useOnboardingStore, type OnboardingDraft } from "../../lib/onboarding-store";
 import { slugify } from "../../lib/slugify";
+import { clearTemplateIntent, peekTemplateIntent } from "../../lib/template-intent";
 import { TemplateGallery } from "../templates/template-gallery";
 import { DevicePreview } from "../templates/template-preview-dialog";
 import { ChoiceCards } from "./choice-cards";
@@ -967,9 +968,23 @@ export function TemplateStep({ onNext, onBack }: StepProps) {
   const draft = useOnboardingStore((state) => state.draft);
   const update = useOnboardingStore((state) => state.update);
   const favorites = useTemplateFavorites();
+  // Plantilla elegida en la galería pública antes de registrarse (`?plantilla=`): queda marcada y la galería se abre sin filtro de
+  // rubro para que aparezca aunque sea de otro. Solo si todavía no había una elegida; se consume una vez.
+  const [fromGallery] = useState(() => (draft.templateCode ? null : peekTemplateIntent()));
+  useEffect(() => {
+    if (!fromGallery) return;
+    update({ templateCode: fromGallery });
+    clearTemplateIntent();
+  }, [fromGallery, update]);
 
   return (
     <>
+      {fromGallery ? (
+        <p role="status" className="mb-3 flex items-start gap-2.5 rounded-xl border border-primary/30 bg-background p-3.5 text-sm text-foreground">
+          <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+          <span>Ya marcamos la plantilla que elegiste en la galería de Impulza. Puedes continuar con ella o elegir otra.</span>
+        </p>
+      ) : null}
       <p className="mb-5 flex items-start gap-2.5 rounded-xl bg-primary/5 p-3.5 text-sm text-foreground">
         <LayoutTemplate className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
         <span>
@@ -996,7 +1011,7 @@ export function TemplateStep({ onNext, onBack }: StepProps) {
         ].join(" ")}
       >
         <TemplateGallery
-          initialFilters={{ industry: draft.industry ?? undefined, objective: draft.objective ?? undefined }}
+          initialFilters={fromGallery ? {} : { industry: draft.industry ?? undefined, objective: draft.objective ?? undefined }}
           selectedCode={draft.templateCode}
           favoriteCodes={favorites.codes}
           onToggleFavorite={favorites.toggle}

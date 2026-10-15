@@ -186,8 +186,11 @@ test.describe("sitio comercial y plantillas (build de producción)", () => {
 
   test("F8.4 /plantillas: las 4 plantillas nuevas aparecen en la galería pública", async ({ page }, testInfo) => {
     await page.goto(`${PUBLIC_WEB_URL}/plantillas`);
+    // La galería pagina de a 9: estas cuatro quedan en la página 2 (orden del catálogo).
+    await page.goto(`${PUBLIC_WEB_URL}/plantillas?pagina=2`);
+    const gallery = page.locator('ul[aria-label^="Plantillas, página"]');
     for (const name of ["Academia y talleres", "Fitness y entrenamiento", "Músico y banda", "Restaurante con menú"]) {
-      await expect(page.getByRole("link", { name: `Usar la plantilla ${name}` }).first()).toBeVisible();
+      await expect(gallery.getByRole("link", { name, exact: true })).toBeVisible();
     }
     await expectNoHorizontalScroll(page);
     await settleAnimations(page);

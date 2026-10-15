@@ -12,3 +12,16 @@ export function getDashboardLinks() {
     loginHref: `${env.DASHBOARD_BASE_URL}/login`,
   };
 }
+
+/**
+ * Enlaces para usar una plantilla de la galería pública: con cuenta nueva (registro → asistente, que la deja elegida en el
+ * paso de plantilla) o con cuenta existente («Crear sitio», con la plantilla ya elegida). El panel guarda `plantilla` y la
+ * consume él mismo (`lib/template-intent.ts` de apps/dashboard); el código es un dato, nunca una ruta.
+ */
+export function getTemplateLinks(code: string) {
+  const plantilla = `plantilla=${encodeURIComponent(code)}`;
+  return {
+    useHref: `${env.DASHBOARD_BASE_URL}/registro?${plantilla}`,
+    panelHref: `${env.DASHBOARD_BASE_URL}/sitios/nuevo?${plantilla}`,
+  };
+}

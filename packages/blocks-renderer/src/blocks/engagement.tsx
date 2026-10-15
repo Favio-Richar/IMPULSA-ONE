@@ -44,14 +44,24 @@ export function EngagementBlock({
   siteSlug,
   pageSlug,
   mode = "public",
+  zeroInPreview = false,
 }: {
   config: EngagementBlockConfig;
   siteSlug?: string;
   pageSlug?: string;
   mode?: "public" | "preview";
+  /**
+   * `true` en una miniatura de catálogo (galería pública de plantillas, apps/web): ahí "preview"
+   * no significa "el dueño está editando su sitio" (donde la cifra de muestra ayuda a imaginar
+   * cómo se verá con tráfico real) sino "nadie ha usado esta plantilla todavía" — mostrar siempre
+   * la misma cifra de ejemplo (1.280 vistas / 96 me gusta) en cada tarjeta se ve falso y repetido.
+   * Con esto en `true`, la miniatura de catálogo muestra 0/0, igual que un sitio recién creado.
+   */
+  zeroInPreview?: boolean;
 }) {
   const preview = mode === "preview" || !siteSlug || !pageSlug;
-  const [stats, setStats] = useState<Stats | null>(preview ? SAMPLE : null);
+  const sample = zeroInPreview ? { views: 0, likes: 0, liked: false } : SAMPLE;
+  const [stats, setStats] = useState<Stats | null>(preview ? sample : null);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
   const busy = useRef(false);

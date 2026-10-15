@@ -96,6 +96,7 @@ export function RenderBlock({
   forms,
   mode = "public",
   mono = false,
+  zeroEngagementPreview = false,
 }: {
   block: PublicBlockResponse;
   buttonVariant: ButtonVariant;
@@ -106,6 +107,8 @@ export function RenderBlock({
   mode?: "public" | "preview";
   /** Botones monocromo (PL7): la acción principal usa la superficie neutra, no el color primario. */
   mono?: boolean;
+  /** Miniatura de catálogo (ver `engagement.tsx`): el bloque `engagement` muestra 0/0, no la cifra de muestra. */
+  zeroEngagementPreview?: boolean;
 }): ReactElement | null {
   switch (block.type) {
     case "profile": {
@@ -158,7 +161,9 @@ export function RenderBlock({
     }
     case "engagement": {
       const parsed = engagementSchema.safeParse(block.config);
-      return parsed.success ? <EngagementBlock config={parsed.data} siteSlug={siteSlug} pageSlug={pageSlug} mode={mode} /> : null;
+      return parsed.success ? (
+        <EngagementBlock config={parsed.data} siteSlug={siteSlug} pageSlug={pageSlug} mode={mode} zeroInPreview={zeroEngagementPreview} />
+      ) : null;
     }
     case "marquee": {
       const parsed = marqueeSchema.safeParse(block.config);

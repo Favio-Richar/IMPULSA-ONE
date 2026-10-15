@@ -36,6 +36,7 @@ export function PageBlocks({
   forms,
   mode = "public",
   primaryActionBar = true,
+  zeroEngagementPreview = false,
 }: {
   blocks: PublicBlockResponse[];
   buttonStyle: ThemeTokens["buttonStyle"];
@@ -50,6 +51,8 @@ export function PageBlocks({
    * observaría el botón de otra. La acción principal se sigue destacando igual.
    */
   primaryActionBar?: boolean;
+  /** `true` en esa misma miniatura de catálogo: el bloque `engagement` muestra 0/0, no la cifra de muestra (ver `engagement.tsx`). */
+  zeroEngagementPreview?: boolean;
 }) {
   const buttonVariant = buttonVariantFor(buttonStyle);
   // PL7: con botones monocromo, la acción principal tampoco va en el color primario.
@@ -96,6 +99,7 @@ export function PageBlocks({
                 forms={forms}
                 mode={mode}
                 mono={mono}
+                zeroEngagementPreview={zeroEngagementPreview}
               />
             </div>
           );

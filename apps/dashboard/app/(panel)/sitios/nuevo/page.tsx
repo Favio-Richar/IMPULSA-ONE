@@ -6,7 +6,7 @@ import { Button, EmptyState, ErrorState, Input, LoadingState } from "@impulza/ui
 import { Check, CircleAlert, Copy, FilePlus2, Globe, LayoutTemplate, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { ChoiceCards, type Choice } from "../../../../components/onboarding/choice-cards";
 import { PlanLimitNotice } from "../../../../components/plan-limit-notice";
@@ -15,6 +15,8 @@ import { DevicePreview } from "../../../../components/templates/template-preview
 import { useActiveOrgStore } from "../../../../lib/active-org-store";
 import { ApiError } from "../../../../lib/api-client";
 import { listPages } from "../../../../lib/api/pages";
+import { listTemplates } from "../../../../lib/api/templates";
+import { clearTemplateIntent, peekTemplateIntent } from "../../../../lib/template-intent";
 import { env } from "../../../../lib/env";
 import { useApplyTemplate } from "../../../../lib/hooks/use-apply-template";
 import { useCreateSite, useDuplicateSite, useSites } from "../../../../lib/hooks/use-sites";
@@ -58,6 +60,26 @@ function CreateSiteForm({ organizationId }: { organizationId: string }): React.J
   const [errors, setErrors] = useState<{ name?: string; slug?: string; general?: string }>({});
   const [lastError, setLastError] = useState<unknown>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Plantilla elegida en la galería pública (`?plantilla=`): se abre «Desde una plantilla» con ella ya elegida. Si el código no
+  // existe en el catálogo, no pasa nada (se elige a mano). Se consume una sola vez.
+  useEffect(() => {
+    const code = peekTemplateIntent();
+    if (!code) return;
+    let cancelled = false;
+    listTemplates()
+      .then((templates) => {
+        const chosen = templates.find((item) => item.code === code);
+        if (!cancelled && chosen) {
+          setMode("template");
+          setTemplate(chosen);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => clearTemplateIntent());
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // Si el sitio ya se creó pero la plantilla falló, el reintento solo vuelve a aplicarla: no crea otro sitio.
   const [created, setCreated] = useState<{ siteId: string; pageId: string } | null>(null);
 

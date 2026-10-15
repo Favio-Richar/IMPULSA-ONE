@@ -10,6 +10,7 @@ import { z } from "zod";
 import { ApiError } from "../../../lib/api-client";
 import { login } from "../../../lib/api/auth";
 import { listMyOrganizations } from "../../../lib/api/organizations";
+import { peekTemplateIntent } from "../../../lib/template-intent";
 
 const loginFormSchema = z.object({
   email: z.email("Ingresa un correo válido."),
@@ -26,7 +27,9 @@ type LoginFormValues = z.infer<typeof loginFormSchema>;
 async function landingAfterLogin(): Promise<string> {
   try {
     const organizations = await listMyOrganizations();
-    return organizations.length === 0 ? "/bienvenida" : "/";
+    if (organizations.length === 0) return "/bienvenida";
+    // Llegó desde la galería pública con una plantilla elegida: directo a crear el sitio con ella.
+    return peekTemplateIntent() ? "/sitios/nuevo" : "/";
   } catch {
     return "/";
   }

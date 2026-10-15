@@ -31,7 +31,9 @@ export function TemplateThumbnail({
   fitWidth?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [hostWidth, setHostWidth] = useState(0);
+  const [naturalHeight, setNaturalHeight] = useState(0);
   useEffect(() => {
     if (!fitWidth || !hostRef.current) return;
     const el = hostRef.current;
@@ -41,7 +43,21 @@ export function TemplateThumbnail({
     observer.observe(el);
     return () => observer.disconnect();
   }, [fitWidth]);
-  const scale = fitWidth ? (hostWidth > 0 ? hostWidth / PREVIEW_WIDTH : 0.0001) : height / (PREVIEW_WIDTH * 1.6);
+  const baseScale = fitWidth ? (hostWidth > 0 ? hostWidth / PREVIEW_WIDTH : 0.0001) : height / (PREVIEW_WIDTH * 1.6);
+  // Con `fitWidth`, una plantilla corta (sin portada) no llena el alto del marco a `baseScale` y deja un
+  // espacio en blanco abajo -- se mide el alto real del contenido (`scrollHeight` no lo afecta `scale`, que es
+  // puramente visual) y se sube el zoom lo necesario para que el marco quede siempre lleno, igual que una
+  // plantilla con foto de portada (nunca se reduce el zoom: solo sube cuando hace falta).
+  useEffect(() => {
+    if (!fitWidth || !contentRef.current) return;
+    const el = contentRef.current;
+    const measure = () => setNaturalHeight(el.scrollHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fitWidth]);
+  const scale = fitWidth && naturalHeight > 0 ? Math.max(baseScale, height / naturalHeight) : baseScale;
   const tokens = themeTokensSchema.parse(template.theme.tokens);
   const background = resolveSiteBackground(backgroundForDisplay(template.background, template.theme.code), tokens, (key) => key);
   const blocks = template.blocks.flatMap((block, position) => {
@@ -52,6 +68,7 @@ export function TemplateThumbnail({
   return (
     <div ref={hostRef} aria-hidden="true" inert className="relative overflow-hidden" style={{ height }}>
       <div
+        ref={contentRef}
         className="pointer-events-none absolute top-0"
         style={{ left: "50%", width: PREVIEW_WIDTH, transform: `translateX(-50%) scale(${scale})`, transformOrigin: "top" }}
       >

@@ -79,7 +79,7 @@ test("filtros por suscripción, rubro y búsqueda, con un estado vacío que llev
   await page.getByRole("button", { name: "Filtrar" }).click();
   await expect(page).toHaveURL(/q=tatuajes/);
   await expect(cards(page)).toHaveCount(1);
-  await expect(cards(page).first().getByRole("link", { name: "Estudio de tatuajes" })).toBeVisible();
+  await expect(cards(page).first().getByRole("link", { name: "Estudio de tatuajes", exact: true })).toBeVisible();
 
   await page.goto(`${PUBLIC_WEB_URL}/plantillas?q=xyzxyz`);
   await expect(page.getByText("Ninguna plantilla coincide con esos filtros.")).toBeVisible();
@@ -89,7 +89,7 @@ test("filtros por suscripción, rubro y búsqueda, con un estado vacío que llev
 
 test("cada plantilla tiene su página: tres páginas en vivo con pestañas, botones al panel con la plantilla y SEO propio", async ({ page }, testInfo) => {
   await page.goto(`${PUBLIC_WEB_URL}/plantillas`);
-  await cards(page).first().getByRole("link").click();
+  await cards(page).first().getByRole("heading").getByRole("link").click();
   await expect(page).toHaveURL(/\/plantillas\/[a-z0-9-]+$/);
 
   await page.goto(`${PUBLIC_WEB_URL}/plantillas/estudio-tatuajes`);

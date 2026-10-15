@@ -1,66 +1,100 @@
 import type { TemplateResponse } from "@impulza/contracts";
 import { TEMPLATE_INDUSTRY_LABELS } from "@impulza/validation";
 import Link from "next/link";
-import { pageTitle, templateHasSubscription, templatePageCount } from "../../lib/template-gallery";
+import { blocksSummary, pageTitle, templateHasSubscription } from "../../lib/template-gallery";
 import { ClientTemplateThumbnail } from "./client-template-thumbnail";
 
-/** Páginas visibles en la barra del teléfono; el resto se resume en «+N». */
-const NAV_VISIBLE = 3;
+/** Alto de la pantalla del teléfono (px): proporción de un móvil real, igual en todas las tarjetas. */
+const SCREEN_HEIGHT = 580;
+
+type SeedBlock = { type: string; config?: unknown };
+
+/** Rasgos de diseño de la plantilla que vale la pena destacar como etiqueta (cabecera, índice, esfera 3D). */
+function designTags(template: TemplateResponse): string[] {
+  const blocks: SeedBlock[] = [...template.blocks, ...(template.companionPages ?? []).flatMap((page) => page.blocks)];
+  const layoutOf = (type: string) => blocks.find((block) => block.type === type)?.config as { layout?: string } | undefined;
+  const tags: string[] = [];
+  const profile = layoutOf("profile")?.layout;
+  if (profile === "banner") tags.push("Banner");
+  if (profile === "cutout") tags.push("Recorte");
+  if (blocks.some((block) => block.type === "showcase" && (block.config as { layout?: string } | undefined)?.layout === "index")) tags.push("Índice");
+  if (blocks.some((block) => block.type === "gallery" && (block.config as { layout?: string } | undefined)?.layout === "sphere")) tags.push("Esfera 3D");
+  return tags;
+}
 
 /**
- * Tarjeta de la galería pública: la plantilla real dentro de un marco de teléfono (bisel oscuro, barra superior con su código y
- * las páginas reales, desvanecido al pie que indica que el contenido continúa), y debajo nombre, descripción y etiquetas. El
- * enlace va superpuesto (no envuelve la miniatura, que trae sus propios `<a>`): mismo criterio que `TemplateCardLink`.
+ * Tarjeta de la galería pública: la plantilla real (mismo motor que un sitio publicado) dentro de un teléfono de bisel
+ * oscuro y grueso, con proporción de móvil real; debajo, el nombre con su número, el código, las páginas internas con lo que
+ * incluyen y las etiquetas (suscripción y rasgos de diseño). El enlace de la tarjeta va superpuesto (la miniatura trae sus
+ * propios `<a>`); el botón «Usar» queda por encima para ser clicable por separado.
  */
-export function TemplateGalleryCard({ template }: { template: TemplateResponse }) {
+export function TemplateGalleryCard({ template, useHref, index }: { template: TemplateResponse; useHref?: string; index?: number }) {
   const subscription = templateHasSubscription(template);
-  const pages = ["Inicio", ...(template.companionPages ?? []).map((page) => pageTitle(page.slug))];
-  const visible = pages.slice(0, NAV_VISIBLE);
-  const hidden = pages.length - visible.length;
+  const companions = (template.companionPages ?? []).map((page) => ({ slug: page.slug, summary: blocksSummary(page.blocks).join(", ") }));
+  const industry = template.industryTags[0];
+  const tags = designTags(template);
 
   return (
-    <article className="group relative flex h-full flex-col items-center gap-5 rounded-3xl border border-[#e2e8f0] bg-gradient-to-b from-[#f8fafc] to-white px-5 pb-6 pt-7 transition-[border-color,transform,box-shadow] duration-300 hover:-translate-y-1 hover:border-[#94a3b8] hover:shadow-[0_18px_40px_-24px_rgba(15,23,42,0.35)] focus-within:-translate-y-1 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#0f6f6b] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-      <div aria-hidden="true" className="w-full max-w-[17.5rem] rounded-[2.4rem] bg-[#0f172a] p-2.5 shadow-[0_20px_36px_-20px_rgba(15,23,42,0.55)] ring-1 ring-[#1e293b]">
-        <div className="relative overflow-hidden rounded-[1.9rem] bg-white">
-          <div className="flex h-8 items-center justify-between gap-2 bg-[#1e293b] px-3.5 text-[0.625rem] leading-none text-[#e2e8f0]">
-            <span className="min-w-0 truncate font-semibold tracking-wide text-white">{template.code}</span>
-            <span className="flex shrink-0 items-center gap-2 text-[#cbd5e1]">
-              {visible.map((label, index) => (
-                <span key={label} className={index === 0 ? "font-semibold text-white" : undefined}>
-                  {label}
-                </span>
-              ))}
-              {hidden > 0 ? <span className="text-[#94a3b8]">+{hidden}</span> : null}
-            </span>
-          </div>
-          <ClientTemplateThumbnail template={template} height={360} fitWidth />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white/95 via-white/55 to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-2 mx-auto h-1 w-16 rounded-full bg-[#0f172a]/25" />
+    <article className="group relative mx-auto flex h-full w-full max-w-[19.5rem] flex-col gap-4 has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-8 has-[a:focus-visible]:outline-[#0f6f6b]">
+      <div className="rounded-[2.6rem] bg-[#10272a] p-2 shadow-[0_22px_40px_-22px_rgba(15,23,42,0.6)] ring-1 ring-black/20 transition-[transform,box-shadow] duration-300 group-hover:-translate-y-1.5 group-hover:shadow-[0_32px_50px_-24px_rgba(15,23,42,0.65)] group-focus-within:-translate-y-1.5 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0">
+        <div className="relative overflow-hidden rounded-[2.1rem] bg-white" style={{ height: SCREEN_HEIGHT }}>
+          <ClientTemplateThumbnail template={template} height={SCREEN_HEIGHT} fitWidth />
         </div>
       </div>
-      <div className="flex w-full flex-1 flex-col gap-3">
-        <div className="flex flex-col gap-1.5">
+
+      <div className="flex flex-col gap-2.5 px-1">
+        <div className="flex items-baseline justify-between gap-3">
           <h3 className="text-lg font-semibold tracking-tight text-[#0f172a]">
-            <Link href={`/plantillas/${template.code}`} className="after:absolute after:inset-0 after:rounded-3xl focus-visible:outline-none group-has-[:focus-visible]:underline">
+            <Link href={`/plantillas/${template.code}`} className="after:absolute after:inset-0 after:z-0 focus-visible:outline-none">
               {template.name}
             </Link>
           </h3>
-          <p className="line-clamp-2 text-sm leading-relaxed text-[#475569]">{template.description}</p>
+          {index ? <span className="shrink-0 font-mono text-xs text-[#64748b]">rubro {index}</span> : null}
         </div>
-        <ul className="mt-auto flex flex-wrap gap-1.5" aria-label="Detalles">
-          <li className={`rounded-full px-2.5 py-1 text-xs font-semibold ${subscription ? "bg-[#e6f5f3] text-[#0b5450]" : "border border-[#e2e8f0] bg-white text-[#475569]"}`}>
+
+        <p className="font-mono text-xs font-semibold text-[#0f6f6b]">{template.code}</p>
+
+        {companions.length > 0 ? (
+          <ul className="flex flex-col gap-0.5 text-[0.8rem] leading-snug text-[#475569]" aria-label="Páginas incluidas">
+            {companions.map((page) => (
+              <li key={page.slug}>
+                <span className="font-mono font-semibold text-[#0f172a]">/{page.slug}</span>
+                {page.summary ? <span> · {page.summary}</span> : <span> · {pageTitle(page.slug)}</span>}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <ul className="flex flex-wrap gap-1.5 pt-1" aria-label="Etiquetas">
+          <li
+            className={`rounded-full px-3 py-1 text-xs font-medium ${subscription ? "bg-[#d9f2ee] text-[#0b5551]" : "bg-white text-[#475569] ring-1 ring-[#cbd5e1]"}`}
+          >
             {subscription ? "Con suscripción" : "Sin suscripción"}
           </li>
-          <li className="rounded-full border border-[#e2e8f0] bg-white px-2.5 py-1 text-xs font-medium text-[#475569]">{templatePageCount(template)} páginas</li>
-          {template.industryTags.slice(0, 2).map((tag) => (
-            <li key={tag} className="rounded-full border border-[#e2e8f0] bg-white px-2.5 py-1 text-xs font-medium text-[#475569]">
-              {TEMPLATE_INDUSTRY_LABELS[tag]}
+          {tags.map((tag) => (
+            <li key={tag} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-[#0b5551] ring-1 ring-[#0f6f6b]/60">
+              {tag}
             </li>
           ))}
+          {industry ? (
+            <li className="rounded-full bg-[#f1f5f9] px-3 py-1 text-xs font-medium text-[#475569]">{TEMPLATE_INDUSTRY_LABELS[industry]}</li>
+          ) : null}
         </ul>
-        <span aria-hidden="true" className="inline-flex items-center gap-1 text-sm font-semibold text-[#0f6f6b] transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none">
-          Ver plantilla →
-        </span>
+
+        <div className="mt-1 flex items-center justify-between gap-3 border-t border-[#e2e8f0] pt-3">
+          <span aria-hidden="true" className="text-sm font-semibold text-[#0f172a] transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none">
+            Ver plantilla →
+          </span>
+          {useHref ? (
+            <a
+              href={useHref}
+              className="relative z-10 inline-flex min-h-10 items-center rounded-full bg-[#0f6f6b] px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f6f6b]"
+              aria-label={`Usar la plantilla ${template.name}`}
+            >
+              Usar plantilla
+            </a>
+          ) : null}
+        </div>
       </div>
     </article>
   );

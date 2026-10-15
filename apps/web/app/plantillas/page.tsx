@@ -5,12 +5,12 @@ import { Reveal } from "../../components/marketing/reveal";
 import { GalleryPagination } from "../../components/marketing/gallery-pagination";
 import { TemplateGalleryFilters } from "../../components/marketing/template-gallery";
 import { TemplateGalleryCard } from "../../components/marketing/template-gallery-card";
-import { getDashboardLinks } from "../../lib/dashboard-links";
+import { getDashboardLinks, getTemplateLinks } from "../../lib/dashboard-links";
 import { getTemplateCatalog, getPlatformBranding } from "../../lib/api";
 import { RubrosCarousel } from "../../components/marketing/rubros-carousel";
 import { JsonLd } from "../../components/json-ld";
 import { impulzaOrganizationNode } from "../../lib/marketing-structured-data";
-import { filterTemplates, galleryHref, hasActiveFilters, industriesInCatalog, paginate, parseGalleryQuery } from "../../lib/template-gallery";
+import { filterTemplates, galleryHref, hasActiveFilters, industriesInCatalog, paginate, parseGalleryQuery, TEMPLATES_PER_PAGE } from "../../lib/template-gallery";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -82,10 +82,10 @@ export default async function PlantillasPage({ searchParams }: Props) {
           <TemplateGalleryFilters query={query} industries={industriesInCatalog(templates)} total={results.total} />
           {results.total > 0 ? (
             <>
-              <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3" aria-label={`Plantillas, página ${results.page} de ${results.totalPages}`}>
-                {results.items.map((template) => (
+              <ul className="grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3" aria-label={`Plantillas, página ${results.page} de ${results.totalPages}`}>
+                {results.items.map((template, position) => (
                   <li key={template.code}>
-                    <TemplateGalleryCard template={template} />
+                    <TemplateGalleryCard template={template} index={(results.page - 1) * TEMPLATES_PER_PAGE + position + 1} useHref={getTemplateLinks(template.code).useHref} />
                   </li>
                 ))}
               </ul>

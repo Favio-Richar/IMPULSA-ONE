@@ -193,7 +193,7 @@ export default async function TemplatePage({ params }: Props) {
                 Ver toda la galería
               </Link>
             </div>
-            <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
               {related.map((item) => (
                 <li key={item.code}>
                   <TemplateGalleryCard template={item} />

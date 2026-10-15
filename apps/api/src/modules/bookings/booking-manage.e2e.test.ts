@@ -107,7 +107,8 @@ describe("Gestión de la reserva por el cliente (e2e) — F5.4", () => {
     const { confirmation, ownerEmail, link } = await booked();
     expect(confirmation?.subject).toBe("Reserva confirmada en Estudio Luz");
     expect(confirmation?.text).toContain("https://pago.ejemplo.cl/s");
-    expect(link).toMatch(/^[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/);
+    // `id.emisión.firma` (vencimiento de enlaces firmados, 2026-10-13): la emisión va en base 36.
+    expect(link).toMatch(/^[0-9a-f-]{36}\.[0-9a-z]+\.[A-Za-z0-9_-]{43}$/);
     const notice = emailAdapter.messages.find((message) => message.to === ownerEmail);
     expect(notice?.subject).toMatch(/^Nueva reserva: Clara, /);
     expect(notice?.text).toContain("/reservas");
@@ -118,10 +119,12 @@ describe("Gestión de la reserva por el cliente (e2e) — F5.4", () => {
     const view = publicManagedBookingResponse.strict().parse((await request(httpServer).get(manage).set(CSRF).expect(200)).body);
     expect(view).toMatchObject({ siteSlug, siteName: "Estudio Luz", serviceName: "Sesión", serviceId, status: "CONFIRMED", canChange: true, paymentUrl: "https://pago.ejemplo.cl/s" });
 
-    const [id, signature] = link.split(".") as [string, string];
-    const tampered = `${id}.${signature.slice(0, -2)}${signature.endsWith("AA") ? "BB" : "AA"}`;
+    const [id, issuedAt, signature] = link.split(".") as [string, string, string];
+    // Firma alterada, emisión alterada (alargaría la vigencia) y la firma de esta reserva sobre otro id: el mismo 404.
+    const tampered = `${id}.${issuedAt}.${signature.slice(0, -2)}${signature.endsWith("AA") ? "BB" : "AA"}`;
     await request(httpServer).get(`/api/v1/public/bookings/${tampered}`).set(CSRF).expect(404);
-    await request(httpServer).get(`/api/v1/public/bookings/11111111-1111-4111-8111-111111111111.${signature}`).set(CSRF).expect(404);
+    await request(httpServer).get(`/api/v1/public/bookings/${id}.${(parseInt(issuedAt, 36) + 86_400).toString(36)}.${signature}`).set(CSRF).expect(404);
+    await request(httpServer).get(`/api/v1/public/bookings/11111111-1111-4111-8111-111111111111.${issuedAt}.${signature}`).set(CSRF).expect(404);
     await request(httpServer).get("/api/v1/public/bookings/cualquier-cosa").set(CSRF).expect(404);
   });
 

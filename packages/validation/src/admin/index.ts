@@ -21,6 +21,8 @@ export const BULLMQ_QUEUES = [
   "report-schedules",
   "membership-lifecycle",
   "sequence-dispatch",
+  // Retención de 90 días del correo de quien denuncia (worker `moderation-retention.ts`, decisión del propietario 2026-10-13).
+  "moderation-retention-maintenance",
 ] as const;
 
 export type BullMqQueueName = (typeof BULLMQ_QUEUES)[number];

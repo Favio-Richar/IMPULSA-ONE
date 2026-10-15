@@ -44,7 +44,8 @@ test("las secciones están en pestañas y la activa vive en la URL", async ({ pa
   await page.goto(`/sitios/${fixture.siteId}`);
   const tablist = page.getByRole("tablist", { name: "Secciones del sitio" });
   await expect(tablist).toBeVisible({ timeout: 30_000 });
-  await expect(tablist.getByRole("tab")).toHaveText(["Resumen", "Apariencia", "Páginas", "Comercio y reservas", "Contenido", "Dominio y medición"]);
+  // «Formularios» y «SEO» se sumaron con el asistente rediseñado (a42db4a).
+  await expect(tablist.getByRole("tab")).toHaveText(["Resumen", "Apariencia", "Páginas", "Comercio y reservas", "Contenido", "Formularios", "SEO", "Dominio y medición"]);
   await expect(tablist.getByRole("tab", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
   // Resumen: «Mi sistema», datos del sitio y vistas.
   await expect(page.getByRole("form").or(page.getByText("Datos del sitio")).first()).toBeVisible();
